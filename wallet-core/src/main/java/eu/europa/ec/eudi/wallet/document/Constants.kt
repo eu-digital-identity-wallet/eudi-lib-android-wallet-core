@@ -30,16 +30,4 @@ object Constants {
     // mDL
     const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
     const val MDL_NAMESPACE = "org.iso.18013.5.1"
-
-    // AAMVA NAMESPACE
-    const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
-
-    // Vehicle Registration
-    const val MVR_DOCTYPE = "nl.rdw.mekb.1"
-    const val MVR_NAMESPACE = "nl.rdw.mekb.1"
-
-    // COVID
-    const val MICOV_DOCTYPE = "org.micov.1"
-    const val MICOV_VTR_NAMESPACE = "org.micov.vtr.1"
-    const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
 }
