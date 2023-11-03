@@ -2,16 +2,10 @@ $dokka.format:gfm-v1
 $dokka.linkExtension:md
 $dokka.location:eu.europa.ec.eudi.wallet.document////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.document/Constants///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/index.md
-$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/AAMVA_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-a-a-m-v-a_-n-a-m-e-s-p-a-c-e.md
 $dokka.location:eu.europa.ec.eudi.wallet.document/Constants/EU_PID_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-e-u_-p-i-d_-d-o-c-t-y-p-e.md
 $dokka.location:eu.europa.ec.eudi.wallet.document/Constants/EU_PID_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-e-u_-p-i-d_-n-a-m-e-s-p-a-c-e.md
 $dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MDL_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-d-l_-d-o-c-t-y-p-e.md
 $dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MDL_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-d-l_-n-a-m-e-s-p-a-c-e.md
-$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MICOV_ATT_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-i-c-o-v_-a-t-t_-n-a-m-e-s-p-a-c-e.md
-$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MICOV_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-i-c-o-v_-d-o-c-t-y-p-e.md
-$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MICOV_VTR_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-i-c-o-v_-v-t-r_-n-a-m-e-s-p-a-c-e.md
-$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MVR_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-v-r_-d-o-c-t-y-p-e.md
-$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MVR_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-v-r_-n-a-m-e-s-p-a-c-e.md
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/OpenId4vpManager/#android.content.Context#kotlin.String#eu.europa.ec.eudi.wallet.document.DocumentManager/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/-open-id4vp-manager.md
