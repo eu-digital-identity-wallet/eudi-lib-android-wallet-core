@@ -1,0 +1,87 @@
+$dokka.format:gfm-v1
+$dokka.linkExtension:md
+$dokka.location:eu.europa.ec.eudi.wallet.document////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/AAMVA_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-a-a-m-v-a_-n-a-m-e-s-p-a-c-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/EU_PID_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-e-u_-p-i-d_-d-o-c-t-y-p-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/EU_PID_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-e-u_-p-i-d_-n-a-m-e-s-p-a-c-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MDL_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-d-l_-d-o-c-t-y-p-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MDL_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-d-l_-n-a-m-e-s-p-a-c-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MICOV_ATT_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-i-c-o-v_-a-t-t_-n-a-m-e-s-p-a-c-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MICOV_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-i-c-o-v_-d-o-c-t-y-p-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MICOV_VTR_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-i-c-o-v_-v-t-r_-n-a-m-e-s-p-a-c-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MVR_DOCTYPE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-v-r_-d-o-c-t-y-p-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.document/Constants/MVR_NAMESPACE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.document/-constants/-m-v-r_-n-a-m-e-s-p-a-c-e.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/OpenId4vpManager/#android.content.Context#kotlin.String#eu.europa.ec.eudi.wallet.document.DocumentManager/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/-open-id4vp-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/addTransferEventListener/#eu.europa.ec.eudi.iso18013.transfer.TransferEvent.Listener/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/add-transfer-event-listener.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/close/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/close.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/removeAllTransferEventListeners/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/remove-all-transfer-event-listeners.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/removeTransferEventListener/#eu.europa.ec.eudi.iso18013.transfer.TransferEvent.Listener/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/remove-transfer-event-listener.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/resolveRequestUri/#kotlin.String/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/resolve-request-uri.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openid4vp/OpenId4vpManager/sendResponse/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openid4vp/-open-id4vp-manager/send-response.md
+$dokka.location:eu.europa.ec.eudi.wallet.util////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.util/CBOR///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborDecode/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-decode.md
+$dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborDecodeByteString/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-decode-byte-string.md
+$dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborEncode/#co.nstant.in.cbor.model.DataItem/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-encode.md
+$dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborPrettyPrint/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-pretty-print.md
+$dokka.location:eu.europa.ec.eudi.wallet////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/index.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.BleTransferMode///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-ble-transfer-mode/index.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/index.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/Builder/#android.content.Context/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/-builder.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/bleClearCacheEnabled/#kotlin.Boolean/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/ble-clear-cache-enabled.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/bleTransferMode/#kotlin.IntArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/ble-transfer-mode.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/build/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/build.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/documentsStorageDir/#java.io.File/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/documents-storage-dir.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/encryptDocumentsInStorage/#kotlin.Boolean/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/encrypt-documents-in-storage.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/openId4VpVerifierApiUri/#kotlin.String/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/open-id4-vp-verifier-api-uri.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/trustedReaderCertificates/#kotlin.IntArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/trusted-reader-certificates.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/trustedReaderCertificates/#kotlin.collections.List[java.security.cert.X509Certificate]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/trusted-reader-certificates.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/useHardwareToStoreKeys/#kotlin.Boolean/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/use-hardware-to-store-keys.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/userAuthenticationRequired/#kotlin.Boolean/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/user-authentication-required.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Builder/userAuthenticationTimeOut/#kotlin.Long/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-builder/user-authentication-time-out.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Companion///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-companion/index.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Companion/BLE_CLIENT_CENTRAL_MODE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-companion/-b-l-e_-c-l-i-e-n-t_-c-e-n-t-r-a-l_-m-o-d-e.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Companion/BLE_SERVER_PERIPHERAL_MODE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-companion/-b-l-e_-s-e-r-v-e-r_-p-e-r-i-p-h-e-r-a-l_-m-o-d-e.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/index.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/bleCentralClientModeEnabled/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/ble-central-client-mode-enabled.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/bleClearCacheEnabled/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/ble-clear-cache-enabled.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/blePeripheralServerModeEnabled/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/ble-peripheral-server-mode-enabled.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/bleTransferMode/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/ble-transfer-mode.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/documentsStorageDir/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/documents-storage-dir.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/encryptDocumentsInStorage/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/encrypt-documents-in-storage.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/openId4VpVerifierApiUri/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/open-id4-vp-verifier-api-uri.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/trustedReaderCertificates/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/trusted-reader-certificates.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/useHardwareToStoreKeys/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/use-hardware-to-store-keys.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/userAuthenticationRequired/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/user-authentication-required.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/userAuthenticationTimeOut/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/user-authentication-time-out.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/index.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/addDocument/#eu.europa.ec.eudi.wallet.document.IssuanceRequest#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/add-document.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/addTransferEventListener/#eu.europa.ec.eudi.iso18013.transfer.TransferEvent.Listener/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/add-transfer-event-listener.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/config/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/config.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/createIssuanceRequest/#kotlin.String#kotlin.Boolean#kotlin.ByteArray?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/create-issuance-request.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/createResponse/#eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/create-response.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/deleteDocumentById/#kotlin.String/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/delete-document-by-id.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/documentManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/document-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/getDocumentById/#kotlin.String/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/get-document-by-id.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/getDocuments/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/get-documents.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/init/#android.content.Context#eu.europa.ec.eudi.wallet.EudiWalletConfig/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/init.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/loadSampleData/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/load-sample-data.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/openId4vpManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/open-id4vp-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/removeAllTransferEventListeners/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/remove-all-transfer-event-listeners.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/removeTransferEventListener/#eu.europa.ec.eudi.iso18013.transfer.TransferEvent.Listener/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/remove-transfer-event-listener.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/sendResponse/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/send-response.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/setReaderTrustStore/#eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/set-reader-trust-store.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/setTrustedReaderCertificates/#kotlin.IntArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/set-trusted-reader-certificates.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/setTrustedReaderCertificates/#kotlin.collections.List[java.security.cert.X509Certificate]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/set-trusted-reader-certificates.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/startEngagementToApp/#android.content.Intent/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/start-engagement-to-app.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/startQrEngagement/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/start-qr-engagement.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/stopPresentation/#kotlin.Boolean#kotlin.Boolean/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/stop-presentation.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletSDK/transferManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-s-d-k/transfer-manager.md
+eu.europa.ec.eudi.wallet
+eu.europa.ec.eudi.wallet.document
+eu.europa.ec.eudi.wallet.transfer.openid4vp
+eu.europa.ec.eudi.wallet.util
+
