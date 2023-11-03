@@ -40,21 +40,7 @@ enum class DocType(val docTypeName: String, val userFriendlyName: Int) {
      *
      * @constructor Create empty Mdl
      */
-    MDL(DocConstants.MDL_DOCTYPE, R.string.mdl_doctype_name),
-
-    /**
-     * MICOV Doc Type
-     *
-     * @constructor Create empty Micov
-     */
-    MICOV(DocConstants.MICOV_DOCTYPE, R.string.micov_doctype_name),
-
-    /**
-     * MVR Doc Type
-     *
-     * @constructor Create empty Mvr
-     */
-    MVR(DocConstants.MVR_DOCTYPE, R.string.mvr_doctype_name);
+    MDL(DocConstants.MDL_DOCTYPE, R.string.mdl_doctype_name);
 
     companion object {
         infix fun from(name: String): DocType? =
