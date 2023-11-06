@@ -535,54 +535,116 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
     }
     ```
 
-4. OpenID4VP
+   4. OpenID4VP
 
-   To use the OpenID4VP functionality, the configuration that is used to initialize the library must
-   contain the `openId4VpVerifierApiUri`. See the [Initialize the library](#initialize-the-library)
-   section.
+      To use the OpenID4VP functionality, the configuration that is used to initialize the library
+      must
+      contain the `openId4VpVerifierApiUri`. See
+      the [Initialize the library](#initialize-the-library)
+      section.
 
-   Then, declare to your app's manifest file (AndroidManifest.xml) the following Intent Filters for
-   your MainActivity:
+      Then, declare to your app's manifest file (AndroidManifest.xml) the following Intent Filters
+      for
+      your MainActivity:
 
-   ```xml
-   <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="mdoc-openid4vp" android:host="*" />
-   </intent-filter> 
-   <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="https" android:host="${verifierHostName}" />
-   </intent-filter>
-   ```
+      ```xml
+      <intent-filter>
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="mdoc-openid4vp" android:host="*" />
+      </intent-filter> 
+      <intent-filter>
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="${verifierHostName}" />
+      </intent-filter>
+      ```
 
-   where `${verifierHostName}` is the host name of the verifier. Also set `launchMode="singleTask"`
-   for this activity.
+      where `${verifierHostName}` is the host name of the verifier. Also
+      set `launchMode="singleTask"`
+      for this activity.
 
-   Then your MainActivity use the `EudiWalletSDK.openId4vpManager` property to get
-   the `OpenId4VpManager` object and use it to initiate the transfer, as shown in the example below:
+      Then your MainActivity use the `EudiWalletSDK.openId4vpManager` property to get
+      the `OpenId4VpManager` object and use it to initiate the transfer, as shown in the example
+      below:
 
-    ```kotlin
-    class MainActivity : AppCompatActivity() {
+      ```kotlin
+      import android.content.Intent
+      import android.os.Bundle
+      import androidx.appcompat.app.AppCompatActivity
+      import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocument
+      import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
+      import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
+      import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
+      import eu.europa.ec.eudi.wallet.EudiWalletSDK
     
-        // ... rest of activity code
+      class MainActivity : AppCompatActivity() {
+      
+          val transferEventListener = TransferEvent.Listener { event ->
+              when (event) {
+                  is TransferEvent.RequestReceived -> {
+                     val disclosedDocuments = DisclosedDocuments(
+                         listOf<DisclosedDocument>(
+                             // get disclosed documents from user
+                         )
+                     )
+                     val result = EudiWalletSDK.createResponse(disclosedDocuments)
+                     when (result) {
+                         is ResponseResult.Response -> {
+                             EudiWalletSDK.openId4vpManager.sendResponse(result.bytes)
+                             EudiWalletSDK.openId4vpManager.close()
+                         }
+                         is ResponseResult.UserAuthRequired -> {
+                             // perform user authentication 
+                             // and try send data again
+                         }
     
-        override fun onResume() {
-            super.onResume()
-            EudiWalletSDK.openId4vpManager.addTransferEventListener(transferEventListener)
-        }
+                         is ResponseResult.Failure -> {
+                             val cause = result.throwable
+                             // handle failure
+                             
+                             // close connection
+                             EudiWalletSDK.openId4vpManager.close()
+                         }
+                     }
     
-        override fun onNewIntent(intent: Intent) {
-            super.onNewIntent(intent)
-            EudiWalletSDK.openId4vpManager.addTransferEventListener(transferEventListener)
-        }
-    }
-    ```
-    [TBD]
-
+                 }
+    
+                 else -> {
+                     // rest of event handling
+                 }
+             }
+         }
+         // ... rest of activity code
+    
+         override fun onCreate(savedInstanceState: Bundle?) {
+             super.onCreate(savedInstanceState)
+             EudiWalletSDK.openId4vpManager.addTransferEventListener(transferEventListener)
+         }
+    
+         override fun onResume() {
+             super.onResume()
+             handleOpenId4VpIntent(intent)
+         }
+    
+         override fun onNewIntent(intent: Intent) {
+             super.onNewIntent(intent)
+             setIntent(null)
+             handleOpenId4VpIntent(intent)
+         }
+    
+         private fun handleOpenId4VpIntent(intent: Intent) {
+             when (intent.scheme) {
+                 "mdoc-openid4vp" -> EudiWalletSDK.openId4vpManager.resolveRequestUri(intent.toUri(0))
+                 else -> {
+                     // do nothing
+                 }
+             }
+         }
+       }
+       ```
 #### Receiving request and sending response
 
 When a request is received, the `TransferEvent.RequestReceived` event is triggered. The request can
