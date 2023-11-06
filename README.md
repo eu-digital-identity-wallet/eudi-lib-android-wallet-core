@@ -9,7 +9,7 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-This repository contains the EUDI ISO 18013-5 Wallet Core library for Android. The library is a part
+This repository contains the EUDI Wallet Core library for Android. The library is a part
 of the EUDI Wallet Reference Implementation project.
 
 The library provides the following functionality:
