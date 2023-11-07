@@ -1,4 +1,4 @@
-//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet](../index.md)/[EudiWalletSDK](index.md)/[loadSampleData](load-sample-data.md)
+//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet](../index.md)/[EudiWallet](index.md)/[loadSampleData](load-sample-data.md)
 
 # loadSampleData
 
@@ -29,4 +29,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWalletSDK](index.md) is not firstly initialized via the [init](init.md) method |
+| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

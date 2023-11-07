@@ -24,7 +24,7 @@ val transferEventListener = TransferEvent.Listener { event ->
          val request = openId4vpManager.resolveRequestUri(event.request)
          // handle request and demand from user the documents to be disclosed
          val disclosedDocuments = listOf<DisclosedDocument>()
-         val response = EudiWalletSDK.createResponse(disclosedDocuments)
+         val response = EudiWallet.createResponse(disclosedDocuments)
          openId4vpManager.sendResponse(response)
      }
   }
