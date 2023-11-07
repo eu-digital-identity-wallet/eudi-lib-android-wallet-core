@@ -60,7 +60,7 @@ import java.security.cert.X509Certificate
  *    ))
  *    .bleTransferMode(EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE)
  *    .build()
- * EudiWalletSDK.init(context, config)
+ * EudiWallet.init(context, config)
  * ```
  * @see [EudiWalletConfig] on how to configure the sdk
  *
@@ -68,7 +68,7 @@ import java.security.cert.X509Certificate
  *
  */
 @SuppressLint("StaticFieldLeak")
-object EudiWalletSDK {
+object EudiWallet {
 
     @Volatile
     private lateinit var context: Context
@@ -87,14 +87,14 @@ object EudiWalletSDK {
 
     /**
      * The Config that used to initialize the sdk
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     val config get() = requireInit { _config }
 
     /**
      * Document manager
      * @see [DocumentManager]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     val documentManager: SampleDocumentManager by lazy {
         requireInit {
@@ -118,7 +118,7 @@ object EudiWalletSDK {
     /**
      * Transfer manager
      * @see [TransferManager]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     val transferManager: TransferManager by lazy {
         requireInit {
@@ -137,7 +137,7 @@ object EudiWalletSDK {
     /**
      * OpenId4VP manager that can be used to verify OpenId4Vp requests
      * @see [OpenId4vpManager]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      * or if the [EudiWalletConfig.openId4VpVerifierApiUri] is not set
      */
     @get:Throws(IllegalStateException::class)
@@ -154,7 +154,7 @@ object EudiWalletSDK {
      * Returns the list of documents
      * @see [DocumentManager.getDocuments]
      * @return the list of documents
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun getDocuments(): List<Document> = documentManager.getDocuments()
 
@@ -163,7 +163,7 @@ object EudiWalletSDK {
      * @param documentId the document's id
      * @see [DocumentManager.getDocumentById]
      * @return the document with the given [documentId] or null if not found
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun getDocumentById(documentId: DocumentId): Document? =
         documentManager.getDocumentById(documentId)
@@ -173,7 +173,7 @@ object EudiWalletSDK {
      * @param documentId the document's id
      * @see [DocumentManager.deleteDocumentById]
      * @return [DeleteDocumentResult]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun deleteDocumentById(documentId: DocumentId): DeleteDocumentResult =
         documentManager.deleteDocumentById(documentId)
@@ -186,7 +186,7 @@ object EudiWalletSDK {
      * attestation (optional). If not provided, the sdk will generate a random challenge
      * @see [DocumentManager.createIssuanceRequest]
      * @return [CreateIssuanceRequestResult]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun createIssuanceRequest(
         docType: String,
@@ -201,7 +201,7 @@ object EudiWalletSDK {
      * @param data the document data provided by the issuer
      * @see [DocumentManager.addDocument]
      * @return [AddDocumentResult]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun addDocument(request: IssuanceRequest, data: ByteArray): AddDocumentResult =
         documentManager.addDocument(request, data)
@@ -211,7 +211,7 @@ object EudiWalletSDK {
      * @param sampleData the sample data
      * @see [SampleDocumentManager.loadSampleData]
      * @return [AddDocumentResult]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun loadSampleData(sampleData: ByteArray): LoadSampleResult =
         documentManager.loadSampleData(sampleData)
@@ -220,10 +220,10 @@ object EudiWalletSDK {
      * Sets the reader trust store with the readers' certificates that are trusted by the wallet
      * @param readerTrustStore the reader trust store
      * @see [TransferManager.setReaderTrustStore]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
-     * @return [EudiWalletSDK]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @return [EudiWallet]
      */
-    fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWalletSDK {
+    fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWallet {
         transferManager.setReaderTrustStore(readerTrustStore)
         return this
     }
@@ -232,8 +232,8 @@ object EudiWalletSDK {
      * Sets the readers' certificates that are trusted by the wallet
      * @param trustedReaderCertificates list of trusted reader certificates
      * @see [TransferManager.setReaderTrustStore]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
-     * @return [EudiWalletSDK]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @return [EudiWallet]
      */
     fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) = apply {
         transferManager.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
@@ -243,8 +243,8 @@ object EudiWalletSDK {
      * Sets the readers' certificates from raw resources that are trusted by the wallet
      * @param rawRes list of raw resources of trusted reader certificates
      * @see [TransferManager.setReaderTrustStore]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
-     * @return [EudiWalletSDK]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @return [EudiWallet]
      */
     fun setTrustedReaderCertificates(@RawRes vararg rawRes: Int) = apply {
         setTrustedReaderCertificates(rawRes.map { context.getCertificate(it) })
@@ -255,8 +255,8 @@ object EudiWalletSDK {
      * @see [TransferManager.addTransferEventListener]
      * @see [TransferEvent.Listener]
      * @param listener
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
-     * @return [EudiWalletSDK]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @return [EudiWallet]
      */
     fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.addTransferEventListener(listener)
@@ -267,8 +267,8 @@ object EudiWalletSDK {
      * @see [TransferManager.removeTransferEventListener]
      * @see [TransferEvent.Listener]
      * @param listener
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
-     * @return [EudiWalletSDK]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @return [EudiWallet]
      *
      */
     fun removeTransferEventListener(listener: TransferEvent.Listener) = apply {
@@ -279,8 +279,8 @@ object EudiWalletSDK {
      * Removes all transfer event listeners.
      * @see [TransferManager.removeTransferEventListener]
      * @see [TransferEvent.Listener]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
-     * @return [EudiWalletSDK]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @return [EudiWallet]
      */
     fun removeAllTransferEventListeners() = apply {
         transferManager.removeAllTransferEventListeners()
@@ -289,7 +289,7 @@ object EudiWalletSDK {
     /**
      * Starts the transfer process by engaging with the reader via QR code
      * @see [TransferManager.startQrEngagement]
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun startQrEngagement() = transferManager.startQrEngagement()
 
@@ -298,7 +298,7 @@ object EudiWalletSDK {
      *
      * @see [TransferManager.startEngagementToApp]
      * @param intent
-     * @throws IllegalStateException if [EudiWalletSDK] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun startEngagementToApp(intent: Intent) = transferManager.startEngagementToApp(intent)
 
@@ -334,7 +334,7 @@ object EudiWalletSDK {
 
     private fun <T> requireInit(block: () -> T): T {
         if (!::context.isInitialized) {
-            throw IllegalStateException("EudiWalletSDK.init() must be called before using the SDK")
+            throw IllegalStateException("EudiWallet.init() must be called before using the SDK")
         }
         return block()
     }

@@ -98,7 +98,7 @@ The following example shows how to initialize the library:
 
 ```kotlin
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
-import eu.europa.ec.eudi.wallet.EudiWalletSDK
+import eu.europa.ec.eudi.wallet.EudiWallet
 import java.security.cert.X509Certificate
 
 val storageDir = applicationContext.filesDir
@@ -121,14 +121,14 @@ val config = EudiWalletConfig.Builder(applicationContext)
     .openId4VpVerifierApiUri(verifierApiUri)
     .build()
 
-EudiWalletSDK.init(applicationContext, config)
+EudiWallet.init(applicationContext, config)
 ```
 
 To initialize the library with the default configuration, you can use the following code:
 
 ```kotlin
 val config = EudiWalletConfig.Builder(applicationContext).build()
-EudiWalletSDK.init(applicationContext, config)
+EudiWallet.init(applicationContext, config)
 ```
 
 Library initialization is recommended to be done in the `Application.onCreate` method.
@@ -149,38 +149,38 @@ The library provides a set of methods to work with documents.
 
 #### Listing documents
 
-The `EudiWalletSDK.getDocuments` method that returns the list of documents stored in the library.
+The `EudiWallet.getDocuments` method that returns the list of documents stored in the library.
 
 The following example shows how to list documents:
 
 ```kotlin
-val documents = EudiWalletSDK.getDocuments()
+val documents = EudiWallet.getDocuments()
 ```
 
 #### Retrieving a document
 
-The `EudiWalletSDK.getDocumentById` method that returns a document with the given id.
+The `EudiWallet.getDocumentById` method that returns a document with the given id.
 
 The following example shows how to retrieve a document:
 
 ```kotlin
-val document = EudiWalletSDK.getDocumentById(documentId)
+val document = EudiWallet.getDocumentById(documentId)
 ```
 
 #### Deleting a document
 
-The `EudiWalletSDK.deleteDocumentById` method that deletes a document with the given id.
+The `EudiWallet.deleteDocumentById` method that deletes a document with the given id.
 
 The following example shows how to delete a document:
 
 ```kotlin
-val result = EudiWalletSDK.deleteDocumentById(documentId)
+val result = EudiWallet.deleteDocumentById(documentId)
 
 when (result) {
-    is EudiWalletSDK.DeleteDocumentResult.Success -> {
+    is EudiWallet.DeleteDocumentResult.Success -> {
         // document deleted
     }
-    is EudiWalletSDK.DeleteDocumentResult.Failure -> {
+    is EudiWallet.DeleteDocumentResult.Failure -> {
         // error
         val cause = result.throwable
     }
@@ -190,11 +190,11 @@ when (result) {
 #### Issuing/Adding a document
 
 Adding a document is a two step process. First, you need to create an issuanceRequest using the
-method `EudiWalletSDK.createIssuanceRequest`. The issuanceRequest holds the public certificate
+method `EudiWallet.createIssuanceRequest`. The issuanceRequest holds the public certificate
 that will be used from the issuer to sign the document.
 
 Later, when document's data is available, you can create the document using the
-method `EudiWalletSDK.addDocument` to add the document to document storage.
+method `EudiWallet.addDocument` to add the document to document storage.
 
 The following example shows how to add a document:
 
@@ -206,7 +206,7 @@ val attestationChallenge = byteArrayOf(
     // provided by the issuer
 )
 val requestResult =
-    EudiWalletSDK.createIssuanceRequest(docType, hardwareBacked, attestationChallenge)
+    EudiWallet.createIssuanceRequest(docType, hardwareBacked, attestationChallenge)
 when (requestResult) {
     is CreateIssuanceRequestResult.Failure -> {
         val error = requestResult.throwable
@@ -223,7 +223,7 @@ when (requestResult) {
 
         val issuerData: ByteArray = byteArrayOf() // CBOR bytes received from issuer
 
-        val addResult = EudiWalletSDK.addDocument(request, issuerData)
+        val addResult = EudiWallet.addDocument(request, issuerData)
 
         when (addResult) {
             is AddDocumentResult.Failure -> {
@@ -272,7 +272,7 @@ Currently, only one document can be added at a time.
 
 #### Loading sample documents
 
-The library provides the `EudiWalletSDK.loadSampleData` method that allows to load sample documents
+The library provides the `EudiWallet.loadSampleData` method that allows to load sample documents
 in document storage, without the need to issue them. The signing of the documents is done by the
 library internally, using a predefined key pair.
 
@@ -282,7 +282,7 @@ The following example shows how to load sample documents:
 
 ```kotlin
 val sampleData = byteArrayOf() // CBOR bytes with sample documents
-val result = EudiWalletSDK.loadSampleData(sampleData)
+val result = EudiWallet.loadSampleData(sampleData)
 
 when (result) {
     is LoadSampleResult.Success -> {
@@ -345,10 +345,10 @@ state of the transfer. The following events are emitted:
 
 #### Attaching a TransferEvent.Listener
 
-To receive events from the `EudiWalletSDK`, you must attach a `TransferEvent.Listener` to it:
+To receive events from the `EudiWallet`, you must attach a `TransferEvent.Listener` to it:
 
 The following example demonstrates how to implement a `TransferEvent.Listener` and attach it to the
-`EudiWalletSDK` object.
+`EudiWallet` object.
 
 ```kotlin
 
@@ -377,7 +377,7 @@ val transferEventListener = TransferEvent.Listener { event ->
                 }
                 is ResponseResult.Response -> {
                     val responseBytes = responseResult.bytes
-                    EudiWalletSDK.sendResponse(responseBytes)
+                    EudiWallet.sendResponse(responseBytes)
                 }
                 is ResponseResult.UserAuthRequired -> {
                     // user authentication is required. Get the crypto object from responseResult.cryptoObject
@@ -393,30 +393,30 @@ val transferEventListener = TransferEvent.Listener { event ->
         is TransferEvent.Disconnected -> {
             // event when the devices are disconnected
             // presentation can be stopped here
-            EudiWalletSDK.stopPresentation()
+            EudiWallet.stopPresentation()
         }
         is TransferEvent.Error -> {
             // event when an error occurs. Get the error from event.error
             val error: Throwable = event.error
             // handle error 
             // stop presentation
-            EudiWalletSDK.stopPresentation()
+            EudiWallet.stopPresentation()
         }
     }
 }
 
-EudiWalletSDK.addTransferEventListener(transferEventListener)
+EudiWallet.addTransferEventListener(transferEventListener)
 ```
 
 #### Initiating transfer
 
 1. BLE transfer using QR Engagement
 
-   Once the a transfer event listener is attached, use the `EudiWalletSDK.startQrEngagement()`
+   Once the a transfer event listener is attached, use the `EudiWallet.startQrEngagement()`
    method to start the QR code engagement.
 
     ```kotlin
-    EudiWalletSDK.startQrEngagement()
+    EudiWallet.startQrEngagement()
     
     //... other code
     
@@ -522,11 +522,11 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
    and set `launchMode="singleTask"` for this activity.
 
    To initiate the transfer using an app link (reverse engagement), use
-   the `EudiWalletSDK.startEngagementToApp(Intent)` method.
+   the `EudiWallet.startEngagementToApp(Intent)` method.
 
    The method receives as a parameter an `Intent` that contains the data for the device engagement.
 
-   The example below demonstrates how to use the `EudiWalletSDK.startEngagementToApp(Intent)` method
+   The example below demonstrates how to use the `EudiWallet.startEngagementToApp(Intent)` method
    to initiate the device engagement and transfer.
 
     ```kotlin
@@ -536,12 +536,12 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
     
         override fun onResume() {
             super.onResume()
-            EudiWalletSDK.startEngagementToApp(intent)
+            EudiWallet.startEngagementToApp(intent)
         }
     
         override fun onNewIntent(intent: Intent) {
             super.onNewIntent(intent)
-            EudiWalletSDK.startEngagementToApp(intent)
+            EudiWallet.startEngagementToApp(intent)
         }
     }
     ```
@@ -566,7 +566,7 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
 
    Also set `launchMode="singleTask"` for this activity.
 
-   Then your MainActivity use the `EudiWalletSDK.openId4vpManager` property to get
+   Then your MainActivity use the `EudiWallet.openId4vpManager` property to get
    the `OpenId4VpManager` object and use it to initiate the transfer, as shown in the example
    below:
 
@@ -578,7 +578,7 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
    import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
    import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
    import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-   import eu.europa.ec.eudi.wallet.EudiWalletSDK
+   import eu.europa.ec.eudi.wallet.EudiWallet
    
    class MainActivity : AppCompatActivity() {
     
@@ -590,11 +590,11 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
                          // get disclosed documents from user
                      )
                  )
-                 val result = EudiWalletSDK.createResponse(disclosedDocuments)
+                 val result = EudiWallet.createResponse(disclosedDocuments)
                  when (result) {
                      is ResponseResult.Response -> {
-                         EudiWalletSDK.openId4vpManager.sendResponse(result.bytes)
-                         EudiWalletSDK.openId4vpManager.close()
+                         EudiWallet.openId4vpManager.sendResponse(result.bytes)
+                         EudiWallet.openId4vpManager.close()
                      }
                      is ResponseResult.UserAuthRequired -> {
                          // perform user authentication 
@@ -606,7 +606,7 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
                          // handle failure
                             
                          // close connection
-                         EudiWalletSDK.openId4vpManager.close()
+                         EudiWallet.openId4vpManager.close()
                      }
                  }
    
@@ -621,7 +621,7 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
     
      override fun onCreate(savedInstanceState: Bundle?) {
          super.onCreate(savedInstanceState)
-         EudiWalletSDK.openId4vpManager.addTransferEventListener(transferEventListener)
+         EudiWallet.openId4vpManager.addTransferEventListener(transferEventListener)
      }
     
      override fun onResume() {
@@ -637,7 +637,7 @@ EudiWalletSDK.addTransferEventListener(transferEventListener)
    
      private fun handleOpenId4VpIntent(intent: Intent) {
          when (intent.scheme) {
-             "mdoc-openid4vp" -> EudiWalletSDK.openId4vpManager.resolveRequestUri(intent.toUri(0))
+             "mdoc-openid4vp" -> EudiWallet.openId4vpManager.resolveRequestUri(intent.toUri(0))
              else -> {
                  // do nothing
              }
@@ -656,7 +656,7 @@ documents are requested. Also, a selectively disclosure option can be implemente
 requested documents, so user can choose which of the documents to share.
 
 Then, a `DisclosedDocuments` object must be created with the list of documents to be disclosed and
-hhe response can be created using the `EudiWalletSDK.createResponse(DisclosedDocuments)` method.
+hhe response can be created using the `EudiWallet.createResponse(DisclosedDocuments)` method.
 
 The method returns a `ResponseResult` object, which can be one of the following:
 
@@ -666,11 +666,11 @@ The method returns a `ResponseResult` object, which can be one of the following:
    retrieved from `responseResult.bytes`.
 3. `ResponseResult.UserAuthRequired`: The response creation requires user authentication. The
    `CryptoObject` can be retrieved from `responseResult.cryptoObject`. After success authentication
-   the response can be created again, using the `EudiWalletSDK.createResponse(DisclosedDocuments)`
+   the response can be created again, using the `EudiWallet.createResponse(DisclosedDocuments)`
    method.
 
 Finally, when `createResponse(DisclosedDocuments)` returns a `ResponseResult.Response`, the response
-can be sent using the `EudiWalletSDK.sendResponse(ByteArray)` method, by getting the response
+can be sent using the `EudiWallet.sendResponse(ByteArray)` method, by getting the response
 bytes from `responseResult.bytes`.
 
 The following example demonstrates the above steps:
@@ -689,13 +689,13 @@ val transferEventListener = TransferEvent.Listener { event ->
                     // add the disclosed documents here
                 )
             )
-            when (val responseResult = EudiWalletSDK.createResponse(disclosedDocuments)) {
+            when (val responseResult = EudiWallet.createResponse(disclosedDocuments)) {
                 is ResponseResult.Failure -> {
                     // handle the failure
                 }
                 is ResponseResult.Response -> {
                     val responseBytes = responseResult.bytes
-                    EudiWalletSDK.sendResponse(responseBytes)
+                    EudiWallet.sendResponse(responseBytes)
                 }
                 is ResponseResult.UserAuthRequired -> {
                     // user authentication is required. Get the crypto object from responseResult.cryptoObject

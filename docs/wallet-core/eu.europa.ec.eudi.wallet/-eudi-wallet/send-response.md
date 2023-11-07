@@ -1,4 +1,4 @@
-//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet](../index.md)/[EudiWalletSDK](index.md)/[sendResponse](send-response.md)
+//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet](../index.md)/[EudiWallet](index.md)/[sendResponse](send-response.md)
 
 # sendResponse
 
