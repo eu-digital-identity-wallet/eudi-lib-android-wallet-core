@@ -9,7 +9,8 @@ dependency-license-report = "2.4"
 siop-openid4vp = "0.2.0-SNAPSHOT"
 eudi-iso18013-data-transfer = "0.1.0-SNAPSHOT"
 eudi-document-manager = "0.1.0-SNAPSHOT"
-ktor = "2.3.0"
+eudi-lib-jvm-openid4vci-kt = "0.1.0-SNAPSHOT"
+ktor = "2.3.5"
 bouncy-castle = "1.67"
 junit = "4.13.2"
 junit-android = "1.1.5"
@@ -21,11 +22,14 @@ identity-credential-android = "20231002"
 mavenPublish = "0.25.3"
 dependencycheck = "8.4.2"
 sonarqube = "4.4.1.3373"
+nimbus-sdk = "11.6"
 
 [libraries]
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 cbor = { module = "co.nstant.in:cbor", version.ref = "cbor" }
+eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
 json = { module = "org.json:json", version.ref = "json" }
+nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
 eudi-document-manager = { module = "eu.europa.ec.eudi:eudi-lib-android-wallet-document-manager", version.ref = "eudi-document-manager" }
 eudi-iso18013-data-transfer = { module = "eu.europa.ec.eudi:eudi-lib-android-iso18013-data-transfer", version.ref = "eudi-iso18013-data-transfer" }
 siop-openid4vp = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "siop-openid4vp" }

@@ -76,6 +76,10 @@ dependencies {
     api libs.eudi.document.manager
     api libs.eudi.iso18013.data.transfer
 
+    // OpenID4VCI
+    api libs.eudi.lib.jvm.openid4vci.kt
+    implementation libs.nimbus.oauth2.oidc.sdk
+
     // CBOR
     implementation libs.cbor
 
