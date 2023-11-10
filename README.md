@@ -442,11 +442,13 @@ EudiWallet.addTransferEventListener(transferEventListener)
     ```kotlin
     package com.example.myapp
     
+    import eu.europa.ec.eudi.iso18013.transfer.TransferManager
     import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
+    import eu.europa.ec.eudi.wallet.EudiWallet
     
     class NfcEngagementServiceImpl : NfcEngagementService() {
         override val transferManager: TransferManager
-            get() = TODO("Return the transfer manager here")
+            get() = EudiWallet.transferManager
     }
     ```
 
