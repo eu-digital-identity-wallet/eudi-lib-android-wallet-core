@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.GIVEN_NAME
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.ISSUANCE_DATE
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.ISSUING_AUTHORITY
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.ISSUING_COUNTRY
-import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.UNIQUE_ID
 import org.junit.Before
 import org.junit.Test
 
@@ -48,11 +47,6 @@ class  PIDMandatoryFieldsTest : BaseTest() {
     @Test
     fun `birth_date is valid`() {
         testFullDatePIDField(BIRTH_DATE)
-    }
-
-    @Test
-    fun `unique_id is valid`() {
-        testTstrOrBstrPIDField(UNIQUE_ID)
     }
 
     @Test

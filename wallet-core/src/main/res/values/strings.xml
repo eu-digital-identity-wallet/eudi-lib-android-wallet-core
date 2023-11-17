@@ -18,7 +18,6 @@
 
     <!-- EU PID -->
     <string name="eu_pid_doctype_name">EU PID</string>
-    <string name="unique_id">Unique identifier</string>
     <string name="persistent_id">Persistent Identifier</string>
     <string name="family_name_birth">Family Name at Birth</string>
     <string name="first_name_birth">First Name at Birth</string>
