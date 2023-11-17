@@ -52,7 +52,6 @@ import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.RESIDENT_HOUSE_NUMB
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.RESIDENT_POSTAL_CODE
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.RESIDENT_STATE
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.RESIDENT_STREET
-import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.UNIQUE_ID
 import org.junit.Before
 import org.junit.Test
 
@@ -76,11 +75,6 @@ class PIDAllFieldsTest : BaseTest() {
     @Test
     fun `birth_date is valid`() {
         testPIDField(BIRTH_DATE)
-    }
-
-    @Test
-    fun `unique_id is valid`() {
-        testPIDField(UNIQUE_ID)
     }
 
     @Test

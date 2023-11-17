@@ -45,7 +45,6 @@ object Constants {
     const val AGE_OVER_60 = "age_over_60"
     const val AGE_OVER_65 = "age_over_65"
     const val AGE_OVER_68 = "age_over_68"
-    const val UNIQUE_ID = "unique_id"
     const val FAMILY_NAME_BIRTH = "family_name_birth"
     const val GIVEN_NAME_BIRTH = "given_name_birth"
     const val GENDER = "gender"
@@ -60,7 +59,7 @@ object Constants {
     )
 
     val PID_MANDATORY_FIELDS = arrayOf(
-        FAMILY_NAME, GIVEN_NAME, BIRTH_DATE, UNIQUE_ID, ISSUANCE_DATE, EXPIRY_DATE,
+        FAMILY_NAME, GIVEN_NAME, BIRTH_DATE, ISSUANCE_DATE, EXPIRY_DATE,
         ISSUING_AUTHORITY, ISSUING_COUNTRY
     )
 
