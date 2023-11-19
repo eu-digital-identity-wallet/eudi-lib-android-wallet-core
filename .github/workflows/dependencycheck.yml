@@ -2,11 +2,11 @@ name: SCA - Dependency Check
 on:
   push:
   workflow_dispatch:
-  
+
 jobs:
- sca-dependency-check-gradle:
+  sca-dependency-check-gradle:
     name: Build
-    runs-on:  ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout project sources
         uses: actions/checkout@v4
@@ -20,9 +20,9 @@ jobs:
         uses: gradle/gradle-build-action@v2.9.0
         with:
           gradle-version: wrapper
-          arguments: dependencyCheckAnalyze 
+          arguments: dependencyCheckAnalyze
       - name: Upload results - SCA
         uses: actions/upload-artifact@master
         with:
-           name: Dependency Check Report
-           path: ${{github.workspace}}/build/reports/dependency-check-report.html
+          name: Dependency Check Report
+          path: ${{github.workspace}}/build/reports/dependency-check-report.html

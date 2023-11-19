@@ -18,6 +18,9 @@ mockk = "1.13.5"
 espresso-core = "3.5.1"
 identity-credential = "20231002"
 identity-credential-android = "20231002"
+mavenPublish = "0.25.3"
+dependencycheck = "8.4.2"
+sonarqube = "4.4.1.3373"
 
 [libraries]
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -43,3 +46,6 @@ android-library = { id = "com.android.library", version.ref = "gradle-plugin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "kotlin" }
 dependency-license-report = { id = "com.github.jk1.dependency-license-report", version.ref = "dependency-license-report" }
+dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependencycheck" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
