@@ -33,6 +33,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("eu.europa.ec.eudi.iso18013.holder.test", appContext.packageName)
+        assertEquals("eu.europa.ec.eudi.wallet.test", appContext.packageName)
     }
 }
