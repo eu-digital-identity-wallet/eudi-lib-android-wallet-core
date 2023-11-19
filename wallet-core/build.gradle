@@ -10,28 +10,30 @@ plugins {
     id 'kotlin-parcelize'
     alias libs.plugins.dokka
     alias libs.plugins.dependency.license.report
-    id 'maven-publish'
-    id 'signing'
+    alias libs.plugins.dependencycheck
+    alias libs.plugins.sonarqube
+    alias libs.plugins.maven.publish
 }
 
-def meta = [
-        namespace   : 'eu.europa.ec.eudi.wallet',
-        groupId     : 'eu.europa.ec.eudi',
-        artifactId  : 'eudi-lib-android-wallet-core',
-        version     : '0.2.0-SNAPSHOT',
-        description : 'EUDI Wallet Core library for Android',
-        orgUrl      : 'https://github.com/eu-digital-identity-wallet',
-        baseUrl     : 'https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core',
-        gitUrl      : 'scm:git:git@github.com:eu-digital-identity-wallet/eudi-lib-android-wallet-core.git',
-        sshUrl      : 'scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-android-wallet-core.git',
-        snapshotsUrl: 'https://s01.oss.sonatype.org/content/repositories/snapshots/',
-        ReleasesUrl : 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
-]
+apply from: 'jacoco.gradle'
+
+//def meta = [
+//        namespace   : 'eu.europa.ec.eudi.wallet',
+//        groupId     : 'eu.europa.ec.eudi',
+//        artifactId  : 'eudi-lib-android-wallet-core',
+//        version     : '0.2.0-SNAPSHOT',
+//        description : 'EUDI Wallet Core library for Android',
+//        orgUrl      : 'https://github.com/eu-digital-identity-wallet',
+//        baseUrl     : 'https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core',
+//        gitUrl      : 'scm:git:git@github.com:eu-digital-identity-wallet/eudi-lib-android-wallet-core.git',
+//        sshUrl      : 'scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-android-wallet-core.git',
+//        snapshotsUrl: 'https://s01.oss.sonatype.org/content/repositories/snapshots/',
+//        ReleasesUrl : 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+//]
 
 android {
-    namespace meta.namespace
-    version meta.version
-    group meta.groupId
+    namespace NAMESPACE
+    group GROUP
     compileSdk 33
 
     defaultConfig {
@@ -43,6 +45,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            testCoverageEnabled true
+        }
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -57,7 +63,6 @@ android {
     }
 
     sourceSets {
-
         test {
             resources {
                 srcDirs 'src\\test\\assets'
@@ -65,15 +70,15 @@ android {
         }
     }
 
-    publishing {
-        singleVariant('release') {
-            withSourcesJar()
-            // TODO fix javadoc in release
-            //  task javaDocReleaseGeneration fails with java.lang.UnsupportedOperationException: PermittedSubclasses requires ASM9
-            //  caused by eu.europa.ec.eudi.openid4vp.ResolvedRequestObject which is a sealed interface
-//            withJavadocJar()
-        }
-    }
+//    publishing {
+//        singleVariant('release') {
+//            withSourcesJar()
+//            // TODO fix javadoc in release
+//            //  task javaDocReleaseGeneration fails with java.lang.UnsupportedOperationException: PermittedSubclasses requires ASM9
+//            //  caused by eu.europa.ec.eudi.openid4vp.ResolvedRequestObject which is a sealed interface
+////            withJavadocJar()
+//        }
+//    }
 }
 
 dependencies {
@@ -110,18 +115,18 @@ dependencies {
 }
 
 
-tasks.register('androidSourcesJar', Jar) {
-    archiveClassifier.set('sources')
-    if (project.plugins.findPlugin("com.android.library")) {
-        // For android libraries
-        from android.sourceSets.main.java.srcDirs
-        from android.sourceSets.main.kotlin.srcDirs
-    } else {
-        // For pure kotlin libraries, in case you have them
-        from sourceSets.main.java.srcDirs
-        from sourceSets.main.kotlin.srcDirs
-    }
-}
+//tasks.register('androidSourcesJar', Jar) {
+//    archiveClassifier.set('sources')
+//    if (project.plugins.findPlugin("com.android.library")) {
+//        // For android libraries
+//        from android.sourceSets.main.java.srcDirs
+//        from android.sourceSets.main.kotlin.srcDirs
+//    } else {
+//        // For pure kotlin libraries, in case you have them
+//        from sourceSets.main.java.srcDirs
+//        from sourceSets.main.kotlin.srcDirs
+//    }
+//}
 
 tasks.register("clearDocsDir", Delete.class) {
     delete(file("$rootDir/docs"))
@@ -138,7 +143,7 @@ licenseReport {
     configurations = ['releaseRuntimeClasspath']
     excludeBoms = true
     excludeOwnGroup = true
-    renderers = [new InventoryMarkdownReportRenderer("licenses.md", "${meta.description}")]
+    renderers = [new InventoryMarkdownReportRenderer("licenses.md", "${POM_DESCRIPTION}")]
 }
 
 tasks.register('copyLicenseReport', Copy) {
@@ -161,52 +166,60 @@ tasks.register('dokkaJavadocJar', Jar.class) {
     archiveClassifier.set("javadoc")
 }
 
-publishing {
-    publications {
-        release(MavenPublication) {
-            afterEvaluate {
-                from components.release
-            }
-            version = meta.version
-            groupId meta.groupId
-            artifactId meta.artifactId
-
-            pom {
-                name = meta.artifactId
-                description = meta.description
-                url = meta.baseUrl
-                licenses {
-                    license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                scm {
-                    connection = meta.gitUrl
-                    developerConnection = meta.sshUrl
-                    url = meta.baseUrl
-                }
-                issueManagement {
-                    system = 'GitHub'
-                    url = meta.baseUrl + '/issues'
-                }
-                ciManagement {
-                    system = 'GitHub'
-                    url = meta.baseUrl + '/actions'
-                }
-                developers {
-                    organization {
-                        url = meta.orgUrl
-                    }
-                }
-            }
-        }
-    }
-    repositories {
-        maven {
-            name = 'sonatype'
-            url = meta.version.endsWith('SNAPSHOT') ? meta.snapshotsUrl : meta.releasesUrl
-            credentials(PasswordCredentials)
+//publishing {
+//    publications {
+//        release(MavenPublication) {
+//            afterEvaluate {
+//                from components.release
+//            }
+//            version = meta.version
+//            groupId meta.groupId
+//            artifactId meta.artifactId
+//
+//            pom {
+//                name = meta.artifactId
+//                description = meta.description
+//                url = meta.baseUrl
+//                licenses {
+//                    license {
+//                        name = 'The Apache License, Version 2.0'
+//                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+//                    }
+//                }
+//                scm {
+//                    connection = meta.gitUrl
+//                    developerConnection = meta.sshUrl
+//                    url = meta.baseUrl
+//                }
+//                issueManagement {
+//                    system = 'GitHub'
+//                    url = meta.baseUrl + '/issues'
+//                }
+//                ciManagement {
+//                    system = 'GitHub'
+//                    url = meta.baseUrl + '/actions'
+//                }
+//                developers {
+//                    organization {
+//                        url = meta.orgUrl
+//                    }
+//                }
+//            }
+//        }
+//    }
+//    repositories {
+//        maven {
+//            name = 'sonatype'
+//            url = meta.version.endsWith('SNAPSHOT') ? meta.snapshotsUrl : meta.releasesUrl
+//            credentials(PasswordCredentials)
+//        }
+//    }
+//}
+mavenPublishing {
+    pom {
+        ciManagement {
+            system = "github"
+            url = "${POM_SCM_URL}/actions"
         }
     }
 }

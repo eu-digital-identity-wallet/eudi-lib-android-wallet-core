@@ -1,0 +1,50 @@
+name: Release
+on:
+  workflow_dispatch:
+  release:
+    types: [ released ]
+
+jobs:
+  extract-code-version:
+    name: Extract code version
+    runs-on: ubuntu-latest
+    outputs:
+      code-version: ${{ steps.extract.outputs.CODE_VERSION }}
+    steps:
+      - name: Checkout project sources
+        uses: actions/checkout@v4
+      - id: extract
+        name: Extract code version from gradle.properties
+        run: echo "CODE_VERSION=$(awk -F= '$1~/VERSION_NAME/{print $2}' gradle.properties)" >> $GITHUB_OUTPUT
+
+  publish-to-sonatype:
+    name: Publish to sonatype.org
+    needs: [ extract-code-version ]
+    if: github.repository_owner == 'eu-digital-identity-wallet' && startsWith(github.ref, 'refs/tags') && format('v{0}', needs.extract-code-version.outputs.code-version) == github.ref_name
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout project sources
+        uses: actions/checkout@v4
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+      - name: Publish with Gradle Wrapper
+        uses: gradle/gradle-build-action@v2.9.0
+        with:
+          gradle-version: wrapper
+          arguments: build publishAllPublicationsToMavenCentral --no-configuration-cache --full-stacktrace
+        env:
+          CI: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_REF_NAME: ${{ github.ref_name }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.OSSRH_GPG_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.OSSRH_GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
