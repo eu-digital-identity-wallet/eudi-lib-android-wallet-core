@@ -99,7 +99,7 @@ jobs:
       - name: Publish with Gradle Wrapper
         uses: gradle/gradle-build-action@v2.4.2
         with:
-          arguments: publishAllPublicationsToMavenCentral --full-stacktrace
+          arguments: publishAllPublicationsToMavenCentralRepository --full-stacktrace
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_REF_NAME: ${{ github.ref_name }}
