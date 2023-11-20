@@ -38,7 +38,7 @@ jobs:
         uses: gradle/gradle-build-action@v2.9.0
         with:
           gradle-version: wrapper
-          arguments: build publishAllPublicationsToMavenCentral --no-configuration-cache --full-stacktrace
+          arguments: build publishAllPublicationsToMavenCentralRepository --no-configuration-cache --full-stacktrace
         env:
           CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
