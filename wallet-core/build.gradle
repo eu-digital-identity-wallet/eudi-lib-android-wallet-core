@@ -2,6 +2,8 @@ import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
 import com.github.jk1.license.render.InventoryMarkdownReportRenderer
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+
 
 plugins {
     alias libs.plugins.android.library
@@ -12,24 +14,10 @@ plugins {
     alias libs.plugins.dependency.license.report
     alias libs.plugins.dependencycheck
     alias libs.plugins.sonarqube
-    alias libs.plugins.maven.publish
+    alias libs.plugins.maven.publishbase
 }
 
 apply from: 'jacoco.gradle'
-
-//def meta = [
-//        namespace   : 'eu.europa.ec.eudi.wallet',
-//        groupId     : 'eu.europa.ec.eudi',
-//        artifactId  : 'eudi-lib-android-wallet-core',
-//        version     : '0.2.0-SNAPSHOT',
-//        description : 'EUDI Wallet Core library for Android',
-//        orgUrl      : 'https://github.com/eu-digital-identity-wallet',
-//        baseUrl     : 'https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core',
-//        gitUrl      : 'scm:git:git@github.com:eu-digital-identity-wallet/eudi-lib-android-wallet-core.git',
-//        sshUrl      : 'scm:git:ssh://github.com:eu-digital-identity-wallet/eudi-lib-android-wallet-core.git',
-//        snapshotsUrl: 'https://s01.oss.sonatype.org/content/repositories/snapshots/',
-//        ReleasesUrl : 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
-//]
 
 android {
     namespace NAMESPACE
@@ -114,20 +102,6 @@ dependencies {
     androidTestImplementation libs.espresso.core
 }
 
-
-//tasks.register('androidSourcesJar', Jar) {
-//    archiveClassifier.set('sources')
-//    if (project.plugins.findPlugin("com.android.library")) {
-//        // For android libraries
-//        from android.sourceSets.main.java.srcDirs
-//        from android.sourceSets.main.kotlin.srcDirs
-//    } else {
-//        // For pure kotlin libraries, in case you have them
-//        from sourceSets.main.java.srcDirs
-//        from sourceSets.main.kotlin.srcDirs
-//    }
-//}
-
 tasks.register("clearDocsDir", Delete.class) {
     delete(file("$rootDir/docs"))
 }
@@ -166,56 +140,8 @@ tasks.register('dokkaJavadocJar', Jar.class) {
     archiveClassifier.set("javadoc")
 }
 
-//publishing {
-//    publications {
-//        release(MavenPublication) {
-//            afterEvaluate {
-//                from components.release
-//            }
-//            version = meta.version
-//            groupId meta.groupId
-//            artifactId meta.artifactId
-//
-//            pom {
-//                name = meta.artifactId
-//                description = meta.description
-//                url = meta.baseUrl
-//                licenses {
-//                    license {
-//                        name = 'The Apache License, Version 2.0'
-//                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-//                    }
-//                }
-//                scm {
-//                    connection = meta.gitUrl
-//                    developerConnection = meta.sshUrl
-//                    url = meta.baseUrl
-//                }
-//                issueManagement {
-//                    system = 'GitHub'
-//                    url = meta.baseUrl + '/issues'
-//                }
-//                ciManagement {
-//                    system = 'GitHub'
-//                    url = meta.baseUrl + '/actions'
-//                }
-//                developers {
-//                    organization {
-//                        url = meta.orgUrl
-//                    }
-//                }
-//            }
-//        }
-//    }
-//    repositories {
-//        maven {
-//            name = 'sonatype'
-//            url = meta.version.endsWith('SNAPSHOT') ? meta.snapshotsUrl : meta.releasesUrl
-//            credentials(PasswordCredentials)
-//        }
-//    }
-//}
 mavenPublishing {
+    configure(new AndroidSingleVariantLibrary("release", true, false))
     pom {
         ciManagement {
             system = "github"
