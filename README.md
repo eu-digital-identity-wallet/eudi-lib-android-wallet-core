@@ -1,11 +1,7 @@
-# EUDI Wallet Reference Implementation
+# EUDI Wallet Core library for Android
 
 :heavy_exclamation_mark: **Important!** Before you proceed, please read
 the [EUDI Wallet Reference Implementation project description](https://github.com/eu-digital-identity-wallet/.github-private/blob/main/profile/reference-implementation.md)
-
-----
-
-# EUDI ISO 18013-5 Wallet Core library for Android
 
 ## Overview
 
@@ -22,7 +18,7 @@ The library provides the following functionality:
 - Device Retrieval to a website according to the ISO 18013-7 specification
 - Device Retrieval using OpenID4VP for preregistered verifiers
 
-## Disclaimer
+## :heavy_exclamation_mark: Disclaimer
 
 The released software is a initial development release version:
 
