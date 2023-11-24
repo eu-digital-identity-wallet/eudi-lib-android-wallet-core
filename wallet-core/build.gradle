@@ -2,7 +2,6 @@ import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
 import com.github.jk1.license.render.InventoryMarkdownReportRenderer
-import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 
 plugins {
@@ -14,7 +13,7 @@ plugins {
     alias libs.plugins.dependency.license.report
     alias libs.plugins.dependencycheck
     alias libs.plugins.sonarqube
-    alias libs.plugins.maven.publishbase
+    alias libs.plugins.maven.publish
 }
 
 apply from: 'jacoco.gradle'
@@ -141,11 +140,16 @@ tasks.register('dokkaJavadocJar', Jar.class) {
 }
 
 mavenPublishing {
-    configure(new AndroidSingleVariantLibrary("release", true, false))
     pom {
         ciManagement {
             system = "github"
             url = "${POM_SCM_URL}/actions"
         }
+    }
+}
+
+afterEvaluate {
+    tasks.named("javaDocReleaseGeneration").configure {
+        it.enabled = false
     }
 }
