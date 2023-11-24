@@ -48,5 +48,4 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "kotlin" }
 dependency-license-report = { id = "com.github.jk1.dependency-license-report", version.ref = "dependency-license-report" }
 dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependencycheck" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
-maven-publishbase = { id = "com.vanniktech.maven.publish.base", version.ref = "mavenPublish" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
