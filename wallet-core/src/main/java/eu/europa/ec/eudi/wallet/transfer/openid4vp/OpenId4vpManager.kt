@@ -123,7 +123,7 @@ class OpenId4vpManager(
         authorizationEncryptionEncValuesSupported = listOf(EncryptionMethod.parse("A256GCM"))
     )
 
-    private val siopOpenId4Vp = SiopOpenId4Vp.ktor(config)
+    private val siopOpenId4Vp = SiopOpenId4Vp(config)
     private var transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
     private var resolvedRequestObject: ResolvedRequestObject? = null
 
