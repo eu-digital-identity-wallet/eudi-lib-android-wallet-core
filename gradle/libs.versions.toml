@@ -8,7 +8,7 @@ gradle-plugin = "7.4.0"
 dependency-license-report = "2.4"
 siop-openid4vp = "0.2.0-SNAPSHOT"
 eudi-iso18013-data-transfer = "0.1.0-SNAPSHOT"
-eudi-document-manager = "0.1.0-SNAPSHOT"
+eudi-document-manager = "0.2.0-SNAPSHOT"
 eudi-lib-jvm-openid4vci-kt = "0.1.0-SNAPSHOT"
 ktor = "2.3.5"
 bouncy-castle = "1.67"
@@ -23,6 +23,7 @@ mavenPublish = "0.25.3"
 dependencycheck = "8.4.2"
 sonarqube = "4.4.1.3373"
 nimbus-sdk = "11.6"
+biometricKtx = "1.1.0"
 
 [libraries]
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -44,6 +45,7 @@ android-junit = { module = "androidx.test.ext:junit", version.ref = "junit-andro
 espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso-core" }
 identity-credential = { module = "com.android.identity:identity-credential", version.ref = "identity-credential" }
 android-identity-credential = { module = "com.android.identity:identity-credential-android", version.ref = "identity-credential-android" }
+biometric-ktx = { group = "androidx.biometric", name = "biometric-ktx", version.ref = "biometricKtx" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "gradle-plugin" }

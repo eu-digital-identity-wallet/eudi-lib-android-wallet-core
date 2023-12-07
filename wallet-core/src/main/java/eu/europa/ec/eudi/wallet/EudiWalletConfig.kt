@@ -20,6 +20,7 @@ import android.content.Context
 import androidx.annotation.IntDef
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Builder
+import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciConfig
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import java.io.File
 import java.security.cert.X509Certificate
@@ -129,6 +130,13 @@ class EudiWalletConfig private constructor(private val builder: Builder) {
         get() = builder.openId4VpVerifierApiUri
 
     /**
+     * OpenId4Vci config
+     * This is the config that will be used to issue using OpenId4Vci.
+     */
+    val openId4VciConfig: OpenId4VciConfig?
+        get() = builder.openId4VciConfig
+
+    /**
      * Builder
      *
      * @constructor
@@ -174,6 +182,10 @@ class EudiWalletConfig private constructor(private val builder: Builder) {
         @set:JvmSynthetic
         @get:JvmSynthetic
         internal var openId4VpVerifierApiUri: String? = null
+
+        @set:JvmSynthetic
+        @get:JvmSynthetic
+        internal var openId4VciConfig: OpenId4VciConfig? = null
 
         /**
          * Documents storage dir. This is the directory where the documents will be stored.
@@ -283,6 +295,24 @@ class EudiWalletConfig private constructor(private val builder: Builder) {
          */
         fun openId4VpVerifierApiUri(openId4VpVerifierUri: String) = apply {
             this.openId4VpVerifierApiUri = openId4VpVerifierUri
+        }
+
+        /**
+         * OpenId4Vci config
+         *
+         * @param openId4VciConfig
+         */
+        fun openId4VciConfig(openId4VciConfig: OpenId4VciConfig) = apply {
+            this.openId4VciConfig = openId4VciConfig
+        }
+
+        /**
+         * OpenId4Vci config
+         *
+         * @param block
+         */
+        fun openId4VciConfig(block: OpenId4VciConfig.() -> Unit) = apply {
+            this.openId4VciConfig = OpenId4VciConfig().apply(block)
         }
 
         /**
