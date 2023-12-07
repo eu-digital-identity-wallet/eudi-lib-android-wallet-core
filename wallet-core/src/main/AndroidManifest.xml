@@ -14,6 +14,24 @@
   ~ limitations under the License.
   -->
 
-<manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciAuthorizeActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="authorize"
+                    android:scheme="eudi-openid4ci" />
+            </intent-filter>
+        </activity>
+    </application>
 
 </manifest>

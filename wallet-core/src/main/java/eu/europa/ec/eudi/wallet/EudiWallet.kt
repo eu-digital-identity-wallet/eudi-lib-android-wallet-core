@@ -26,7 +26,6 @@ import eu.europa.ec.eudi.iso18013.transfer.RequestDocument
 import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.retrieval.BleRetrievalMethod
 import eu.europa.ec.eudi.wallet.document.AddDocumentResult
@@ -37,9 +36,12 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.DocumentManagerImpl
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.document.issue.IssueDocumentResult
+import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.document.sample.LoadSampleResult
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.getCertificate
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
 import java.security.cert.X509Certificate
 
 /**
@@ -131,6 +133,15 @@ object EudiWallet {
                     documentsResolver = transferManagerDocumentsResolver
                 }
                 .build()
+        }
+    }
+
+    fun issueDocument(docType: String, callback: (result: IssueDocumentResult) -> Unit) {
+        requireInit {
+            config.openId4VciConfig?.let { config ->
+                OpenId4VciManager(context, config, documentManager)
+                    .issueDocument(docType, callback)
+            } ?: throw IllegalStateException("OpenId4VciConfig is not set in configuration")
         }
     }
 

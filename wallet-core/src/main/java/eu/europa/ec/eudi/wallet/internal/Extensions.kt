@@ -24,6 +24,8 @@ import kotlinx.coroutines.runBlocking
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 @JvmSynthetic
 internal fun Context.getCertificate(@RawRes resId: Int): X509Certificate =
@@ -45,6 +47,16 @@ internal fun Context.mainExecutor(): Executor {
 @JvmSynthetic
 internal fun Context.executeOnMain(block: suspend () -> Unit) {
     mainExecutor().execute {
+        runBlocking { block() }
+    }
+}
+
+@JvmSynthetic
+internal fun executeOnThread(
+    executor: ExecutorService = Executors.newSingleThreadExecutor(),
+    block: suspend () -> Unit,
+) {
+    executor.execute {
         runBlocking { block() }
     }
 }

@@ -28,6 +28,10 @@ android {
         targetSdk 33
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testApplicationId "eu.europa.ec.eudi.wallet.test"
+        testHandleProfiling true
+        testFunctionalTest true
+
         consumerProguardFiles "consumer-rules.pro"
     }
 
@@ -77,7 +81,7 @@ dependencies {
     api libs.eudi.iso18013.data.transfer
 
     // OpenID4VCI
-    api libs.eudi.lib.jvm.openid4vci.kt
+    implementation libs.eudi.lib.jvm.openid4vci.kt
     implementation libs.nimbus.oauth2.oidc.sdk
 
     // CBOR
@@ -85,6 +89,7 @@ dependencies {
 
     // siop-openid4vp library
     implementation libs.siop.openid4vp
+    implementation libs.biometric.ktx
 
     // Ktor Android Engine
     runtimeOnly libs.ktor.client.android
