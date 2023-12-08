@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.openid4vci.AuthorizationServerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.IssuedCredential
 import eu.europa.ec.eudi.openid4vci.Issuer
@@ -35,12 +36,12 @@ import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.SubmittedRequest
 import eu.europa.ec.eudi.openid4vci.internal.formats.findScopeForMsoMdoc
 import eu.europa.ec.eudi.wallet.document.AddDocumentResult
+import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.issue.IssueDocumentResult
 import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager.AuthorizationCallback
 import eu.europa.ec.eudi.wallet.internal.executeOnThread
-import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import kotlinx.coroutines.runBlocking
 import java.net.URI
 import java.util.Base64
@@ -57,9 +58,6 @@ class OpenId4VciManager(
 
     private val context = context.applicationContext
 
-    private val issuerUrl: String
-        get() = config.issuerUrl
-
     private val openId4VCIConfig
         get() = OpenId4VCIConfig(
             clientId = config.clientId,
@@ -67,99 +65,140 @@ class OpenId4VciManager(
             keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048)
         )
 
-    private val issuerIdentifier
-        get() = CredentialIssuerId(issuerUrl)
+    private val proofAlgorithm
+        get() = JWSAlgorithm.ES256.name
 
-    private val issuerMetadataResolver
-        get() = CredentialIssuerMetadataResolver()
+    private var _onResult: ((IssueDocumentResult) -> Unit)? = null
 
-    private val authMetadataResolver
-        get() = AuthorizationServerMetadataResolver()
+    private fun onResult(result: IssueDocumentResult) {
+//        _onResult?.let {
+//            context.mainExecutor().execute {
+//                it.invoke(result)
+//            }
+//        }
+        _onResult?.invoke(result)
+    }
 
 
     fun issueDocument(docType: String, onResult: (IssueDocumentResult) -> Unit) {
+        this._onResult = onResult
         executeOnThread {
             try {
-                val identifier = issuerIdentifier.getOrThrow()
-                val issuerMetadata = issuerMetadataResolver.resolve(identifier).getOrThrow()
-                val scope = issuerMetadata.findScopeForMsoMdoc(docType)
-                    ?: throw IllegalStateException("Scope for $docType not found")
-                val authorizationServer = issuerMetadata.authorizationServers.first()
-                val authMetadata = authMetadataResolver.resolve(authorizationServer)
-                    .getOrThrow()
-                val issuer = Issuer.make(authMetadata, issuerMetadata, openId4VCIConfig)
-                val credentialIdentifier = CredentialIdentifier(scope)
-                val parPlaced =
-                    issuer.pushAuthorizationCodeRequest(listOf(credentialIdentifier), null)
-                        .getOrThrow()
-                val getAuthorizationCodeUri =
-                    Uri.parse(parPlaced.getAuthorizationCodeURL.toString())
-
-
-                OpenId4VciAuthorizeActivity.callback = AuthorizationCallback {
-                    it?.let { code ->
-                        runBlocking {
-                            try {
-                                with(issuer) {
-                                    val authorizedRequest = parPlaced
-                                        .handleAuthorizationCode(AuthorizationCode(code))
-                                        .requestAccessToken()
-                                        .getOrThrow()
-                                    val issuanceRequest =
-                                        documentManager.createIssuanceRequest(docType, true)
-                                            .result
-                                            .getOrThrow()
-
-                                    val result = when (authorizedRequest) {
-                                        is AuthorizedRequest.ProofRequired -> handleProofRequired(
-                                            issuer,
-                                            authorizedRequest,
-                                            credentialIdentifier,
-                                            issuanceRequest
-                                        )
-
-                                        is AuthorizedRequest.NoProofRequired -> handleNoProofRequired(
-                                            issuer,
-                                            authorizedRequest,
-                                            credentialIdentifier,
-                                            issuanceRequest
-                                        )
-                                    }
-                                    context.mainExecutor().execute { onResult(result) }
-                                }
-
-                            } catch (e: Exception) {
-                                context.mainExecutor().execute {
-                                    onResult(IssueDocumentResult.Failure(e))
-                                }
-                            }
-                        }
-                    }
-                }
-                context.startActivity(Intent(ACTION_VIEW, getAuthorizationCodeUri).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-
+                val issuerMetadata = resolveIssuerMetadata()
+                val credentialIdentifier = issuerMetadata.getCredentialIdentifier(docType)
+                val issuer = issuerMetadata.getIssuer()
+                issuer.authorize(docType, credentialIdentifier)
             } catch (e: Exception) {
-                context.mainExecutor().execute {
-                    onResult(IssueDocumentResult.Failure(e))
-                }
+                onResult(IssueDocumentResult.Failure(e))
             }
         }
 
     }
 
-    private suspend fun handleProofRequired(
-        issuer: Issuer,
+    private suspend fun resolveIssuerMetadata(): CredentialIssuerMetadata {
+        val identifier = CredentialIssuerId(config.issuerUrl).getOrThrow()
+        return CredentialIssuerMetadataResolver().resolve(identifier).getOrThrow()
+    }
+
+    private fun CredentialIssuerMetadata.getCredentialIdentifier(
+        docType: String
+    ): CredentialIdentifier {
+
+        val scope = findScopeForMsoMdoc(docType)
+            ?: throw IllegalStateException("Scope for $docType not found")
+
+        credentialsSupported.filterValues { credSup ->
+            credSup.scope == scope && credSup.cryptographicSuitesSupported.any { it in ProofSigner.SUPPORTED_ALGORITHMS }
+        }
+            .isNotEmpty() || throw IllegalStateException("No supported algorithm for $docType. Currently supported algorithms: ${ProofSigner.SUPPORTED_ALGORITHMS}")
+
+        return CredentialIdentifier(scope)
+    }
+
+    private suspend fun CredentialIssuerMetadata.getIssuer(): Issuer {
+        val authorizationServer = authorizationServers.first()
+        val authMetadata = AuthorizationServerMetadataResolver().resolve(authorizationServer)
+            .getOrThrow()
+        return Issuer.make(authMetadata, this, openId4VCIConfig)
+    }
+
+    private suspend fun Issuer.authorize(
+        docType: String,
+        credentialIdentifier: CredentialIdentifier
+    ) {
+        val issuer = this
+        val parPlaced = pushAuthorizationCodeRequest(listOf(credentialIdentifier), null)
+            .getOrThrow()
+        val getAuthorizationCodeUri =
+            Uri.parse(parPlaced.getAuthorizationCodeURL.toString())
+
+
+        OpenId4VciAuthorizeActivity.callback = AuthorizationCallback {
+            it?.let { code ->
+                runBlocking {
+                    try {
+                        with(issuer) {
+                            val authorizedRequest = parPlaced
+                                .handleAuthorizationCode(AuthorizationCode(code))
+                                .requestAccessToken()
+                                .getOrThrow()
+                            val issuanceRequest = documentManager
+                                .createIssuanceRequest(docType, true)
+                                .result
+                                .getOrThrow()
+
+                            val result = issuer.handleAuthorizedRequest(
+                                authorizedRequest,
+                                credentialIdentifier,
+                                issuanceRequest
+                            )
+                            onResult(result)
+                        }
+
+                    } catch (e: Exception) {
+                        onResult(IssueDocumentResult.Failure(e))
+                    }
+                }
+            }
+                ?: onResult(IssueDocumentResult.Failure(IllegalStateException("Authorization code is null")))
+        }
+        context.startActivity(Intent(ACTION_VIEW, getAuthorizationCodeUri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
+    }
+
+    private suspend fun Issuer.handleAuthorizedRequest(
+        authorizedRequest: AuthorizedRequest,
+        credentialIdentifier: CredentialIdentifier,
+        issuanceRequest: IssuanceRequest,
+    ): IssueDocumentResult {
+        return when (authorizedRequest) {
+            is AuthorizedRequest.ProofRequired -> handleProofRequired(
+                authorizedRequest,
+                credentialIdentifier,
+                issuanceRequest
+            )
+
+            is AuthorizedRequest.NoProofRequired -> handleNoProofRequired(
+                authorizedRequest,
+                credentialIdentifier,
+                issuanceRequest
+            )
+        }
+    }
+
+
+    private suspend fun Issuer.handleProofRequired(
         authRequest: AuthorizedRequest.ProofRequired,
         credentialIdentifier: CredentialIdentifier,
         issuanceRequest: IssuanceRequest,
     ): IssueDocumentResult {
-        return with(issuer) {
+        val proofSigner = ProofSigner(issuanceRequest, proofAlgorithm)
+        return try {
             when (val outcome = authRequest.requestSingle(
                 credentialIdentifier,
                 null,
-                ProofSigner(issuanceRequest, JWSAlgorithm.ES256.name)
+                proofSigner
             ).getOrThrow()) {
                 is SubmittedRequest.Failed -> IssueDocumentResult.Failure(outcome.error)
                 is SubmittedRequest.InvalidProof -> IssueDocumentResult.Failure(
@@ -168,28 +207,45 @@ class OpenId4VciManager(
 
                 is SubmittedRequest.Success -> addDocument(outcome, issuanceRequest)
             }
+        } catch (e: Exception) {
+            when (val userAuthRequired = proofSigner.userAuthRequired) {
+                ProofSigner.UserAuthRequired.No -> IssueDocumentResult.Failure(e)
+                is ProofSigner.UserAuthRequired.Yes -> IssueDocumentResult.UserAuthRequired(
+                    userAuthRequired.cryptoObject,
+                    _resume = {
+                        runBlocking {
+                            onResult(
+                                handleProofRequired(
+                                    authRequest,
+                                    credentialIdentifier,
+                                    issuanceRequest
+                                )
+                            )
+                        }
+                    },
+                    _cancel = {
+                        onResult(IssueDocumentResult.Failure(e))
+                    }
+                )
+            }
         }
     }
 
-    private suspend fun handleNoProofRequired(
-        issuer: Issuer,
+    private suspend fun Issuer.handleNoProofRequired(
         authRequest: AuthorizedRequest.NoProofRequired,
         credentialIdentifier: CredentialIdentifier,
         issuanceRequest: IssuanceRequest,
     ): IssueDocumentResult {
-        return with(issuer) {
-            when (val outcome =
-                authRequest.requestSingle(credentialIdentifier, null).getOrThrow()) {
-                is SubmittedRequest.Failed -> IssueDocumentResult.Failure(outcome.error)
-                is SubmittedRequest.InvalidProof -> handleProofRequired(
-                    issuer,
-                    authRequest.handleInvalidProof(outcome.cNonce),
-                    credentialIdentifier,
-                    issuanceRequest
-                )
+        return when (val outcome =
+            authRequest.requestSingle(credentialIdentifier, null).getOrThrow()) {
+            is SubmittedRequest.Failed -> IssueDocumentResult.Failure(outcome.error)
+            is SubmittedRequest.InvalidProof -> handleProofRequired(
+                authRequest.handleInvalidProof(outcome.cNonce),
+                credentialIdentifier,
+                issuanceRequest
+            )
 
-                is SubmittedRequest.Success -> addDocument(outcome, issuanceRequest)
-            }
+            is SubmittedRequest.Success -> addDocument(outcome, issuanceRequest)
         }
     }
 
@@ -203,10 +259,19 @@ class OpenId4VciManager(
             when (val addResult =
                 documentManager.addDocument(issuanceRequest, cbor)) {
                 is AddDocumentResult.Success -> IssueDocumentResult.Success(addResult.documentId)
-                is AddDocumentResult.Failure -> IssueDocumentResult.Failure(addResult.throwable)
+                is AddDocumentResult.Failure -> {
+                    documentManager.deleteDocumentById(issuanceRequest.documentId)
+                    IssueDocumentResult.Failure(addResult.throwable)
+                }
             }
         }
     }
+
+    private val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
+        get() = when (this) {
+            is CreateIssuanceRequestResult.Success -> Result.success(issuanceRequest)
+            is CreateIssuanceRequestResult.Failure -> Result.failure(throwable)
+        }
 
 
     internal fun interface AuthorizationCallback {

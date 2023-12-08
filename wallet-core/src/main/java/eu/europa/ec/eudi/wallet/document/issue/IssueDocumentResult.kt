@@ -16,9 +16,19 @@
 
 package eu.europa.ec.eudi.wallet.document.issue
 
+import androidx.biometric.BiometricPrompt.CryptoObject
 import eu.europa.ec.eudi.wallet.document.DocumentId
 
 sealed interface IssueDocumentResult {
     data class Success(val documentId: DocumentId) : IssueDocumentResult
     data class Failure(val error: Throwable) : IssueDocumentResult
+
+    data class UserAuthRequired(
+        val cryptoObject: CryptoObject? = null,
+        private val _resume: () -> Unit,
+        private val _cancel: () -> Unit
+    ) : IssueDocumentResult {
+        fun resume(): Unit = _resume()
+        fun cancel(): Unit = _cancel()
+    }
 }

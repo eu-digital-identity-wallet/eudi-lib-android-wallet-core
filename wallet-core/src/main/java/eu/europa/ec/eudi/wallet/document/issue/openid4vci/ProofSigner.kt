@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.document.issue.openid4vci
 
+import androidx.biometric.BiometricPrompt.CryptoObject
 import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -41,20 +42,15 @@ internal class ProofSigner(
 ) : BaseProofSigner {
 
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
-    private val algorithmMap = mapOf(
-        JWSAlgorithm.ES256 to Algorithm.SHA256withECDSA,
-        // currently not supported
-//        JWSAlgorithm.ES384 to Algorithm.SHA384withECDSA,
-        // currently not supported
-//        JWSAlgorithm.ES512 to Algorithm.SHA512withECDSA,
-    )
+    var userAuthRequired: UserAuthRequired = UserAuthRequired.No
+        private set
 
     override fun getAlgorithm(): JWSAlgorithm = JWSAlgorithm.parse(algorithm)
     override fun getBindingKey(): BindingKey = BindingKey.Jwk(jwk)
     override fun getJCAContext(): JCAContext = JCAContext()
 
     override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-
+        userAuthRequired = UserAuthRequired.No
         if (!supportedJWSAlgorithms().contains(header.algorithm)) {
             throw JOSEException(
                 AlgorithmSupportMessage.unsupportedJWSAlgorithm(
@@ -66,8 +62,11 @@ internal class ProofSigner(
         return issuanceRequest.signWithAuthKey(signingInput, header.algorithm.coreAlg).let {
             when (it) {
                 is SignedWithAuthKeyResult.Success -> Base64URL.encode(derToJose(it.signature))
-                is SignedWithAuthKeyResult.Failure -> throw JOSEException(it.throwable)
-                is SignedWithAuthKeyResult.UserAuthRequired -> throw JOSEException("User authentication requirement is not implemented")
+                is SignedWithAuthKeyResult.Failure -> throw it.throwable
+                is SignedWithAuthKeyResult.UserAuthRequired -> {
+                    userAuthRequired = UserAuthRequired.Yes(it.cryptoObject)
+                    throw UserAuthRequiredException()
+                }
             }
         }
     }
@@ -90,4 +89,19 @@ internal class ProofSigner(
         val len = ECDSA.getSignatureByteArrayLength(getAlgorithm())
         return ECDSA.transcodeSignatureToConcat(bytes, len)
     }
+
+    companion object {
+        private val algorithmMap = mapOf(
+            JWSAlgorithm.ES256 to Algorithm.SHA256withECDSA,
+        )
+
+        internal val SUPPORTED_ALGORITHMS = algorithmMap.keys.map { it.name }.toSet()
+    }
+
+    internal sealed interface UserAuthRequired {
+        object No : UserAuthRequired
+        data class Yes(val cryptoObject: CryptoObject? = null) : UserAuthRequired
+    }
+
+    internal class UserAuthRequiredException : Exception()
 }
