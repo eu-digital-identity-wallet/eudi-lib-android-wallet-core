@@ -6,3 +6,14 @@
 constructor(
 context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html),
 config: [OpenId4VciConfig](../-open-id4-vci-config/index.md), documentManager: DocumentManager)
+
+#### Parameters
+
+androidJvm
+
+|                 |                                                                             |
+|-----------------|-----------------------------------------------------------------------------|
+| context         | the application context                                                     |
+| config          | the configuration for OpenID4VCI                                            |
+| documentManager | the document manager to use for issuing documents                           |
+| executor        | the executor to use for callbacks. If null, the main executor will be used. |

@@ -6,6 +6,8 @@
 data class [Failure](index.md)(val
 error: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)) : [IssueDocumentResult](../index.md)
 
+The document issuance failed.
+
 ## Constructors
 
 |                        |                                                                                                                            |
@@ -14,6 +16,6 @@ error: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwabl
 
 ## Properties
 
-| Name              | Summary                                                                                                                       |
-|-------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| [error](error.md) | [androidJvm]<br>val [error](error.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html) |
+| Name              | Summary                                                                                                                                                            |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [error](error.md) | [androidJvm]<br>val [error](error.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)<br>the error that caused the failure |

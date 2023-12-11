@@ -20,3 +20,6 @@ androidJvm
 |                        |
 |------------------------|
 | useHardwareToStoreKeys |
+
+[androidJvm]\
+var [useHardwareToStoreKeys](use-hardware-to-store-keys.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)

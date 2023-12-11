@@ -21,3 +21,6 @@ androidJvm
 |                 |
 |-----------------|
 | bleTransferMode |
+
+[androidJvm]\
+var [bleTransferMode](ble-transfer-mode.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)

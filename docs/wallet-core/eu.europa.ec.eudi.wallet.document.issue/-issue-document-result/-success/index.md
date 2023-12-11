@@ -5,6 +5,8 @@
 [androidJvm]\
 data class [Success](index.md)(val documentId: DocumentId) : [IssueDocumentResult](../index.md)
 
+The document was successfully issued.
+
 ## Constructors
 
 |                        |                                                     |
@@ -13,6 +15,6 @@ data class [Success](index.md)(val documentId: DocumentId) : [IssueDocumentResul
 
 ## Properties
 
-| Name                         | Summary                                                      |
-|------------------------------|--------------------------------------------------------------|
-| [documentId](document-id.md) | [androidJvm]<br>val [documentId](document-id.md): DocumentId |
+| Name                         | Summary                                                                                       |
+|------------------------------|-----------------------------------------------------------------------------------------------|
+| [documentId](document-id.md) | [androidJvm]<br>val [documentId](document-id.md): DocumentId<br>the id of the issued document |

@@ -22,8 +22,8 @@ import androidx.appcompat.app.AppCompatActivity
 
 class OpenId4VciAuthorizeActivity : AppCompatActivity() {
 
-    companion object {
-        internal var callback: OpenId4VciManager.AuthorizationCallback? = null
+    internal companion object {
+        var callback: OpenId4VciManager.AuthorizationCallback? = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

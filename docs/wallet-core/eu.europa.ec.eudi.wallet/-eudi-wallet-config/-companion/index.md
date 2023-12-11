@@ -5,6 +5,12 @@
 [androidJvm]\
 object [Companion](index.md)
 
+## Functions
+
+| Name                | Summary                                                                                                                                                                                                                                                                                                                                                     |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [invoke](invoke.md) | [androidJvm]<br>operator fun [invoke](invoke.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), block: [EudiWalletConfig.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)<br>Eudi wallet config DSL |
+
 ## Properties
 
 | Name                                                                               | Summary                                                                                                                                                                                                                |

@@ -19,3 +19,6 @@ androidJvm
 |                      |
 |----------------------|
 | bleClearCacheEnabled |
+
+[androidJvm]\
+var [bleClearCacheEnabled](ble-clear-cache-enabled.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)

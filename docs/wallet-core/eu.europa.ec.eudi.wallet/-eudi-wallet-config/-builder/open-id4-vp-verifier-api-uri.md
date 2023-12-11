@@ -19,3 +19,6 @@ androidJvm
 |                      |
 |----------------------|
 | openId4VpVerifierUri |
+
+[androidJvm]\
+var [openId4VpVerifierApiUri](open-id4-vp-verifier-api-uri.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?
