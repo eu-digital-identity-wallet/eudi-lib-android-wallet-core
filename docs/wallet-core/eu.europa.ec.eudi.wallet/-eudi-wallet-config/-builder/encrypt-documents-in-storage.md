@@ -19,3 +19,6 @@ androidJvm
 |                           |
 |---------------------------|
 | encryptDocumentsInStorage |
+
+[androidJvm]\
+var [encryptDocumentsInStorage](encrypt-documents-in-storage.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)

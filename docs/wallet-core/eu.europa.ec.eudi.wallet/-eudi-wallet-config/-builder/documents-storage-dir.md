@@ -20,3 +20,6 @@ androidJvm
 |                    |
 |--------------------|
 | documentStorageDir |
+
+[androidJvm]\
+var [documentsStorageDir](documents-storage-dir.md): [File](https://developer.android.com/reference/kotlin/java/io/File.html)

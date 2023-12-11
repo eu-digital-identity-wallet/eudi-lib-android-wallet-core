@@ -8,6 +8,9 @@ trustedReaderCertificates: [List](https://kotlinlang.org/api/latest/jvm/stdlib/k
 &lt;[X509Certificate](https://developer.android.com/reference/kotlin/java/security/cert/X509Certificate.html)
 &gt;): [EudiWalletConfig.Builder](index.md)
 
+fun [trustedReaderCertificates](trusted-reader-certificates.md)(vararg
+trustedReaderCertificates: [X509Certificate](https://developer.android.com/reference/kotlin/java/security/cert/X509Certificate.html)): [EudiWalletConfig.Builder](index.md)
+
 Trusted reader certificates. This is the list of trusted reader certificates.
 
 #### Return
@@ -40,3 +43,8 @@ androidJvm
 |        |                                      |
 |--------|--------------------------------------|
 | rawIds | raw resource ids of the certificates |
+
+[androidJvm]\
+var [trustedReaderCertificates](trusted-reader-certificates.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)
+&lt;[X509Certificate](https://developer.android.com/reference/kotlin/java/security/cert/X509Certificate.html)
+&gt;?

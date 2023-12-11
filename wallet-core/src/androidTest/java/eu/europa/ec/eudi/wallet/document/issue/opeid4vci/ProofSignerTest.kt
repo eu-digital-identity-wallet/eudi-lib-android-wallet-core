@@ -54,6 +54,45 @@ class ProofSignerTest {
     }
 
     @Test
+    fun test_userAuthRequired_is_set_to_Yes_when_needed() {
+        val documentManager = DocumentManager.Builder(context)
+            .enableUserAuth(true)
+            .build()
+
+        val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
+        Assert.assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+
+        val issuanceRequest =
+            (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
+
+        val proofSigner = ProofSigner(issuanceRequest, JWSAlgorithm.ES256.name)
+        val algorithm = proofSigner.getAlgorithm()
+
+        Assert.assertTrue(proofSigner.getBindingKey() is BindingKey.Jwk)
+        val publicKey = (proofSigner.getBindingKey() as BindingKey.Jwk).jwk
+
+        val header = JWSHeader.Builder(algorithm).apply {
+            type(JOSEObjectType("openid4vci-proof+jwt"))
+            jwk(publicKey.toPublicJWK())
+        }.build()
+
+        val claimsSet = JWTClaimsSet.Builder().apply {
+            audience("https://example.openid4vci.com")
+            claim("nonce", CNonce("1234567890").value)
+            issueTime(Date.from(Instant.now()))
+        }.build()
+
+        try {
+            proofSigner.sign(header, claimsSet.toPayload().toBytes())
+            Assert.fail("Expected UserAuthRequiredException")
+        } catch (e: ProofSigner.UserAuthRequiredException) {
+            Assert.assertTrue(proofSigner.userAuthRequired is ProofSigner.UserAuthRequired.Yes)
+        } finally {
+            documentManager.deleteDocumentById(issuanceRequest.documentId)
+        }
+    }
+
+    @Test
     fun test_sign_method_creates_a_valid_signature() {
         val documentManager = DocumentManager.Builder(context)
             .enableUserAuth(false)
@@ -88,6 +127,8 @@ class ProofSignerTest {
         val verified = signedJWT.verify(ECDSAVerifier(publicKey.toECKey()))
 
         Assert.assertTrue(verified)
+
+        Assert.assertEquals(ProofSigner.UserAuthRequired.No, proofSigner.userAuthRequired)
 
         documentManager.deleteDocumentById(issuanceRequest.documentId)
     }

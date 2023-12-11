@@ -16,20 +16,62 @@
 
 package eu.europa.ec.eudi.wallet.document.issue.openid4vci
 
-class OpenId4VciConfig {
-    var issuerUrl: String = ""
-    var clientId: String = ""
-    var redirectionUri = "eudi-openid4ci://authorize"
+/**
+ * Configuration for the OpenID4VCI issuer.
+ *
+ * Use [Builder] to create an instance.
+ *
+ * Example usage:
+ *
+ * ```
+ * val config = OpenId4VciConfig.Builder()
+ *    .withIssuerUrl("https://example.issuer.com")
+ *    .withClientId("client-id")
+ *    .build()
+ *
+ * ```
+ *
+ * @property issuerUrl the issuer url
+ * @property clientId the client id
+ */
+class OpenId4VciConfig private constructor(private val builder: Builder) {
+    val issuerUrl: String
+        get() = builder.issuerUrl
+    val clientId: String
+        get() = builder.clientId
 
-    fun issueUrl(issuerUrl: String) = apply {
-        this.issuerUrl = issuerUrl
-    }
+    /**
+     * Builder for [OpenId4VciConfig].
+     *
+     * @property issuerUrl the issuer url
+     * @property clientId the client id
+     */
+    class Builder {
+        lateinit var issuerUrl: String
+            private set
+        lateinit var clientId: String
+            private set
 
-    fun clientId(clientId: String) = apply {
-        this.clientId = clientId
-    }
+        /**
+         * Sets the issuer url.
+         *
+         * @param issuerUrl the issuer url
+         */
+        fun withIssuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
 
-    fun redirectionUri(redirectionUri: String) = apply {
-        this.redirectionUri = redirectionUri
+        /**
+         * Sets the client id.
+         *
+         * @param clientId the client id
+         */
+        fun withClientId(clientId: String) = apply { this.clientId = clientId }
+
+        fun build(): OpenId4VciConfig {
+            require(this::issuerUrl.isInitialized && issuerUrl.isNotBlank()) { "issuerUrl must be initialized with non blank value" }
+            require(this::clientId.isInitialized && clientId.isNotBlank()) { "clientId must be initialized with non blank value" }
+
+            return OpenId4VciConfig(this)
+        }
+
     }
 }

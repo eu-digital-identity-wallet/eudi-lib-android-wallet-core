@@ -107,7 +107,14 @@ dependencies {
     testImplementation libs.android.identity.credential
 
     androidTestImplementation libs.android.junit
+    androidTestImplementation libs.mockito.android
+    androidTestImplementation libs.test.core
+    androidTestImplementation libs.test.runner
+    androidTestImplementation libs.test.rules
+    androidTestImplementation libs.test.coreKtx
     androidTestImplementation libs.espresso.core
+    androidTestImplementation libs.espresso.contrib
+    androidTestImplementation libs.espresso.intents
 }
 
 tasks.register("clearDocsDir", Delete.class) {

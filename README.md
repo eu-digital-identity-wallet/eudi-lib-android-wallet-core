@@ -20,16 +20,25 @@ The library provides the following functionality:
 
 ## :heavy_exclamation_mark: Disclaimer
 
-The released software is a initial development release version: 
--  The initial development release is an early endeavor reflecting the efforts of a short timeboxed period, and by no means can be considered as the final product.  
--  The initial development release may be changed substantially over time, might introduce new features but also may change or remove existing ones, potentially breaking compatibility with your existing code.
--  The initial development release is limited in functional scope.
--  The initial development release may contain errors or design flaws and other problems that could cause system or other failures and data loss.
--  The initial development release has reduced security, privacy, availability, and reliability standards relative to future releases. This could make the software slower, less reliable, or more vulnerable to attacks than mature software.
--  The initial development release is not yet comprehensively documented. 
--  Users of the software must perform sufficient engineering and additional testing in order to properly evaluate their application and determine whether any of the open-sourced components is suitable for use in that application.
--  We strongly recommend not putting this version of the software into production use.
--  Only the latest version of the software will be supported
+The released software is a initial development release version:
+
+- The initial development release is an early endeavor reflecting the efforts of a short timeboxed
+  period, and by no means can be considered as the final product.
+- The initial development release may be changed substantially over time, might introduce new
+  features but also may change or remove existing ones, potentially breaking compatibility with your
+  existing code.
+- The initial development release is limited in functional scope.
+- The initial development release may contain errors or design flaws and other problems that could
+  cause system or other failures and data loss.
+- The initial development release has reduced security, privacy, availability, and reliability
+  standards relative to future releases. This could make the software slower, less reliable, or more
+  vulnerable to attacks than mature software.
+- The initial development release is not yet comprehensively documented.
+- Users of the software must perform sufficient engineering and additional testing in order to
+  properly evaluate their application and determine whether any of the open-sourced components is
+  suitable for use in that application.
+- We strongly recommend not putting this version of the software into production use.
+- Only the latest version of the software will be supported
 
 ## Requirements
 
@@ -80,6 +89,8 @@ the following options:
   The default value is an empty list.
 - `openId4VpVerifierApiUri` method allows you to specify the verifier api uri for OpenID4VP. The
   default value is null.
+- `openId4VciConfig` method allows you to specify the configuration for OpenID4VCI. The default
+  value is null.
 
 The following example shows how to initialize the library:
 
@@ -88,7 +99,7 @@ import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.EudiWallet
 import java.security.cert.X509Certificate
 
-val storageDir = applicationContext.filesDir
+val storageDir = applicationContext.noBackupFilesDir
 val verifierApiUri = "https://verifier-api-uri"
 val config = EudiWalletConfig.Builder(applicationContext)
     .bleTransferMode(
@@ -106,6 +117,10 @@ val config = EudiWalletConfig.Builder(applicationContext)
     .userAuthenticationTimeOut(30_000L)
     .useHardwareToStoreKeys(true)
     .openId4VpVerifierApiUri(verifierApiUri)
+    .openId4VciConfig {
+        withIssuerUrl("https://issuer.example.com")
+        withClientId("wallet-client-id")
+    }
     .build()
 
 EudiWallet.init(applicationContext, config)
@@ -305,6 +320,64 @@ IssuerSignedItem = {
  "elementValue" : DataElementValue ; Data element value
 }
 ```
+
+### Issue document using OpenID4VCI
+
+The library provides the functionality to issue documents using OpenID4VCI. To issue a document
+using this functionality,
+EudiWallet must be initialized with the `openId4VciConfig` configuration. See
+the [Initialize the library](#initialize-the-library) section.
+
+To issue a document using OpenID4VCI, you need to know the document's docType.
+
+The following example shows how to issue a document using OpenID4VCI:
+
+```kotlin
+EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1") { result ->
+    when (result) {
+        is IssueDocumentResult.Success -> {
+            // document is added in the documents storage
+            val documentedId = result.documentId
+            // you can show the document to the user
+        }
+
+        is IssueDocumentResult.Failure -> {
+            // show error
+        }
+
+        is IssueDocumentResult.UserAuthRequired -> {
+            // user authentication is required
+            // get the crypto object from result.cryptoObject
+            val cryptoObject = result.cryptoObject
+            // perform user authentication
+            // and try to issue the document again
+            // using result.resume() method
+            result.resume()
+            // - or -
+            // cancel the issuance
+            result.cancel()
+        }
+    }
+}
+```
+
+There's also an overload of the `issueDocument` method that allows you to specify the `executor`
+parameter. The `executor` parameter is optional and defines the executor that will be used to
+execute the callback. If the `executor` parameter is null, the callback will be executed on the
+main thread.
+
+```kotlin
+val executor = Executors.newSingleThreadExecutor()
+EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1", executor) { result ->
+    // ...
+}
+```
+
+**Important Notes**:
+
+- Currently, only mso_mdoc format is supported
+- Currently, only ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
+  publicKey.
 
 ### Transfer documents
 

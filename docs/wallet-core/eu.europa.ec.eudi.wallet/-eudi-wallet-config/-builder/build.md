@@ -9,4 +9,4 @@ Build the [EudiWalletConfig](../index.md) object
 
 #### Return
 
-[]EudiWalletConfig]
+[EudiWalletConfig](../index.md)

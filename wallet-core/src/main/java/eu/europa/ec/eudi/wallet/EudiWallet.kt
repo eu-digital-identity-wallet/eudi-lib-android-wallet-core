@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023 European Commission
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet
@@ -41,8 +41,10 @@ import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.document.sample.LoadSampleResult
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.getCertificate
+import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
 import java.security.cert.X509Certificate
+import java.util.concurrent.Executor
 
 /**
  * Eudi wallet sdk object to access the sdk functionalities. This object must be initialized before
@@ -136,15 +138,6 @@ object EudiWallet {
         }
     }
 
-    fun issueDocument(docType: String, callback: (result: IssueDocumentResult) -> Unit) {
-        requireInit {
-            config.openId4VciConfig?.let { config ->
-                OpenId4VciManager(context, config, documentManager)
-                    .issueDocument(docType, callback)
-            } ?: throw IllegalStateException("OpenId4VciConfig is not set in configuration")
-        }
-    }
-
     /**
      * OpenId4VP manager that can be used to verify OpenId4Vp requests
      * @see [OpenId4vpManager]
@@ -216,6 +209,51 @@ object EudiWallet {
      */
     fun addDocument(request: IssuanceRequest, data: ByteArray): AddDocumentResult =
         documentManager.addDocument(request, data)
+
+    /**
+     * Issue a document with the given [docType] using OpenId4Vci protocol
+     *
+     * Example:
+     * ```
+     * EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1", mainExecutor) { result ->
+     *    when (result) {
+     *      is IssueDocumentResult.Success -> {
+     *        // document issued successfully
+     *      }
+     *      is IssueDocumentResult.Failure -> {
+     *        // document issued failed
+     *      }
+     *      is IssueDocumentResult.UserAuthRequired -> {
+     *        // user authentication is required
+     *      }
+     *    }
+     *  }
+     * ```
+     *
+     * @param docType the docType of the document
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param callback the callback to be called when the document is issued
+     * @see [OpenId4VciManager.issueDocument]
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * or if the [EudiWalletConfig.openId4VciConfig] is not set
+     */
+    @JvmOverloads
+    fun issueDocument(
+        docType: String,
+        executor: Executor? = null,
+        callback: OpenId4VciManager.OnIssueCallback
+    ) {
+        requireInit {
+            config.openId4VciConfig?.let { config ->
+                OpenId4VciManager(context, config, documentManager)
+                    .issueDocument(docType, executor, callback)
+            } ?: run {
+                (executor ?: context.mainExecutor()).execute {
+                    callback.onResult(IssueDocumentResult.Failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
+                }
+            }
+        }
+    }
 
     /**
      * Loads sample data into the wallet's document manager

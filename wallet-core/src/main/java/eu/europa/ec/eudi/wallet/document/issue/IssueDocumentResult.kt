@@ -20,15 +20,95 @@ import androidx.biometric.BiometricPrompt.CryptoObject
 import eu.europa.ec.eudi.wallet.document.DocumentId
 
 sealed interface IssueDocumentResult {
+    /**
+     * The document was successfully issued.
+     * @property documentId the id of the issued document
+     */
     data class Success(val documentId: DocumentId) : IssueDocumentResult
+
+    /**
+     * The document issuance failed.
+     * @property error the error that caused the failure
+     */
     data class Failure(val error: Throwable) : IssueDocumentResult
 
+    /**
+     * The document issuance requires user authentication.
+     *
+     * @property cryptoObject the crypto object to use for authentication
+     *
+     * Example usage:
+     *
+     * ```
+     * class SomeFragment : Fragment() {
+     *
+     *    private lateinit var onIssuingResume: () -> Unit
+     *    private lateinit var onIssuingCancel: () -> Unit
+     *
+     *    private lateinit var prompt: BiometricPrompt
+     *    private val promptInfo: BiometricPrompt.PromptInfo by lazy {
+     *      BiometricPrompt.PromptInfo.Builder()
+     *          .setTitle("Title")
+     *          .setSubtitle("Subtitle")
+     *          .setDescription("Description")
+     *          .setNegativeButtonText("Cancel")
+     *          .build()
+     *    }
+     *    private val promptCallback by lazy {
+     *      object : BiometricPrompt.AuthenticationCallback() {
+     *          override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+     *              super.onAuthenticationError(errorCode, errString)
+     *                  if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+     *                  onIssuingCancel.invoke()
+     *              } else {
+     *                  log("User authentication failed $errorCode - $errString")
+     *              }
+     *          }
+     *
+     *          override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+     *              super.onAuthenticationSucceeded(result)
+     *              log("User authentication succeeded")
+     *              onIssuingResume.invoke()
+     *          }
+     *
+     *          override fun onAuthenticationFailed() {
+     *              super.onAuthenticationFailed()
+     *              log("User authentication failed")
+     *          }
+     *       }
+     *    }
+     *
+     *   fun onResume() {
+     *      super.onResume()
+     *      prompt = BiometricPrompt(this, ContextCompat.getMainExecutor(requireContext()), promptCallback)
+     *   }
+     *
+     *   fun issueDocument() {
+     *      EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { result ->
+     *          when (result) {
+     *              is IssueDocumentResult.UserAuthRequired -> {
+     *                  onIssuingResume = result::resume
+     *                  onIssuingCancel = result::cancel
+     *                  if (result.cryptoObject != null) {
+     *                      prompt.authenticate(promptInfo, result.cryptoObject)
+     *                  } else {
+     *                      prompt.authenticate(promptInfo)
+     *                  }
+     *              }
+     *              else -> {
+     *                  // handle other results
+     *              }
+     *          }
+     *       }
+     *    }
+     * }
+     */
     data class UserAuthRequired(
-        val cryptoObject: CryptoObject? = null,
-        private val _resume: () -> Unit,
-        private val _cancel: () -> Unit
+        val cryptoObject: CryptoObject?,
+        private val onResume: () -> Unit,
+        private val onCancel: () -> Unit
     ) : IssueDocumentResult {
-        fun resume(): Unit = _resume()
-        fun cancel(): Unit = _cancel()
+        fun resume(): Unit = onResume()
+        fun cancel(): Unit = onCancel()
     }
 }
