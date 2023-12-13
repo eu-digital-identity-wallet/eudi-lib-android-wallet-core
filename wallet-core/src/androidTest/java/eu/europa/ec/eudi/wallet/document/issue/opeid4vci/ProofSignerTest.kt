@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.document.issue.opeid4vci
 
+import android.app.KeyguardManager
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -32,6 +33,7 @@ import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.issue.openid4vci.ProofSigner
 import org.junit.Assert
+import org.junit.Assume
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,9 +57,14 @@ class ProofSignerTest {
 
     @Test
     fun test_userAuthRequired_is_set_to_Yes_when_needed() {
+        Assume.assumeTrue(
+            "Device is not secure. So cannot run this test",
+            context.getSystemService(KeyguardManager::class.java).isDeviceSecure
+        )
         val documentManager = DocumentManager.Builder(context)
             .enableUserAuth(true)
             .build()
+
 
         val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
         Assert.assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
