@@ -8,15 +8,48 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 This repository contains the EUDI Wallet Core library for Android. The library is a part
 of the EUDI Wallet Reference Implementation project.
 
+This library acts as a coordinator by orchestrating the various components that are
+required to implement the EUDI Wallet functionality. On top of that, it provides a simplified API
+that can be used by the application to implement the EUDI Wallet functionality.
+
+```mermaid
+graph TD;
+    A[eudi-lib-android-wallet-core]
+    B[eudi-lib-android-wallet-document-manager] -->  |DocumentManager|A 
+    C[eudi-lib-android-iso18013-data-transfer] --> |TransferManager|A 
+    D[eudi-lib-jvm-openid4vci-kt] --> |OpenId4VciManager|A 
+    E[eudi-lib-jvm-siop-openid4vp-kt] --> |OpenId4VpManager|A 
+    F[com.android.identity:identity-credential-android] --> |SecureArea,StorageEngine|B 
+    F --> C 
+    H[eudi-lib-jvm-presentation-exchange] --> E 
+```
+
 The library provides the following functionality:
 
-- Secure Document storage
-- Managing documents
-- Issuing/Adding documents
-- Loading sample documents for testing purposes
-- Offline Document transfer between devices over BLE according to the ISO 18013-5 specification
-- Device Retrieval to a website according to the ISO 18013-7 specification
-- Device Retrieval using OpenID4VP for preregistered verifiers
+- Document management
+    - [x] Storage encryption
+    - [x] Using device secure area for generating/storing documents' keypair
+    - [x] Enforcing device user authentication when retrieving documents' private keys
+- Document issuance
+    - [x] Support for OpenId4VCI document issuance
+        - [x] Authorization Code Flow
+        - [ ] Pre-authorization Code Flow
+        - [x] Support for mso_mdoc format
+        - [ ] Support for sd-jwt-vc format
+- Proximity document presentation
+    - [x] Support for ISO-18013-5 device retrieval
+        - [x] QR device engagement
+        - [x] NFC device engagement
+        - [x] BLE data transfer
+        - [ ] NFC data transfer
+        - [ ] Wifi-Aware data transfer
+- Remote document presentation
+    - [x] OpenId4VP document transfer
+        - [x] For pre-registered verifiers
+        - [ ] Dynamic registration of verifiers
+
+The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
+and can be included in any Android project that uses Android 8 (API level 26) or higher.
 
 ## :heavy_exclamation_mark: Disclaimer
 
