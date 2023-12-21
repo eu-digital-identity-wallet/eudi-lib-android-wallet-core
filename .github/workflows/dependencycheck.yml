@@ -25,4 +25,4 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: Dependency Check Report
-          path: ${{github.workspace}}/build/reports/dependency-check-report.html
+          path: ${{github.workspace}}/wallet-core/build/reports/dependency-check-report.html
