@@ -31,6 +31,12 @@ android {
         testApplicationId "eu.europa.ec.eudi.wallet.test"
         testHandleProfiling true
         testFunctionalTest true
+        testOptions {
+            // Override the placeholders for unit tests
+            manifestPlaceholders.openid4vciAuthorizeHost = "authorize"
+            manifestPlaceholders.openid4vciAuthorizePath = ""
+            manifestPlaceholders.openid4vciAuthorizeScheme = "eudi-openid4ci"
+        }
 
         consumerProguardFiles "consumer-rules.pro"
     }

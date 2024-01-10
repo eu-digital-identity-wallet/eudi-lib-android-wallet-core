@@ -2,7 +2,7 @@
 
 ## Dependency License Report
 
-_2023-12-11 13:20:50 EET_
+_2024-01-10 16:40:14 EET_
 
 ## Apache License, Version 2.0
 

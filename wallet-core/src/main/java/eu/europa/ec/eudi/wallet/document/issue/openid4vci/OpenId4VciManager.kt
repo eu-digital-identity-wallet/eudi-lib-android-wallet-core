@@ -30,12 +30,13 @@ import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
+import eu.europa.ec.eudi.openid4vci.CredentialSupported
 import eu.europa.ec.eudi.openid4vci.IssuedCredential
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.KeyGenerationConfig
+import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.SubmittedRequest
-import eu.europa.ec.eudi.openid4vci.internal.formats.findScopeForMsoMdoc
 import eu.europa.ec.eudi.wallet.document.AddDocumentResult
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -43,6 +44,7 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.issue.IssueDocumentResult
 import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager.AuthorizationCallback
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.internal.openId4VciAuthorizationRedirectUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -50,7 +52,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.net.URI
 import java.util.Base64
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
@@ -76,7 +77,7 @@ class OpenId4VciManager(
     private val openId4VCIConfig
         get() = OpenId4VCIConfig(
             clientId = config.clientId,
-            authFlowRedirectionURI = URI(DEFAULT_REDIRECTION_URI),
+            authFlowRedirectionURI = context.openId4VciAuthorizationRedirectUri,
             keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048)
         )
 
@@ -99,8 +100,10 @@ class OpenId4VciManager(
         val ioScope = CoroutineScope(Job() + Dispatchers.IO)
         val onResultUnderExecutor = { result: IssueDocumentResult ->
             if (result is IssueDocumentResult.Failure || result is IssueDocumentResult.Success) {
-                if (ioScope.isActive) ioScope.cancel()
-                Log.d(TAG, "Cancel CoroutineScope $ioScope")
+                if (ioScope.isActive) {
+                    ioScope.cancel()
+                    Log.d(TAG, "Cancel CoroutineScope $ioScope")
+                }
             }
             (executor ?: context.mainExecutor()).execute {
                 callback.onResult(result)
@@ -109,13 +112,19 @@ class OpenId4VciManager(
         ioScope.launch {
             try {
                 val issuerMetadata = resolveIssuerMetadata()
-                val credentialIdentifier = issuerMetadata.getCredentialIdentifier(docType)
+                val (credentialIdentifier, credential) = issuerMetadata.getCredentialIdentifier(
+                    docType
+                )
                 val issuer = issuerMetadata.getIssuer()
                 val authorizedRequest = issuer.authorize(credentialIdentifier)
                 val issuanceRequest = documentManager
                     .createIssuanceRequest(docType, true)
                     .result
                     .getOrThrow()
+                    .apply {
+                        name = credential.name
+                    }
+
                 issuer.handleAuthorizedRequest(
                     authorizedRequest,
                     credentialIdentifier,
@@ -128,6 +137,7 @@ class OpenId4VciManager(
         }
     }
 
+
     private suspend fun resolveIssuerMetadata(): CredentialIssuerMetadata {
         val identifier = CredentialIssuerId(config.issuerUrl).getOrThrow()
         return (CredentialIssuerMetadataResolver()).resolve(identifier).getOrThrow()
@@ -135,17 +145,24 @@ class OpenId4VciManager(
 
     private fun CredentialIssuerMetadata.getCredentialIdentifier(
         docType: String
-    ): CredentialIdentifier {
+    ): Pair<CredentialIdentifier, CredentialSupported> {
 
-        val scope = findScopeForMsoMdoc(docType)
-            ?: throw IllegalStateException("Scope for $docType not found")
-
-        credentialsSupported.filterValues { credSup ->
-            credSup.scope == scope && credSup.cryptographicSuitesSupported.any { it in ProofSigner.SUPPORTED_ALGORITHMS }
+        val credentials = credentialsSupported.filterValues {
+            it is MsoMdocCredential && it.docType == docType
         }
-            .isNotEmpty() || throw IllegalStateException("No supported algorithm for $docType. Currently supported algorithms: ${ProofSigner.SUPPORTED_ALGORITHMS}")
 
-        return CredentialIdentifier(scope)
+        if (credentials.isEmpty()) {
+            throw IllegalStateException("No credential for $docType. Currently supported credentials: ${credentialsSupported.values}")
+        }
+
+        val (credentialIdentifier, credential) = credentials.entries.first()
+
+        if (credential.cryptographicSuitesSupported.any { it in ProofSigner.SUPPORTED_ALGORITHMS }) {
+            return credentialIdentifier to credential
+        } else {
+            throw IllegalStateException("No supported cryptographic suite for $docType. Currently supported cryptographic suites: ${credential.cryptographicSuitesSupported}")
+        }
+
     }
 
     private suspend fun CredentialIssuerMetadata.getIssuer(): Issuer {
@@ -297,9 +314,14 @@ class OpenId4VciManager(
             is CreateIssuanceRequestResult.Failure -> Result.failure(throwable)
         }
 
+    private val CredentialSupported.name: String
+        get() = context.resources.configuration.locales[0].let { locale ->
+            (display.firstOrNull { it.locale == locale }
+                ?: display.first()).name
+        }
+
     private companion object {
         private const val TAG = "OpenId4VciManager"
-        private const val DEFAULT_REDIRECTION_URI = "eudi-openid4ci://authorize"
     }
 
     fun interface OnIssueCallback {

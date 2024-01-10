@@ -17,10 +17,13 @@
 package eu.europa.ec.eudi.wallet.internal
 
 import android.content.Context
+import android.content.pm.PackageManager.ApplicationInfoFlags
+import android.content.pm.PackageManager.GET_META_DATA
 import android.os.Build
 import androidx.annotation.RawRes
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.runBlocking
+import java.net.URI
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
@@ -48,3 +51,19 @@ internal fun Context.executeOnMain(block: suspend () -> Unit) {
         runBlocking { block() }
     }
 }
+
+@get:JvmSynthetic
+internal val Context.openId4VciAuthorizationRedirectUri: URI
+    get() = with(
+        packageManager.getApplicationInfo(
+            packageName,
+            ApplicationInfoFlags.of(GET_META_DATA.toLong())
+        ).metaData
+    ) {
+        URI.create(
+            getString("openid4vciAuthorizeScheme", "https") + "://"
+                    + getString("openid4vciAuthorizeHost", "localhost")
+                    + getString("openid4vciAuthorizePath", "/authorize")
+        )
+
+    }

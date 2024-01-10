@@ -330,6 +330,29 @@ the [Initialize the library](#initialize-the-library) section.
 
 To issue a document using OpenID4VCI, you need to know the document's docType.
 
+Also, to use the OpenID4VCI functionality, the following manifest placeholders must be defined in
+application's build.gradle file:
+
+```groovy
+android {
+    defaultConfig {
+        // ...
+        // the host of the authorization redirectUri
+        manifestPlaceholders.openid4vciAuthorizeHost = "authorize"
+        // the path of the authorization redirectUri starting with '/'; for empty path use "" 
+        manifestPlaceholders.openid4vciAuthorizePath = ""
+        // the scheme of the authorization redirectUri; custom scheme is supported
+        manifestPlaceholders.openid4vciAuthorizeScheme = "eudi-openid4ci"
+        // ...
+    }
+}
+```
+
+The authorization redirectUri is constructed using the above placeholders and it is used to redirect
+back to application after the user authenticates with the issuer and having the authorization code
+from the issuer. You can use the values above or replace them with the values supported and allowed
+by your issuer.
+
 The following example shows how to issue a document using OpenID4VCI:
 
 ```kotlin
