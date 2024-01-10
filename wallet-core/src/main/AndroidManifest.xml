@@ -17,6 +17,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
+        <meta-data
+            android:name="openid4vciAuthorizeHost"
+            android:value="${openid4vciAuthorizeHost}" />
+        <meta-data
+            android:name="openid4vciAuthorizePath"
+            android:value="${openid4vciAuthorizePath}" />
+        <meta-data
+            android:name="openid4vciAuthorizeScheme"
+            android:value="${openid4vciAuthorizeScheme}" />
+
         <activity
             android:name="eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciAuthorizeActivity"
             android:exported="true"
@@ -28,8 +38,9 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="authorize"
-                    android:scheme="eudi-openid4ci" />
+                    android:host="${openid4vciAuthorizeHost}"
+                    android:path="${openid4vciAuthorizePath}"
+                    android:scheme="${openid4vciAuthorizeScheme}" />
             </intent-filter>
         </activity>
     </application>
