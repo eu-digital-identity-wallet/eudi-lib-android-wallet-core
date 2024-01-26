@@ -4,6 +4,7 @@ biometricKtx = "1.1.0"
 bouncy-castle = "1.67"
 cbor = "0.9"
 coreTesting = "2.2.0"
+coseJava = "1.1.0"
 dependency-license-report = "2.4"
 dependencycheck = "8.4.2"
 espresso-contrib = "3.5.1"
@@ -31,6 +32,7 @@ sonarqube = "4.4.1.3373"
 test-core = "1.4.0"
 test-rules = "1.4.0"
 test-runner = "1.4.0"
+upokecenter-cbor = "4.5.2"
 
 [libraries]
 android-identity-credential = { module = "com.android.identity:identity-credential-android", version.ref = "identity-credential-android" }
@@ -41,6 +43,7 @@ bouncy-castle-pkix = { module = "org.bouncycastle:bcpkix-jdk15on", version.ref =
 bouncy-castle-prov = { module = "org.bouncycastle:bcprov-jdk15on", version.ref = "bouncy-castle" }
 cbor = { module = "co.nstant.in:cbor", version.ref = "cbor" }
 core-testing = { module = "androidx.arch.core:core-testing", version.ref = "coreTesting" }
+cose-java = { module = "com.augustcellars.cose:cose-java", version.ref = "coseJava" }
 espresso-contrib = { module = "androidx.test.espresso:espresso-contrib", version.ref = "espresso-contrib" }
 espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso-core" }
 espresso-intents = { module = "androidx.test.espresso:espresso-intents", version.ref = "espresso-core" }
@@ -62,6 +65,7 @@ test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-coreKtx = { module = "androidx.test:core-ktx", version.ref = "test-core" }
 test-rules = { module = "androidx.test:rules", version.ref = "test-rules" }
 test-runner = { module = "androidx.test:runner", version.ref = "test-runner" }
+upokecenter-cbor = { module = "com.upokecenter:cbor", version.ref = "upokecenter-cbor" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "gradle-plugin" }

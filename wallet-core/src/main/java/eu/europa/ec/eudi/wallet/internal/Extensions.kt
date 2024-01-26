@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,14 +16,16 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
+import COSE.OneKey
 import android.content.Context
-import android.content.pm.PackageManager.ApplicationInfoFlags
 import android.content.pm.PackageManager.GET_META_DATA
 import android.os.Build
 import androidx.annotation.RawRes
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.runBlocking
+import org.bouncycastle.util.encoders.Hex
 import java.net.URI
+import java.security.PublicKey
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
@@ -53,12 +55,13 @@ internal fun Context.executeOnMain(block: suspend () -> Unit) {
 }
 
 @get:JvmSynthetic
+@get:Suppress("DEPRECATION")
+/**
+ * Keep deprecation for Xiaomi compatibility
+ */
 internal val Context.openId4VciAuthorizationRedirectUri: URI
     get() = with(
-        packageManager.getApplicationInfo(
-            packageName,
-            ApplicationInfoFlags.of(GET_META_DATA.toLong())
-        ).metaData
+        packageManager.getApplicationInfo(packageName, GET_META_DATA).metaData
     ) {
         URI.create(
             getString("openid4vciAuthorizeScheme", "https") + "://"
@@ -67,3 +70,15 @@ internal val Context.openId4VciAuthorizationRedirectUri: URI
         )
 
     }
+
+@get:JvmSynthetic
+internal val PublicKey.cose: OneKey
+    get() = OneKey(this, null)
+
+@get:JvmSynthetic
+internal val PublicKey.coseBytes: String
+    get() = Hex.toHexString(cose.EncodeToBytes())
+
+@get:JvmSynthetic
+internal val PublicKey.coseDebug: String
+    get() = cose.AsCBOR().ToJSONString()

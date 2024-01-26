@@ -104,6 +104,9 @@ dependencies {
     implementation libs.bouncy.castle.prov
     implementation libs.bouncy.castle.pkix
 
+    implementation libs.upokecenter.cbor
+    implementation libs.cose.java
+
     testImplementation libs.junit
     testImplementation libs.json
     testImplementation libs.mockk
