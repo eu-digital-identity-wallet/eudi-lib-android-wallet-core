@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.document.issue.openid4vci
 
+import android.util.Log
 import androidx.biometric.BiometricPrompt.CryptoObject
 import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
@@ -42,6 +43,9 @@ internal class ProofSigner(
 ) : BaseProofSigner {
 
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
+        .also {
+            Log.d(TAG, "Document's PublicKey in JWK: ${it.toJSONString()}")
+        }
     var userAuthRequired: UserAuthRequired = UserAuthRequired.No
         private set
 
@@ -91,6 +95,7 @@ internal class ProofSigner(
     }
 
     companion object {
+        private const val TAG = "ProofSigner"
         private val algorithmMap = mapOf(
             JWSAlgorithm.ES256 to Algorithm.SHA256withECDSA,
         )

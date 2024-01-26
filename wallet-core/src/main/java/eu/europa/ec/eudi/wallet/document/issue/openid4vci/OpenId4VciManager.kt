@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.issue.IssueDocumentResult
 import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager.AuthorizationCallback
+import eu.europa.ec.eudi.wallet.internal.coseBytes
+import eu.europa.ec.eudi.wallet.internal.coseDebug
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.internal.openId4VciAuthorizationRedirectUri
 import kotlinx.coroutines.CoroutineScope
@@ -124,6 +126,10 @@ class OpenId4VciManager(
                     .apply {
                         name = credential.name
                     }
+                    .also {
+                        Log.d(TAG, "Document's PublicKey in COSE Bytes: ${it.publicKey.coseBytes}")
+                        Log.d(TAG, "Document's PublicKey in COSE: ${it.publicKey.coseDebug}")
+                    }
 
                 issuer.handleAuthorizedRequest(
                     authorizedRequest,
@@ -132,6 +138,7 @@ class OpenId4VciManager(
                     onResultUnderExecutor
                 )
             } catch (e: Throwable) {
+                Log.e(TAG, "issueDocument", e)
                 onResultUnderExecutor(IssueDocumentResult.Failure(e))
             }
         }
