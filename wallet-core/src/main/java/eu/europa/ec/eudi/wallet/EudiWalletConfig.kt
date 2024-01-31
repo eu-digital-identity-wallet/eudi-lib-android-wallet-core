@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -45,9 +45,9 @@ import java.security.cert.X509Certificate
  * @property userAuthenticationRequired If true, the user will be asked to authenticate before accessing the documents' attestations. The default value is false.
  * @property userAuthenticationTimeOut This is the time out for the user authentication. The default value is 30 seconds.
  * @property trustedReaderCertificates This is the list of trusted reader certificates. If not set, no reader authentication will be performed.
+ * @property verifyMsoPublicKey If true, the MSO public key will be verified against the public key that is used to issue the document. The default value is true.
  * @property openId4VpVerifierApiUri This is the uri of the verifier that will be used to verify using OpenId4Vp. If not set OpenId4Vp will not be available.
  * @property openId4VciConfig This is the config that will be used to issue using OpenId4Vci. If not set OpenId4Vci will not be available.
- * @property debugEnabled If true, debug logs will be enabled. The default value is false.
  *
  */
 
@@ -140,6 +140,8 @@ class EudiWalletConfig private constructor(builder: Builder) {
     val blePeripheralServerModeEnabled: Boolean =
         bleTransferMode and BLE_SERVER_PERIPHERAL_MODE != 0
 
+    val verifyMsoPublicKey: Boolean = builder.verifyMsoPublicKey
+
     /**
      * OpenId4Vp verifier uri
      * This is the uri of the verifier that will be used to verify using OpenId4Vp.
@@ -155,9 +157,20 @@ class EudiWalletConfig private constructor(builder: Builder) {
     /**
      * Builder
      *
-     * @constructor
-     *
+     * @constructor Create Builder
      * @param context
+     *
+     * @property documentsStorageDir This is the directory where the documents will be stored. If not set, the default directory is the noBackupFilesDir.
+     * @property encryptDocumentsInStorage If true, the documents will be encrypted in the storage. The default value is true.
+     * @property useHardwareToStoreKeys If true and supported by device, documents' keys will be stored in the hardware. The default value is true.
+     * @property bleTransferMode This is the BLE transfer mode. It can be [BLE_SERVER_PERIPHERAL_MODE], [BLE_CLIENT_CENTRAL_MODE] or both. The default value is [BLE_SERVER_PERIPHERAL_MODE].
+     * @property bleClearCacheEnabled If true, the BLE cache will be cleared after each transfer. The default value is false.
+     * @property userAuthenticationRequired If true, the user will be asked to authenticate before accessing the documents' attestations. The default value is false.
+     * @property userAuthenticationTimeOut This is the time out for the user authentication. The default value is 30 seconds.
+     * @property trustedReaderCertificates This is the list of trusted reader certificates. If not set, no reader authentication will be performed.
+     * @property verifyMsoPublicKey If true, the MSO public key will be verified against the public key that is used to issue the document. The default value is true.
+     * @property openId4VpVerifierApiUri This is the uri of the verifier that will be used to verify using OpenId4Vp. If not set OpenId4Vp will not be available.
+     * @property openId4VciConfig This is the config that will be used to issue using OpenId4Vci. If not set OpenId4Vci will not be available.
      */
     class Builder(context: Context) {
         private val context: Context = context.applicationContext
@@ -172,6 +185,7 @@ class EudiWalletConfig private constructor(builder: Builder) {
         var userAuthenticationRequired: Boolean = false
         var userAuthenticationTimeOut: Long = 30 * 1000
         var trustedReaderCertificates: List<X509Certificate>? = null
+        var verifyMsoPublicKey: Boolean = true
         var openId4VpVerifierApiUri: String? = null
         var openId4VciConfig: OpenId4VciConfig? = null
 
@@ -283,6 +297,17 @@ class EudiWalletConfig private constructor(builder: Builder) {
          */
         fun trustedReaderCertificates(@RawRes vararg rawIds: Int) = apply {
             trustedReaderCertificates(rawIds.map { context.getCertificate(it) })
+        }
+
+        /**
+         * Verify that the MSO public key is the same as the one used to issue the document.
+         * If true, the MSO public key will be verified against the public key that is used to issue the document.
+         * The default value is true.
+         *
+         * @param verifyMsoPublicKey
+         */
+        fun verifyMsoPublicKey(verifyMsoPublicKey: Boolean) = apply {
+            this.verifyMsoPublicKey = verifyMsoPublicKey
         }
 
         /**
