@@ -24,7 +24,6 @@ import android.util.Log
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.AuthorizationCode
-import eu.europa.ec.eudi.openid4vci.AuthorizationServerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
@@ -80,7 +79,7 @@ class OpenId4VciManager(
         get() = OpenId4VCIConfig(
             clientId = config.clientId,
             authFlowRedirectionURI = context.openId4VciAuthorizationRedirectUri,
-            keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048)
+            keyGenerationConfig = KeyGenerationConfig.ecOnly(Curve.P_256)
         )
 
     private val proofAlgorithm
@@ -173,10 +172,7 @@ class OpenId4VciManager(
     }
 
     private suspend fun CredentialIssuerMetadata.getIssuer(): Issuer {
-        val authorizationServer = authorizationServers.first()
-        val authMetadata = AuthorizationServerMetadataResolver().resolve(authorizationServer)
-            .getOrThrow()
-        return Issuer.make(authMetadata, this, openId4VCIConfig)
+        return Issuer.make(openId4VCIConfig, credentialIssuerId = credentialIssuerIdentifier)
     }
 
     private suspend fun Issuer.authorize(credentialIdentifier: CredentialIdentifier): AuthorizedRequest {
