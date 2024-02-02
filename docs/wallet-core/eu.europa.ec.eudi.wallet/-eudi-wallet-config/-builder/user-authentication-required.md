@@ -3,11 +3,9 @@
 # userAuthenticationRequired
 
 [androidJvm]\
-fun [userAuthenticationRequired](user-authentication-required.md)(
-userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig.Builder](index.md)
+fun [userAuthenticationRequired](user-authentication-required.md)(userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig.Builder](index.md)
 
-User authentication required. If true, the user will be asked to authenticate before accessing the
-documents' attestations.
+User authentication required. If true, the user will be asked to authenticate before accessing the documents' attestations.
 
 #### Return
 
@@ -17,8 +15,8 @@ documents' attestations.
 
 androidJvm
 
-|                            |
-|----------------------------|
+| |
+|---|
 | userAuthenticationRequired |
 
 [androidJvm]\

@@ -5,8 +5,7 @@
 [androidJvm]\
 fun [createResponse](create-response.md)(disclosedDocuments: DisclosedDocuments): ResponseResult
 
-Creates a response for the given [disclosedDocuments](create-response.md) that will be sent to the
-reader
+Creates a response for the given [disclosedDocuments](create-response.md) that will be sent to the reader
 
 #### Return
 
@@ -14,6 +13,6 @@ reader
 
 androidJvm
 
-|                    |
-|--------------------|
+| |
+|---|
 | disclosedDocuments |

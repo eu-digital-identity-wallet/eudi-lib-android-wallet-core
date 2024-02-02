@@ -3,5 +3,4 @@
 # MDL_DOCTYPE
 
 [androidJvm]\
-const
-val [MDL_DOCTYPE](-m-d-l_-d-o-c-t-y-p-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+const val [MDL_DOCTYPE](-m-d-l_-d-o-c-t-y-p-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

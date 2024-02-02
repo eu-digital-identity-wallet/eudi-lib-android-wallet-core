@@ -6,5 +6,4 @@
 
 @[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [cborEncode](cbor-encode.md)(dataItem:
-DataItem): [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html)
+fun [cborEncode](cbor-encode.md)(dataItem: DataItem): [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html)

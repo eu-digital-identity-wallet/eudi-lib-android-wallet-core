@@ -3,7 +3,6 @@
 # BLE_CLIENT_CENTRAL_MODE
 
 [androidJvm]\
-const
-val [BLE_CLIENT_CENTRAL_MODE](-b-l-e_-c-l-i-e-n-t_-c-e-n-t-r-a-l_-m-o-d-e.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
+const val [BLE_CLIENT_CENTRAL_MODE](-b-l-e_-c-l-i-e-n-t_-c-e-n-t-r-a-l_-m-o-d-e.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
 
 Ble Client Central Mode

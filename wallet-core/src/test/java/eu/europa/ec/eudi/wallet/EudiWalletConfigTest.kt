@@ -17,6 +17,10 @@
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.ClientIdScheme
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionAlgorithm
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionMethod
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.PreregisteredVerifier
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -46,7 +50,22 @@ class EudiWalletConfigTest {
             userAuthenticationRequired(true)
             userAuthenticationTimeOut(10_000L)
             trustedReaderCertificates(readerCertificate1, readerCertificate2)
-            openId4VpVerifierApiUri("https://example.com")
+            openId4VpConfig {
+                withClientIdSchemes(
+                    listOf(
+                        ClientIdScheme.Preregistered(
+                            listOf(
+                                PreregisteredVerifier(
+                                    "Verifier", "https://example.com"
+                                )
+                            )
+                        ),
+                        ClientIdScheme.X509SanDns
+                    )
+                )
+                withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
+                withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
+            }
             openId4VciConfig {
                 withIssuerUrl("https://example.com")
                 withClientId("client-id")
@@ -58,10 +77,13 @@ class EudiWalletConfigTest {
         assertEquals(2, config.trustedReaderCertificates?.size)
         assertEquals(readerCertificate1, config.trustedReaderCertificates?.get(0))
         assertEquals(readerCertificate2, config.trustedReaderCertificates?.get(1))
-        assertEquals("https://example.com", config.openId4VpVerifierApiUri)
+        assertEquals("https://example.com", (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].verifierApi)
+        assertEquals("Verifier", (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].clientId)
+        assertEquals(ClientIdScheme.X509SanDns, config.openId4VPConfig?.clientIdSchemes?.get(1))
+        assertEquals(EncryptionAlgorithm.ECDH_ES, config.openId4VPConfig?.encryptionAlgorithms?.get(0))
+        assertEquals(EncryptionMethod.A128CBC_HS256, config.openId4VPConfig?.encryptionMethods?.get(0))
         assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
         assertEquals("client-id", config.openId4VciConfig?.clientId)
-
     }
 
     @Test
@@ -108,7 +130,7 @@ class EudiWalletConfigTest {
         assertFalse(config.userAuthenticationRequired)
         assertEquals(30_000L, config.userAuthenticationTimeOut)
         assertNull(config.trustedReaderCertificates)
-        assertNull(config.openId4VpVerifierApiUri)
+        assertNull(config.openId4VPConfig)
         assertNull(config.openId4VciConfig)
     }
 }

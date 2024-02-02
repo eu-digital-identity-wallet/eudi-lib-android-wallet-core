@@ -3,5 +3,4 @@
 # clientId
 
 [androidJvm]\
-lateinit
-var [clientId](client-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+lateinit var [clientId](client-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

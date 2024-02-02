@@ -143,14 +143,22 @@ object EudiWallet {
      * OpenId4VP manager that can be used to verify OpenId4Vp requests
      * @see [OpenId4vpManager]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
-     * or if the [EudiWalletConfig.openId4VpVerifierApiUri] is not set
+     * or if the [EudiWalletConfig.openId4VPConfig] is not set
      */
     @get:Throws(IllegalStateException::class)
     val openId4vpManager: OpenId4vpManager by lazy {
         requireInit {
-            config.openId4VpVerifierApiUri?.let {
-                OpenId4vpManager(context, it, documentManager)
-            } ?: throw IllegalStateException("OpenId4Vp verifier uri is not set in configuration")
+            config.openId4VPConfig?.let { openId4VpConfig ->
+                OpenId4vpManager(
+                    context,
+                    openId4VpConfig,
+                    documentManager
+                ).apply {
+                    _config.trustedReaderCertificates?.let {
+                        setReaderTrustStore(ReaderTrustStore.getDefault(it))
+                    }
+                }
+            } ?: throw IllegalStateException("OpenId4VpConfig is not set in configuration")
         }
     }
 
@@ -275,6 +283,7 @@ object EudiWallet {
      */
     fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWallet {
         transferManager.setReaderTrustStore(readerTrustStore)
+        openId4vpManager.setReaderTrustStore(readerTrustStore)
         return this
     }
 
@@ -287,6 +296,7 @@ object EudiWallet {
      */
     fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) = apply {
         transferManager.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+        openId4vpManager.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
     }
 
     /**

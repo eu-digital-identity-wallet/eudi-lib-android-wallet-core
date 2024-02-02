@@ -3,11 +3,7 @@
 # stopPresentation
 
 [androidJvm]\
-fun [stopPresentation](stop-presentation.md)(
-sendSessionTerminationMessage: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) =
-true,
-useTransportSpecificSessionTermination: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) =
-false)
+fun [stopPresentation](stop-presentation.md)(sendSessionTerminationMessage: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) = true, useTransportSpecificSessionTermination: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) = false)
 
 Stops the transfer process
 
@@ -15,7 +11,7 @@ Stops the transfer process
 
 androidJvm
 
-|                                        |
-|----------------------------------------|
-| sendSessionTerminationMessage          |
+| |
+|---|
+| sendSessionTerminationMessage |
 | useTransportSpecificSessionTermination |

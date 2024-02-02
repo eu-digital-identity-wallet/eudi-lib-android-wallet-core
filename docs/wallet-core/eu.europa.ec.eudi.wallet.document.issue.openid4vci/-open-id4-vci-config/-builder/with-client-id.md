@@ -3,8 +3,7 @@
 # withClientId
 
 [androidJvm]\
-fun [withClientId](with-client-id.md)(
-clientId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)): [OpenId4VciConfig.Builder](index.md)
+fun [withClientId](with-client-id.md)(clientId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)): [OpenId4VciConfig.Builder](index.md)
 
 Sets the client id.
 
@@ -12,6 +11,6 @@ Sets the client id.
 
 androidJvm
 
-|          |               |
-|----------|---------------|
+| | |
+|---|---|
 | clientId | the client id |

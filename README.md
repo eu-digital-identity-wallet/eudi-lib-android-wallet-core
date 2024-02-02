@@ -46,7 +46,7 @@ The library provides the following functionality:
 - Remote document presentation
     - [x] OpenId4VP document transfer
         - [x] For pre-registered verifiers
-        - [ ] Dynamic registration of verifiers
+        - [x] Dynamic registration of verifiers
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -120,7 +120,7 @@ the following options:
   otherwise it's required within the given amount of milliseconds. The default value is 30000.
 - `trustedReaderCertificates` method allows you to specify the list of trusted reader certificates.
   The default value is an empty list.
-- `openId4VpVerifierApiUri` method allows you to specify the verifier api uri for OpenID4VP. The
+- `openId4VpConfig` method allows you to specify the configuration for OpenID4VP. The
   default value is null.
 - `openId4VciConfig` method allows you to specify the configuration for OpenID4VCI. The default
   value is null.
@@ -149,7 +149,22 @@ val config = EudiWalletConfig.Builder(applicationContext)
     .userAuthenticationRequired(false)
     .userAuthenticationTimeOut(30_000L)
     .useHardwareToStoreKeys(true)
-    .openId4VpVerifierApiUri(verifierApiUri)
+    .openId4VpConfig {
+        withClientIdSchemes(
+            listOf(
+                ClientIdScheme.Preregistered(
+                    listOf(
+                        PreregisteredVerifier(
+                            "Verifier", "https://example.com"
+                        )
+                    )
+                ),
+                ClientIdScheme.X509SanDns
+            )
+        )
+        withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
+        withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
+    }
     .openId4VciConfig {
         withIssuerUrl("https://issuer.example.com")
         withClientId("wallet-client-id")
@@ -444,7 +459,7 @@ The library supports the following 3 ways to transfer documents:
     - NFC device engagement
 2. Document retrieval to a website according to the ISO 18013-7 specification
     - RestAPI using app link
-3. Document retrieval using OpenID4VP for preregistered verifiers
+3. Document retrieval using OpenID4VP
 
 Transfer process is asynchronous. During the transfer, events are emitted that indicate the current
 state of the transfer. The following events are emitted:
@@ -456,8 +471,11 @@ state of the transfer. The following events are emitted:
 3. `TransferEvent.Connected`: The devices are connected.
 4. `TransferEvent.RequestReceived`: A request is received. Get the request from `event.request`.
 5. `TransferEvent.ResponseSent`: A response is sent.
-6. `TransferEvent.Disconnected`: The devices are disconnected.
-7. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
+6. `TransferEvent.Redirect`: This event prompts to redirect the user to the given Redirect URI. 
+   Get the Redirect URI from `event.redirectUri`. This event maybe be returned when OpenId4Vp is 
+   used as a transmission channel.
+7. `TransferEvent.Disconnected`: The devices are disconnected.
+8. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
 
 #### Attaching a TransferEvent.Listener
 
@@ -504,6 +522,11 @@ val transferEventListener = TransferEvent.Listener { event ->
 
         is TransferEvent.ResponseSent -> {
             // event when a response is sent
+        }
+
+        is TransferEvent.Redirect -> {
+            // event that prompts to redirect the user to the given Redirect URI (event.redirectUri)
+            // the event may be return when OpenId4Vp is used as a transmission channel. 
         }
 
         is TransferEvent.Disconnected -> {
@@ -763,6 +786,11 @@ EudiWallet.addTransferEventListener(transferEventListener)
      }
    }
    ```
+   
+   You can also specify an `executor` to the `OpenId4VpManager` using `setExecutor` method. 
+   Setting the `executor` is optional and defines the executor that will be used to
+   execute the callback. If the `executor` is not defined, the callback will be executed on the
+   main thread.
 
 #### Receiving request and sending response
 

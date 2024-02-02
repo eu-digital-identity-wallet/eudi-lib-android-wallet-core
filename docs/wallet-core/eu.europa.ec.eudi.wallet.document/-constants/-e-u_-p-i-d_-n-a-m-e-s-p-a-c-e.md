@@ -3,5 +3,4 @@
 # EU_PID_NAMESPACE
 
 [androidJvm]\
-const
-val [EU_PID_NAMESPACE](-e-u_-p-i-d_-n-a-m-e-s-p-a-c-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+const val [EU_PID_NAMESPACE](-e-u_-p-i-d_-n-a-m-e-s-p-a-c-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

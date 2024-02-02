@@ -3,8 +3,7 @@
 # withIssuerUrl
 
 [androidJvm]\
-fun [withIssuerUrl](with-issuer-url.md)(
-issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)): [OpenId4VciConfig.Builder](index.md)
+fun [withIssuerUrl](with-issuer-url.md)(issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)): [OpenId4VciConfig.Builder](index.md)
 
 Sets the issuer url.
 
@@ -12,6 +11,6 @@ Sets the issuer url.
 
 androidJvm
 
-|           |                |
-|-----------|----------------|
+| | |
+|---|---|
 | issuerUrl | the issuer url |

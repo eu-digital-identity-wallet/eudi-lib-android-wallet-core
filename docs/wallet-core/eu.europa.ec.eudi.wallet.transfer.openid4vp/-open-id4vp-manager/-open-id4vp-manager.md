@@ -3,7 +3,4 @@
 # OpenId4vpManager
 
 [androidJvm]\
-constructor(
-context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html),
-verifierApi: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-documentManager: DocumentManager)
+constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), openId4VpConfig: [OpenId4VpConfig](../-open-id4-vp-config/index.md), documentManager: DocumentManager)

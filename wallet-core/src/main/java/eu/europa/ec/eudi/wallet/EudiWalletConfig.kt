@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.BLE_CLIENT_CENTRAL_MO
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.BLE_SERVER_PERIPHERAL_MODE
 import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciConfig
 import eu.europa.ec.eudi.wallet.internal.getCertificate
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpConfig
 import java.io.File
 import java.security.cert.X509Certificate
 
@@ -46,7 +47,7 @@ import java.security.cert.X509Certificate
  * @property userAuthenticationTimeOut This is the time out for the user authentication. The default value is 30 seconds.
  * @property trustedReaderCertificates This is the list of trusted reader certificates. If not set, no reader authentication will be performed.
  * @property verifyMsoPublicKey If true, the MSO public key will be verified against the public key that is used to issue the document. The default value is true.
- * @property openId4VpVerifierApiUri This is the uri of the verifier that will be used to verify using OpenId4Vp. If not set OpenId4Vp will not be available.
+ * @property openId4VPConfig This is the config that will be used for OpenId4Vp transfer. If not set OpenId4Vp will not be available.
  * @property openId4VciConfig This is the config that will be used to issue using OpenId4Vci. If not set OpenId4Vci will not be available.
  *
  */
@@ -143,10 +144,10 @@ class EudiWalletConfig private constructor(builder: Builder) {
     val verifyMsoPublicKey: Boolean = builder.verifyMsoPublicKey
 
     /**
-     * OpenId4Vp verifier uri
-     * This is the uri of the verifier that will be used to verify using OpenId4Vp.
+     * openId4VPConfig config
+     * This is the config that will be used for OpenId4Vp transfer.
      */
-    val openId4VpVerifierApiUri: String? = builder.openId4VpVerifierApiUri
+    val openId4VPConfig: OpenId4VpConfig? = builder.openId4VpConfig
 
     /**
      * OpenId4Vci config
@@ -169,7 +170,7 @@ class EudiWalletConfig private constructor(builder: Builder) {
      * @property userAuthenticationTimeOut This is the time out for the user authentication. The default value is 30 seconds.
      * @property trustedReaderCertificates This is the list of trusted reader certificates. If not set, no reader authentication will be performed.
      * @property verifyMsoPublicKey If true, the MSO public key will be verified against the public key that is used to issue the document. The default value is true.
-     * @property openId4VpVerifierApiUri This is the uri of the verifier that will be used to verify using OpenId4Vp. If not set OpenId4Vp will not be available.
+     * @property openId4VPConfig This is the config that will be used for OpenId4Vp transfer. If not set OpenId4Vp will not be available.
      * @property openId4VciConfig This is the config that will be used to issue using OpenId4Vci. If not set OpenId4Vci will not be available.
      */
     class Builder(context: Context) {
@@ -186,7 +187,7 @@ class EudiWalletConfig private constructor(builder: Builder) {
         var userAuthenticationTimeOut: Long = 30 * 1000
         var trustedReaderCertificates: List<X509Certificate>? = null
         var verifyMsoPublicKey: Boolean = true
-        var openId4VpVerifierApiUri: String? = null
+        var openId4VpConfig: OpenId4VpConfig? = null
         var openId4VciConfig: OpenId4VciConfig? = null
 
         /**
@@ -311,14 +312,23 @@ class EudiWalletConfig private constructor(builder: Builder) {
         }
 
         /**
-         * OpenId4Vp verifier uri
-         * This is the uri of the OpenId4Vp verifier
+         * openId4VpConfig config
          *
-         * @param openId4VpVerifierUri
+         * @param openId4VpConfig
          * @return [EudiWalletConfig.Builder]
          */
-        fun openId4VpVerifierApiUri(openId4VpVerifierUri: String) = apply {
-            this.openId4VpVerifierApiUri = openId4VpVerifierUri
+        fun openId4VpConfig(openId4VpConfig: OpenId4VpConfig) = apply {
+            this.openId4VpConfig = openId4VpConfig
+        }
+
+        /**
+         * openId4VpConfig config
+         *
+         * @param block
+         * @return [EudiWalletConfig.Builder]
+         */
+        fun openId4VpConfig(block: OpenId4VpConfig.Builder.() -> Unit) = apply {
+            this.openId4VpConfig = OpenId4VpConfig.Builder().apply(block).build()
         }
 
         /**

@@ -5,5 +5,4 @@
 [androidJvm]\
 val [userAuthenticationRequired](user-authentication-required.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
 
-User authentication required If true, the user will be asked to authenticate before accessing the
-documents' attestations.
+User authentication required If true, the user will be asked to authenticate before accessing the documents' attestations.

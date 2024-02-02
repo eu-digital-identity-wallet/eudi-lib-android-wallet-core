@@ -3,5 +3,4 @@
 # EU_PID_DOCTYPE
 
 [androidJvm]\
-const
-val [EU_PID_DOCTYPE](-e-u_-p-i-d_-d-o-c-t-y-p-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+const val [EU_PID_DOCTYPE](-e-u_-p-i-d_-d-o-c-t-y-p-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

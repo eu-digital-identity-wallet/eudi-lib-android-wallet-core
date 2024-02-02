@@ -168,7 +168,7 @@ open class BaseTest {
 
     protected fun testOverNNField(field: String) {
         val raw = testMDLField(field)
-        val data = CBORTestUtil.getStringValue(raw!!)
+        CBORTestUtil.getStringValue(raw!!)
     }
 
     companion object {

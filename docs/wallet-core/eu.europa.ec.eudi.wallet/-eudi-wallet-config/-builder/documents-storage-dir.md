@@ -3,11 +3,9 @@
 # documentsStorageDir
 
 [androidJvm]\
-fun [documentsStorageDir](documents-storage-dir.md)(
-documentStorageDir: [File](https://developer.android.com/reference/kotlin/java/io/File.html)): [EudiWalletConfig.Builder](index.md)
+fun [documentsStorageDir](documents-storage-dir.md)(documentStorageDir: [File](https://developer.android.com/reference/kotlin/java/io/File.html)): [EudiWalletConfig.Builder](index.md)
 
-Documents storage dir. This is the directory where the documents will be stored. If not set, the
-default directory is the noBackupFilesDir.
+Documents storage dir. This is the directory where the documents will be stored. If not set, the default directory is the noBackupFilesDir.
 
 #### Return
 
@@ -17,8 +15,8 @@ default directory is the noBackupFilesDir.
 
 androidJvm
 
-|                    |
-|--------------------|
+| |
+|---|
 | documentStorageDir |
 
 [androidJvm]\

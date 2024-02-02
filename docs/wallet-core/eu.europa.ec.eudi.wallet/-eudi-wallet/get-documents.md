@@ -3,8 +3,7 @@
 # getDocuments
 
 [androidJvm]\
-fun [getDocuments](get-documents.md)(): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)
-&lt;Document&gt;
+fun [getDocuments](get-documents.md)(): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Document&gt;
 
 Returns the list of documents
 
@@ -14,12 +13,12 @@ the list of documents
 
 #### See also
 
-|                              |
-|------------------------------|
+| |
+|---|
 | DocumentManager.getDocuments |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

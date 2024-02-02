@@ -3,8 +3,7 @@
 # addTransferEventListener
 
 [androidJvm]\
-fun [addTransferEventListener](add-transfer-event-listener.md)(listener:
-TransferEvent.Listener): [EudiWallet](index.md)
+fun [addTransferEventListener](add-transfer-event-listener.md)(listener: TransferEvent.Listener): [EudiWallet](index.md)
 
 Adds a transfer event listener in order to be notified about transfer events
 
@@ -16,19 +15,19 @@ Adds a transfer event listener in order to be notified about transfer events
 
 androidJvm
 
-|          |
-|----------|
+| |
+|---|
 | listener |
 
 #### See also
 
-|                                          |
-|------------------------------------------|
+| |
+|---|
 | TransferManager.addTransferEventListener |
-| TransferEvent.Listener                   |
+| TransferEvent.Listener |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

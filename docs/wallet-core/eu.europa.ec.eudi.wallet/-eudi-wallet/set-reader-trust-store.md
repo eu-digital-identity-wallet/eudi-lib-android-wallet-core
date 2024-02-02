@@ -3,8 +3,7 @@
 # setReaderTrustStore
 
 [androidJvm]\
-fun [setReaderTrustStore](set-reader-trust-store.md)(readerTrustStore:
-ReaderTrustStore): [EudiWallet](index.md)
+fun [setReaderTrustStore](set-reader-trust-store.md)(readerTrustStore: ReaderTrustStore): [EudiWallet](index.md)
 
 Sets the reader trust store with the readers' certificates that are trusted by the wallet
 
@@ -16,18 +15,18 @@ Sets the reader trust store with the readers' certificates that are trusted by t
 
 androidJvm
 
-|                  |                        |
-|------------------|------------------------|
+| | |
+|---|---|
 | readerTrustStore | the reader trust store |
 
 #### See also
 
-|                                     |
-|-------------------------------------|
+| |
+|---|
 | TransferManager.setReaderTrustStore |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

@@ -3,5 +3,4 @@
 # MDL_NAMESPACE
 
 [androidJvm]\
-const
-val [MDL_NAMESPACE](-m-d-l_-n-a-m-e-s-p-a-c-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+const val [MDL_NAMESPACE](-m-d-l_-n-a-m-e-s-p-a-c-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

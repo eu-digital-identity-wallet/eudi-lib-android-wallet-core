@@ -3,9 +3,7 @@
 # init
 
 [androidJvm]\
-fun [init](init.md)(
-context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html),
-config: [EudiWalletConfig](../-eudi-wallet-config/index.md))
+fun [init](init.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), config: [EudiWalletConfig](../-eudi-wallet-config/index.md))
 
 Initialize the sdk with the given [config](init.md)
 
@@ -13,7 +11,7 @@ Initialize the sdk with the given [config](init.md)
 
 androidJvm
 
-|         |                      |
-|---------|----------------------|
-| context | application context  |
-| config  | configuration object |
+| | |
+|---|---|
+| context | application context |
+| config | configuration object |

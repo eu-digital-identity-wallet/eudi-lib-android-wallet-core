@@ -1,0 +1,6 @@
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../../index.md)/[ClientIdScheme](../index.md)/[Preregistered](index.md)/[preregisteredVerifiers](preregistered-verifiers.md)
+
+# preregisteredVerifiers
+
+[androidJvm]\
+var [preregisteredVerifiers](preregistered-verifiers.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;

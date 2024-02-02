@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.internal
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.iso18013.transfer.DocItem
 import eu.europa.ec.eudi.iso18013.transfer.DocRequest
+import eu.europa.ec.eudi.iso18013.transfer.ReaderAuth
 import eu.europa.ec.eudi.iso18013.transfer.Request
 import eu.europa.ec.eudi.iso18013.transfer.RequestDocument
 import eu.europa.ec.eudi.prex.PresentationDefinition
@@ -29,6 +30,7 @@ internal object OpenId4VpUtil {
     fun parsePresentationDefinition(
         documentManager: DocumentManager,
         presentationDefinition: PresentationDefinition,
+        readerAuth: ReaderAuth?
     ): Request {
         val inputDescriptor =
             presentationDefinition.inputDescriptors.first()
@@ -55,12 +57,13 @@ internal object OpenId4VpUtil {
                 ).replace("\"", "")
             }
 
-        return createRequest(documentManager, mapOf(docType to mapOf(namespace to requestedFields)))
+        return createRequest(documentManager, mapOf(docType to mapOf(namespace to requestedFields)), readerAuth)
     }
 
     private fun createRequest(
         documentManager: DocumentManager,
         requestedFields: Map<String, Map<String, List<String>>>,
+        readerAuth: ReaderAuth?
     ): Request {
         val requestedDocuments = mutableListOf<RequestDocument>()
         requestedFields.forEach { document ->
@@ -80,7 +83,7 @@ internal object OpenId4VpUtil {
                             doc.docType,
                             doc.name,
                             doc.requiresUserAuth,
-                            DocRequest(docType, docItems, byteArrayOf(0), null)
+                            DocRequest(docType, docItems, byteArrayOf(0), readerAuth)
                         )
                     )
                 }
