@@ -15,18 +15,18 @@ DeleteDocumentResult
 
 androidJvm
 
-|            |                   |
-|------------|-------------------|
+| | |
+|---|---|
 | documentId | the document's id |
 
 #### See also
 
-|                                    |
-|------------------------------------|
+| |
+|---|
 | DocumentManager.deleteDocumentById |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

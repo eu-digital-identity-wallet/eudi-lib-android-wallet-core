@@ -3,8 +3,7 @@
 # sendResponse
 
 [androidJvm]\
-fun [sendResponse](send-response.md)(
-responseBytes: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html))
+fun [sendResponse](send-response.md)(responseBytes: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html))
 
 Sends the given [responseBytes](send-response.md) to the reader
 
@@ -12,6 +11,6 @@ Sends the given [responseBytes](send-response.md) to the reader
 
 androidJvm
 
-|               |
-|---------------|
+| |
+|---|
 | responseBytes |

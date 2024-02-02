@@ -3,11 +3,9 @@
 # useHardwareToStoreKeys
 
 [androidJvm]\
-fun [useHardwareToStoreKeys](use-hardware-to-store-keys.md)(
-useHardwareToStoreKeys: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig.Builder](index.md)
+fun [useHardwareToStoreKeys](use-hardware-to-store-keys.md)(useHardwareToStoreKeys: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig.Builder](index.md)
 
-Use hardware to store keys. If true and supported by device, documents' keys will be stored in the
-hardware.
+Use hardware to store keys. If true and supported by device, documents' keys will be stored in the hardware.
 
 #### Return
 
@@ -17,8 +15,8 @@ hardware.
 
 androidJvm
 
-|                        |
-|------------------------|
+| |
+|---|
 | useHardwareToStoreKeys |
 
 [androidJvm]\

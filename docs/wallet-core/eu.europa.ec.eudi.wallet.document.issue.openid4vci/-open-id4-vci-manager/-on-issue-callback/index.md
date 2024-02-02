@@ -7,6 +7,6 @@ fun interface [OnIssueCallback](index.md)
 
 ## Functions
 
-| Name                     | Summary                                                                                                                                                                |
-|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [onResult](on-result.md) | [androidJvm]<br>abstract fun [onResult](on-result.md)(result: [IssueDocumentResult](../../../eu.europa.ec.eudi.wallet.document.issue/-issue-document-result/index.md)) |

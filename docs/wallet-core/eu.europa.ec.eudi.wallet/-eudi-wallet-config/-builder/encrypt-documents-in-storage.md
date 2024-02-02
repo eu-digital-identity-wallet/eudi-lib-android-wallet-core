@@ -3,8 +3,7 @@
 # encryptDocumentsInStorage
 
 [androidJvm]\
-fun [encryptDocumentsInStorage](encrypt-documents-in-storage.md)(
-encryptDocumentsInStorage: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig.Builder](index.md)
+fun [encryptDocumentsInStorage](encrypt-documents-in-storage.md)(encryptDocumentsInStorage: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig.Builder](index.md)
 
 Encrypt documents in storage. If true, the documents will be encrypted in the storage.
 
@@ -16,8 +15,8 @@ Encrypt documents in storage. If true, the documents will be encrypted in the st
 
 androidJvm
 
-|                           |
-|---------------------------|
+| |
+|---|
 | encryptDocumentsInStorage |
 
 [androidJvm]\

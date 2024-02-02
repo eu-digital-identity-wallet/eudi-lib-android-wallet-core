@@ -3,5 +3,4 @@
 # onResult
 
 [androidJvm]\
-abstract fun [onResult](on-result.md)(
-result: [IssueDocumentResult](../../../eu.europa.ec.eudi.wallet.document.issue/-issue-document-result/index.md))
+abstract fun [onResult](on-result.md)(result: [IssueDocumentResult](../../../eu.europa.ec.eudi.wallet.document.issue/-issue-document-result/index.md))

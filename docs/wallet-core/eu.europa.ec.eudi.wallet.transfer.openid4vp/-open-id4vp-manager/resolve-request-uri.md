@@ -3,15 +3,14 @@
 # resolveRequestUri
 
 [androidJvm]\
-fun [resolveRequestUri](resolve-request-uri.md)(
-openid4VPURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+fun [resolveRequestUri](resolve-request-uri.md)(openid4VPURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
 
-Resolve request uri and call the listener with the request object.
+Resolve a request uri
 
 #### Parameters
 
 androidJvm
 
-|              |
-|--------------|
+| |
+|---|
 | openid4VPURI |

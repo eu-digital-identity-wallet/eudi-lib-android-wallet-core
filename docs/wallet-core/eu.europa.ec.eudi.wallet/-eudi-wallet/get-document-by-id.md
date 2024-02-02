@@ -15,18 +15,18 @@ the document with the given [documentId](get-document-by-id.md) or null if not f
 
 androidJvm
 
-|            |                   |
-|------------|-------------------|
+| | |
+|---|---|
 | documentId | the document's id |
 
 #### See also
 
-|                                 |
-|---------------------------------|
+| |
+|---|
 | DocumentManager.getDocumentById |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

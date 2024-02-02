@@ -20,13 +20,13 @@ val config = OpenId4VciConfig.Builder()
 
 ## Types
 
-| Name                         | Summary                                                                                         |
-|------------------------------|-------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for [OpenId4VciConfig](index.md). |
 
 ## Properties
 
-| Name                       | Summary                                                                                                                                            |
-|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| [clientId](client-id.md)   | [androidJvm]<br>val [clientId](client-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the client id    |
+| Name | Summary |
+|---|---|
+| [clientId](client-id.md) | [androidJvm]<br>val [clientId](client-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the client id |
 | [issuerUrl](issuer-url.md) | [androidJvm]<br>val [issuerUrl](issuer-url.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the issuer url |

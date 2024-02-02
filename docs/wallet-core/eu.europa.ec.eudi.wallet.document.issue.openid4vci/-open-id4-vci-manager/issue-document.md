@@ -6,10 +6,7 @@
 
 @[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-overloads/index.html)
 
-fun [issueDocument](issue-document.md)(
-docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? =
-null, callback: [OpenId4VciManager.OnIssueCallback](-on-issue-callback/index.md))
+fun [issueDocument](issue-document.md)(docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, callback: [OpenId4VciManager.OnIssueCallback](-on-issue-callback/index.md))
 
 Issues a document of the given type.
 
@@ -17,8 +14,8 @@ Issues a document of the given type.
 
 androidJvm
 
-|          |                                                                               |
-|----------|-------------------------------------------------------------------------------|
-| docType  | the type of the document to issue (e.g. &quot;eu.europa.ec.eudiw.pid.1&quot;) |
-| executor | the executor in which the callback will be invoked.                           |
-| callback | the callback to be invoked when the result is available                       |
+| | |
+|---|---|
+| docType | the type of the document to issue (e.g. &quot;eu.europa.ec.eudiw.pid.1&quot;) |
+| executor | the executor in which the callback will be invoked. |
+| callback | the callback to be invoked when the result is available |

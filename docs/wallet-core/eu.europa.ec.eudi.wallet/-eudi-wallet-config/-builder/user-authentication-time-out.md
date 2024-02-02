@@ -3,8 +3,7 @@
 # userAuthenticationTimeOut
 
 [androidJvm]\
-fun [userAuthenticationTimeOut](user-authentication-time-out.md)(
-userAuthenticationTimeout: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)): [EudiWalletConfig.Builder](index.md)
+fun [userAuthenticationTimeOut](user-authentication-time-out.md)(userAuthenticationTimeout: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)): [EudiWalletConfig.Builder](index.md)
 
 User authentication time out. This is the time out for the user authentication.
 
@@ -16,8 +15,8 @@ User authentication time out. This is the time out for the user authentication.
 
 androidJvm
 
-|                           |
-|---------------------------|
+| |
+|---|
 | userAuthenticationTimeout |
 
 [androidJvm]\

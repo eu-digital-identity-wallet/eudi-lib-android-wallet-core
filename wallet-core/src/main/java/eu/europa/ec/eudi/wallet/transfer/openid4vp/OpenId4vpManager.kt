@@ -17,24 +17,23 @@
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
 import android.content.Context
+import android.util.Log
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.jwk.KeyUse
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import eu.europa.ec.eudi.iso18013.transfer.Request
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
+import eu.europa.ec.eudi.openid4vp.JarmConfiguration
 import eu.europa.ec.eudi.openid4vp.JwkSetSource
 import eu.europa.ec.eudi.openid4vp.PreregisteredClient
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
-import eu.europa.ec.eudi.openid4vp.SubjectSyntaxType
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
-import eu.europa.ec.eudi.openid4vp.WalletOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.prex.ClaimFormat
 import eu.europa.ec.eudi.prex.DescriptorMap
@@ -43,27 +42,52 @@ import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtil
-import eu.europa.ec.eudi.wallet.internal.executeOnMain
+import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
+import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.util.CBOR
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import org.bouncycastle.util.encoders.Hex
 import java.net.URI
-import java.time.Duration
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.Base64
-import java.util.Date
-import java.util.UUID
+import java.util.concurrent.Executor
 
 /**
- * OpenId4vp manager. This class is used to manage the OpenId4vp. It is used to resolve the request uri and send the response.
+ * OpenId4vp manager. This class is used to manage the OpenId4vp transfer method. It is used to resolve the request uri and send the response.
  *
  * Example:
  * ```
  * val openId4vpManager = OpenId4vpManager(
  *    context,
- *    verifierApi = "https://verifier-api.com"
- *    documentManager = documentManager
+ *    OpenId4VpConfig.Builder()
+ *             .withClientIdSchemes(
+ *             listOf(
+ *                 ClientIdScheme.Preregistered(
+ *                     listOf(
+ *                         PreregisteredVerifier(
+ *                             "Verifier", "https://example.com"
+ *                         )
+ *                     )
+ *                 ),
+ *                 ClientIdScheme.X509SanDns
+ *             ))
+ *             .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
+ *             .withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
+ *             .build(),
+ *    documentManager
  * )
  * val transferEventListener = TransferEvent.Listener { event ->
  *   when (event) {
  *      is TransferEvent.Connecting -> {
  *          // inform user
+ *      }
+ *      is Transfer.Redirect -> {
+ *          val redirect_uri = event.redirectUri
+ *          // redirect user to the given URI
  *      }
  *      is TransferEvent.RequestReceived -> {
  *          val request = openId4vpManager.resolveRequestUri(event.request)
@@ -76,106 +100,157 @@ import java.util.UUID
  * }
  * openId4vpManager.addTransferEventListener(transferEventListener)
  *
- * @property documentManager
- * @constructor
- *
- * @param context
- * @param verifierApi
+ * ```
+ * @param context the application context
+ * @param openId4VpConfig the configuration for OpenId4Vp
+ * @param documentManager the document manager used for issuing documents
  */
+
+private const val TAG = "OpenId4vpManager"
+
 class OpenId4vpManager(
     context: Context,
-    verifierApi: String,
-    private val documentManager: DocumentManager,
+    openId4VpConfig: OpenId4VpConfig,
+    private val documentManager: DocumentManager
 ) : TransferEvent.Listenable {
 
-    private val context = context.applicationContext
+    private val appContext = context.applicationContext
+    private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
+    private var executor: Executor? = null
 
-    private val verifierMetaData = PreregisteredClient(
-        "Verifier",
-        JWSAlgorithm.RS256.name,
-        JwkSetSource.ByReference(URI("$verifierApi/wallet/public-keys.json"))
-    )
-
-    private val walletKeyPair = RSAKeyGenerator(2048)
-        .keyUse(KeyUse.SIGNATURE) // indicate the intended use of the key (optional)
-        .keyID(UUID.randomUUID().toString()) // give the key a unique ID (optional)
-        .issueTime(Date(System.currentTimeMillis())) // issued-at timestamp (optional)
-        .generate()
-
-    private val config = WalletOpenId4VPConfig(
-        presentationDefinitionUriSupported = true,
-        supportedClientIdSchemes = listOf(
-            SupportedClientIdScheme.Preregistered(
-                mapOf(
-                    verifierMetaData.clientId to verifierMetaData
-                )
-            )
-        ),
-        vpFormatsSupported = emptyList(),
-        subjectSyntaxTypesSupported = emptyList(),
-        signingKey = walletKeyPair,
-        signingKeySet = JWKSet(walletKeyPair),
-        idTokenTTL = Duration.ofMinutes(10),
-        preferredSubjectSyntaxType = SubjectSyntaxType.JWKThumbprint,
-        decentralizedIdentifier = "DID:example:12341512#$",
-        authorizationSigningAlgValuesSupported = emptyList(),
-        authorizationEncryptionAlgValuesSupported = listOf(JWEAlgorithm.parse("ECDH-ES")),
-        authorizationEncryptionEncValuesSupported = listOf(EncryptionMethod.parse("A256GCM"))
-    )
-
-    private val siopOpenId4Vp = SiopOpenId4Vp(config)
     private var transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
+    private val onResultUnderExecutor = { result: TransferEvent ->
+        (executor ?: appContext.mainExecutor()).execute {
+            Log.d(TAG, "onResultUnderExecutor $result")
+            transferEventListeners.onTransferEvent(result)
+        }
+    }
+
+    private var readerTrustStore: ReaderTrustStore? = null
     private var resolvedRequestObject: ResolvedRequestObject? = null
+    private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
+    private val siopOpenId4Vp = SiopOpenId4Vp(createSiopOpenId4VpConfig(openId4VpConfig))
 
     /**
-     * Resolve request uri and call the listener with the request object.
+     * Set a ReaderTrustStore (optionally)
+     */
+    fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
+        this.readerTrustStore = readerTrustStore
+        this.openid4VpX509CertificateTrust.setReaderTrustStore(readerTrustStore)
+    }
+
+    /**
+     * Setting the `executor` is optional and defines the executor that will be used to
+     * execute the callback. If the `executor` is not defined, the callback will be executed on the
+     * main thread.
+     * @param Executor the executor to use for callbacks. If null, the main executor will be used.
+     */
+    fun setExecutor(executor: Executor) {
+        this.executor = executor
+    }
+
+    private fun createSiopOpenId4VpConfig(openId4VpConfig: OpenId4VpConfig): SiopOpenId4VPConfig {
+        return SiopOpenId4VPConfig(
+            jarmConfiguration = JarmConfiguration.Encryption(
+                supportedAlgorithms = openId4VpConfig.encryptionAlgorithms.map {
+                    JWEAlgorithm.parse(it.name)
+                },
+                supportedMethods = openId4VpConfig.encryptionMethods.map {
+                    EncryptionMethod.parse(it.name)
+                },
+            ),
+            supportedClientIdSchemes = openId4VpConfig.clientIdSchemes.map { clientIdScheme ->
+                when (clientIdScheme) {
+                    is ClientIdScheme.Preregistered -> SupportedClientIdScheme.Preregistered(
+                        clientIdScheme.preregisteredVerifiers.associate {
+                            it.clientId to PreregisteredClient(
+                                it.clientId, JWSAlgorithm.RS256 to JwkSetSource.ByReference(
+                                    URI("${it.verifierApi}/wallet/public-keys.json")
+                                )
+                            )
+                        }
+                    )
+
+                    is ClientIdScheme.X509SanDns ->
+                        SupportedClientIdScheme.X509SanDns(openid4VpX509CertificateTrust)
+
+                    is ClientIdScheme.X509SanUri ->
+                        SupportedClientIdScheme.X509SanUri(openid4VpX509CertificateTrust)
+                }
+            }
+        )
+    }
+
+    /**
+     * Resolve a request uri
      *
      * @param openid4VPURI
      */
     fun resolveRequestUri(openid4VPURI: String) {
-        transferEventListeners.onTransferEvent(TransferEvent.Connecting)
-
-        context.executeOnMain {
-            when (val resolution = siopOpenId4Vp.resolveRequestUri(openid4VPURI)) {
-                is Resolution.Invalid -> {
-                    transferEventListeners.onTransferEvent(TransferEvent.Error(resolution.error.asException()))
-                }
-
-                is Resolution.Success -> resolution.requestObject
-                    .also { resolvedRequestObject = it }
-                    .let { requestObject ->
-                        when (requestObject) {
-                            is ResolvedRequestObject.OpenId4VPAuthorization -> {
-                                transferEventListeners.onTransferEvent(
-                                    TransferEvent.RequestReceived(
-                                        requestObject.asRequest()
-                                    )
-                                )
-                            }
-
-                            is ResolvedRequestObject.SiopAuthentication -> {
-                                transferEventListeners.onTransferEvent("SiopAuthentication request received, not supported yet.".err())
-                            }
-
-                            is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
-                                transferEventListeners.onTransferEvent("SiopAuthentication request received, not supported yet.".err())
-                            }
-
-                            else -> transferEventListeners.onTransferEvent("Unknown request received".err())
-
-                        }
+        Log.d(
+            TAG,
+            "Resolve request uri: ${URLDecoder.decode(openid4VPURI, StandardCharsets.UTF_8.name())}"
+        )
+        ioScope.launch {
+            onResultUnderExecutor(TransferEvent.Connecting)
+            runCatching { siopOpenId4Vp.resolveRequestUri(openid4VPURI) }.onSuccess { resolution ->
+                when (resolution) {
+                    is Resolution.Invalid -> {
+                        Log.e(TAG, "Resolution.Invalid", resolution.error.asException())
+                        onResultUnderExecutor(TransferEvent.Error(resolution.error.asException()))
                     }
+
+                    is Resolution.Success -> {
+                        Log.d(TAG, "Resolution.Success")
+                        resolution.requestObject
+                            .also { resolvedRequestObject = it }
+                            .let { requestObject ->
+                                when (requestObject) {
+                                    is ResolvedRequestObject.OpenId4VPAuthorization -> {
+                                        Log.d(TAG, "OpenId4VPAuthorization Request received")
+                                        onResultUnderExecutor(
+                                            TransferEvent.RequestReceived(
+                                                requestObject.asRequest()
+                                            )
+                                        )
+                                    }
+
+                                    is ResolvedRequestObject.SiopAuthentication -> {
+                                        Log.w(TAG, "SiopAuthentication Request received")
+                                        onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
+                                    }
+
+                                    is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
+                                        Log.w(TAG, "SiopOpenId4VPAuthentication Request received")
+                                        onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
+                                    }
+
+                                    else -> {
+                                        Log.w(TAG, "Unknown request received")
+                                        onResultUnderExecutor("Unknown request received".err())
+                                    }
+                                }
+                            }
+                    }
+                }
+            }.onFailure {
+                Log.e(TAG, "An error occurred resolving request uri: $openid4VPURI", it)
+                onResultUnderExecutor(TransferEvent.Error(it))
             }
         }
     }
 
     /**
-     * Send response to the verifier.
+     * Sends a response to the verifier
      *
      * @param deviceResponse
      */
     fun sendResponse(deviceResponse: ByteArray) {
-        context.executeOnMain {
+
+        Log.d(TAG, "Device Response to send (hex): ${Hex.toHexString(deviceResponse)}")
+        Log.d(TAG, "Device Response to send (cbor): ${CBOR.cborPrettyPrint(deviceResponse)}")
+
+        ioScope.launch {
             resolvedRequestObject?.let { resolvedRequestObject ->
                 when (resolvedRequestObject) {
                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
@@ -185,6 +260,7 @@ class OpenId4vpManager(
                             presentationDefinition.inputDescriptors.first()
                         val vpToken =
                             Base64.getUrlEncoder().withoutPadding().encodeToString(deviceResponse)
+                        Log.d(TAG, "VpToken: $vpToken")
                         val consensus = Consensus.PositiveConsensus.VPTokenConsensus(
                             vpToken,
                             presentationSubmission = PresentationSubmission(
@@ -199,34 +275,49 @@ class OpenId4vpManager(
                                 )
                             )
                         )
+                        runCatching { siopOpenId4Vp.dispatch(resolvedRequestObject, consensus) }.onSuccess { dispatchOutcome ->
+                            when (dispatchOutcome) {
+                                is DispatchOutcome.VerifierResponse.Accepted -> {
+                                    Log.d(
+                                        TAG,
+                                        "VerifierResponse Accepted with redirectUri: $dispatchOutcome.redirectURI"
+                                    )
+                                    onResultUnderExecutor(TransferEvent.ResponseSent)
+                                    dispatchOutcome.redirectURI?.let {
+                                        onResultUnderExecutor(TransferEvent.Redirect(it))
+                                    }
+                                }
 
-                        val authorizationResponse =
-                            siopOpenId4Vp.build(resolvedRequestObject, consensus)
-                        when (siopOpenId4Vp.dispatch(authorizationResponse)) {
-                            is DispatchOutcome.VerifierResponse.Accepted -> {
-                                transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
-                            }
+                                is DispatchOutcome.VerifierResponse.Rejected -> {
+                                    Log.d(TAG, "VerifierResponse Rejected")
+                                    onResultUnderExecutor("DispatchOutcome: VerifierResponse Rejected".err())
+                                }
 
-                            is DispatchOutcome.VerifierResponse.Rejected -> {
-                                transferEventListeners.onTransferEvent("DispatchOutcome: VerifierResponse Rejected".err())
+                                is DispatchOutcome.RedirectURI -> {
+                                    Log.d(TAG, "VerifierResponse RedirectURI")
+                                    onResultUnderExecutor(TransferEvent.ResponseSent)
+                                }
                             }
-
-                            is DispatchOutcome.RedirectURI -> {
-                                transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
-                            }
+                            onResultUnderExecutor(TransferEvent.Disconnected)
+                        }.onFailure {
+                            Log.e(TAG, "An error occurred in dispatching", it)
+                            onResultUnderExecutor(TransferEvent.Error(it))
                         }
-                        transferEventListeners.onTransferEvent(TransferEvent.Disconnected)
                     }
-
                     else -> {
-                        transferEventListeners.onTransferEvent("${resolvedRequestObject.javaClass} not supported yet.".err())
+                        Log.e(TAG, "${resolvedRequestObject.javaClass} not supported yet.")
+                        onResultUnderExecutor("${resolvedRequestObject.javaClass} not supported yet.".err())
                     }
                 }
             }
         }
     }
 
+    /**
+    * Closes the OpenId4VpManager
+    */
     fun close() {
+        Log.d(TAG, "close")
         resolvedRequestObject = null
         removeAllTransferEventListeners()
     }
@@ -241,7 +332,7 @@ class OpenId4vpManager(
 
     private fun ResolvedRequestObject.OpenId4VPAuthorization.asRequest(): Request {
         return OpenId4VpUtil.parsePresentationDefinition(
-            documentManager, presentationDefinition
+            documentManager, presentationDefinition, openid4VpX509CertificateTrust.getReaderAuth()
         )
     }
 

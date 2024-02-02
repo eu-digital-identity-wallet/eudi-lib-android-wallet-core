@@ -9,12 +9,12 @@ Starts the transfer process by engaging with the reader via QR code
 
 #### See also
 
-|                                   |
-|-----------------------------------|
+| |
+|---|
 | TransferManager.startQrEngagement |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

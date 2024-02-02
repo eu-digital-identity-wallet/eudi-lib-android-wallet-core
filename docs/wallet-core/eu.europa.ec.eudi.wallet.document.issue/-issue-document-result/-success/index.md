@@ -9,12 +9,12 @@ The document was successfully issued.
 
 ## Constructors
 
-|                        |                                                     |
-|------------------------|-----------------------------------------------------|
+| | |
+|---|---|
 | [Success](-success.md) | [androidJvm]<br>constructor(documentId: DocumentId) |
 
 ## Properties
 
-| Name                         | Summary                                                                                       |
-|------------------------------|-----------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [documentId](document-id.md) | [androidJvm]<br>val [documentId](document-id.md): DocumentId<br>the id of the issued document |

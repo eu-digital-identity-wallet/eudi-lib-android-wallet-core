@@ -3,15 +3,14 @@
 # sendResponse
 
 [androidJvm]\
-fun [sendResponse](send-response.md)(
-deviceResponse: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html))
+fun [sendResponse](send-response.md)(deviceResponse: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html))
 
-Send response to the verifier.
+Sends a response to the verifier
 
 #### Parameters
 
 androidJvm
 
-|                |
-|----------------|
+| |
+|---|
 | deviceResponse |

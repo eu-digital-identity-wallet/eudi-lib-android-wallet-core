@@ -3,8 +3,7 @@
 # removeTransferEventListener
 
 [androidJvm]\
-fun [removeTransferEventListener](remove-transfer-event-listener.md)(listener:
-TransferEvent.Listener): [EudiWallet](index.md)
+fun [removeTransferEventListener](remove-transfer-event-listener.md)(listener: TransferEvent.Listener): [EudiWallet](index.md)
 
 Removes a transfer event listener.
 
@@ -16,19 +15,19 @@ Removes a transfer event listener.
 
 androidJvm
 
-|          |
-|----------|
+| |
+|---|
 | listener |
 
 #### See also
 
-|                                             |
-|---------------------------------------------|
+| |
+|---|
 | TransferManager.removeTransferEventListener |
-| TransferEvent.Listener                      |
+| TransferEvent.Listener |
 
 #### Throws
 
-|                                                                                                                  |                                                                                     |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWallet](index.md) is not firstly initialized via the [init](init.md) method |

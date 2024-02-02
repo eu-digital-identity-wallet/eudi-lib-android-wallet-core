@@ -90,11 +90,12 @@ dependencies {
     implementation libs.eudi.lib.jvm.openid4vci.kt
     implementation libs.nimbus.oauth2.oidc.sdk
 
+    // Siop-Openid4VP library
+    implementation libs.eudi.lib.jvm.siop.openid4vp.kt
+
     // CBOR
     implementation libs.cbor
 
-    // siop-openid4vp library
-    implementation libs.siop.openid4vp
     implementation libs.biometric.ktx
 
     // Ktor Android Engine

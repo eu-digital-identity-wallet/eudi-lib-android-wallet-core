@@ -4,3 +4,5 @@
 
 [androidJvm]\
 fun [close](close.md)()
+
+Closes the OpenId4VpManager

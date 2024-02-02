@@ -4,6 +4,6 @@
 
 ## Types
 
-| Name                                                   | Summary                                                                          |
-|--------------------------------------------------------|----------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [IssueDocumentResult](-issue-document-result/index.md) | [androidJvm]<br>interface [IssueDocumentResult](-issue-document-result/index.md) |
