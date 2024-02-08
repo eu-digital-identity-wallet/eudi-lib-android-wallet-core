@@ -46,6 +46,7 @@ import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciConfig
  * @property clientIdSchemes list of [ClientIdScheme] that defines the supported Client Identifier schemes
  * @property encryptionAlgorithms list of [EncryptionAlgorithm] that defines the supported encryption algorithms
  * @property encryptionMethods list of [EncryptionMethod] that defines the supported encryption methods
+ * @property scheme optionally you can change the scheme. By default, the scheme "mdoc-openid4vp" is used
  */
 
 class OpenId4VpConfig private constructor(private val builder: Builder) {
@@ -59,12 +60,16 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
     val encryptionMethods: List<EncryptionMethod>
         get() = builder.encryptionMethods
 
+    val scheme: String
+        get() = builder.scheme
+
     /**
      * Builder for [OpenId4VciConfig].
      *
      * @property clientIdSchemes list of [ClientIdScheme] that defines the supported Client Identifier schemes
      * @property encryptionAlgorithms list of [EncryptionAlgorithm] that defines the supported encryption algorithms
      * @property encryptionMethods list of [EncryptionMethod] that defines the supported encryption methods
+     * @property scheme for OpenId4Vp. Optionally, you can change the scheme. By default, "mdoc-openid4vp" is used.
      */
     class Builder {
         lateinit var clientIdSchemes: List<ClientIdScheme>
@@ -96,6 +101,19 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          * @param issuerUrl the issuer url
          */
         fun withEncryptionMethods(encryptionMethods: List<EncryptionMethod>) = apply { this.encryptionMethods = encryptionMethods }
+
+        var scheme: String = "mdoc-openid4vp"
+            private set
+
+        /**
+         * Sets the scheme for openId4Vp.
+         * By default, the scheme "mdoc-openid4vp" is supported
+         *
+         * @param scheme the scheme
+         */
+        fun withScheme(scheme: String) = apply {
+            this.scheme = scheme
+        }
 
         fun build(): OpenId4VpConfig {
 

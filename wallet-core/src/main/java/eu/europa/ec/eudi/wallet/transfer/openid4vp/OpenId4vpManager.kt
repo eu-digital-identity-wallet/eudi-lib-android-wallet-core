@@ -21,9 +21,8 @@ import android.util.Log
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.iso18013.transfer.Request
+import eu.europa.ec.eudi.iso18013.transfer.RequestedDocumentData
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.JarmConfiguration
@@ -40,9 +39,6 @@ import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
-import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtil
-import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.util.CBOR
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +57,23 @@ import java.util.concurrent.Executor
  *
  * Example:
  * ```
+ * val certificates = listOf<X509Certificate>(
+ *     // put trusted reader certificates here
+ * )
+ * val readerTrustStore = ReaderTrustStore.getDefault(
+ *     listOf(context.applicationContext.getCertificate(certificates))
+ * )
+ *
+ * val documentedResolver = DocumentResolver { docRequest: DocRequest ->
+ *     // put your code here to resolve the document
+ *     // usually document resolution is done based on `docRequest.docType`
+ * }
+ *
+ * val openid4VpCBORResponseGenerator = OpenId4VpCBORResponseGeneratorImpl.Builder(context)
+ *                 .readerTrustStore(readerTrustStore)
+ *                 .documentsResolver(documentedResolver)
+ *                 .build()
+ *
  * val openId4vpManager = OpenId4vpManager(
  *    context,
  *    OpenId4VpConfig.Builder()
@@ -78,7 +91,7 @@ import java.util.concurrent.Executor
  *             .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
  *             .withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
  *             .build(),
- *    documentManager
+ *    openid4VpCBORResponseGenerator
  * )
  * val transferEventListener = TransferEvent.Listener { event ->
  *   when (event) {
@@ -93,17 +106,20 @@ import java.util.concurrent.Executor
  *          val request = openId4vpManager.resolveRequestUri(event.request)
  *          // handle request and demand from user the documents to be disclosed
  *          val disclosedDocuments = listOf<DisclosedDocument>()
- *          val response = EudiWallet.createResponse(disclosedDocuments)
- *          openId4vpManager.sendResponse(response)
+ *          val response = openid4VpCBORResponseGenerator.createResponse(disclosedDocuments)
+ *          openId4vpManager.sendResponse(response.deviceResponseBytes)
  *      }
  *   }
  * }
  * openId4vpManager.addTransferEventListener(transferEventListener)
  *
+ * // resolve a request URI
+ * openId4vpManager.resolveRequestUri(requestURI)
+ *
  * ```
  * @param context the application context
  * @param openId4VpConfig the configuration for OpenId4Vp
- * @param documentManager the document manager used for issuing documents
+ * @param responseGenerator that parses the request and creates the response
  */
 
 private const val TAG = "OpenId4vpManager"
@@ -111,7 +127,7 @@ private const val TAG = "OpenId4vpManager"
 class OpenId4vpManager(
     context: Context,
     openId4VpConfig: OpenId4VpConfig,
-    private val documentManager: DocumentManager
+    val responseGenerator: OpenId4VpCBORResponseGeneratorImpl
 ) : TransferEvent.Listenable {
 
     private val appContext = context.applicationContext
@@ -126,18 +142,8 @@ class OpenId4vpManager(
         }
     }
 
-    private var readerTrustStore: ReaderTrustStore? = null
     private var resolvedRequestObject: ResolvedRequestObject? = null
-    private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
     private val siopOpenId4Vp = SiopOpenId4Vp(createSiopOpenId4VpConfig(openId4VpConfig))
-
-    /**
-     * Set a ReaderTrustStore (optionally)
-     */
-    fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-        this.readerTrustStore = readerTrustStore
-        this.openid4VpX509CertificateTrust.setReaderTrustStore(readerTrustStore)
-    }
 
     /**
      * Setting the `executor` is optional and defines the executor that will be used to
@@ -172,10 +178,10 @@ class OpenId4vpManager(
                     )
 
                     is ClientIdScheme.X509SanDns ->
-                        SupportedClientIdScheme.X509SanDns(openid4VpX509CertificateTrust)
+                        SupportedClientIdScheme.X509SanDns(responseGenerator.getOpenid4VpX509CertificateTrust())
 
                     is ClientIdScheme.X509SanUri ->
-                        SupportedClientIdScheme.X509SanUri(openid4VpX509CertificateTrust)
+                        SupportedClientIdScheme.X509SanUri(responseGenerator.getOpenid4VpX509CertificateTrust())
                 }
             }
         )
@@ -210,7 +216,8 @@ class OpenId4vpManager(
                                         Log.d(TAG, "OpenId4VPAuthorization Request received")
                                         onResultUnderExecutor(
                                             TransferEvent.RequestReceived(
-                                                requestObject.asRequest()
+                                                requestObject.asRequest(),
+                                                OpenId4VpRequest(requestObject.presentationDefinition)
                                             )
                                         )
                                     }
@@ -319,7 +326,6 @@ class OpenId4vpManager(
     fun close() {
         Log.d(TAG, "close")
         resolvedRequestObject = null
-        removeAllTransferEventListeners()
     }
 
     private fun List<TransferEvent.Listener>.onTransferEvent(event: TransferEvent) {
@@ -330,10 +336,8 @@ class OpenId4vpManager(
         return TransferEvent.Error(Throwable(this))
     }
 
-    private fun ResolvedRequestObject.OpenId4VPAuthorization.asRequest(): Request {
-        return OpenId4VpUtil.parsePresentationDefinition(
-            documentManager, presentationDefinition, openid4VpX509CertificateTrust.getReaderAuth()
-        )
+    private fun ResolvedRequestObject.OpenId4VPAuthorization.asRequest(): RequestedDocumentData {
+        return responseGenerator.parseRequest(OpenId4VpRequest(presentationDefinition))
     }
 
     override fun addTransferEventListener(listener: TransferEvent.Listener): OpenId4vpManager =
