@@ -84,7 +84,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.1.0-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.5.0-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -469,7 +469,8 @@ state of the transfer. The following events are emitted:
 2. `TransferEvent.Connecting`: The devices are connecting. Use this event to display a progress
    indicator.
 3. `TransferEvent.Connected`: The devices are connected.
-4. `TransferEvent.RequestReceived`: A request is received. Get the request from `event.request`.
+4. `TransferEvent.RequestReceived`: A request is received. Get the parsed request from `event.requestedDocumentData`
+   and the initial request as received by the verifier from `event.request`.
 5. `TransferEvent.ResponseSent`: A response is sent.
 6. `TransferEvent.Redirect`: This event prompts to redirect the user to the given Redirect URI. 
    Get the Redirect URI from `event.redirectUri`. This event maybe be returned when OpenId4Vp is 
@@ -497,21 +498,20 @@ val transferEventListener = TransferEvent.Listener { event ->
         }
 
         is TransferEvent.RequestReceived -> {
-            // event when a request is received. Get the request from event.request
-            // use the received request to generate the appropriate response
+            // event when a request is received. Get the parsed request from event.requestedDocumentData.
+            // use the received request and send the appropriate response by providing the disclosed documents.
 
             val disclosedDocuments = DisclosedDocuments(
                 listOf(
                     // add the disclosed documents here
                 )
             )
-            when (val responseResult = transferManager.createResponse(disclosedDocuments)) {
+            when (val responseResult = EudiWallet.sendResponse(disclosedDocuments)) {
                 is ResponseResult.Failure -> {
                     // handle the failure
                 }
-                is ResponseResult.Response -> {
-                    val responseBytes = responseResult.bytes
-                    EudiWallet.sendResponse(responseBytes)
+                is ResponseResult.Success -> {
+                    // response has been send successfully
                 }
                 is ResponseResult.UserAuthRequired -> {
                     // user authentication is required. Get the crypto object from responseResult.cryptoObject
@@ -573,32 +573,14 @@ EudiWallet.addTransferEventListener(transferEventListener)
     ```
 2. BLE transfer using NFC Engagement
 
-   In order to use NFC, you must create a service that extends `NfcEngagementService` and override
-   the `transferManager` property.
-
-   For example:
-
-    ```kotlin
-    package com.example.myapp
-    
-    import eu.europa.ec.eudi.iso18013.transfer.TransferManager
-    import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
-    import eu.europa.ec.eudi.wallet.EudiWallet
-    
-    class NfcEngagementServiceImpl : NfcEngagementService() {
-        override val transferManager: TransferManager
-            get() = EudiWallet.transferManager
-    }
-    ```
-
-   Then add the service to your application's manifest file, like shown below:
+In order to use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's manifest file, like shown below:
 
     ```xml
     
     <application>
         <!-- rest of manifest -->
         <service android:exported="true" android:label="@string/nfc_engagement_service_desc"
-            android:name="com.example.myapp.NfcEngagementServiceImpl"
+            android:name="eu.europa.ec.eudi.wallet.util.DefaultNfcEngagementService"
             android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
@@ -613,38 +595,28 @@ EudiWallet.addTransferEventListener(transferEventListener)
     </application>
     ```
 
-   You can enable or disable the NFC device engagement in your app by calling the `enable()`
-   and `disable()` methods of the `NfcEngagementService` class.
+   You can enable or disable the NFC engagement in your app by calling the `EudiWallet.enable(Activity)`
+   and `EudiWallet.disable(Activity)` methods.
 
-   In the example below, the NFC device engagement is enabled when activity is resumed and disabled
+   In the example below, the NFC engagement is enabled when activity is resumed and disabled
    when the activity is paused.
 
     ```kotlin
     import androidx.appcompat.app.AppCompatActivity
-    import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
     
     class MainActivity : AppCompatActivity() {
     
         override fun onResume() {
             super.onResume()
-            NfcEngagementService.enable(this)
+            EudiWallet.enable(this)
         }
     
         override fun onPause() {
             super.onPause()
-            NfcEngagementService.disable(this)
+            EudiWallet.disable(this)
         }
     }
     ```
-   Optionally, in the `enable()` method you can define your class that
-   implements `NfcEngagementService`, e.g.:
-
-    ```kotlin
-     NfcEngagementService.enable(this, NfcEngagementServiceImpl::class.java)
-    ```
-
-   This way, you can define the `NfcEngagementServiceImpl` service to be preferred while this
-   activity is in the foreground.
 
 3. RestAPI using app link
 
@@ -663,11 +635,11 @@ EudiWallet.addTransferEventListener(transferEventListener)
    and set `launchMode="singleTask"` for this activity.
 
    To initiate the transfer using an app link (reverse engagement), use
-   the `EudiWallet.startEngagementToApp(Intent)` method.
+   the `EudiWallet.startEngagementFromIntent(Intent)` method.
 
    The method receives as a parameter an `Intent` that contains the data for the device engagement.
 
-   The example below demonstrates how to use the `EudiWallet.startEngagementToApp(Intent)` method
+   The example below demonstrates how to use the `EudiWallet.startEngagementFromIntent(Intent)` method
    to initiate the device engagement and transfer.
 
     ```kotlin
@@ -677,12 +649,12 @@ EudiWallet.addTransferEventListener(transferEventListener)
     
         override fun onResume() {
             super.onResume()
-            EudiWallet.startEngagementToApp(intent)
+            EudiWallet.startEngagementFromIntent(intent)
         }
     
         override fun onNewIntent(intent: Intent) {
             super.onNewIntent(intent)
-            EudiWallet.startEngagementToApp(intent)
+            EudiWallet.startEngagementFromIntent(intent)
         }
     }
     ```
@@ -690,11 +662,10 @@ EudiWallet.addTransferEventListener(transferEventListener)
 4. OpenID4VP
 
    To use the OpenID4VP functionality, the configuration that is used to initialize the library
-   must contain the `openId4VpVerifierApiUri`. See
-   the [Initialize the library](#initialize-the-library) section.
+   must contain the `openId4VpConfig`. See the [Initialize the library](#initialize-the-library) section.
 
    Then, declare to your app's manifest file (AndroidManifest.xml) the following Intent Filters for
-   your MainActivity:
+   your MainActivity, for the scheme:
 
    ```xml
    <intent-filter>
@@ -707,9 +678,8 @@ EudiWallet.addTransferEventListener(transferEventListener)
 
    Also set `launchMode="singleTask"` for this activity.
 
-   Then your MainActivity use the `EudiWallet.openId4vpManager` property to get
-   the `OpenId4VpManager` object and use it to initiate the transfer, as shown in the example
-   below:
+   To receive events for the Openid4VP transfer process, you must attach a `TransferEvent.Listener`,
+   as in the following example:
 
    ```kotlin
    import android.content.Intent
@@ -726,32 +696,26 @@ EudiWallet.addTransferEventListener(transferEventListener)
       val transferEventListener = TransferEvent.Listener { event ->
           when (event) {
               is TransferEvent.RequestReceived -> {
-                 val disclosedDocuments = DisclosedDocuments(
-                     listOf<DisclosedDocument>(
-                         // get disclosed documents from user
-                     )
-                 )
-                 val result = EudiWallet.createResponse(disclosedDocuments)
-                 when (result) {
-                     is ResponseResult.Response -> {
-                         EudiWallet.openId4vpManager.sendResponse(result.bytes)
-                         EudiWallet.openId4vpManager.close()
-                     }
-                     is ResponseResult.UserAuthRequired -> {
-                         // perform user authentication 
-                         // and try send data again
-                     }
-   
-                     is ResponseResult.Failure -> {
-                         val cause = result.throwable
-                         // handle failure
-                            
-                         // close connection
-                         EudiWallet.openId4vpManager.close()
-                     }
-                 }
-   
-             }
+                  // event when a request is received. Get the parsed request from event.requestedDocumentData.
+                  // use the received request to send the appropriate response by defining the disclosed documents.
+                  val disclosedDocuments = DisclosedDocuments(
+                      listOf(
+                          // add the disclosed documents here
+                      )
+                  )
+                  when (val responseResult = EudiWallet.sendResponse(disclosedDocuments)) {
+                      is ResponseResult.Failure -> {
+                          // handle the failure
+                      }
+                      is ResponseResult.Success -> {
+                          // response has been send successfully
+                      }
+                      is ResponseResult.UserAuthRequired -> {
+                          // user authentication is required. Get the crypto object from responseResult.cryptoObject
+                          val cryptoObject = responseResult.cryptoObject
+                      }
+                  }
+              }
    
              else -> {
                  // rest of event handling
@@ -762,7 +726,7 @@ EudiWallet.addTransferEventListener(transferEventListener)
     
      override fun onCreate(savedInstanceState: Bundle?) {
          super.onCreate(savedInstanceState)
-         EudiWallet.openId4vpManager.addTransferEventListener(transferEventListener)
+         EudiWallet.addTransferEventListener(transferEventListener)
      }
     
      override fun onResume() {
@@ -778,7 +742,7 @@ EudiWallet.addTransferEventListener(transferEventListener)
    
      private fun handleOpenId4VpIntent(intent: Intent) {
          when (intent.scheme) {
-             "mdoc-openid4vp" -> EudiWallet.openId4vpManager.resolveRequestUri(intent.toUri(0))
+             "mdoc-openid4vp" -> EudiWallet.startEngagementFromIntent(intent)
              else -> {
                  // do nothing
              }
@@ -786,38 +750,29 @@ EudiWallet.addTransferEventListener(transferEventListener)
      }
    }
    ```
-   
-   You can also specify an `executor` to the `OpenId4VpManager` using `setExecutor` method. 
-   Setting the `executor` is optional and defines the executor that will be used to
-   execute the callback. If the `executor` is not defined, the callback will be executed on the
-   main thread.
 
 #### Receiving request and sending response
 
-When a request is received, the `TransferEvent.RequestReceived` event is triggered. The request can
-be retrieved from `event.request`.
+When a request is received, the `TransferEvent.RequestReceived` event is triggered. The parsed request can
+be retrieved from `event.requestedDocumentData`, while the initial request, as received by the verifier,
+can be retrieved from `event.request`.
 
-The request contains a list of `RequestedDocument` objects, which can be used to show the user what
+The parsed request contains a list of `RequestedDocument` objects, which can be used to show the user what
 documents are requested. Also, a selectively disclosure option can be implemented using the
 requested documents, so user can choose which of the documents to share.
 
 Then, a `DisclosedDocuments` object must be created with the list of documents to be disclosed and
-hhe response can be created using the `EudiWallet.createResponse(DisclosedDocuments)` method.
+the response can be sent using the `EudiWallet.sendResponse(DisclosedDocuments)` method.
 
 The method returns a `ResponseResult` object, which can be one of the following:
 
 1. `ResponseResult.Failure`: The response creation failed. The error can be retrieved from
    `responseResult.error`.
-2. `ResponseResult.Response`: The response was created successfully. The response bytes can be
-   retrieved from `responseResult.bytes`.
+2. `ResponseResult.Success`: The response has been sent successfully.
 3. `ResponseResult.UserAuthRequired`: The response creation requires user authentication. The
    `CryptoObject` can be retrieved from `responseResult.cryptoObject`. After success authentication
-   the response can be created again, using the `EudiWallet.createResponse(DisclosedDocuments)`
+   the response can be sent again, using the `EudiWallet.sendResponse(DisclosedDocuments)`
    method.
-
-Finally, when `createResponse(DisclosedDocuments)` returns a `ResponseResult.Response`, the response
-can be sent using the `EudiWallet.sendResponse(ByteArray)` method, by getting the response
-bytes from `responseResult.bytes`.
 
 The following example demonstrates the above steps:
 
@@ -827,21 +782,20 @@ val transferEventListener = TransferEvent.Listener { event ->
     when (event) {
 
         is TransferEvent.RequestReceived -> {
-            // event when a request is received. Get the request from event.request
-            // use the received request to generate the appropriate response
+            // event when a request is received. Get the parsed request from event.requestedDocumentData
+            // send the response
 
             val disclosedDocuments = DisclosedDocuments(
                 listOf(
                     // add the disclosed documents here
                 )
             )
-            when (val responseResult = EudiWallet.createResponse(disclosedDocuments)) {
+            when (val responseResult = EudiWallet.sendResponse(disclosedDocuments)) {
                 is ResponseResult.Failure -> {
                     // handle the failure
                 }
-                is ResponseResult.Response -> {
-                    val responseBytes = responseResult.bytes
-                    EudiWallet.sendResponse(responseBytes)
+                is ResponseResult.Success -> {
+                    // the response has been sent successfully
                 }
                 is ResponseResult.UserAuthRequired -> {
                     // user authentication is required. Get the crypto object from responseResult.cryptoObject

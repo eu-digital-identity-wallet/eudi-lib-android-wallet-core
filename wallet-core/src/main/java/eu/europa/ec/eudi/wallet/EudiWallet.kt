@@ -19,6 +19,8 @@ package eu.europa.ec.eudi.wallet
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.DocumentsResolver
@@ -26,7 +28,11 @@ import eu.europa.ec.eudi.iso18013.transfer.RequestDocument
 import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
+import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.response.DeviceRequest
+import eu.europa.ec.eudi.iso18013.transfer.response.DeviceResponse
+import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
 import eu.europa.ec.eudi.iso18013.transfer.retrieval.BleRetrievalMethod
 import eu.europa.ec.eudi.wallet.document.AddDocumentResult
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
@@ -40,9 +46,12 @@ import eu.europa.ec.eudi.wallet.document.issue.IssueDocumentResult
 import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.document.sample.LoadSampleResult
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponseGeneratorImpl
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
+import eu.europa.ec.eudi.wallet.util.DefaultNfcEngagementService
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
 
@@ -77,6 +86,7 @@ object EudiWallet {
     @Volatile
     private lateinit var context: Context
     private lateinit var _config: EudiWalletConfig
+    private var transferMode: TransferMode? = null
 
     /**
      * Initialize the sdk with the given [config]
@@ -125,15 +135,12 @@ object EudiWallet {
      * @see [TransferManager]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    val transferManager: TransferManager by lazy {
+    internal val transferManager: TransferManager by lazy {
         requireInit {
             TransferManager.Builder(context)
                 .apply {
-                    _config.trustedReaderCertificates?.let {
-                        readerTrustStore = ReaderTrustStore.getDefault(it)
-                    }
                     retrievalMethods = deviceRetrievalMethods
-                    documentsResolver = transferManagerDocumentsResolver
+                    responseGenerator = deviceResponseGenerator
                 }
                 .build()
         }
@@ -145,23 +152,21 @@ object EudiWallet {
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      * or if the [EudiWalletConfig.openId4VPConfig] is not set
      */
-    @get:Throws(IllegalStateException::class)
-    val openId4vpManager: OpenId4vpManager by lazy {
+    private val openId4vpManager: OpenId4vpManager? by lazy {
         requireInit {
             config.openId4VPConfig?.let { openId4VpConfig ->
                 OpenId4vpManager(
                     context,
                     openId4VpConfig,
-                    documentManager
+                    openId4VpCBORResponseGenerator
                 ).apply {
                     _config.trustedReaderCertificates?.let {
                         setReaderTrustStore(ReaderTrustStore.getDefault(it))
                     }
                 }
-            } ?: throw IllegalStateException("OpenId4VpConfig is not set in configuration")
+            }
         }
     }
-
 
     /**
      * Returns the list of documents
@@ -282,8 +287,8 @@ object EudiWallet {
      * @return [EudiWallet]
      */
     fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWallet {
-        transferManager.setReaderTrustStore(readerTrustStore)
-        openId4vpManager.setReaderTrustStore(readerTrustStore)
+        deviceResponseGenerator.setReaderTrustStore(readerTrustStore)
+        openId4VpCBORResponseGenerator.setReaderTrustStore(readerTrustStore)
         return this
     }
 
@@ -295,8 +300,8 @@ object EudiWallet {
      * @return [EudiWallet]
      */
     fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) = apply {
-        transferManager.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
-        openId4vpManager.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+        deviceResponseGenerator.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+        openId4VpCBORResponseGenerator.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
     }
 
     /**
@@ -320,6 +325,7 @@ object EudiWallet {
      */
     fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.addTransferEventListener(listener)
+        openId4vpManager?.addTransferEventListener(listener)
     }
 
     /**
@@ -333,6 +339,7 @@ object EudiWallet {
      */
     fun removeTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.removeTransferEventListener(listener)
+        openId4vpManager?.removeTransferEventListener(listener)
     }
 
     /**
@@ -344,6 +351,7 @@ object EudiWallet {
      */
     fun removeAllTransferEventListeners() = apply {
         transferManager.removeAllTransferEventListeners()
+        openId4vpManager?.removeAllTransferEventListeners()
     }
 
     /**
@@ -351,32 +359,126 @@ object EudiWallet {
      * @see [TransferManager.startQrEngagement]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    fun startQrEngagement() = transferManager.startQrEngagement()
+    fun startQrEngagement() {
+        transferMode = TransferMode.ISO_18013_5
+        transferManager.startQrEngagement()
+    }
 
     /**
-     * Starts the transfer process by engaging with the reader via appLink
-     *
-     * @see [TransferManager.startEngagementToApp]
-     * @param intent
-     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * Enables the NFC engagement functionality
+     * You must also add [DefaultNfcEngagementService] to your application's manifest file
+     * @param activity
      */
-    fun startEngagementToApp(intent: Intent) = transferManager.startEngagementToApp(intent)
+    fun enableNFCEngagement(activity: ComponentActivity) {
+        transferMode = TransferMode.ISO_18013_5
+        NfcEngagementService.enable(activity, DefaultNfcEngagementService::class.java)
+    }
 
     /**
-     * Creates a response for the given [disclosedDocuments] that will be sent to the reader
-     *
-     * @param disclosedDocuments
-     * @return
+     * Disables the NFC engagement functionality
+     * @param activity
      */
-    fun createResponse(disclosedDocuments: DisclosedDocuments): ResponseResult =
-        transferManager.createResponse(disclosedDocuments)
+    fun disableNFCEngagement(activity: ComponentActivity) {
+        NfcEngagementService.disable(activity)
+    }
 
     /**
-     * Sends the given [responseBytes] to the reader
-     *
-     * @param responseBytes
+     * Start engagement from an Intent.
+     * This will perform engagement for REST API or OpenId4Vp depending on the scheme.
+     * @param intent Intent
      */
-    fun sendResponse(responseBytes: ByteArray) = transferManager.sendResponse(responseBytes)
+    fun startEngagementFromIntent(intent: Intent) {
+        requireInit {
+            when (intent.scheme) {
+                "mdoc" -> {
+                    transferMode = TransferMode.REST_API
+                    transferManager.startEngagementToApp(intent)
+                }
+
+                _config.openId4VPConfig?.scheme -> { // openid4vp scheme
+                    transferMode = TransferMode.OPENID4VP
+                    openId4vpManager?.resolveRequestUri(intent.toUri(0))
+                }
+
+                else -> throw IllegalStateException("Not supported scheme")
+            }
+        }
+    }
+
+    /**
+     * Start engagement for REST API
+     * @param intent Intent
+     */
+    fun startEngagementToApp(intent: Intent) {
+        when (intent.scheme) {
+            "mdoc" -> {
+                transferMode = TransferMode.REST_API
+                transferManager.startEngagementToApp(intent)
+            }
+            else -> throw IllegalStateException("Not supported scheme for REST API")
+        }
+    }
+
+    /**
+     * Start engagement for OpenId4Vp
+     * @param openid4VpURI
+     */
+    fun resolveRequestUri(openid4VpURI: String) {
+        requireInit {
+            when (Uri.parse(openid4VpURI).scheme) {
+                _config.openId4VPConfig?.scheme -> { // openid4vp scheme
+                    transferMode = TransferMode.OPENID4VP
+                    openId4vpManager?.resolveRequestUri(openid4VpURI)
+                }
+
+                else -> throw IllegalStateException("Not supported scheme for OpenId4Vp")
+            }
+        }
+    }
+
+    /**
+     * Send a response by giving [DisclosedDocuments], i.e. the list of documents to be disclosed.
+     * The method returns a `ResponseResult` object, which can be one of the following:
+     *
+     * 1. `ResponseResult.Failure`: The response creation failed. The error can be retrieved from
+     * `responseResult.error`.
+     * 2. `ResponseResult.Success`: The response was created successfully. The response can be
+     * retrieved from `responseResult.response`.
+     * 3. `ResponseResult.UserAuthRequired`: The response creation requires user authentication.
+     *
+     * @param disclosedDocuments the list of documents to be disclosed in the response.
+     * @return [ResponseResult] the result of the response
+     */
+    fun sendResponse(disclosedDocuments: DisclosedDocuments): ResponseResult {
+        // create response
+        val responseResult = when (transferMode) {
+            TransferMode.OPENID4VP ->
+                openId4vpManager?.responseGenerator?.createResponse(disclosedDocuments) ?:
+                    ResponseResult.Failure(Throwable("Openid4vpManager has not been initialized properly"))
+
+            TransferMode.ISO_18013_5, TransferMode.REST_API ->
+                transferManager.responseGenerator.createResponse(disclosedDocuments)
+
+            else -> ResponseResult.Failure(Throwable("Not supported transfer mode"))
+        }
+
+        // send response if success
+        when (responseResult) {
+            is ResponseResult.Success -> {
+                when (transferMode) {
+                    TransferMode.OPENID4VP ->
+                        openId4vpManager?.sendResponse((responseResult.response as OpenId4VpCBORResponse).deviceResponseBytes)
+
+                    TransferMode.ISO_18013_5, TransferMode.REST_API ->
+                        transferManager.sendResponse((responseResult.response as DeviceResponse).deviceResponseBytes)
+
+                    else -> ResponseResult.Failure(Throwable("Not supported transfer mode"))
+                }
+            }
+            else -> {}
+        }
+        return responseResult
+    }
 
     /**
      * Stops the transfer process
@@ -387,10 +489,14 @@ object EudiWallet {
     fun stopPresentation(
         sendSessionTerminationMessage: Boolean = true,
         useTransportSpecificSessionTermination: Boolean = false,
-    ) = transferManager.stopPresentation(
-        sendSessionTerminationMessage,
-        useTransportSpecificSessionTermination
-    )
+    ) {
+        transferManager.stopPresentation(
+            sendSessionTerminationMessage,
+            useTransportSpecificSessionTermination
+        )
+        openId4vpManager?.close()
+        transferMode = null
+    }
 
     private fun <T> requireInit(block: () -> T): T {
         if (!::context.isInitialized) {
@@ -423,4 +529,33 @@ object EudiWallet {
             }
         }
 
+    private val deviceResponseGenerator: ResponseGenerator<DeviceRequest> by lazy {
+        requireInit {
+            ResponseGenerator.Builder(context)
+                .apply {
+                    _config.trustedReaderCertificates?.let {
+                        readerTrustStore = ReaderTrustStore.getDefault(it)
+                    }
+                    documentsResolver = transferManagerDocumentsResolver
+                }.build()
+        }
+    }
+
+    private val openId4VpCBORResponseGenerator: OpenId4VpCBORResponseGeneratorImpl by lazy {
+        requireInit {
+            OpenId4VpCBORResponseGeneratorImpl.Builder(context)
+                .apply {
+                    _config.trustedReaderCertificates?.let {
+                        readerTrustStore = ReaderTrustStore.getDefault(it)
+                    }
+                    documentsResolver = transferManagerDocumentsResolver
+                }.build()
+        }
+    }
+
+    private enum class TransferMode {
+        OPENID4VP,
+        REST_API,
+        ISO_18013_5
+    }
 }

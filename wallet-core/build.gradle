@@ -93,6 +93,14 @@ dependencies {
     // Siop-Openid4VP library
     implementation libs.eudi.lib.jvm.siop.openid4vp.kt
 
+    // Google library
+    implementation (libs.identity.credential) {
+        exclude group: "org.bouncycastle"
+    }
+    implementation (libs.android.identity.credential) {
+        exclude group: "org.bouncycastle"
+    }
+
     // CBOR
     implementation libs.cbor
 
