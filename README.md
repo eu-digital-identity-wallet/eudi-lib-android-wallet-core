@@ -595,8 +595,8 @@ In order to use NFC for engagement, you must add the service `DefaultNfcEngageme
     </application>
     ```
 
-   You can enable or disable the NFC engagement in your app by calling the `EudiWallet.enable(Activity)`
-   and `EudiWallet.disable(Activity)` methods.
+   You can enable or disable the NFC engagement in your app by calling the `EudiWallet.enableNFCEngagement(Activity)`
+   and `EudiWallet.disableNFCEngagement(Activity)` methods.
 
    In the example below, the NFC engagement is enabled when activity is resumed and disabled
    when the activity is paused.
@@ -608,12 +608,12 @@ In order to use NFC for engagement, you must add the service `DefaultNfcEngageme
     
         override fun onResume() {
             super.onResume()
-            EudiWallet.enable(this)
+            EudiWallet.enableNFCEngagement(this)
         }
     
         override fun onPause() {
             super.onPause()
-            EudiWallet.disable(this)
+            EudiWallet.disableNFCEngagement(this)
         }
     }
     ```
