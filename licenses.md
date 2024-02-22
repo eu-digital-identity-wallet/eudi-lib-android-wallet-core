@@ -1,7 +1,7 @@
 
 # EUDI Wallet Core library for Android
 ## Dependency License Report
-_2024-02-08 18:41:45 EET_
+_2024-02-22 12:05:21 EET_
 ## Apache License, Version 2.0
 
 **1** **Group:** `androidx.appcompat` **Name:** `appcompat` **Version:** `1.6.1` 
