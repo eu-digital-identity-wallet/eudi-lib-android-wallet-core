@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.IssuedCredential
@@ -82,7 +83,7 @@ class OpenId4VciManager(
             clientId = config.clientId,
             authFlowRedirectionURI = context.openId4VciAuthorizationRedirectUri,
             keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048),
-            preferEncryptedResponsesWhenSupported = true
+            credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED
         )
 
     private val proofAlgorithm
@@ -133,7 +134,7 @@ class OpenId4VciManager(
                     credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
                 )
 
-                val issuer = Issuer.make(openId4VCIConfig, credentialOffer)
+                val issuer = Issuer.make(openId4VCIConfig, credentialOffer).getOrThrow()
 
                 val prepareAuthorizationCodeRequest: AuthorizationRequestPrepared =
                     issuer.prepareAuthorizationRequest().getOrThrow()
