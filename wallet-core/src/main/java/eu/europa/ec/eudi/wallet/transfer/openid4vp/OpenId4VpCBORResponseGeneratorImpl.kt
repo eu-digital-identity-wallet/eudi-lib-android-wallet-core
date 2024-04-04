@@ -100,32 +100,37 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
      * @return [RequestedDocumentData]
      */
     override fun parseRequest(request: OpenId4VpRequest): RequestedDocumentData {
-        val inputDescriptor = request.presentationDefinition.inputDescriptors.first()
-        val fieldConstraints = inputDescriptor.constraints.fields()
+        return createRequestedDocumentData(
+            request.presentationDefinition.inputDescriptors
+                .mapNotNull { inputDescriptor ->
+                    inputDescriptor.format?.jsonObject()
+                        ?.takeIf { it.containsKey("mso_mdoc") } // ignore formats other than "mso_mdoc"
+                        ?.run {
+                            inputDescriptor.id.value.trim() to inputDescriptor.constraints.fields()
+                                .mapNotNull { fieldConstraint ->
+                                    // path shall contain a requested data element as: $['<namespace>']['<data element identifier>']
+                                    val path = fieldConstraint.paths.first().value
+                                    Regex("\\\$\\['(.*?)']\\['(.*?)']").find(path)
+                                        ?.let { matchResult ->
+                                            val (namespace, elementIdentifier) = matchResult.destructured
+                                            if (namespace.isNotBlank() && elementIdentifier.isNotBlank()) {
+                                                namespace to elementIdentifier
+                                            } else {
+                                                null
+                                            }
+                                        }
 
-        // find doc type
-        val docType = fieldConstraints.find { fieldConstraint ->
-            fieldConstraint.paths.first().value == "$.mdoc.doctype"
-        }?.filter?.get("const").toString().replace("\"", "")
-
-        // find namespace
-        val namespace = fieldConstraints.find { fieldConstraint ->
-            fieldConstraint.paths.first().value == "$.mdoc.namespace"
-        }?.filter?.get("const").toString().replace("\"", "")
-
-        // find requested fields
-        val requestedFields =
-            fieldConstraints.filter { fieldConstraint ->
-                fieldConstraint.intentToRetain != null
-            }.map { fieldConstraint ->
-                fieldConstraint.paths.first().value.replace(
-                    "$.mdoc.",
-                    ""
-                ).replace("\"", "")
-            }
-
-        return parseRequest(
-            mapOf(docType to mapOf(namespace to requestedFields)),
+                                }.groupBy({ it.first }, { it.second })
+                                .mapValues { (_, values) -> values.toList() }
+                                .toMap()
+                        } ?: run {
+                        Log.w(
+                            TAG,
+                            "Input descriptor with id ${inputDescriptor.id} and format ${inputDescriptor.format} is skipped. Format is not mso_mdoc."
+                        )
+                        null
+                    }
+                }.toMap(),
             openid4VpX509CertificateTrust.getReaderAuth()
         )
     }
@@ -201,7 +206,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
         return AddDocumentToResponse.Success
     }
 
-    private fun parseRequest(
+    private fun createRequestedDocumentData(
         requestedFields: Map<String, Map<String, List<String>>>,
         readerAuth: ReaderAuth?
     ): RequestedDocumentData {
