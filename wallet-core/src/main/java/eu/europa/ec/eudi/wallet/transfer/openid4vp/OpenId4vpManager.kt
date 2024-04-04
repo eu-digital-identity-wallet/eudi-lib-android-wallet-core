@@ -34,7 +34,6 @@ import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
 import eu.europa.ec.eudi.openid4vp.asException
-import eu.europa.ec.eudi.prex.ClaimFormat
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
@@ -50,6 +49,7 @@ import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.Base64
+import java.util.UUID
 import java.util.concurrent.Executor
 
 /**
@@ -261,25 +261,26 @@ class OpenId4vpManager(
             resolvedRequestObject?.let { resolvedRequestObject ->
                 when (resolvedRequestObject) {
                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
-                        val presentationDefinition =
-                            (resolvedRequestObject).presentationDefinition
-                        val inputDescriptor =
-                            presentationDefinition.inputDescriptors.first()
+
                         val vpToken =
                             Base64.getUrlEncoder().withoutPadding().encodeToString(deviceResponse)
                         Log.d(TAG, "VpToken: $vpToken")
+
+                        val presentationDefinition =
+                            (resolvedRequestObject).presentationDefinition
                         val consensus = Consensus.PositiveConsensus.VPTokenConsensus(
                             vpToken,
                             presentationSubmission = PresentationSubmission(
-                                id = Id("pid-res"), // TODO id value ?
+                                id = Id(UUID.randomUUID().toString()),
                                 definitionId = presentationDefinition.id,
-                                listOf(
-                                    DescriptorMap(
-                                        id = inputDescriptor.id,
-                                        format = ClaimFormat.MsoMdoc,
-                                        path = JsonPath.jsonPath("$")!! // TODO path ?
-                                    )
-                                )
+                                    presentationDefinition.inputDescriptors.map {
+                                        inputDescriptor ->
+                                        DescriptorMap(
+                                            inputDescriptor.id,
+                                            "mso_mdoc",
+                                            path = JsonPath.jsonPath("$")!!
+                                        )
+                                    }
                             )
                         )
                         runCatching { siopOpenId4Vp.dispatch(resolvedRequestObject, consensus) }.onSuccess { dispatchOutcome ->
