@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -33,9 +33,11 @@ class OpenId4VciAuthorizeActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         try {
-            callback?.onAuthorizationCode(intent.data?.getQueryParameter("code"))
+            val authorizationCode = intent.data?.getQueryParameter("code")
+            val serverState = intent.data?.getQueryParameter("state")
+            callback?.onAuthorizationCode(authorizationCode, serverState)
         } catch (e: Exception) {
-            callback?.onAuthorizationCode(null)
+            callback?.onAuthorizationCode(null, null)
         } finally {
             // clear callback
             callback = null
