@@ -65,7 +65,6 @@ class OpenId4VciManager(
 
     private val proofAlgorithm
         get() = JWSAlgorithm.ES256.name
-
     /**
      * Issues a document of the given type.
      *
@@ -116,12 +115,12 @@ class OpenId4VciManager(
                 val prepareAuthorizationCodeRequest: AuthorizationRequestPrepared =
                     issuer.prepareAuthorizationRequest().getOrThrow()
 
-                val authorizationCode =
+                val (authorizationCode, serverState) =
                     prepareAuthorizationCodeRequest.openBrowserForAuthorizationCode().getOrThrow()
 
                 val authorizedRequest = with(issuer) {
                     prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
-                        AuthorizationCode(authorizationCode)
+                        AuthorizationCode(authorizationCode), serverState
                     )
                 }.getOrThrow()
 
@@ -146,16 +145,20 @@ class OpenId4VciManager(
         }
     }
 
-    private suspend fun AuthorizationRequestPrepared.openBrowserForAuthorizationCode(): Result<String> {
+    private suspend fun AuthorizationRequestPrepared.openBrowserForAuthorizationCode(): Result<Pair<String, String>> {
         try {
             val authorizationCodeUri =
                 Uri.parse(authorizationCodeURL.value.toString())
 
             return suspendCoroutine { continuation ->
                 OpenId4VciAuthorizeActivity.callback =
-                    AuthorizationCallback { authorizationCode ->
+                    AuthorizationCallback { authorizationCode, severState ->
                         authorizationCode?.let { code ->
-                            continuation.resume(Result.success(code))
+                            severState?.let { state ->
+                                continuation.resume(Result.success(code to state))
+                            } ?: run {
+                                continuation.resume(Result.failure(IllegalStateException("No server state received or server state is null")))
+                            }
                         } ?: run {
                             continuation.resume(Result.failure(IllegalStateException("No authorization code received or authorization code is null")))
                         }
@@ -349,6 +352,6 @@ class OpenId4VciManager(
 
 
     internal fun interface AuthorizationCallback {
-        fun onAuthorizationCode(code: String?)
+        fun onAuthorizationCode(code: String?, serverState: String?)
     }
 }
