@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    types: [ opened, reopened ]
+    types: [ opened, reopened, synchronize ]
   push:
 
 jobs:
@@ -10,6 +10,8 @@ jobs:
     name: Build
     # Run on external PRs, but not on internal PRs since those will be run by push to branch
     runs-on: ubuntu-latest
+    outputs:
+      code-version: ${{ steps.extract.outputs.CODE_VERSION }}
     steps:
       - name: Checkout project sources
         uses: actions/checkout@v4
@@ -20,10 +22,13 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
       - name: Build with Gradle Wrapper
-        uses: gradle/gradle-build-action@v2.9.0
+        uses: gradle/gradle-build-action@v3.1.0
         with:
           gradle-version: wrapper
           arguments: build
+      - id: extract
+        name: Extract code version from gradle.properties
+        run: echo "CODE_VERSION=$(awk -F= '$1~/VERSION_NAME/{print $2}' gradle.properties)" >> $GITHUB_OUTPUT
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -41,14 +46,14 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
       - name: Build with Gradle Wrapper
-        uses: gradle/gradle-build-action@v2.9.0
+        uses: gradle/gradle-build-action@v3.1.0
         with:
           arguments: test --full-stacktrace
 
   android-tests:
     runs-on: macos-latest
     timeout-minutes: 35
-    needs: [ unit-tests ]
+    needs: [ build-gradle, unit-tests ]
     strategy:
       matrix:
         include:
@@ -82,7 +87,7 @@ jobs:
     name: Publish SNAPSHOT to sonatype.org
     needs: [ android-tests ]
     # Runs only in main
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release')) &&  github.repository_owner == 'eu-digital-identity-wallet'
+    if: github.event_name != 'pull_request' && endsWith(needs.build-gradle.outputs.code-version, '-SNAPSHOT') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release')) &&  github.repository_owner == 'eu-digital-identity-wallet'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -97,7 +102,7 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
       - name: Publish with Gradle Wrapper
-        uses: gradle/gradle-build-action@v2.4.2
+        uses: gradle/gradle-build-action@v3.1.0
         with:
           arguments: publishAllPublicationsToMavenCentral --full-stacktrace
         env:

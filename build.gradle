@@ -6,17 +6,3 @@ plugins {
     alias libs.plugins.dependency.license.report apply false
     alias libs.plugins.dependencycheck apply false
 }
-
-apply plugin: 'org.owasp.dependencycheck'
-
-dependencyCheck {
-
-    def nvdApiKey = System.getenv("NVD_API_KEY")
-    formats = ['XML', 'HTML']
-
-    if (nvdApiKey != null) {
-        nvd {
-            apiKey = "${nvdApiKey}"
-        }
-    }
-}

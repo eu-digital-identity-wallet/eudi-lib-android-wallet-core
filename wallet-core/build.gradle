@@ -135,6 +135,18 @@ dependencies {
     androidTestImplementation libs.espresso.intents
 }
 
+dependencyCheck {
+
+    def nvdApiKey = System.getenv("NVD_API_KEY")
+    formats = ['XML', 'HTML']
+
+    if (nvdApiKey != null) {
+        nvd {
+            apiKey = "${nvdApiKey}"
+        }
+    }
+}
+
 tasks.register("clearDocsDir", Delete.class) {
     delete(file("$rootDir/docs"))
 }
