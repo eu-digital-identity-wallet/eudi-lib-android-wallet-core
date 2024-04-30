@@ -23,24 +23,7 @@ import android.net.Uri
 import android.util.Log
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
-import eu.europa.ec.eudi.openid4vci.AuthorizationCode
-import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
-import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
-import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
-import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
-import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
-import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
-import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
-import eu.europa.ec.eudi.openid4vci.CredentialOffer
-import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
-import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
-import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
-import eu.europa.ec.eudi.openid4vci.IssuedCredential
-import eu.europa.ec.eudi.openid4vci.Issuer
-import eu.europa.ec.eudi.openid4vci.KeyGenerationConfig
-import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
-import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
-import eu.europa.ec.eudi.openid4vci.SubmittedRequest
+import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.AddDocumentResult
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -51,14 +34,8 @@ import eu.europa.ec.eudi.wallet.internal.coseBytes
 import eu.europa.ec.eudi.wallet.internal.coseDebug
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.internal.openId4VciAuthorizationRedirectUri
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import java.util.Base64
+import kotlinx.coroutines.*
+import java.util.*
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -332,15 +309,30 @@ class OpenId4VciManager(
                 }
 
             if (credentialConfigurationsSupported.isEmpty()) {
-                return Result.failure(IllegalStateException("No supported credential for $docType"))
+                Log.e(TAG, "No supported credential format for docType $docType")
+                return Result.failure(IllegalStateException("No supported credential format for docType $docType.\nSupported formats:[${FORMAT_MSO_MDOC}]"))
             }
 
             val (credentialConfigurationId, credentialConfiguration) = credentialConfigurationsSupported.entries.first()
-
-            return if (credentialConfiguration.credentialSigningAlgorithmsSupported.any { it in ProofSigner.SUPPORTED_ALGORITHMS }) {
-                Result.failure(IllegalStateException("No supported signing algorithm for $docType"))
-            } else {
+            Log.d(TAG, "Proceeding issuing for ${credentialConfigurationId.value}")
+            return try {
+                credentialConfiguration.assertProofType()
                 Result.success(Pair(credentialConfigurationId, credentialConfiguration))
+            } catch (e: Throwable) {
+                Result.failure(e)
+            }
+        }
+
+        private fun CredentialConfiguration.assertProofType() {
+            if (proofTypesSupported.isEmpty()) return
+            if (!proofTypesSupported.any { (type, algorithms) ->
+                    type == ProofType.JWT && algorithms.any { it in ProofSigner.SUPPORTED_ALGORITHMS }
+                }) {
+                val msg = "Did not find any supported proof types.\nSupported proof types: jwt for algorithms [${
+                    ProofSigner.SUPPORTED_ALGORITHMS.joinToString(",") { it.name }
+                }]"
+                Log.e(TAG, msg)
+                throw IllegalStateException(msg)
             }
         }
 

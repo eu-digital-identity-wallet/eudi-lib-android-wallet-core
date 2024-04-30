@@ -100,7 +100,7 @@ internal class ProofSigner(
             JWSAlgorithm.ES256 to Algorithm.SHA256withECDSA,
         )
 
-        internal val SUPPORTED_ALGORITHMS = algorithmMap.keys.map { it.name }.toSet()
+        internal val SUPPORTED_ALGORITHMS = algorithmMap.keys.toSet()
     }
 
     internal sealed interface UserAuthRequired {
