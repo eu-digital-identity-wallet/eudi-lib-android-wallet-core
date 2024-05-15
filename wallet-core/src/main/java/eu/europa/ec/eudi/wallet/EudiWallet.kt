@@ -22,34 +22,24 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.annotation.RawRes
-import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.DocumentsResolver
-import eu.europa.ec.eudi.iso18013.transfer.RequestDocument
-import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
-import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.iso18013.transfer.TransferManager
+import eu.europa.ec.eudi.iso18013.transfer.*
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.response.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
 import eu.europa.ec.eudi.iso18013.transfer.retrieval.BleRetrievalMethod
-import eu.europa.ec.eudi.wallet.document.AddDocumentResult
-import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
-import eu.europa.ec.eudi.wallet.document.DeleteDocumentResult
-import eu.europa.ec.eudi.wallet.document.Document
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.DocumentManagerImpl
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
-import eu.europa.ec.eudi.wallet.document.issue.IssueDocumentResult
-import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.document.*
 import eu.europa.ec.eudi.wallet.document.sample.LoadSampleResult
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponseGeneratorImpl
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueDocumentResult
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponseGeneratorImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
 import eu.europa.ec.eudi.wallet.util.DefaultNfcEngagementService
 import java.security.cert.X509Certificate
@@ -224,50 +214,105 @@ object EudiWallet {
     fun addDocument(request: IssuanceRequest, data: ByteArray): AddDocumentResult =
         documentManager.addDocument(request, data)
 
+    private var openId4VciManager: OpenId4VciManager? = null
+
     /**
-     * Issue a document with the given [docType] using OpenId4Vci protocol
-     *
-     * Example:
-     * ```
-     * EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1", mainExecutor) { result ->
-     *    when (result) {
-     *      is IssueDocumentResult.Success -> {
-     *        // document issued successfully
-     *      }
-     *      is IssueDocumentResult.Failure -> {
-     *        // document issued failed
-     *      }
-     *      is IssueDocumentResult.UserAuthRequired -> {
-     *        // user authentication is required
-     *      }
-     *    }
-     *  }
-     * ```
-     *
-     * @param docType the docType of the document
+     * Issue a document using the OpenId4VCI protocol
+     * @param docType the document type to issue
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
-     * @param callback the callback to be called when the document is issued
-     * @see [OpenId4VciManager.issueDocument]
+     * @param onResult the callback to be called when the document is issued
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
-     * or if the [EudiWalletConfig.openId4VciConfig] is not set
+     * @throws IllegalStateException if [EudiWalletConfig.openId4VciConfig] is not set
+     * @see [OpenId4VciManager.OnIssueDocument] on how to handle the result
+     * @see [OpenId4VciManager.OnIssueDocument.UserAuthRequired] on how to handle user authentication
      */
-    @JvmOverloads
     fun issueDocument(
         docType: String,
         executor: Executor? = null,
-        callback: OpenId4VciManager.OnIssueCallback
+        onResult: OpenId4VciManager.OnIssueDocument
     ) {
         requireInit {
             config.openId4VciConfig?.let { config ->
-                OpenId4VciManager(context, config, documentManager)
-                    .issueDocument(docType, executor, callback)
+                openId4VciManager = OpenId4VciManager(context) {
+                    documentManager(this@EudiWallet.documentManager)
+                    config(config)
+                }.also { it.issueDocumentByDocType(docType, null, executor, onResult) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
-                    callback.onResult(IssueDocumentResult.Failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
+                    onResult(IssueDocumentResult.Failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
                 }
             }
         }
     }
+
+    /**
+     * Issue a document using an offer and the OpenId4VCI protocol
+     * @param offer the offer to issue
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onResult the callback to be called when the document is issued
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWalletConfig.openId4VciConfig] is not set
+     * @see [OpenId4VciManager.OnIssueDocument] on how to handle the result
+     * @see [OpenId4VciManager.OnIssueDocument.UserAuthRequired] on how to handle user authentication
+     */
+    fun issueDocument(
+        offer: Offer,
+        executor: Executor? = null,
+        onResult: OpenId4VciManager.OnIssueDocument
+    ) {
+        requireInit {
+            config.openId4VciConfig?.let { config ->
+                openId4VciManager = OpenId4VciManager(context) {
+                    documentManager(this@EudiWallet.documentManager)
+                    config(config)
+                }.also { it.issueDocumentByOffer(offer, null, executor, onResult) }
+            } ?: run {
+                (executor ?: context.mainExecutor()).execute {
+                    onResult(IssueDocumentResult.Failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolves a document offer using OpenId4VCI protocol
+     * @param offerUri the offer uri
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onResult the callback to be called when the offer is resolved
+     *
+     * @see [OpenId4VciManager.OnResolveDocumentOffer] on how to handle the result
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @throws IllegalStateException if [EudiWalletConfig.openId4VciConfig] is not set
+     */
+    fun resolveDocumentOffer(
+        offerUri: String,
+        executor: Executor? = null,
+        onResult: OpenId4VciManager.OnResolveDocumentOffer
+    ) {
+        requireInit {
+            config.openId4VciConfig?.let { config ->
+                openId4VciManager = OpenId4VciManager(context) {
+                    documentManager(this@EudiWallet.documentManager)
+                    config(config)
+                }.also { it.resolveDocumentOffer(offerUri, executor, onResult) }
+            } ?: run {
+                (executor ?: context.mainExecutor()).execute {
+                    onResult(OfferResult.Failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
+                }
+            }
+        }
+    }
+
+    /**
+     * Resumes the OpenId4VCI flow with the given [intent]
+     * @param intent the intent that contains the authorization code
+     * @throws [IllegalStateException] if no authorization request to resume
+     */
+    fun resumeOpenId4VciWithAuthorization(intent: Intent) {
+        openId4VciManager?.resumeWithAuthorization(intent)
+            ?: throw IllegalStateException("No OpenId4VciManager to resume")
+    }
+
 
     /**
      * Loads sample data into the wallet's document manager
@@ -415,6 +460,7 @@ object EudiWallet {
                 transferMode = TransferMode.REST_API
                 transferManager.startEngagementToApp(intent)
             }
+
             else -> throw IllegalStateException("Not supported scheme for REST API")
         }
     }
@@ -453,8 +499,9 @@ object EudiWallet {
         // create response
         val responseResult = when (transferMode) {
             TransferMode.OPENID4VP ->
-                openId4vpManager?.responseGenerator?.createResponse(disclosedDocuments) ?:
-                    ResponseResult.Failure(Throwable("Openid4vpManager has not been initialized properly"))
+                openId4vpManager?.responseGenerator?.createResponse(disclosedDocuments) ?: ResponseResult.Failure(
+                    Throwable("Openid4vpManager has not been initialized properly")
+                )
 
             TransferMode.ISO_18013_5, TransferMode.REST_API ->
                 transferManager.responseGenerator.createResponse(disclosedDocuments)
@@ -475,6 +522,7 @@ object EudiWallet {
                     else -> ResponseResult.Failure(Throwable("Not supported transfer mode"))
                 }
             }
+
             else -> {}
         }
         return responseResult
