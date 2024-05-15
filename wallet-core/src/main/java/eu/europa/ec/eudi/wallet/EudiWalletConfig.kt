@@ -23,11 +23,11 @@ import androidx.annotation.RawRes
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Builder
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.BLE_CLIENT_CENTRAL_MODE
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.BLE_SERVER_PERIPHERAL_MODE
-import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciConfig
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpConfig
 import java.io.File
 import java.security.cert.X509Certificate
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as OpenId4VciConfig
 
 /**
  * Eudi wallet config.

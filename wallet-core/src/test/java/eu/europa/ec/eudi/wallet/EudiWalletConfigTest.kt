@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -67,8 +67,8 @@ class EudiWalletConfigTest {
                 withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
             }
             openId4VciConfig {
-                withIssuerUrl("https://example.com")
-                withClientId("client-id")
+                issuerUrl("https://example.com")
+                clientId("client-id")
             }
         }
         assertEquals(storageDir, config.documentsStorageDir)
@@ -77,8 +77,14 @@ class EudiWalletConfigTest {
         assertEquals(2, config.trustedReaderCertificates?.size)
         assertEquals(readerCertificate1, config.trustedReaderCertificates?.get(0))
         assertEquals(readerCertificate2, config.trustedReaderCertificates?.get(1))
-        assertEquals("https://example.com", (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].verifierApi)
-        assertEquals("Verifier", (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].clientId)
+        assertEquals(
+            "https://example.com",
+            (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].verifierApi
+        )
+        assertEquals(
+            "Verifier",
+            (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].clientId
+        )
         assertEquals(ClientIdScheme.X509SanDns, config.openId4VPConfig?.clientIdSchemes?.get(1))
         assertEquals(EncryptionAlgorithm.ECDH_ES, config.openId4VPConfig?.encryptionAlgorithms?.get(0))
         assertEquals(EncryptionMethod.A128CBC_HS256, config.openId4VPConfig?.encryptionMethods?.get(0))

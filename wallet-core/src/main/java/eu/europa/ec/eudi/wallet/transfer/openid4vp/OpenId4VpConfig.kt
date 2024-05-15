@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
-import eu.europa.ec.eudi.wallet.document.issue.openid4vci.OpenId4VciConfig
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpConfig.Builder
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as OpenId4VciConfig
 
 /**
  * Configuration for the OpenId4Vp transfer.
