@@ -3,16 +3,17 @@
 # OpenId4VpRequest
 
 [androidJvm]\
-class [OpenId4VpRequest](index.md)(val presentationDefinition: PresentationDefinition) : Request
+class [OpenId4VpRequest](index.md)(val presentationDefinition: PresentationDefinition, val sessionTranscript: SessionTranscriptBytes) : Request
 
 ## Constructors
 
 | | |
 |---|---|
-| [OpenId4VpRequest](-open-id4-vp-request.md) | [androidJvm]<br>constructor(presentationDefinition: PresentationDefinition) |
+| [OpenId4VpRequest](-open-id4-vp-request.md) | [androidJvm]<br>constructor(presentationDefinition: PresentationDefinition, sessionTranscript: SessionTranscriptBytes) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
 | [presentationDefinition](presentation-definition.md) | [androidJvm]<br>val [presentationDefinition](presentation-definition.md): PresentationDefinition |
+| [sessionTranscript](session-transcript.md) | [androidJvm]<br>val [sessionTranscript](session-transcript.md): SessionTranscriptBytes |
