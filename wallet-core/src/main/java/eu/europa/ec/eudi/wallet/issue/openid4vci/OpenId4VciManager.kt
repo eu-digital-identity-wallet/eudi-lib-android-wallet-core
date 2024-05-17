@@ -33,9 +33,9 @@ interface OpenId4VciManager {
      * @param docType the document type to issue
      * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
-     * @param onResult the callback to be called when the document is issued
-     * @see[IssueDocumentResult] on how to handle the result
-     * @see[IssueDocumentResult.UserAuthRequired] on how to handle user authentication
+     * @param onEvent the callback to be called when the document is issued
+     * @see[IssueDocumentEvent] on how to handle the result
+     * @see[IssueDocumentEvent.UserAuthRequired] on how to handle user authentication
      *
      * Example:
      * ```kotlin
@@ -59,7 +59,7 @@ interface OpenId4VciManager {
         docType: String,
         config: Config? = null,
         executor: Executor? = null,
-        onResult: OnIssueDocument
+        onEvent: OnIssueDocumentEvent
     )
 
     /**
@@ -67,24 +67,24 @@ interface OpenId4VciManager {
      * @param offer the offer to issue
      * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
-     * @param onResult the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
+     * @param onEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      *
-     * @see[IssueDocumentResult] on how to handle the result
-     * @see[IssueDocumentResult.UserAuthRequired] on how to handle user authentication
+     * @see[IssueDocumentEvent] on how to handle the result
+     * @see[IssueDocumentEvent.UserAuthRequired] on how to handle user authentication
      *
      * Example:
      * ```kotlin
      * openId4VciManager.issueDocumentByOffer(offer) { result ->
      *   when (result) {
-     *      is IssueDocumentResult.Success -> {
+     *      is IssueDocumentEvent.Success -> {
      *          val documentId = result.documentId
      *          // handle document
      *      }
-     *      is IssueDocumentResult.Failure -> {
+     *      is IssueDocumentEvent.Failure -> {
      *          val error = result.throwable
      *          // handle error
      *      }
-     *      is IssueDocumentResult.UserAuthRequired -> {
+     *      is IssueDocumentEvent.UserAuthRequired -> {
      *          val cryptoObject = result.cryptoObject
      *          // handle user auth
      *      }
@@ -94,7 +94,7 @@ interface OpenId4VciManager {
         offer: Offer,
         config: Config? = null,
         executor: Executor? = null,
-        onResult: OnIssueDocument
+        onEvent: OnIssueDocumentEvent
     )
 
     /**
@@ -102,23 +102,23 @@ interface OpenId4VciManager {
      * @param offerUri the offer URI
      * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
-     * @param onResult the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
-     * @see[IssueDocumentResult] on how to handle the result
-     * @see[IssueDocumentResult.UserAuthRequired] on how to handle user authentication
+     * @param onEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
+     * @see[IssueDocumentEvent] on how to handle the result
+     * @see[IssueDocumentEvent.UserAuthRequired] on how to handle user authentication
      *
      * Example:
      * ```kotlin
      * openId4VciManager.issueDocumentByOfferUri(offerUri) { result ->
      *   when (result) {
-     *     is IssueDocumentResult.Success -> {
+     *     is IssueDocumentEvent.Success -> {
      *       val documentId = result.documentId
      *       // handle document
      *     }
-     *     is IssueDocumentResult.Failure -> {
+     *     is IssueDocumentEvent.Failure -> {
      *       val error = result.throwable
      *       // handle error
      *     }
-     *     is IssueDocumentResult.UserAuthRequired -> {
+     *     is IssueDocumentEvent.UserAuthRequired -> {
      *       val cryptoObject = result.cryptoObject
      *       // handle user auth
      *     }
@@ -130,7 +130,7 @@ interface OpenId4VciManager {
         offerUri: String,
         config: Config? = null,
         executor: Executor? = null,
-        onResult: OnIssueDocument
+        onEvent: OnIssueDocumentEvent
     )
 
     /**
@@ -173,7 +173,7 @@ interface OpenId4VciManager {
     /**
      * Callback to be called when a document is issued
      */
-    fun interface OnIssueDocument : OnResult<IssueDocumentResult>
+    fun interface OnIssueDocumentEvent : OnResult<IssueDocumentEvent>
 
     /**
      * Callback to be called when an offer is resolved
@@ -266,10 +266,8 @@ interface OpenId4VciManager {
                 return Config(issuerUrl!!, clientId!!, authFlowRedirectionURI!!)
             }
 
-            @Deprecated("Use issuerUrl instead", ReplaceWith("issuerUrl(issuerUrl)"))
             fun withIssuerUrl(issuerUrl: String) = issuerUrl(issuerUrl)
 
-            @Deprecated("Use clientId instead", ReplaceWith("clientId(clientId)"))
             fun withClientId(clientId: String) = clientId(clientId)
         }
 

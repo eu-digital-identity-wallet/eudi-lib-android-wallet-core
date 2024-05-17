@@ -17,20 +17,61 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import androidx.biometric.BiometricPrompt.CryptoObject
+import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
-sealed interface IssueDocumentResult {
+sealed interface IssueDocumentEvent {
+
+    /**
+     * The issuance was finished.
+     */
+    object Finished : IssueDocumentEvent
+
+    /**
+     * The issuance failed.
+     * @property error the error that caused the failure
+     */
+    data class Failure(val error: Throwable) : IssueDocumentEvent
+
     /**
      * The document was successfully issued.
      * @property documentId the id of the issued document
      */
-    data class Success(val documentId: DocumentId) : IssueDocumentResult
+    data class DocumentIssued(val documentId: DocumentId) : IssueDocumentEvent
 
     /**
      * The document issuance failed.
      * @property error the error that caused the failure
+     * @property documentName the name of the document that was being issued
+     * @property docType the type of the document that was being issued
      */
-    data class Failure(val error: Throwable) : IssueDocumentResult
+    data class DocumentFailure(val error: Throwable, val documentName: String? = null, val docType: String? = null) :
+        IssueDocumentEvent {
+        internal constructor(error: Throwable, issuanceRequest: IssuanceRequest) : this(
+            error,
+            issuanceRequest.name,
+            issuanceRequest.docType
+        )
+
+        internal constructor(error: Throwable, credentialConfiguration: CredentialConfiguration) : this(
+            error,
+            credentialConfiguration.name,
+            credentialConfiguration.docType
+        )
+    }
+
+    /**
+     * The document issuance was canceled by the user during authentication.
+     * @property documentName the name of the document that was being issued
+     * @property docType the type of the document that was being issued
+     */
+    data class UserAuthCanceled(val documentName: String, val docType: String) : IssueDocumentEvent {
+        internal constructor(credentialConfiguration: CredentialConfiguration) : this(
+            credentialConfiguration.name,
+            credentialConfiguration.docType
+        )
+    }
 
     /**
      * The document issuance requires user authentication.
@@ -84,9 +125,9 @@ sealed interface IssueDocumentResult {
      *   }
      *
      *   fun issueDocument() {
-     *      EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { result ->
+     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { result ->
      *          when (result) {
-     *              is IssueDocumentResult.UserAuthRequired -> {
+     *              is IssueDocumentEvent.UserAuthRequired -> {
      *                  onIssuingResume = result::resume
      *                  onIssuingCancel = result::cancel
      *                  if (result.cryptoObject != null) {
@@ -104,10 +145,25 @@ sealed interface IssueDocumentResult {
      * }
      */
     data class UserAuthRequired(
+        val documentName: String,
+        val docType: String,
         val cryptoObject: CryptoObject?,
         private val onResume: () -> Unit,
         private val onCancel: () -> Unit
-    ) : IssueDocumentResult {
+    ) : IssueDocumentEvent {
+        constructor(
+            credentialConfiguration: CredentialConfiguration,
+            cryptoObject: CryptoObject?,
+            onResume: () -> Unit,
+            onCancel: () -> Unit
+        ) : this(
+            credentialConfiguration.name,
+            credentialConfiguration.docType,
+            cryptoObject,
+            onResume,
+            onCancel
+        )
+
         fun resume(): Unit = onResume()
         fun cancel(): Unit = onCancel()
     }
