@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
+import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.prex.PresentationDefinition
 
-class OpenId4VpRequest(val presentationDefinition: PresentationDefinition): Request
+class OpenId4VpRequest(val presentationDefinition: PresentationDefinition, val sessionTranscript: SessionTranscriptBytes): Request

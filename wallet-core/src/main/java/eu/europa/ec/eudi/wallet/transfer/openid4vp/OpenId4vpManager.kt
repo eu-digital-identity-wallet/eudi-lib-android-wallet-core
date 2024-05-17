@@ -21,7 +21,7 @@ import android.util.Log
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.iso18013.transfer.RequestedDocumentData
+import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
@@ -30,14 +30,17 @@ import eu.europa.ec.eudi.openid4vp.JwkSetSource
 import eu.europa.ec.eudi.openid4vp.PreregisteredClient
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
+import eu.europa.ec.eudi.openid4vp.VpToken
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
+import eu.europa.ec.eudi.wallet.internal.Openid4VpUtils
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.util.CBOR
 import kotlinx.coroutines.CoroutineScope
@@ -142,8 +145,9 @@ class OpenId4vpManager(
         }
     }
 
-    private var resolvedRequestObject: ResolvedRequestObject? = null
     private val siopOpenId4Vp = SiopOpenId4Vp(createSiopOpenId4VpConfig(openId4VpConfig))
+    private var resolvedRequestObject: ResolvedRequestObject? = null
+    private var mdocGeneratedNonce: String? = null
 
     /**
      * Setting the `executor` is optional and defines the executor that will be used to
@@ -214,10 +218,37 @@ class OpenId4vpManager(
                                 when (requestObject) {
                                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
                                         Log.d(TAG, "OpenId4VPAuthorization Request received")
+
+                                        val clientId = requestObject.clientId
+                                        val responseUri =
+                                            (requestObject.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
+                                                ?: ""
+                                        val nonce = requestObject.nonce
+                                        mdocGeneratedNonce =
+                                            Openid4VpUtils.generateMdocGeneratedNonce()
+
+                                        val sessionTranscriptBytes =
+                                            Openid4VpUtils.generateSessionTranscript(
+                                                clientId,
+                                                responseUri,
+                                                nonce,
+                                                mdocGeneratedNonce!!
+                                            )
+                                        Log.d(
+                                            TAG,
+                                            "Session Transcript: ${
+                                                Hex.toHexString(sessionTranscriptBytes)
+                                            }, for clientId: $clientId, responseUri: $responseUri, nonce: $nonce, mdocGeneratedNonce: $mdocGeneratedNonce"
+                                        )
+
+                                        val request = OpenId4VpRequest(
+                                            requestObject.presentationDefinition,
+                                            sessionTranscriptBytes
+                                        )
                                         onResultUnderExecutor(
                                             TransferEvent.RequestReceived(
-                                                requestObject.asRequest(),
-                                                OpenId4VpRequest(requestObject.presentationDefinition)
+                                                responseGenerator.parseRequest(request),
+                                                request
                                             )
                                         )
                                     }
@@ -269,7 +300,10 @@ class OpenId4vpManager(
                         val presentationDefinition =
                             (resolvedRequestObject).presentationDefinition
                         val consensus = Consensus.PositiveConsensus.VPTokenConsensus(
-                            vpToken,
+                            VpToken.MsoMdoc(
+                                vpToken,
+                                Base64URL.encode(mdocGeneratedNonce),
+                            ),
                             presentationSubmission = PresentationSubmission(
                                 id = Id(UUID.randomUUID().toString()),
                                 definitionId = presentationDefinition.id,
@@ -327,6 +361,7 @@ class OpenId4vpManager(
     fun close() {
         Log.d(TAG, "close")
         resolvedRequestObject = null
+        mdocGeneratedNonce = null
     }
 
     private fun List<TransferEvent.Listener>.onTransferEvent(event: TransferEvent) {
@@ -335,10 +370,6 @@ class OpenId4vpManager(
 
     private fun String.err(): TransferEvent.Error {
         return TransferEvent.Error(Throwable(this))
-    }
-
-    private fun ResolvedRequestObject.OpenId4VPAuthorization.asRequest(): RequestedDocumentData {
-        return responseGenerator.parseRequest(OpenId4VpRequest(presentationDefinition))
     }
 
     override fun addTransferEventListener(listener: TransferEvent.Listener): OpenId4vpManager =

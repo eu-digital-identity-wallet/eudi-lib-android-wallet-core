@@ -43,6 +43,7 @@ import eu.europa.ec.eudi.iso18013.transfer.RequestedDocumentData
 import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
+import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 
 private const val TAG = "OpenId4VpCBORResponseGe"
@@ -61,6 +62,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
 
     private var readerTrustStore: ReaderTrustStore? = null
     private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
+    private var sessionTranscript: SessionTranscriptBytes? = null
 
     /**
      * Set a trust store so that reader authentication can be performed.
@@ -100,6 +102,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
      * @return [RequestedDocumentData]
      */
     override fun parseRequest(request: OpenId4VpRequest): RequestedDocumentData {
+        sessionTranscript = request.sessionTranscript
         return createRequestedDocumentData(
             request.presentationDefinition.inputDescriptors
                 .mapNotNull { inputDescriptor ->
@@ -154,12 +157,13 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
                     return ResponseResult.Failure(Exception("Device Response is not allowed to have more than to age_over_NN elements"))
                 }
                 val addResult =
-                    addDocumentToResponse(deviceResponse, responseDocument, byteArrayOf(0))
+                    addDocumentToResponse(deviceResponse, responseDocument, sessionTranscript!!)
                 if (addResult is AddDocumentToResponse.UserAuthRequired)
                     return ResponseResult.UserAuthRequired(
                         addResult.keyUnlockData.getCryptoObjectForSigning(SecureArea.ALGORITHM_ES256)
                     )
             }
+            sessionTranscript = null
             return ResponseResult.Success(OpenId4VpCBORResponse(deviceResponse.generate()))
         } catch (e: Exception) {
             return ResponseResult.Failure(e)

@@ -3,4 +3,4 @@
 # OpenId4VpRequest
 
 [androidJvm]\
-constructor(presentationDefinition: PresentationDefinition)
+constructor(presentationDefinition: PresentationDefinition, sessionTranscript: SessionTranscriptBytes)

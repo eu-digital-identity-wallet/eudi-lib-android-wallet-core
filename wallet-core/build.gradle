@@ -91,7 +91,9 @@ dependencies {
     implementation libs.nimbus.oauth2.oidc.sdk
 
     // Siop-Openid4VP library
-    implementation libs.eudi.lib.jvm.siop.openid4vp.kt
+    implementation (libs.eudi.lib.jvm.siop.openid4vp.kt) {
+        exclude group: "org.bouncycastle"
+    }
 
     // Google library
     implementation (libs.identity.credential) {
