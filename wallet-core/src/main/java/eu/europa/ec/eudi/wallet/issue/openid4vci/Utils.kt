@@ -58,16 +58,6 @@ internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
     }
 
 internal fun DocumentManager.createIssuanceRequest(
-    credentialConfiguration: CredentialConfiguration,
-    hardwareBacked: Boolean = true
-): Result<IssuanceRequest> = when (credentialConfiguration) {
-    is MsoMdocCredential -> createIssuanceRequest(credentialConfiguration.docType, hardwareBacked).result
-        .map { it.apply { name = credentialConfiguration.display[0].name } }
-
-    else -> Result.failure(IllegalArgumentException("Unsupported credential configuration"))
-}
-
-internal fun DocumentManager.createIssuanceRequest(
     offerOfferedDocument: Offer.OfferedDocument,
     hardwareBacked: Boolean = true
 ): Result<IssuanceRequest> =
