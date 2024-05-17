@@ -98,6 +98,42 @@ interface OpenId4VciManager {
     )
 
     /**
+     * Issue a document using an offer URI
+     * @param offerUri the offer URI
+     * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onResult the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
+     * @see[IssueDocumentResult] on how to handle the result
+     * @see[IssueDocumentResult.UserAuthRequired] on how to handle user authentication
+     *
+     * Example:
+     * ```kotlin
+     * openId4VciManager.issueDocumentByOfferUri(offerUri) { result ->
+     *   when (result) {
+     *     is IssueDocumentResult.Success -> {
+     *       val documentId = result.documentId
+     *       // handle document
+     *     }
+     *     is IssueDocumentResult.Failure -> {
+     *       val error = result.throwable
+     *       // handle error
+     *     }
+     *     is IssueDocumentResult.UserAuthRequired -> {
+     *       val cryptoObject = result.cryptoObject
+     *       // handle user auth
+     *     }
+     *   }
+     * }
+     * ```
+     */
+    fun issueDocumentByOfferUri(
+        offerUri: String,
+        config: Config? = null,
+        executor: Executor? = null,
+        onResult: OnIssueDocument
+    )
+
+    /**
      * Resolve an offer using OpenId4Vci protocol
      *
      * @param offerUri the offer URI

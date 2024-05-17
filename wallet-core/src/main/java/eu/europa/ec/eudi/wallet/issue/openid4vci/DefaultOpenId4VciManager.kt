@@ -38,6 +38,7 @@ class DefaultOpenId4VciManager(
 ) : OpenId4VciManager {
 
     private var suspendedAuthorization: SuspendedAuthorization? = null
+    private val offerUriCache = mutableMapOf<String, CredentialOffer>()
 
     override fun issueDocumentByDocType(
         docType: String,
@@ -143,6 +144,52 @@ class DefaultOpenId4VciManager(
         }
     }
 
+    override fun issueDocumentByOfferUri(
+        offerUri: String,
+        config: OpenId4VciManager.Config?,
+        executor: Executor?,
+        onResult: OpenId4VciManager.OnIssueDocument
+    ) {
+        val configToUse = config ?: this.config
+        clearStateThen {
+            launch(onResult.wrap(executor)) { coroutineScope, callback ->
+                try {
+
+                    val issuer = offerUriCache[offerUri]?.let {
+                        Issuer.make(configToUse.toOpenId4VCIConfig(), it).getOrThrow()
+                    } ?: Issuer.make(configToUse.toOpenId4VCIConfig(), offerUri).getOrThrow()
+                    with(issuer) {
+                        val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
+                        val authResponse = openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
+                        val authorizedRequest = prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
+                            AuthorizationCode(authResponse.authorizationCode),
+                            authResponse.serverState
+                        ).getOrThrow()
+
+                        val offer = DefaultOffer(credentialOffer)
+                        offer.offeredDocuments.forEach { item ->
+                            val issuanceRequest = documentManager
+                                .createIssuanceRequest(item)
+                                .getOrThrow()
+
+                            issueCredential(
+                                authorizedRequest,
+                                item.configurationIdentifier,
+                                item.configuration,
+                                issuanceRequest,
+                                onResult
+                            )
+
+                        }
+                    }
+                } catch (e: Throwable) {
+                    callback.onResult(IssueDocumentResult.Failure(e))
+                    coroutineScope.cancel("issueDocumentByOffer failed", e)
+                }
+            }
+        }
+    }
+
     override fun resolveDocumentOffer(
         offerUri: String,
         executor: Executor?,
@@ -152,8 +199,10 @@ class DefaultOpenId4VciManager(
             try {
                 val credentialOffer = CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
                 callback(OfferResult.Success(DefaultOffer(credentialOffer)))
+                offerUriCache[offerUri] = credentialOffer
                 coroutineScope.cancel("resolveDocumentOffer succeeded")
             } catch (e: Throwable) {
+                offerUriCache.remove(offerUri)
                 callback(OfferResult.Failure(e))
                 coroutineScope.cancel("resolveDocumentOffer failed", e)
             }
