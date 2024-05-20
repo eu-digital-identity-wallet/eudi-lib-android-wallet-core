@@ -366,6 +366,25 @@ object EudiWallet {
             ?: throw IllegalStateException("No OpenId4VciManager to resume")
     }
 
+    /**
+     * Resumes the OpenId4VCI flow with the given [intent]
+     * @param uri the uri that contains the authorization code
+     * @throws [IllegalStateException] if no authorization request to resume
+     */
+    fun resumeOpenId4VciWithAuthorization(uri: String) {
+        openId4VciManager?.resumeWithAuthorization(uri)
+            ?: throw IllegalStateException("No OpenId4VciManager to resume")
+    }
+
+    /**
+     * Resumes the OpenId4VCI flow with the given [intent]
+     * @param uri the uri that contains the authorization code
+     * @throws [IllegalStateException] if no authorization request to resume
+     */
+    fun resumeOpenId4VciWithAuthorization(uri: Uri) {
+        openId4VciManager?.resumeWithAuthorization(uri)
+            ?: throw IllegalStateException("No OpenId4VciManager to resume")
+    }
 
     /**
      * Loads sample data into the wallet's document manager

@@ -148,6 +148,16 @@ class DefaultOpenId4VciManager(
             ?: throw IllegalStateException("No authorization request to resume")
     }
 
+    override fun resumeWithAuthorization(uri: String) {
+        suspendedAuthorization?.use { it.resumeFromUri(uri) }
+            ?: throw IllegalStateException("No authorization request to resume")
+    }
+
+    override fun resumeWithAuthorization(uri: Uri) {
+        suspendedAuthorization?.use { it.resumeFromUri(uri) }
+            ?: throw IllegalStateException("No authorization request to resume")
+    }
+
     private suspend fun doIssueDocumentByOffer(
         offer: Offer,
         config: OpenId4VciManager.Config?,
