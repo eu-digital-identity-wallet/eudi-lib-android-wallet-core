@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Intent
+import android.net.Uri
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import java.io.Closeable
@@ -26,18 +27,30 @@ internal class SuspendedAuthorization(
     private val continuation: CancellableContinuation<Result<Response>>,
 ) : Closeable {
 
-    fun resumeFromIntent(intent: Intent) {
-        continuation.let { cont ->
-            try {
-                intent.data?.getQueryParameter("code")?.let { authorizationCode ->
-                    intent.data?.getQueryParameter("state")?.let { serverState ->
-                        cont.resume(Result.success(Response(authorizationCode, serverState)))
-                    } ?: cont.resumeWith(Result.failure(IllegalStateException("No server state found")))
-                } ?: cont.resumeWith(Result.failure(IllegalStateException("No authorization code found")))
-            } catch (e: Throwable) {
-                cont.resumeWith(Result.failure(e))
-            }
+
+    fun resumeFromUri(uri: String) {
+        try {
+            resumeFromUri(Uri.parse(uri))
+        } catch (e: Throwable) {
+            continuation.resumeWith(Result.failure(e))
         }
+    }
+
+    fun resumeFromUri(uri: Uri) {
+        try {
+            uri.getQueryParameter("code")?.let { authorizationCode ->
+                uri.getQueryParameter("state")?.let { serverState ->
+                    continuation.resume(Result.success(Response(authorizationCode, serverState)))
+                } ?: continuation.resumeWith(Result.failure(IllegalStateException("No server state found")))
+            } ?: continuation.resumeWith(Result.failure(IllegalStateException("No authorization code found")))
+        } catch (e: Throwable) {
+            continuation.resumeWith(Result.failure(e))
+        }
+    }
+
+    fun resumeFromIntent(intent: Intent) {
+        intent.data?.let { resumeFromUri(it) }
+            ?: continuation.resumeWith(Result.failure(IllegalStateException("No uri found in intent")))
     }
 
     override fun close() {
