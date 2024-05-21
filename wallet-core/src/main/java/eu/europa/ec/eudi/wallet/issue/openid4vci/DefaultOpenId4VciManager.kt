@@ -182,7 +182,7 @@ class DefaultOpenId4VciManager(
 
             offer.offeredDocuments.forEach { item ->
                 val issuanceRequest = documentManager
-                    .createIssuanceRequest(item)
+                    .createIssuanceRequest(item, configToUse.useStrongBoxIfSupported)
                     .getOrThrow()
                 doIssueCredential(
                     authorizedRequest,
@@ -317,10 +317,10 @@ class DefaultOpenId4VciManager(
                         }
 
                         override fun cancel() {
-                            onEvent(IssueEvent.DocumentFailed(issuanceRequest, Exception("User cancelled")))
+                            onEvent(IssueEvent.DocumentFailed(issuanceRequest, e.cause ?: e))
                         }
-
                     }
+                    onEvent(event)
                 }
 
                 else -> onEvent(IssueEvent.DocumentFailed(issuanceRequest, e))
