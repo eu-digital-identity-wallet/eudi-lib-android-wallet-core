@@ -30,10 +30,12 @@ import java.security.PublicKey
 
 internal typealias CredentialConfigurationFilter = (CredentialConfiguration) -> Boolean
 
+@JvmSynthetic
 internal val FormatFilter: CredentialConfigurationFilter = { conf ->
     conf is MsoMdocCredential
 }
 
+@JvmSynthetic
 internal val ProofTypeFilter: CredentialConfigurationFilter = { conf ->
     conf.proofTypesSupported.keys
         .firstOrNull { it in ProofSigner.SupportedProofTypes.keys }
@@ -47,16 +49,18 @@ internal val ProofTypeFilter: CredentialConfigurationFilter = { conf ->
         } ?: false
 }
 
+@JvmSynthetic
 internal fun DocTypeFilterFactory(docType: String): CredentialConfigurationFilter = { conf ->
     conf is MsoMdocCredential && conf.docType == docType
 }
 
 internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
-    get() = when (this) {
+    @JvmSynthetic get() = when (this) {
         is CreateIssuanceRequestResult.Success -> Result.success(issuanceRequest)
         is CreateIssuanceRequestResult.Failure -> Result.failure(throwable)
     }
 
+@JvmSynthetic
 internal fun DocumentManager.createIssuanceRequest(
     offerOfferedDocument: Offer.OfferedDocument,
     hardwareBacked: Boolean = true
@@ -66,7 +70,7 @@ internal fun DocumentManager.createIssuanceRequest(
         .map { it.apply { name = offerOfferedDocument.name } }
 
 internal val PublicKey.pem: String
-    get() = StringWriter().use { wr ->
+    @JvmSynthetic get() = StringWriter().use { wr ->
         PemWriter(wr).use { pwr ->
             pwr.writeObject(PemObject("PUBLIC KEY", this.encoded))
             pwr.flush()
@@ -74,6 +78,7 @@ internal val PublicKey.pem: String
         wr.toString()
     }
 
+@JvmSynthetic
 internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): ByteArray {
     val len = ECDSA.getSignatureByteArrayLength(algorithm)
     return ECDSA.transcodeSignatureToConcat(this, len)
