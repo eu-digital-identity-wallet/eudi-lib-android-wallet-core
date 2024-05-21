@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2024 European Commission
+ *  Copyright (c) 2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,65 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import androidx.biometric.BiometricPrompt.CryptoObject
-import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
+import androidx.biometric.BiometricPrompt
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
-sealed interface IssueDocumentEvent {
+sealed interface IssueEvent {
 
     /**
-     * The issuance was finished.
+     * The issuance was started.
+     * @property total the total number of documents to issue
      */
-    object Finished : IssueDocumentEvent
+    data class Started(val total: Int) : IssueEvent
+
+    /**
+     * The issuance has finished.
+     * @property issuedDocuments the ids of the issued documents
+     * @see[DocumentId] for the document id
+     */
+    data class Finished(val issuedDocuments: List<DocumentId>) : IssueEvent
 
     /**
      * The issuance failed.
-     * @property error the error that caused the failure
+     * @property cause the error that caused the failure
      */
-    data class Failure(val error: Throwable) : IssueDocumentEvent
-
-    /**
-     * The document was successfully issued.
-     * @property documentId the id of the issued document
-     */
-    data class DocumentIssued(val documentId: DocumentId) : IssueDocumentEvent
-
-    /**
-     * The document issuance failed.
-     * @property error the error that caused the failure
-     * @property documentName the name of the document that was being issued
-     * @property docType the type of the document that was being issued
-     */
-    data class DocumentFailure(val error: Throwable, val documentName: String? = null, val docType: String? = null) :
-        IssueDocumentEvent {
-        internal constructor(error: Throwable, issuanceRequest: IssuanceRequest) : this(
-            error,
-            issuanceRequest.name,
-            issuanceRequest.docType
-        )
-
-        internal constructor(error: Throwable, credentialConfiguration: CredentialConfiguration) : this(
-            error,
-            credentialConfiguration.name,
-            credentialConfiguration.docType
-        )
-    }
-
-    /**
-     * The document issuance was canceled by the user during authentication.
-     * @property documentName the name of the document that was being issued
-     * @property docType the type of the document that was being issued
-     */
-    data class UserAuthCanceled(val documentName: String, val docType: String) : IssueDocumentEvent {
-        internal constructor(credentialConfiguration: CredentialConfiguration) : this(
-            credentialConfiguration.name,
-            credentialConfiguration.docType
-        )
-    }
+    data class Failure(val cause: Throwable) : IssueEvent
 
     /**
      * The document issuance requires user authentication.
@@ -125,9 +92,9 @@ sealed interface IssueDocumentEvent {
      *   }
      *
      *   fun issueDocument() {
-     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { result ->
-     *          when (result) {
-     *              is IssueDocumentEvent.UserAuthRequired -> {
+     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { event ->
+     *          when (event) {
+     *              is IssueEvent.DocumentRequiresUserAuth -> {
      *                  onIssuingResume = result::resume
      *                  onIssuingCancel = result::cancel
      *                  if (result.cryptoObject != null) {
@@ -137,34 +104,61 @@ sealed interface IssueDocumentEvent {
      *                  }
      *              }
      *              else -> {
-     *                  // handle other results
+     *                  // handle other events
      *              }
      *          }
      *       }
      *    }
      * }
      */
-    data class UserAuthRequired(
-        val documentName: String,
+    abstract class DocumentRequiresUserAuth(
+        val name: String,
         val docType: String,
-        val cryptoObject: CryptoObject?,
-        private val onResume: () -> Unit,
-        private val onCancel: () -> Unit
-    ) : IssueDocumentEvent {
-        constructor(
-            credentialConfiguration: CredentialConfiguration,
-            cryptoObject: CryptoObject?,
-            onResume: () -> Unit,
-            onCancel: () -> Unit
+        val cryptoObject: BiometricPrompt.CryptoObject?
+    ) : IssueEvent {
+        internal constructor(
+            issuanceRequest: IssuanceRequest,
+            cryptoObject: BiometricPrompt.CryptoObject?,
         ) : this(
-            credentialConfiguration.name,
-            credentialConfiguration.docType,
-            cryptoObject,
-            onResume,
-            onCancel
+            issuanceRequest.name,
+            issuanceRequest.docType,
+            cryptoObject
         )
 
-        fun resume(): Unit = onResume()
-        fun cancel(): Unit = onCancel()
+        abstract fun resume()
+        abstract fun cancel()
+    }
+
+    /**
+     * Document issued successfully.
+     * @property documentId the id of the issued document
+     * @property name the name of the document
+     * @property docType the document type
+     * @see[DocumentId] for the document id
+     */
+    data class DocumentIssued(val documentId: DocumentId, val name: String, val docType: String) : IssueEvent {
+        internal constructor(issuanceRequest: IssuanceRequest, documentId: DocumentId) : this(
+            documentId,
+            issuanceRequest.name,
+            issuanceRequest.docType
+        )
+    }
+
+    /**
+     * Document issuance failed.
+     * @property name the name of the document
+     * @property docType the document type
+     * @property cause the error that caused the failure
+     */
+    data class DocumentFailed(val name: String, val docType: String, val cause: Throwable) : IssueEvent {
+        internal constructor(issuanceRequest: IssuanceRequest, cause: Throwable) : this(
+            issuanceRequest.name,
+            issuanceRequest.docType,
+            cause
+        )
+    }
+
+    companion object {
+        internal fun failure(e: Throwable) = Failure(e)
     }
 }

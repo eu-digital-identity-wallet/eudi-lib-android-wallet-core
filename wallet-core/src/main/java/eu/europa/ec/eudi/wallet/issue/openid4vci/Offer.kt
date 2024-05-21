@@ -41,8 +41,8 @@ interface Offer {
     data class OfferedDocument internal constructor(
         val name: String,
         val docType: String,
-        internal val configurationIdentifier: CredentialConfigurationIdentifier,
-        internal val configuration: CredentialConfiguration
+        @JvmSynthetic internal val configurationIdentifier: CredentialConfigurationIdentifier,
+        @JvmSynthetic internal val configuration: CredentialConfiguration
     ) {
         /**
          * Converts this item to a pair of name and document type.
@@ -52,7 +52,7 @@ interface Offer {
 }
 
 data class DefaultOffer(
-    internal val credentialOffer: CredentialOffer,
+    @JvmSynthetic internal val credentialOffer: CredentialOffer,
     private val filterConfigurations: List<CredentialConfigurationFilter> = listOf(FormatFilter, ProofTypeFilter)
 ) : Offer {
 
@@ -69,10 +69,10 @@ data class DefaultOffer(
 }
 
 internal val CredentialConfiguration.name: String
-    get() = display[0].name
+    @JvmSynthetic get() = display[0].name
 
 internal val CredentialConfiguration.docType: String
-    get() = when (this) {
+    @JvmSynthetic get() = when (this) {
         is MsoMdocCredential -> docType
         else -> "unknown"
     }
