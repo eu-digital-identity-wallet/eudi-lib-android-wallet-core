@@ -31,11 +31,12 @@ The library provides the following functionality:
     - [x] Using device secure area for generating/storing documents' keypair
     - [x] Enforcing device user authentication when retrieving documents' private keys
 - Document issuance
-    - [x] Support for OpenId4VCI document issuance
+    - [x] Support for OpenId4VCI Draft 13 document issuance
         - [x] Authorization Code Flow
         - [ ] Pre-authorization Code Flow
         - [x] Support for mso_mdoc format
         - [ ] Support for sd-jwt-vc format
+      - [x] Support credential offer
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -84,7 +85,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.5.6-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.6.0-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -168,6 +169,8 @@ val config = EudiWalletConfig.Builder(applicationContext)
     .openId4VciConfig {
         withIssuerUrl("https://issuer.example.com")
         withClientId("wallet-client-id")
+        authFlowRedirectionURI("eudi-openid4ci://authorize")
+        useStrongBoxIfSupported(false)
     }
     .build()
 
@@ -376,79 +379,191 @@ using this functionality,
 EudiWallet must be initialized with the `openId4VciConfig` configuration. See
 the [Initialize the library](#initialize-the-library) section.
 
-To issue a document using OpenID4VCI, you need to know the document's docType.
+#### Resolving Credential offer
 
-Also, to use the OpenID4VCI functionality, the following manifest placeholders must be defined in
-application's build.gradle file:
+The library provides the `EudiWallet.resolveDocumentOffer` method that resolves the credential offer URI.
+The method returns the resolved [`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt)
+object that contains the offer's data. The offer's data can be displayed to the
+user.
 
-```groovy
-android {
-    defaultConfig {
-        // ...
-        // the host of the authorization redirectUri
-        manifestPlaceholders.openid4vciAuthorizeHost = "authorize"
-        // the path of the authorization redirectUri starting with '/'; for empty path use "" 
-        manifestPlaceholders.openid4vciAuthorizePath = ""
-        // the scheme of the authorization redirectUri; custom scheme is supported
-        manifestPlaceholders.openid4vciAuthorizeScheme = "eudi-openid4ci"
-        // ...
-    }
-}
-```
-
-The authorization redirectUri is constructed using the above placeholders and it is used to redirect
-back to application after the user authenticates with the issuer and having the authorization code
-from the issuer. You can use the values above or replace them with the values supported and allowed
-by your issuer.
-
-The following example shows how to issue a document using OpenID4VCI:
+The following example shows how to resolve a credential offer:
 
 ```kotlin
-EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1") { result ->
+val offerUri = "https://issuer.com/?credential_offer=..."
+EudiWallet.resolveDocumentOffer(offerUri) { result ->
+
     when (result) {
-        is IssueDocumentResult.Success -> {
-            // document is added in the documents storage
-            val documentedId = result.documentId
-            // you can show the document to the user
+        is OfferResult.Success -> {
+            val offer: Offer = result.offer
+            // display the offer's data to the user
+            val issuerName = offer.issuerName
+            val offeredDocuments: List<OfferedDocument> = offer.offeredDocuments
+            // ...
         }
-
-        is IssueDocumentResult.Failure -> {
-            // show error
-        }
-
-        is IssueDocumentResult.UserAuthRequired -> {
-            // user authentication is required
-            // get the crypto object from result.cryptoObject
-            val cryptoObject = result.cryptoObject
-            // perform user authentication
-            // and try to issue the document again
-            // using result.resume() method
-            result.resume()
-            // - or -
-            // cancel the issuance
-            result.cancel()
+        is OfferResult.Failure -> {
+            val error = result.throwable
+            // handle error while resolving the offer
         }
     }
 }
 ```
 
-There's also an overload of the `issueDocument` method that allows you to specify the `executor`
-parameter. The `executor` parameter is optional and defines the executor that will be used to
-execute the callback. If the `executor` parameter is null, the callback will be executed on the
-main thread.
+There is also the availability for the `EudiWallet.resolveDocumentOffer` method to specify the executor in which the
+onResolvedOffer callback is executed, by assigning the `executor` parameter.
+If the `executor` parameter is null, the callback will be executed on the main thread.
 
 ```kotlin
 val executor = Executors.newSingleThreadExecutor()
-EudiWallet.issueDocument("eu.europa.ec.eudiw.pid.1", executor) { result ->
+EudiWallet.resolveDocumentOffer(offerUri, executor) { result ->
     // ...
 }
 ```
 
-**Important Notes**:
+#### Issuing a document
+
+There are two ways to issue a document using OpenID4VCI:
+
+1. Using the `EudiWallet.issueDocumentByDocType` method, when the document's docType is known.
+2. Using the `EudiWallet.issueDocumentByOffer` or `EudiWallet.issueDocumentByOfferUri` methods, when an OpenId4VCI offer
+   is given.
+
+_Important Notes_:
 
 - Currently, only mso_mdoc format is supported
 - Currently, only ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
   publicKey.
+
+The following example shows how to issue a document using OpenID4VCI:
+
+```kotlin
+val onIssueEvent = OnIssueEvent { event ->
+    when (event) {
+        is IssueEvent.Started -> {
+            // indicates that OpenId4VCI process is started 
+            // and holds the total number of documents to be issued
+            val numberOfDocumentsToBeIssued: Int = event.total
+        }
+
+        is IssueEvent.Finished -> {
+            // triggered when the OpenId4VCI process is finished
+            // and holds the documentIds of the issued documents
+            val issuedDocumentIds: List<String> = event.issuedDocuments
+        }
+
+        is IssueEvent.Failure -> {
+            // triggered when an error occurs during the OpenId4VCI process
+            // and holds the error
+            val cause = event.cause
+        }
+
+        is IssueEvent.DocumentIssued -> {
+            // triggered each time a document is issued
+            // and holds information about the issued document
+            val documentId: String = event.documentId
+            val documentName: String = event.name
+            val docType: String = event.docType
+        }
+
+        is IssueEvent.DocumentFailed -> {
+            // triggered when an error occurs during the issuance of a document
+            // and holds the error and information about the failed to issue document
+            val documentName: String = event.name
+            val docType: String = event.docType
+            val cause: Throwable = event.cause
+        }
+
+        is IssueEvent.DocumentRequiresUserAuth -> {
+            // triggered when user authentication is required to issue a document
+            // Holds the crypto object that is used for user authentication
+            // and information about the document that requires user authentication
+            // as well as methods for resuming the issuance process or canceling it
+            val cryptoObject = event.cryptoObject
+            val documentName: String = event.name
+            val docType: String = event.docType
+
+            // to resume the issuance process, after authenticating user,  call
+            event.resume()
+
+            // or cancel the issuance process by calling
+            event.cancel()
+        }
+    }
+}
+
+EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", onIssueEvent)
+// or
+EudiWallet.issueDocumentByOfferUri("https://issuer.com/?credential_offer=...", onIssueEvent)
+// or given a resolved offer object
+EudiWallet.issueDocumentByOffer(offer, onIssueEvent)
+```
+
+There's also available for `issueDocumentByDocType`, `issueDocumentByOfferUri` and `issueDocumentByOffer` methods to
+specify the executor in which the onIssueEvent callback is executed, by assigning the `executor` parameter.
+If the `executor` parameter is null, the callback will be executed on the main thread.
+
+```kotlin
+val executor = Executors.newSingleThreadExecutor()
+EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", executor) { event ->
+    // ...
+}
+```
+
+##### Authorization code flow
+
+For the authorization code flow to work, the application must handle the redirect URI. The redirect URI is the URI that
+the Issuer will redirect the user to after the user has authenticated and authorized. The redirect URI must be handled
+by the application and resume the issuance process by calling the `EudiWallet.resumeOpenId4VciWithAuthorization`.
+Also, the redirect uri declared in the OpenId4VCI configuration must be declared in the application's manifest file.
+
+```xml
+
+<!-- AndroidManifest.xml -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- rest of manifest -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <!-- rest of activity -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <data android:scheme="eudi-openid4ci" android:host="authorize"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+```
+
+```kotlin 
+// ...
+EudiWalletConfig.Builder(applicationContext)
+// ... 
+    .openId4VciConfig {
+        // ...
+        authFlowRedirectionURI("eudi-openid4ci://authorize")
+        // ...
+    }
+//...
+```
+
+```kotlin 
+
+class SomeActivity : AppCompatActivity() {
+    // ...
+    override fun onResume() {
+        super.onResume()
+        // check if intent is from the redirect uri to resume the issuance process
+        // ...
+        // then call
+        EudiWallet.resumeOpenId4VciWithAuthorization(intent)
+    }
+    // ...
+}
+```
 
 ### Transfer documents
 
@@ -472,8 +587,8 @@ state of the transfer. The following events are emitted:
 4. `TransferEvent.RequestReceived`: A request is received. Get the parsed request from `event.requestedDocumentData`
    and the initial request as received by the verifier from `event.request`.
 5. `TransferEvent.ResponseSent`: A response is sent.
-6. `TransferEvent.Redirect`: This event prompts to redirect the user to the given Redirect URI. 
-   Get the Redirect URI from `event.redirectUri`. This event maybe be returned when OpenId4Vp is 
+6. `TransferEvent.Redirect`: This event prompts to redirect the user to the given Redirect URI.
+   Get the Redirect URI from `event.redirectUri`. This event maybe be returned when OpenId4Vp is
    used as a transmission channel.
 7. `TransferEvent.Disconnected`: The devices are disconnected.
 8. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
@@ -573,7 +688,8 @@ EudiWallet.addTransferEventListener(transferEventListener)
     ```
 2. BLE transfer using NFC Engagement
 
-In order to use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's manifest file, like shown below:
+In order to use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's
+manifest file, like shown below:
 
     ```xml
     
@@ -595,11 +711,11 @@ In order to use NFC for engagement, you must add the service `DefaultNfcEngageme
     </application>
     ```
 
-   You can enable or disable the NFC engagement in your app by calling the `EudiWallet.enableNFCEngagement(Activity)`
-   and `EudiWallet.disableNFCEngagement(Activity)` methods.
+You can enable or disable the NFC engagement in your app by calling the `EudiWallet.enableNFCEngagement(Activity)`
+and `EudiWallet.disableNFCEngagement(Activity)` methods.
 
-   In the example below, the NFC engagement is enabled when activity is resumed and disabled
-   when the activity is paused.
+In the example below, the NFC engagement is enabled when activity is resumed and disabled
+when the activity is paused.
 
     ```kotlin
     import androidx.appcompat.app.AppCompatActivity
