@@ -69,6 +69,7 @@ class EudiWalletConfigTest {
             openId4VciConfig {
                 issuerUrl("https://example.com")
                 clientId("client-id")
+                authFlowRedirectionURI("eudi-openid4ci://authorize")
             }
         }
         assertEquals(storageDir, config.documentsStorageDir)
@@ -90,6 +91,7 @@ class EudiWalletConfigTest {
         assertEquals(EncryptionMethod.A128CBC_HS256, config.openId4VPConfig?.encryptionMethods?.get(0))
         assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
         assertEquals("client-id", config.openId4VciConfig?.clientId)
+        assertEquals("eudi-openid4ci://authorize", config.openId4VciConfig?.authFlowRedirectionURI)
     }
 
     @Test

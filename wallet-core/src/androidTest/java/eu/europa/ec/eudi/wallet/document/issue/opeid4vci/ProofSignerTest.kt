@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import eu.europa.ec.eudi.openid4vci.CNonce
 import eu.europa.ec.eudi.wallet.document.Constants.EU_PID_DOCTYPE
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.issue.openid4vci.ProofSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
 import org.junit.Assert
 import org.junit.Assume
 import org.junit.BeforeClass
@@ -39,7 +39,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.IOException
 import java.time.Instant
-import java.util.Date
+import java.util.*
 
 @RunWith(AndroidJUnit4::class)
 class ProofSignerTest {
@@ -72,7 +72,7 @@ class ProofSignerTest {
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = ProofSigner(issuanceRequest, JWSAlgorithm.ES256.name)
+        val proofSigner = ProofSigner(JWSAlgorithm.ES256, issuanceRequest)
         val algorithm = proofSigner.getAlgorithm()
 
         Assert.assertTrue(proofSigner.getBindingKey() is BindingKey.Jwk)
@@ -93,7 +93,7 @@ class ProofSignerTest {
             proofSigner.sign(header, claimsSet.toPayload().toBytes())
             Assert.fail("Expected UserAuthRequiredException")
         } catch (e: ProofSigner.UserAuthRequiredException) {
-            Assert.assertTrue(proofSigner.userAuthRequired is ProofSigner.UserAuthRequired.Yes)
+            Assert.assertTrue(proofSigner.userAuthStatus is ProofSigner.UserAuthStatus.Required)
         } finally {
             documentManager.deleteDocumentById(issuanceRequest.documentId)
         }
@@ -111,7 +111,7 @@ class ProofSignerTest {
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = ProofSigner(issuanceRequest, JWSAlgorithm.ES256.name)
+        val proofSigner = ProofSigner(JWSAlgorithm.ES256, issuanceRequest)
         val algorithm = proofSigner.getAlgorithm()
 
         Assert.assertTrue(proofSigner.getBindingKey() is BindingKey.Jwk)
@@ -135,7 +135,7 @@ class ProofSignerTest {
 
         Assert.assertTrue(verified)
 
-        Assert.assertEquals(ProofSigner.UserAuthRequired.No, proofSigner.userAuthRequired)
+        Assert.assertEquals(ProofSigner.UserAuthStatus.NotRequired, proofSigner.userAuthStatus)
 
         documentManager.deleteDocumentById(issuanceRequest.documentId)
     }
