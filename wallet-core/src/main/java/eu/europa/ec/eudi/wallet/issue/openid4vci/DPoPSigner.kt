@@ -60,34 +60,36 @@ internal class DPoPSigner : ProofSigner {
         }
     }
 
-    override fun getAlgorithm(): JWSAlgorithm = JWSAlgorithm.ES256
+    override fun getAlgorithm(): JWSAlgorithm = supportedAlgorithms.keys.first()
 
     override fun getBindingKey(): BindingKey = BindingKey.Jwk(jwk)
 
     override fun getJCAContext(): JCAContext = JCAContext()
 
     override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-        val algorithm = supportedJWSAlgorithms().firstOrNull { it == header.algorithm }
+        val algorithm = supportedAlgorithms[header.algorithm]
             ?: throw JOSEException(
                 AlgorithmSupportMessage.unsupportedJWSAlgorithm(
                     header.algorithm,
                     supportedJWSAlgorithms()
                 )
             )
-
         val privateKey = (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry).privateKey
-        val signature = Signature.getInstance(ALGORITHM).apply {
+        val signature = Signature.getInstance(algorithm).apply {
             initSign(privateKey)
             update(signingInput)
         }.sign()
-        return Base64URL.encode(signature.derToJose(algorithm))
+        return Base64URL.encode(signature.derToJose(header.algorithm))
     }
 
-    override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = mutableSetOf(getAlgorithm())
+    override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = supportedAlgorithms.keys.toMutableSet()
 
     companion object {
         private const val KEY_ALIAS = "eu.europa.ec.eudi.wallet.issue.openid4vci.DPoPKey"
-        private const val ALGORITHM = "SHA256withECDSA"
+
+        private val supportedAlgorithms: Map<JWSAlgorithm, String>
+            get() = mapOf(JWSAlgorithm.ES256 to "SHA256withECDSA")
+
         private val keyStore: KeyStore
             get() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
