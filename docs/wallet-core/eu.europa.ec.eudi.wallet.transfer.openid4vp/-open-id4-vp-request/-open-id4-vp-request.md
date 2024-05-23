@@ -3,4 +3,4 @@
 # OpenId4VpRequest
 
 [androidJvm]\
-constructor(presentationDefinition: PresentationDefinition, sessionTranscript: SessionTranscriptBytes)
+constructor(openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization, sessionTranscript: SessionTranscriptBytes)
