@@ -389,7 +389,8 @@ class DefaultOpenId4VciManager(
                 clientId = clientId,
                 authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
                 keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048),
-                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
+                dPoPProofSigner = if (useDPoP) DPoPSigner() else null
             )
         }
     }
