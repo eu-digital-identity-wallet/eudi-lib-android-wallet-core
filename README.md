@@ -85,7 +85,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.6.0-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.7.0-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -156,7 +156,9 @@ val config = EudiWalletConfig.Builder(applicationContext)
                 ClientIdScheme.Preregistered(
                     listOf(
                         PreregisteredVerifier(
-                            "Verifier", "https://example.com"
+                            "VerifierClientId",
+                            "VerifierLegalName",
+                            "https://example.com"
                         )
                     )
                 ),

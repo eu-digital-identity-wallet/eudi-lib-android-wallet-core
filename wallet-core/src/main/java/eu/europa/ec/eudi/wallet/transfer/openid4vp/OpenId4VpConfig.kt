@@ -34,7 +34,10 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as Ope
  *          listOf(
  *              ClientIdScheme.Preregistered(
  *                  listOf(
- *                      PreregisteredVerifier("Verifier", "http://example.com")
+ *                      PreregisteredVerifier(
+ *                      "VerifierClientId",
+ *                      "VerifierLegalName",
+ *                      "http://example.com")
  *                  )),
  *              ClientIdScheme.X509SanDns
  *          )
@@ -141,10 +144,12 @@ sealed interface ClientIdScheme {
 
 data class PreregisteredVerifier(
     var clientId: ClientId,
+    var legalName: LegalName,
     var verifierApi: VerifierApi
 )
 
 typealias ClientId = String
+typealias LegalName = String
 typealias VerifierApi = String
 
 sealed interface EncryptionAlgorithm {

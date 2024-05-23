@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.wallet.internal
 
-import eu.europa.ec.eudi.iso18013.transfer.ReaderAuth
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.openid4vp.X509CertificateTrust
 import java.security.cert.X509Certificate
@@ -25,40 +24,22 @@ internal class Openid4VpX509CertificateTrust(
 ): X509CertificateTrust {
 
     private var readerCertificateChain: List<X509Certificate>? = null
+    private var isTrusted: Boolean? = null
 
     fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) {
         this.readerTrustStore = readerTrustStore
+        this.isTrusted = null
     }
 
     override fun isTrusted(chain: List<X509Certificate>): Boolean {
-        this.readerCertificateChain = chain
-        return readerTrustStore?.validateCertificationTrustPath(chain) ?: true
-    }
-
-    fun getReaderAuth(): ReaderAuth? {
-        return readerTrustStore?.let {
-            readerCertificateChain?.let {
-                ReaderAuth(
-                    byteArrayOf(0),
-                    true, /* It is always true as siop-openid4vp library validates it internally and returns a fail status */
-                    it,
-                    isTrusted(it),
-                    getReaderCommonName()
-                )
-            }
+        readerCertificateChain = chain
+        return (readerTrustStore?.validateCertificationTrustPath(chain) ?: true).also {
+            isTrusted = it
         }
     }
 
-    private fun getReaderCommonName(): String {
-        var commonName = ""
+    fun getTrustResult(): Pair<List<X509Certificate>, Boolean>? =
         readerCertificateChain?.let { chain ->
-            readerTrustStore?.createCertificationTrustPath(chain)?.firstOrNull()?.let {
-                it.subjectX500Principal.name.split(",").forEach { line ->
-                    val (key, value) = line.split("=", limit = 2)
-                    if (key == "CN") commonName = value
-                }
-            }
+            chain to (isTrusted ?: isTrusted(chain))
         }
-        return commonName
-    }
 }
