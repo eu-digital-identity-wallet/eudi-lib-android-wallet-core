@@ -17,7 +17,10 @@ val config = OpenId4VpConfig.Builder()
          listOf(
              ClientIdScheme.Preregistered(
                  listOf(
-                     PreregisteredVerifier("Verifier", "http://example.com")
+                     PreregisteredVerifier(
+                     "VerifierClientId",
+                     "VerifierLegalName",
+                     "http://example.com")
                  )),
              ClientIdScheme.X509SanDns
          )
@@ -31,7 +34,7 @@ val config = OpenId4VpConfig.Builder()
 
 | Name | Summary |
 |---|---|
-| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for [OpenId4VciConfig](../../eu.europa.ec.eudi.wallet.document.issue.openid4vci/-open-id4-vci-config/index.md). |
+| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for [OpenId4VciConfig](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/index.md). |
 
 ## Properties
 

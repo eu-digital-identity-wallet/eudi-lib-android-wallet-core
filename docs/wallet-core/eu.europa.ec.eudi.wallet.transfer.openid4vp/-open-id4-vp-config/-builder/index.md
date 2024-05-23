@@ -5,7 +5,7 @@
 [androidJvm]\
 class [Builder](index.md)
 
-Builder for [OpenId4VciConfig](../../../eu.europa.ec.eudi.wallet.document.issue.openid4vci/-open-id4-vci-config/index.md).
+Builder for [OpenId4VciConfig](../../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/index.md).
 
 ## Constructors
 
