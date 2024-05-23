@@ -56,7 +56,9 @@ class EudiWalletConfigTest {
                         ClientIdScheme.Preregistered(
                             listOf(
                                 PreregisteredVerifier(
-                                    "Verifier", "https://example.com"
+                                    "VerifierClientId",
+                                    "VerifierLegalName",
+                                    "https://example.com"
                                 )
                             )
                         ),
@@ -83,8 +85,12 @@ class EudiWalletConfigTest {
             (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].verifierApi
         )
         assertEquals(
-            "Verifier",
+            "VerifierClientId",
             (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].clientId
+        )
+        assertEquals(
+            "VerifierLegalName",
+            (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].legalName
         )
         assertEquals(ClientIdScheme.X509SanDns, config.openId4VPConfig?.clientIdSchemes?.get(1))
         assertEquals(EncryptionAlgorithm.ECDH_ES, config.openId4VPConfig?.encryptionAlgorithms?.get(0))
