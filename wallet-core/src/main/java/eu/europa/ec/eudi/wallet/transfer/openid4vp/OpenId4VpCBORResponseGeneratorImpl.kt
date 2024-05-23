@@ -44,6 +44,7 @@ import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
+import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 
 private const val TAG = "OpenId4VpCBORResponseGe"
@@ -104,7 +105,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
     override fun parseRequest(request: OpenId4VpRequest): RequestedDocumentData {
         sessionTranscript = request.sessionTranscript
         return createRequestedDocumentData(
-            request.presentationDefinition.inputDescriptors
+            request.openId4VPAuthorization.presentationDefinition.inputDescriptors
                 .mapNotNull { inputDescriptor ->
                     inputDescriptor.format?.jsonObject()
                         ?.takeIf { it.containsKey("mso_mdoc") } // ignore formats other than "mso_mdoc"
@@ -134,8 +135,15 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
                         null
                     }
                 }.toMap(),
-            openid4VpX509CertificateTrust.getReaderAuth()
-        )
+            openid4VpX509CertificateTrust.getTrustResult()?.let { (chain, isTrusted) ->
+                ReaderAuth(
+                    byteArrayOf(0),
+                    true, /* It is always true as siop-openid4vp library validates it internally and returns a fail status */
+                    chain,
+                    isTrusted,
+                    request.openId4VPAuthorization.client.legalName() ?: "",
+                )
+            })
     }
 
     /**

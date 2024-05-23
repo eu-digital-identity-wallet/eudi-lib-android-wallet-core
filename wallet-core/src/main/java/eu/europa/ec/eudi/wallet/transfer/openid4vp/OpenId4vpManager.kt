@@ -23,6 +23,7 @@ import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
+import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.JarmConfiguration
@@ -85,7 +86,9 @@ import java.util.concurrent.Executor
  *                 ClientIdScheme.Preregistered(
  *                     listOf(
  *                         PreregisteredVerifier(
- *                             "Verifier", "https://example.com"
+ *                             "VerifierClientId",
+ *                             "VerifierLegalName",
+ *                             "https://example.com"
  *                         )
  *                     )
  *                 ),
@@ -145,7 +148,7 @@ class OpenId4vpManager(
         }
     }
 
-    private val siopOpenId4Vp = SiopOpenId4Vp(createSiopOpenId4VpConfig(openId4VpConfig))
+    private val siopOpenId4Vp = SiopOpenId4Vp(openId4VpConfig.toSiopOpenId4VPConfig())
     private var resolvedRequestObject: ResolvedRequestObject? = null
     private var mdocGeneratedNonce: String? = null
 
@@ -157,38 +160,6 @@ class OpenId4vpManager(
      */
     fun setExecutor(executor: Executor) {
         this.executor = executor
-    }
-
-    private fun createSiopOpenId4VpConfig(openId4VpConfig: OpenId4VpConfig): SiopOpenId4VPConfig {
-        return SiopOpenId4VPConfig(
-            jarmConfiguration = JarmConfiguration.Encryption(
-                supportedAlgorithms = openId4VpConfig.encryptionAlgorithms.map {
-                    JWEAlgorithm.parse(it.name)
-                },
-                supportedMethods = openId4VpConfig.encryptionMethods.map {
-                    EncryptionMethod.parse(it.name)
-                },
-            ),
-            supportedClientIdSchemes = openId4VpConfig.clientIdSchemes.map { clientIdScheme ->
-                when (clientIdScheme) {
-                    is ClientIdScheme.Preregistered -> SupportedClientIdScheme.Preregistered(
-                        clientIdScheme.preregisteredVerifiers.associate {
-                            it.clientId to PreregisteredClient(
-                                it.clientId, JWSAlgorithm.RS256 to JwkSetSource.ByReference(
-                                    URI("${it.verifierApi}/wallet/public-keys.json")
-                                )
-                            )
-                        }
-                    )
-
-                    is ClientIdScheme.X509SanDns ->
-                        SupportedClientIdScheme.X509SanDns(responseGenerator.getOpenid4VpX509CertificateTrust())
-
-                    is ClientIdScheme.X509SanUri ->
-                        SupportedClientIdScheme.X509SanUri(responseGenerator.getOpenid4VpX509CertificateTrust())
-                }
-            }
-        )
     }
 
     /**
@@ -218,32 +189,9 @@ class OpenId4vpManager(
                                 when (requestObject) {
                                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
                                         Log.d(TAG, "OpenId4VPAuthorization Request received")
-
-                                        val clientId = requestObject.clientId
-                                        val responseUri =
-                                            (requestObject.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
-                                                ?: ""
-                                        val nonce = requestObject.nonce
-                                        mdocGeneratedNonce =
-                                            Openid4VpUtils.generateMdocGeneratedNonce()
-
-                                        val sessionTranscriptBytes =
-                                            Openid4VpUtils.generateSessionTranscript(
-                                                clientId,
-                                                responseUri,
-                                                nonce,
-                                                mdocGeneratedNonce!!
-                                            )
-                                        Log.d(
-                                            TAG,
-                                            "Session Transcript: ${
-                                                Hex.toHexString(sessionTranscriptBytes)
-                                            }, for clientId: $clientId, responseUri: $responseUri, nonce: $nonce, mdocGeneratedNonce: $mdocGeneratedNonce"
-                                        )
-
                                         val request = OpenId4VpRequest(
-                                            requestObject.presentationDefinition,
-                                            sessionTranscriptBytes
+                                            requestObject,
+                                            requestObject.toSessionTranscript()
                                         )
                                         onResultUnderExecutor(
                                             TransferEvent.RequestReceived(
@@ -362,6 +310,65 @@ class OpenId4vpManager(
         Log.d(TAG, "close")
         resolvedRequestObject = null
         mdocGeneratedNonce = null
+    }
+
+    private fun OpenId4VpConfig.toSiopOpenId4VPConfig(): SiopOpenId4VPConfig {
+        return SiopOpenId4VPConfig(
+            jarmConfiguration = JarmConfiguration.Encryption(
+                supportedAlgorithms = this.encryptionAlgorithms.map {
+                    JWEAlgorithm.parse(it.name)
+                },
+                supportedMethods = this.encryptionMethods.map {
+                    EncryptionMethod.parse(it.name)
+                },
+            ),
+            supportedClientIdSchemes = this.clientIdSchemes.map { clientIdScheme ->
+                when (clientIdScheme) {
+                    is ClientIdScheme.Preregistered -> SupportedClientIdScheme.Preregistered(
+                        clientIdScheme.preregisteredVerifiers.associate { verifier ->
+                            verifier.clientId to PreregisteredClient(
+                                verifier.clientId,
+                                verifier.legalName,
+                                JWSAlgorithm.RS256 to JwkSetSource.ByReference(
+                                    URI("${verifier.verifierApi}/wallet/public-keys.json")
+                                )
+                            )
+                        }
+                    )
+
+                    is ClientIdScheme.X509SanDns ->
+                        SupportedClientIdScheme.X509SanDns(responseGenerator.getOpenid4VpX509CertificateTrust())
+
+                    is ClientIdScheme.X509SanUri ->
+                        SupportedClientIdScheme.X509SanUri(responseGenerator.getOpenid4VpX509CertificateTrust())
+                }
+            }
+        )
+    }
+
+    private fun ResolvedRequestObject.OpenId4VPAuthorization.toSessionTranscript(): SessionTranscriptBytes {
+        val clientId = this.client.id
+        val responseUri =
+            (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
+                ?: ""
+        val nonce = this.nonce
+        val mdocGeneratedNonce = Openid4VpUtils.generateMdocGeneratedNonce().also {
+            mdocGeneratedNonce = it
+        }
+
+        val sessionTranscriptBytes = Openid4VpUtils.generateSessionTranscript(
+            clientId,
+            responseUri,
+            nonce,
+            mdocGeneratedNonce
+        )
+        Log.d(
+            TAG,
+            "Session Transcript: ${
+                Hex.toHexString(sessionTranscriptBytes)
+            }, for clientId: $clientId, responseUri: $responseUri, nonce: $nonce, mdocGeneratedNonce: $mdocGeneratedNonce"
+        )
+        return sessionTranscriptBytes
     }
 
     private fun List<TransferEvent.Listener>.onTransferEvent(event: TransferEvent) {
