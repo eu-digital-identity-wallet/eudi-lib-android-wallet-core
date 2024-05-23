@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0-SNAPSHOT]
+
+_23 May 2024_
+
+- Bump eudi-lib-jvm-siop-openid4vp-kt to v0.3.5
+- Added support to provide the Legal Name of Preregistered Verifiers in Openid4vp Configuration
+- Use the Legal Name provided by the the eudi-lib-jvm-siop-openid4vp-kt library in the ReaderAuth result
+
 ## [0.6.0-SNAPSHOT]
 
 _22 May 2024_
