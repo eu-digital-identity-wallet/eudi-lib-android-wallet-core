@@ -175,9 +175,9 @@ interface OpenId4VciManager {
         val issuerUrl: String,
         val clientId: String,
         val authFlowRedirectionURI: String,
-        val useStrongBoxIfSupported: Boolean
+        val useStrongBoxIfSupported: Boolean,
+        val useDPoP: Boolean
     ) {
-
         /**
          * Builder to create an instance of [Config]
          * @property issuerUrl the issuer url
@@ -190,6 +190,7 @@ interface OpenId4VciManager {
             var clientId: String? = null
             var authFlowRedirectionURI: String? = null
             var useStrongBoxIfSupported: Boolean = false
+            var useDPoP: Boolean = false
 
             /**
              * Set the issuer url
@@ -210,6 +211,8 @@ interface OpenId4VciManager {
             fun useStrongBoxIfSupported(useStrongBoxIfSupported: Boolean) =
                 apply { this.useStrongBoxIfSupported = useStrongBoxIfSupported }
 
+            fun useDPoP(useDPoP: Boolean) = apply { this.useDPoP = useDPoP }
+
             /**
              * Build the [Config]
              * @throws [IllegalStateException] if issuerUrl, clientId or authFlowRedirectionURI is not set
@@ -219,7 +222,7 @@ interface OpenId4VciManager {
                 checkNotNull(clientId) { "clientId is required" }
                 checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
 
-                return Config(issuerUrl!!, clientId!!, authFlowRedirectionURI!!, useStrongBoxIfSupported)
+                return Config(issuerUrl!!, clientId!!, authFlowRedirectionURI!!, useStrongBoxIfSupported, useDPoP)
             }
 
             fun withIssuerUrl(issuerUrl: String) = issuerUrl(issuerUrl)
