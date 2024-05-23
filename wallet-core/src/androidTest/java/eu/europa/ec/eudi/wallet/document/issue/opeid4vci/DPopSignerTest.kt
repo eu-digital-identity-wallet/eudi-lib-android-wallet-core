@@ -84,4 +84,12 @@ class DPopSignerTest {
         val result = verifier.verify(header, signingInput, signature)
         assertTrue(result)
     }
+
+    @Test
+    fun testInstantiatingDPoPSignerUsesDifferentKeyPair() {
+        val firstJwk = (dPoPSigner.getBindingKey() as BindingKey.Jwk).jwk
+        val secondDPoPSigner = DPoPSigner()
+        val secondJwk = (secondDPoPSigner.getBindingKey() as BindingKey.Jwk).jwk
+        assertThat(firstJwk, not(equalTo(secondJwk)))
+    }
 }

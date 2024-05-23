@@ -32,7 +32,6 @@ interface OpenId4VciManager {
     /**
      * Issue a document using a document type
      * @param docType the document type to issue
-     * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued
      * @see[IssueEvent] on how to handle the result
@@ -40,7 +39,6 @@ interface OpenId4VciManager {
      */
     fun issueDocumentByDocType(
         docType: String,
-        config: Config? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent
     )
@@ -48,7 +46,6 @@ interface OpenId4VciManager {
     /**
      * Issue a document using an offer
      * @param offer the offer to issue
-     * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      *
@@ -57,7 +54,6 @@ interface OpenId4VciManager {
      */
     fun issueDocumentByOffer(
         offer: Offer,
-        config: Config? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent
     )
@@ -65,7 +61,6 @@ interface OpenId4VciManager {
     /**
      * Issue a document using an offer URI
      * @param offerUri the offer URI
-     * @param config the [Config] to use. Optional, if [OpenId4VciManager] implementation has a default config
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      * @see[IssueEvent] on how to handle the result
@@ -73,7 +68,6 @@ interface OpenId4VciManager {
      */
     fun issueDocumentByOfferUri(
         offerUri: String,
-        config: Config? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent
     )
@@ -170,6 +164,8 @@ interface OpenId4VciManager {
      * @property issuerUrl the issuer url
      * @property clientId the client id
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
+     * @property useStrongBoxIfSupported use StrongBox for document keys if supported
+     * @property useDPoP flag that if set will enable the use of DPoP JWT
      */
     data class Config(
         val issuerUrl: String,
@@ -183,6 +179,8 @@ interface OpenId4VciManager {
          * @property issuerUrl the issuer url
          * @property clientId the client id
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
+         * @property useStrongBoxIfSupported use StrongBox for document keys if supported
+         * @property useDPoP flag that if set will enable the use of DPoP JWT
          *
          */
         class Builder {
@@ -208,9 +206,15 @@ interface OpenId4VciManager {
             fun authFlowRedirectionURI(authFlowRedirectionURI: String) =
                 apply { this.authFlowRedirectionURI = authFlowRedirectionURI }
 
+            /**
+             * Set the flag that if set will enable the use of StrongBox for document keys if supported
+             */
             fun useStrongBoxIfSupported(useStrongBoxIfSupported: Boolean) =
                 apply { this.useStrongBoxIfSupported = useStrongBoxIfSupported }
 
+            /**
+             * Set the flag that if set will enable the use of DPoP JWT
+             */
             fun useDPoP(useDPoP: Boolean) = apply { this.useDPoP = useDPoP }
 
             /**

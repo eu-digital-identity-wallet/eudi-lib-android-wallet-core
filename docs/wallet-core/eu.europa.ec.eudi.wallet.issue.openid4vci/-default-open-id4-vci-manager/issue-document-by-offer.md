@@ -3,7 +3,9 @@
 # issueDocumentByOffer
 
 [androidJvm]\
-open override fun [issueDocumentByOffer](issue-document-by-offer.md)(offer: [Offer](../-offer/index.md), config: [OpenId4VciManager.Config](../-open-id4-vci-manager/-config/index.md)?, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)?, onIssueEvent: [OpenId4VciManager.OnIssueEvent](../-open-id4-vci-manager/-on-issue-event/index.md))
+open override fun [issueDocumentByOffer](issue-document-by-offer.md)(offer: [Offer](../-offer/index.md),
+executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)?,
+onIssueEvent: [OpenId4VciManager.OnIssueEvent](../-open-id4-vci-manager/-on-issue-event/index.md))
 
 Issue a document using an offer
 
@@ -14,7 +16,6 @@ androidJvm
 | | |
 |---|---|
 | offer | the offer to issue |
-| config | the Config to use. Optional, if [OpenId4VciManager](../-open-id4-vci-manager/index.md) implementation has a default config |
 | executor | the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread |
 | onIssueEvent | the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer |
 

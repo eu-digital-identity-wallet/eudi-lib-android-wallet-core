@@ -44,15 +44,13 @@ class DefaultOpenId4VciManager(
 
     override fun issueDocumentByDocType(
         docType: String,
-        config: OpenId4VciManager.Config?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        val configToUse = config ?: this.config
         clearStateThen {
             launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
                 try {
-                    val credentialIssuerId = CredentialIssuerId(configToUse.issuerUrl).getOrThrow()
+                    val credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow()
                     val (credentialIssuerMetadata, authorizationServerMetadata) = DefaultHttpClientFactory()
                         .use { client ->
                             Issuer.metaData(client, credentialIssuerId)
@@ -74,7 +72,7 @@ class DefaultOpenId4VciManager(
                     )
 
                     val offer = DefaultOffer(credentialOffer)
-                    doIssueDocumentByOffer(offer, configToUse, listener)
+                    doIssueDocumentByOffer(offer, config, listener)
 
                 } catch (e: Throwable) {
                     listener(failure(e))
@@ -86,15 +84,13 @@ class DefaultOpenId4VciManager(
 
     override fun issueDocumentByOffer(
         offer: Offer,
-        config: OpenId4VciManager.Config?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        val configToUse = config ?: this.config
         clearStateThen {
             launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
                 try {
-                    doIssueDocumentByOffer(offer, configToUse, listener)
+                    doIssueDocumentByOffer(offer, config, listener)
                 } catch (e: Throwable) {
                     listener(failure(e))
                     coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -106,7 +102,6 @@ class DefaultOpenId4VciManager(
 
     override fun issueDocumentByOfferUri(
         offerUri: String,
-        config: OpenId4VciManager.Config?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
@@ -162,13 +157,12 @@ class DefaultOpenId4VciManager(
 
     private suspend fun doIssueDocumentByOffer(
         offer: Offer,
-        config: OpenId4VciManager.Config?,
+        config: OpenId4VciManager.Config,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
-        val configToUse = config ?: this.config
         offer as DefaultOffer
         val credentialOffer = offer.credentialOffer
-        val issuer = Issuer.make(configToUse.toOpenId4VCIConfig(), credentialOffer).getOrThrow()
+        val issuer = Issuer.make(config.toOpenId4VCIConfig(), credentialOffer).getOrThrow()
         onEvent(IssueEvent.Started(offer.offeredDocuments.size))
         with(issuer) {
             val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
@@ -182,7 +176,7 @@ class DefaultOpenId4VciManager(
 
             offer.offeredDocuments.forEach { item ->
                 val issuanceRequest = documentManager
-                    .createIssuanceRequest(item, configToUse.useStrongBoxIfSupported)
+                    .createIssuanceRequest(item, config.useStrongBoxIfSupported)
                     .getOrThrow()
                 doIssueCredential(
                     authorizedRequest,

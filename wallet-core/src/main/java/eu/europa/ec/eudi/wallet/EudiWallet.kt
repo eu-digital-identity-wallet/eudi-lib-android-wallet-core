@@ -255,7 +255,7 @@ object EudiWallet {
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
-                }.also { it.issueDocumentByDocType(docType, null, executor, onEvent) }
+                }.also { it.issueDocumentByDocType(docType, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -285,7 +285,7 @@ object EudiWallet {
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
-                }.also { it.issueDocumentByOffer(offer, null, executor, onEvent) }
+                }.also { it.issueDocumentByOffer(offer, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -315,7 +315,7 @@ object EudiWallet {
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
-                }.also { it.issueDocumentByOfferUri(offerUri, null, executor, onEvent) }
+                }.also { it.issueDocumentByOfferUri(offerUri, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
