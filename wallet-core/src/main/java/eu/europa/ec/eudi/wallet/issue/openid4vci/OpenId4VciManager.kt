@@ -172,7 +172,7 @@ interface OpenId4VciManager {
         val clientId: String,
         val authFlowRedirectionURI: String,
         val useStrongBoxIfSupported: Boolean,
-        val useDPoP: Boolean
+        val useDPoPIfSupported: Boolean
     ) {
         /**
          * Builder to create an instance of [Config]
@@ -180,7 +180,7 @@ interface OpenId4VciManager {
          * @property clientId the client id
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
          * @property useStrongBoxIfSupported use StrongBox for document keys if supported
-         * @property useDPoP flag that if set will enable the use of DPoP JWT
+         * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
          *
          */
         class Builder {
@@ -188,7 +188,7 @@ interface OpenId4VciManager {
             var clientId: String? = null
             var authFlowRedirectionURI: String? = null
             var useStrongBoxIfSupported: Boolean = false
-            var useDPoP: Boolean = false
+            var useDPoPIfSupported: Boolean = false
 
             /**
              * Set the issuer url
@@ -215,7 +215,7 @@ interface OpenId4VciManager {
             /**
              * Set the flag that if set will enable the use of DPoP JWT
              */
-            fun useDPoP(useDPoP: Boolean) = apply { this.useDPoP = useDPoP }
+            fun useDPoP(useDPoP: Boolean) = apply { this.useDPoPIfSupported = useDPoP }
 
             /**
              * Build the [Config]
@@ -226,7 +226,13 @@ interface OpenId4VciManager {
                 checkNotNull(clientId) { "clientId is required" }
                 checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
 
-                return Config(issuerUrl!!, clientId!!, authFlowRedirectionURI!!, useStrongBoxIfSupported, useDPoP)
+                return Config(
+                    issuerUrl!!,
+                    clientId!!,
+                    authFlowRedirectionURI!!,
+                    useStrongBoxIfSupported,
+                    useDPoPIfSupported
+                )
             }
 
             fun withIssuerUrl(issuerUrl: String) = issuerUrl(issuerUrl)
