@@ -37,6 +37,7 @@ The library provides the following functionality:
         - [x] Support for mso_mdoc format
         - [ ] Support for sd-jwt-vc format
       - [x] Support credential offer
+      - [x] Support for DPoP JWT in authorization
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -85,7 +86,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.7.1-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.8.0-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -173,6 +174,7 @@ val config = EudiWalletConfig.Builder(applicationContext)
         withClientId("wallet-client-id")
         authFlowRedirectionURI("eudi-openid4ci://authorize")
         useStrongBoxIfSupported(false)
+        useDPoP(false)
     }
     .build()
 

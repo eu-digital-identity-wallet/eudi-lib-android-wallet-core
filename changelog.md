@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.0-SNAPSHOT]
+
+_24 May 2024_
+
+- DPoP support for OpenId4VCI
+
 ## [0.7.1-SNAPSHOT]
 
 _24 May 2024_
