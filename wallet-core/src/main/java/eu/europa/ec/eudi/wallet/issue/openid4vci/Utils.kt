@@ -28,15 +28,17 @@ import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
 
-internal typealias CredentialConfigurationFilter = (CredentialConfiguration) -> Boolean
+internal fun interface CredentialConfigurationFilter {
+    operator fun invoke(conf: CredentialConfiguration): Boolean
+}
 
 @JvmSynthetic
-internal val FormatFilter: CredentialConfigurationFilter = { conf ->
+internal val FormatFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
     conf is MsoMdocCredential
 }
 
 @JvmSynthetic
-internal val ProofTypeFilter: CredentialConfigurationFilter = { conf ->
+internal val ProofTypeFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
     conf.proofTypesSupported.keys
         .firstOrNull { it in ProofSigner.SupportedProofTypes.keys }
         ?.let { proofType ->
@@ -49,9 +51,10 @@ internal val ProofTypeFilter: CredentialConfigurationFilter = { conf ->
         } ?: false
 }
 
-@JvmSynthetic
-internal fun DocTypeFilterFactory(docType: String): CredentialConfigurationFilter = { conf ->
-    conf is MsoMdocCredential && conf.docType == docType
+internal class DocTypeFilterFactory(private val docType: String) : CredentialConfigurationFilter {
+    override fun invoke(conf: CredentialConfiguration): Boolean {
+        return conf is MsoMdocCredential && conf.docType == docType
+    }
 }
 
 internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>

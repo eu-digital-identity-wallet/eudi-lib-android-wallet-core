@@ -51,9 +51,9 @@ interface Offer {
     }
 }
 
-data class DefaultOffer(
-    @JvmSynthetic internal val credentialOffer: CredentialOffer,
-    private val filterConfigurations: List<CredentialConfigurationFilter> = listOf(FormatFilter, ProofTypeFilter)
+internal data class DefaultOffer(
+    @JvmSynthetic val credentialOffer: CredentialOffer,
+    @JvmSynthetic val filterConfigurations: List<CredentialConfigurationFilter> = listOf(FormatFilter, ProofTypeFilter)
 ) : Offer {
 
     override val issuerName: String

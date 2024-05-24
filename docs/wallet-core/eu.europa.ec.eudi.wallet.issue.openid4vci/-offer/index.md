@@ -2,15 +2,10 @@
 
 # Offer
 
+[androidJvm]\
 interface [Offer](index.md)
 
 An offer of credentials to be issued.
-
-#### Inheritors
-
-| |
-|---|
-| [DefaultOffer](../-default-offer/index.md) |
 
 ## Types
 

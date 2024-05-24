@@ -33,7 +33,7 @@ import java.net.URI
 import java.util.*
 import java.util.concurrent.Executor
 
-class DefaultOpenId4VciManager(
+internal class DefaultOpenId4VciManager(
     private val context: Context,
     private val documentManager: DocumentManager,
     var config: OpenId4VciManager.Config
@@ -384,7 +384,7 @@ class DefaultOpenId4VciManager(
                 authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
                 keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048),
                 credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
-                dPoPProofSigner = if (useDPoP) DPoPSigner() else null
+                dPoPProofSigner = if (useDPoPIfSupported) DPoPSigner() else null
             )
         }
     }
