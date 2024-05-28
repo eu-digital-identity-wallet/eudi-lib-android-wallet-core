@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.0-SNAPSHOT]
+
+_28 May 2024_
+
+- Bump eu.europa.ec.eudi:eudi-lib-android-wallet-document-manager to 0.3.0-SNAPSHOT
+
 ## [0.8.0-SNAPSHOT]
 
 _24 May 2024_
