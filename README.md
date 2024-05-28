@@ -246,7 +246,7 @@ when (result) {
 
 #### Issuing/Adding a document
 
-Adding a document is a two step process. First, you need to create an issuanceRequest using the
+Adding a document is a two-step process. First, you need to create an issuanceRequest using the
 method `EudiWallet.createIssuanceRequest`. The issuanceRequest holds the public certificate
 that will be used from the issuer to sign the document.
 
@@ -298,18 +298,11 @@ when (requestResult) {
 }
 ```
 
-Document's data must be in CBOR bytes that has the following structure:
+Document's data must be in CBOR bytes that has the IssuerSigned structure according to ISO 23220-4 *.
 
 ```cddl
-Data = {
- "documents" : [+Document] ; Returned documents
-}
-Document = {
- "docType" : DocType, ; Document type returned
- "issuerSigned" : IssuerSigned ; Returned data elements signed by the issuer
-}
 IssuerSigned = {
- "nameSpaces" : IssuerNameSpaces, ; Returned data elements
+ ?"nameSpaces" : IssuerNameSpaces, ; Returned data elements
  "issuerAuth" : IssuerAuth ; Contains the mobile security object (MSO) for issuer data authentication
 }
 IssuerNameSpaces = { ; Returned data elements for each namespace
@@ -324,6 +317,8 @@ IssuerSignedItem = {
 }
 IssuerAuth = COSE_Sign1 ; The payload is MobileSecurityObjectBytes
 ```
+
+__* Important note__: Currently, the library does not support IssuerSigned structure without the nameSpaces field.
 
 Currently, only one document can be added at a time.
 
