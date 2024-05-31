@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.1-SNAPSHOT]
+
+_31 May 2024_
+
+- Bump eudi-lib-jvm-siop-openid4vp-kt to v0.4.2
+
 ## [0.9.0-SNAPSHOT]
 
 _28 May 2024_
