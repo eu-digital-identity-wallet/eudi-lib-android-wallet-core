@@ -3,10 +3,7 @@
 # issueDocumentByOfferUri
 
 [androidJvm]\
-abstract fun [issueDocumentByOfferUri](issue-document-by-offer-uri.md)(
-offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null,
-onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+abstract fun [issueDocumentByOfferUri](issue-document-by-offer-uri.md)(offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
 
 Issue a document using an offer URI
 
