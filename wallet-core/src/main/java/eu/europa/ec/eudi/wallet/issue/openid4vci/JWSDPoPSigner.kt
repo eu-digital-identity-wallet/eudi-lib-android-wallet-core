@@ -22,24 +22,65 @@ import android.security.keystore.KeyProperties.PURPOSE_SIGN
 import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.crypto.impl.AlgorithmSupportMessage
 import com.nimbusds.jose.jca.JCAContext
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64URL
-import eu.europa.ec.eudi.openid4vci.BindingKey
-import eu.europa.ec.eudi.openid4vci.ProofSigner
+import eu.europa.ec.eudi.openid4vci.JwtBindingKey
+import eu.europa.ec.eudi.openid4vci.PopSigner
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
 import java.time.Instant
 import java.util.*
 
-internal class DPoPSigner : ProofSigner {
+class JWSDPoPSigner private constructor() {
+
+    private val keyStore: KeyStore
+        get() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
     private val jwk: JWK
         get() = JWK.parseFromPEMEncodedObjects(keyStore.getCertificate(KEY_ALIAS).publicKey.pem)
 
+    val popSigner: PopSigner.Jwt
+        get() = PopSigner.Jwt(
+            algorithm = SupportedAlgorithms.keys.first(),
+            bindingKey = JwtBindingKey.Jwk(jwk),
+            jwsSigner = jwsSigner
+        )
+
     init {
+        generateKeyPair()
+    }
+
+    private val jwsSigner: JWSSigner
+        get() = object : JWSSigner {
+
+            private val jcaContext = JCAContext()
+
+            override fun getJCAContext(): JCAContext = jcaContext
+
+            override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
+                val algorithm = SupportedAlgorithms[header.algorithm]
+                    ?: throw JOSEException(
+                        AlgorithmSupportMessage.unsupportedJWSAlgorithm(
+                            header.algorithm,
+                            supportedJWSAlgorithms()
+                        )
+                    )
+                val privateKey = (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry).privateKey
+                val signature = Signature.getInstance(algorithm).apply {
+                    initSign(privateKey)
+                    update(signingInput)
+                }.sign()
+                return Base64URL.encode(signature.derToJose(header.algorithm))
+            }
+
+            override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = SupportedAlgorithms.keys.toMutableSet()
+        }
+
+    private fun generateKeyPair() {
         if (keyStore.containsAlias(KEY_ALIAS)) {
             keyStore.deleteEntry(KEY_ALIAS)
         }
@@ -60,46 +101,19 @@ internal class DPoPSigner : ProofSigner {
         }
     }
 
-    override fun getAlgorithm(): JWSAlgorithm = supportedAlgorithms.keys.first()
-
-    override fun getBindingKey(): BindingKey = BindingKey.Jwk(jwk)
-
-    override fun getJCAContext(): JCAContext = JCAContext()
-
-    override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-        val algorithm = supportedAlgorithms[header.algorithm]
-            ?: throw JOSEException(
-                AlgorithmSupportMessage.unsupportedJWSAlgorithm(
-                    header.algorithm,
-                    supportedJWSAlgorithms()
-                )
-            )
-        val privateKey = (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry).privateKey
-        val signature = Signature.getInstance(algorithm).apply {
-            initSign(privateKey)
-            update(signingInput)
-        }.sign()
-        return Base64URL.encode(signature.derToJose(header.algorithm))
-    }
-
-    override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = supportedAlgorithms.keys.toMutableSet()
-
     companion object {
         private const val KEY_ALIAS = "eu.europa.ec.eudi.wallet.issue.openid4vci.DPoPKey"
 
-        private val supportedAlgorithms: Map<JWSAlgorithm, String>
+
+        private val SupportedAlgorithms: Map<JWSAlgorithm, String>
             get() = mapOf(JWSAlgorithm.ES256 to "SHA256withECDSA")
 
-        private val keyStore: KeyStore
-            get() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-
-        operator fun invoke(): Result<DPoPSigner> {
+        operator fun invoke(): Result<PopSigner.Jwt> {
             return try {
-                Result.success(DPoPSigner())
-            } catch (e: Throwable) {
+                Result.success(JWSDPoPSigner().popSigner)
+            } catch (e: Exception) {
                 Result.failure(e)
             }
         }
     }
 }
-

@@ -41,8 +41,10 @@ class OfferTest {
     @Test
     fun `offeredDocuments returns filtered and mapped credentialConfigurationsSupported`() {
         val mockCredentialConfiguration = mockk<MsoMdocCredential>(relaxed = true) {
-            every { proofTypesSupported } returns mapOf(
-                ProofType.JWT to listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384)
+            every { proofTypesSupported } returns ProofTypesSupported(
+                setOf(
+                    ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384))
+                )
             )
             every { name } returns "testName"
             every { docType } returns "testDocType"
