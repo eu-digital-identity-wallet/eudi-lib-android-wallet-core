@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.2-SNAPSHOT]
+
+_04 Jun 2024_
+
+- Support multiple URL schemes for OpenId4Vp
+
 ## [0.9.1-SNAPSHOT]
 
 _31 May 2024_

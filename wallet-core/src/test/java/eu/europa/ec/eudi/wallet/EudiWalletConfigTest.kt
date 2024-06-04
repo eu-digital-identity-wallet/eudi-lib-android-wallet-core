@@ -65,6 +65,12 @@ class EudiWalletConfigTest {
                         ClientIdScheme.X509SanDns
                     )
                 )
+                withScheme(
+                    listOf(
+                        "eudi-openid4vp",
+                        "mdoc-openid4vp"
+                    )
+                )
                 withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
                 withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
             }
@@ -93,8 +99,16 @@ class EudiWalletConfigTest {
             (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].legalName
         )
         assertEquals(ClientIdScheme.X509SanDns, config.openId4VPConfig?.clientIdSchemes?.get(1))
-        assertEquals(EncryptionAlgorithm.ECDH_ES, config.openId4VPConfig?.encryptionAlgorithms?.get(0))
-        assertEquals(EncryptionMethod.A128CBC_HS256, config.openId4VPConfig?.encryptionMethods?.get(0))
+        assertEquals("eudi-openid4vp", config.openId4VPConfig?.schemes?.get(0))
+        assertEquals("mdoc-openid4vp", config.openId4VPConfig?.schemes?.get(1))
+        assertEquals(
+            EncryptionAlgorithm.ECDH_ES,
+            config.openId4VPConfig?.encryptionAlgorithms?.get(0)
+        )
+        assertEquals(
+            EncryptionMethod.A128CBC_HS256,
+            config.openId4VPConfig?.encryptionMethods?.get(0)
+        )
         assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
         assertEquals("client-id", config.openId4VciConfig?.clientId)
         assertEquals("eudi-openid4ci://authorize", config.openId4VciConfig?.authFlowRedirectionURI)

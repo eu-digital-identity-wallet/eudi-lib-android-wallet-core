@@ -25,6 +25,12 @@ val config = OpenId4VpConfig.Builder()
              ClientIdScheme.X509SanDns
          )
     )
+    .withScheme(
+        listOf(
+            "eudi-openid4vp",
+            "mdoc-openid4vp"
+        )
+    )
    .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
    .withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
    .build()
@@ -43,4 +49,4 @@ val config = OpenId4VpConfig.Builder()
 | [clientIdSchemes](client-id-schemes.md) | [androidJvm]<br>val [clientIdSchemes](client-id-schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../-client-id-scheme/index.md)&gt;<br>list of [ClientIdScheme](../-client-id-scheme/index.md) that defines the supported Client Identifier schemes |
 | [encryptionAlgorithms](encryption-algorithms.md) | [androidJvm]<br>val [encryptionAlgorithms](encryption-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionAlgorithm](../-encryption-algorithm/index.md)&gt;<br>list of [EncryptionAlgorithm](../-encryption-algorithm/index.md) that defines the supported encryption algorithms |
 | [encryptionMethods](encryption-methods.md) | [androidJvm]<br>val [encryptionMethods](encryption-methods.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../-encryption-method/index.md)&gt;<br>list of [EncryptionMethod](../-encryption-method/index.md) that defines the supported encryption methods |
-| [scheme](scheme.md) | [androidJvm]<br>val [scheme](scheme.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>optionally you can change the scheme. By default, the scheme &quot;mdoc-openid4vp&quot; is used |
+| [schemes](schemes.md) | [androidJvm]<br>val [schemes](schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)&gt;<br>optionally you can set one or more schemes. By default, the scheme &quot;mdoc-openid4vp&quot; is used |
