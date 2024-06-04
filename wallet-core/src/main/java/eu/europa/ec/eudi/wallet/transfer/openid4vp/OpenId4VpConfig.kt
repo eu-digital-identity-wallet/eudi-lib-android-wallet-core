@@ -42,6 +42,12 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as Ope
  *              ClientIdScheme.X509SanDns
  *          )
  *     )
+ *     .withScheme(
+ *         listOf(
+ *             "eudi-openid4vp",
+ *             "mdoc-openid4vp"
+ *         )
+ *     )
  *    .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
  *    .withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
  *    .build()
@@ -50,7 +56,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as Ope
  * @property clientIdSchemes list of [ClientIdScheme] that defines the supported Client Identifier schemes
  * @property encryptionAlgorithms list of [EncryptionAlgorithm] that defines the supported encryption algorithms
  * @property encryptionMethods list of [EncryptionMethod] that defines the supported encryption methods
- * @property scheme optionally you can change the scheme. By default, the scheme "mdoc-openid4vp" is used
+ * @property schemes optionally you can set one or more schemes. By default, the scheme "mdoc-openid4vp" is used
  */
 
 class OpenId4VpConfig private constructor(private val builder: Builder) {
@@ -64,8 +70,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
     val encryptionMethods: List<EncryptionMethod>
         get() = builder.encryptionMethods
 
-    val scheme: String
-        get() = builder.scheme
+    val schemes: List<String>
+        get() = builder.schemes
 
     /**
      * Builder for [OpenId4VciConfig].
@@ -73,7 +79,7 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      * @property clientIdSchemes list of [ClientIdScheme] that defines the supported Client Identifier schemes
      * @property encryptionAlgorithms list of [EncryptionAlgorithm] that defines the supported encryption algorithms
      * @property encryptionMethods list of [EncryptionMethod] that defines the supported encryption methods
-     * @property scheme for OpenId4Vp. Optionally, you can change the scheme. By default, "mdoc-openid4vp" is used.
+     * @property schemes for OpenId4Vp. Optionally, you can set one or more schemes. By default, "mdoc-openid4vp" is used.
      */
     class Builder {
         lateinit var clientIdSchemes: List<ClientIdScheme>
@@ -106,7 +112,7 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          */
         fun withEncryptionMethods(encryptionMethods: List<EncryptionMethod>) = apply { this.encryptionMethods = encryptionMethods }
 
-        var scheme: String = "mdoc-openid4vp"
+        var schemes: List<String> = listOf("mdoc-openid4vp")
             private set
 
         /**
@@ -116,7 +122,17 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          * @param scheme the scheme
          */
         fun withScheme(scheme: String) = apply {
-            this.scheme = scheme
+            this.schemes = listOf(scheme)
+        }
+
+        /**
+         * Sets a list of schemes for openId4Vp.
+         * By default, the scheme "mdoc-openid4vp" is supported
+         *
+         * @param schemes the list of schemes
+         */
+        fun withScheme(schemes: List<String>) = apply {
+            this.schemes = schemes
         }
 
         fun build(): OpenId4VpConfig {
@@ -125,6 +141,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             require(this.clientIdSchemes.count { it is ClientIdScheme.Preregistered } <= 1) { "OpenId4VpConfig: clientIdSchemes must contain maximum one Preregistered item" }
             require(this.clientIdSchemes.count { it is ClientIdScheme.X509SanDns } <= 1) { "OpenId4VpConfig: clientIdSchemes must contain maximum one X509SanDns item" }
             require(this.clientIdSchemes.count { it is ClientIdScheme.X509SanUri } <= 1) { "OpenId4VpConfig: clientIdSchemes must contain maximum one X509SanUri item" }
+
+            require(this.schemes.isNotEmpty()) { "OpenId4VpConfig: schemes must be initialized with a not empty list" }
 
             require(this::encryptionAlgorithms.isInitialized && encryptionAlgorithms.isNotEmpty()) { "OpenId4VpConfig: encryptionAlgorithms must be initialized with a not empty list" }
             require(this::encryptionMethods.isInitialized && encryptionMethods.isNotEmpty()) { "OpenId4VpConfig: encryptionMethods must be initialized with a not empty list" }

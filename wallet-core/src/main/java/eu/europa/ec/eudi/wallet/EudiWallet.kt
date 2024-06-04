@@ -503,13 +503,14 @@ object EudiWallet {
      */
     fun startEngagementFromIntent(intent: Intent) {
         requireInit {
-            when (intent.scheme) {
-                "mdoc" -> {
+            val scheme = intent.scheme
+            when {
+                scheme == "mdoc" -> {
                     transferMode = TransferMode.REST_API
                     transferManager.startEngagementToApp(intent)
                 }
 
-                _config.openId4VPConfig?.scheme -> { // openid4vp scheme
+                true == _config.openId4VPConfig?.schemes?.contains(scheme) -> {
                     transferMode = TransferMode.OPENID4VP
                     openId4vpManager?.resolveRequestUri(intent.toUri(0))
                 }
@@ -540,8 +541,9 @@ object EudiWallet {
      */
     fun resolveRequestUri(openid4VpURI: String) {
         requireInit {
-            when (Uri.parse(openid4VpURI).scheme) {
-                _config.openId4VPConfig?.scheme -> { // openid4vp scheme
+            val scheme = Uri.parse(openid4VpURI).scheme
+            when {
+                true == _config.openId4VPConfig?.schemes?.contains(scheme) -> { // openid4vp scheme
                     transferMode = TransferMode.OPENID4VP
                     openId4vpManager?.resolveRequestUri(openid4VpURI)
                 }
