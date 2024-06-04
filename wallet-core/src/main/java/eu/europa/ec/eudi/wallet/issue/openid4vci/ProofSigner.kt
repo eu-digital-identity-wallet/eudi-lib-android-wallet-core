@@ -17,45 +17,26 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import androidx.biometric.BiometricPrompt.CryptoObject
-import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.crypto.impl.AlgorithmSupportMessage
-import com.nimbusds.jose.jca.JCAContext
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.util.Base64URL
-import eu.europa.ec.eudi.openid4vci.BindingKey
-import eu.europa.ec.eudi.openid4vci.ProofType
+import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
-import eu.europa.ec.eudi.openid4vci.ProofSigner as BaseProofSigner
 
-internal class ProofSigner(
-    private val algorithm: JWSAlgorithm,
-    private val issuanceRequest: IssuanceRequest
-) : BaseProofSigner {
-    private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
+internal abstract class ProofSigner {
+    abstract val popSigner: PopSigner
     var userAuthStatus: UserAuthStatus = UserAuthStatus.NotRequired
-        private set
+        protected set
 
-    override fun getAlgorithm(): JWSAlgorithm = algorithm
-
-    override fun getBindingKey(): BindingKey = BindingKey.Jwk(jwk)
-
-    override fun getJCAContext(): JCAContext = JCAContext()
-
-    override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
+    protected fun doSign(
+        issuanceRequest: IssuanceRequest,
+        signingInput: ByteArray,
+        @Algorithm algorithm: String
+    ): ByteArray {
         userAuthStatus = UserAuthStatus.NotRequired
-        val alg = AlgorithmsMap[header.algorithm] ?: throw JOSEException(
-            AlgorithmSupportMessage.unsupportedJWSAlgorithm(
-                header.algorithm,
-                supportedJWSAlgorithms()
-            )
-        )
-        return issuanceRequest.signWithAuthKey(signingInput, alg).let { signResult ->
+        return issuanceRequest.signWithAuthKey(signingInput, algorithm).let { signResult ->
             when (signResult) {
-                is SignedWithAuthKeyResult.Success -> Base64URL.encode(signResult.signature.derToJose(algorithm))
+                is SignedWithAuthKeyResult.Success -> signResult.signature
                 is SignedWithAuthKeyResult.Failure -> throw signResult.throwable
                 is SignedWithAuthKeyResult.UserAuthRequired -> {
                     userAuthStatus = UserAuthStatus.Required(signResult.cryptoObject)
@@ -65,28 +46,64 @@ internal class ProofSigner(
         }
     }
 
-    override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = AlgorithmsMap.keys.toMutableSet()
-
-    companion object {
+    companion object Factory {
         val SupportedProofTypes = mapOf(
-            ProofType.JWT to listOf(JWSAlgorithm.ES256)
+            ProofType.JWT to ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256)),
+            ProofType.CWT to ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES256), listOf(CoseCurve.P_256))
         )
-        val AlgorithmsMap = mapOf(
-            JWSAlgorithm.ES256 to Algorithm.SHA256withECDSA
-        )
+
+        fun selectSupportedProofType(issuerSupportedProofTypes: ProofTypesSupported): ProofTypeMeta? {
+            return issuerSupportedProofTypes.values
+                .firstOrNull { it.type() in SupportedProofTypes.keys }
+                ?.let { proofType ->
+                    when (proofType.type()) {
+                        ProofType.JWT -> selectSupportedAlgorithm(proofType as ProofTypeMeta.Jwt)?.let { proofType }
+                        ProofType.CWT -> selectSupportedAlgorithm(proofType as ProofTypeMeta.Cwt)?.let { proofType }
+                        ProofType.LDP_VP -> null
+                    }
+                }
+        }
+
+        fun selectSupportedAlgorithm(metadata: ProofTypeMeta.Jwt): JWSAlgorithm? {
+            val supportedType = SupportedProofTypes[ProofType.JWT] as ProofTypeMeta.Jwt
+            return supportedType.algorithms.firstOrNull { it in metadata.algorithms }
+        }
+
+        fun selectSupportedAlgorithm(metadata: ProofTypeMeta.Cwt): Pair<CoseAlgorithm, CoseCurve>? {
+            val supportedType = SupportedProofTypes[ProofType.CWT] as ProofTypeMeta.Cwt
+            return supportedType.algorithms.firstOrNull { it in metadata.algorithms }
+                ?.let { algorithm ->
+                    supportedType.curves.firstOrNull { it in metadata.curves }
+                        ?.let { curve -> algorithm to curve }
+                }
+
+        }
 
         operator fun invoke(
-            proofTypes: Map<ProofType, List<JWSAlgorithm>>,
-            issuanceRequest: IssuanceRequest
+            issuanceRequest: IssuanceRequest,
+            credentialConfiguration: CredentialConfiguration,
+        ) = invoke(issuanceRequest, credentialConfiguration.proofTypesSupported)
+
+        operator fun invoke(
+            issuanceRequest: IssuanceRequest,
+            issuerSupportedProofTypes: ProofTypesSupported,
         ): Result<ProofSigner> {
-            val proofType = SupportedProofTypes.keys.firstOrNull { it in proofTypes.keys }
-                ?: return Result.failure(IllegalArgumentException("Unsupported proof type"))
-            val algorithms = SupportedProofTypes[proofType]
-                ?.filter { it in (proofTypes[proofType] ?: emptyList()) }
-                ?: return Result.failure(IllegalArgumentException("Unsupported algorithm for proof type"))
-            val algorithm = algorithms.firstOrNull()
-                ?: return Result.failure(IllegalArgumentException("No supported algorithm for proof type"))
-            return Result.success(ProofSigner(algorithm, issuanceRequest))
+            val selectedProofType = selectSupportedProofType(issuerSupportedProofTypes)
+                ?: return Result.failure(UnsupportedProofTypeException())
+
+
+            return when (selectedProofType) {
+                is ProofTypeMeta.Jwt -> selectSupportedAlgorithm(selectedProofType)?.let { alg ->
+                    JWSProofSigner(issuanceRequest, alg)
+                }
+
+                is ProofTypeMeta.Cwt -> selectSupportedAlgorithm(selectedProofType)?.let { (alg, crv) ->
+                    CWTProofSigner(issuanceRequest, alg, crv)
+                }
+
+                else -> null
+            }?.let { Result.success(it) }
+                ?: Result.failure(UnsupportedProofTypeException())
         }
     }
 
@@ -94,6 +111,4 @@ internal class ProofSigner(
         object NotRequired : UserAuthStatus
         data class Required(val cryptoObject: CryptoObject? = null) : UserAuthStatus
     }
-
-    class UserAuthRequiredException : Throwable()
 }

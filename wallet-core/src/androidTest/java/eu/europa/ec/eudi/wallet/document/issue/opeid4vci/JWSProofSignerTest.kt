@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023-2024 European Commission
+ *  Copyright (c) 2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -26,14 +26,18 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.openid4vci.BindingKey
 import eu.europa.ec.eudi.openid4vci.CNonce
+import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.wallet.document.Constants.EU_PID_DOCTYPE
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.JWSProofSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.UserAuthRequiredException
 import org.junit.Assert
-import org.junit.Assume
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,8 +46,7 @@ import java.time.Instant
 import java.util.*
 
 @RunWith(AndroidJUnit4::class)
-class ProofSignerTest {
-
+class JWSProofSignerTest {
     companion object {
         private lateinit var context: Context
 
@@ -57,7 +60,7 @@ class ProofSignerTest {
 
     @Test
     fun test_userAuthRequired_is_set_to_Yes_when_needed() {
-        Assume.assumeTrue(
+        assumeTrue(
             "Device is not secure. So cannot run this test",
             context.getSystemService(KeyguardManager::class.java).isDeviceSecure
         )
@@ -67,20 +70,20 @@ class ProofSignerTest {
 
 
         val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
-        Assert.assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
 
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = ProofSigner(JWSAlgorithm.ES256, issuanceRequest)
-        val algorithm = proofSigner.getAlgorithm()
+        val proofSigner = JWSProofSigner(issuanceRequest, JWSAlgorithm.ES256)
+        val algorithm = proofSigner.popSigner.algorithm
 
-        Assert.assertTrue(proofSigner.getBindingKey() is BindingKey.Jwk)
-        val publicKey = (proofSigner.getBindingKey() as BindingKey.Jwk).jwk
+        assertTrue(proofSigner.popSigner.bindingKey is JwtBindingKey.Jwk)
+        val publicKey = proofSigner.popSigner.bindingKey as JwtBindingKey.Jwk
 
         val header = JWSHeader.Builder(algorithm).apply {
             type(JOSEObjectType("openid4vci-proof+jwt"))
-            jwk(publicKey.toPublicJWK())
+            jwk(publicKey.jwk)
         }.build()
 
         val claimsSet = JWTClaimsSet.Builder().apply {
@@ -92,8 +95,8 @@ class ProofSignerTest {
         try {
             proofSigner.sign(header, claimsSet.toPayload().toBytes())
             Assert.fail("Expected UserAuthRequiredException")
-        } catch (e: ProofSigner.UserAuthRequiredException) {
-            Assert.assertTrue(proofSigner.userAuthStatus is ProofSigner.UserAuthStatus.Required)
+        } catch (e: UserAuthRequiredException) {
+            assertTrue(proofSigner.userAuthStatus is ProofSigner.UserAuthStatus.Required)
         } finally {
             documentManager.deleteDocumentById(issuanceRequest.documentId)
         }
@@ -106,20 +109,20 @@ class ProofSignerTest {
             .build()
 
         val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
-        Assert.assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
 
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = ProofSigner(JWSAlgorithm.ES256, issuanceRequest)
-        val algorithm = proofSigner.getAlgorithm()
+        val proofSigner = JWSProofSigner(issuanceRequest, JWSAlgorithm.ES256)
+        val algorithm = proofSigner.popSigner.algorithm
 
-        Assert.assertTrue(proofSigner.getBindingKey() is BindingKey.Jwk)
-        val publicKey = (proofSigner.getBindingKey() as BindingKey.Jwk).jwk
+        assertTrue(proofSigner.popSigner.bindingKey is JwtBindingKey.Jwk)
+        val publicKey = proofSigner.popSigner.bindingKey as JwtBindingKey.Jwk
 
         val header = JWSHeader.Builder(algorithm).apply {
             type(JOSEObjectType("openid4vci-proof+jwt"))
-            jwk(publicKey.toPublicJWK())
+            jwk(publicKey.jwk)
         }.build()
 
         val claimsSet = JWTClaimsSet.Builder().apply {
@@ -131,11 +134,11 @@ class ProofSignerTest {
         val signedJWT = SignedJWT(header, claimsSet)
         signedJWT.sign(proofSigner)
 
-        val verified = signedJWT.verify(ECDSAVerifier(publicKey.toECKey()))
+        val verified = signedJWT.verify(ECDSAVerifier(publicKey.jwk.toECKey()))
 
-        Assert.assertTrue(verified)
+        assertTrue(verified)
 
-        Assert.assertEquals(ProofSigner.UserAuthStatus.NotRequired, proofSigner.userAuthStatus)
+        assertEquals(ProofSigner.UserAuthStatus.NotRequired, proofSigner.userAuthStatus)
 
         documentManager.deleteDocumentById(issuanceRequest.documentId)
     }

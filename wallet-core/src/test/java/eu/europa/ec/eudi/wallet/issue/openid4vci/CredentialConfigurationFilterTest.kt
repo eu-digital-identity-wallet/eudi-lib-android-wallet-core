@@ -18,7 +18,8 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
-import eu.europa.ec.eudi.openid4vci.ProofType
+import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
+import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import io.mockk.every
 import io.mockk.mockk
@@ -44,9 +45,9 @@ class CredentialConfigurationFilterTest {
     @Test
     fun `ProofTypeFilter returns true for supported proof type`() {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        every { credentialConfiguration.proofTypesSupported } returns mapOf(
-            ProofType.JWT to listOf(
-                JWSAlgorithm.ES256
+        every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
+            setOf(
+                ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256))
             )
         )
 
@@ -56,9 +57,9 @@ class CredentialConfigurationFilterTest {
     @Test
     fun `ProofTypeFilter returns false for supported proof type but unsupported algorithm`() {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        every { credentialConfiguration.proofTypesSupported } returns mapOf(
-            ProofType.JWT to listOf(
-                JWSAlgorithm.ES384
+        every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
+            setOf(
+                ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES384))
             )
         )
 
@@ -68,9 +69,9 @@ class CredentialConfigurationFilterTest {
     @Test
     fun `ProofTypeFilter returns false for unsupported proof type`() {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        every { credentialConfiguration.proofTypesSupported } returns mapOf(
-            ProofType.CWT to listOf(
-                JWSAlgorithm.ES256
+        every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
+            setOf(
+                ProofTypeMeta.LdpVp
             )
         )
 
@@ -80,7 +81,7 @@ class CredentialConfigurationFilterTest {
     @Test
     fun `ProofTypeFilter returns false for empty proof types`() {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        every { credentialConfiguration.proofTypesSupported } returns emptyMap()
+        every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported.Empty
 
         assertFalse(ProofTypeFilter(credentialConfiguration))
     }

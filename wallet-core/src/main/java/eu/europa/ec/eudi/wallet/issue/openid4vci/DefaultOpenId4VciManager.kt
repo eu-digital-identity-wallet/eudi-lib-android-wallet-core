@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
+import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.UserAuthStatus
 import kotlinx.coroutines.*
 import java.net.URI
 import java.util.*
@@ -274,9 +275,9 @@ internal class DefaultOpenId4VciManager(
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
-        val proofSigner = ProofSigner(credentialConfiguration.proofTypesSupported, issuanceRequest).getOrThrow()
+        val proofSigner = ProofSigner(issuanceRequest, credentialConfiguration).getOrThrow()
         try {
-            when (val outcome = authRequest.requestSingle(payload, proofSigner).getOrThrow()) {
+            when (val outcome = authRequest.requestSingle(payload, proofSigner.popSigner).getOrThrow()) {
                 is SubmittedRequest.Failed -> onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))
                 is SubmittedRequest.InvalidProof -> onEvent(
                     IssueEvent.DocumentFailed(
@@ -295,7 +296,7 @@ internal class DefaultOpenId4VciManager(
 
         } catch (e: Throwable) {
             when (val status = proofSigner.userAuthStatus) {
-                is ProofSigner.UserAuthStatus.Required -> {
+                is UserAuthStatus.Required -> {
                     val event = object : IssueEvent.DocumentRequiresUserAuth(issuanceRequest, status.cryptoObject) {
                         override fun resume() {
                             runBlocking {
@@ -384,7 +385,7 @@ internal class DefaultOpenId4VciManager(
                 authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
                 keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048),
                 credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
-                dPoPProofSigner = if (useDPoPIfSupported) DPoPSigner() else null
+                dPoPSigner = if (useDPoPIfSupported) JWSDPoPSigner().getOrNull() else null
             )
         }
     }

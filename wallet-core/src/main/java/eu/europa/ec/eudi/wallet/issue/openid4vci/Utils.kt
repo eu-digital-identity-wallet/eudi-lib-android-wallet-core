@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.Factory.selectSupportedProofType
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
@@ -39,16 +40,7 @@ internal val FormatFilter: CredentialConfigurationFilter = CredentialConfigurati
 
 @JvmSynthetic
 internal val ProofTypeFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
-    conf.proofTypesSupported.keys
-        .firstOrNull { it in ProofSigner.SupportedProofTypes.keys }
-        ?.let { proofType ->
-            conf.proofTypesSupported[proofType]
-                ?.let { algorithms ->
-                    ProofSigner.SupportedProofTypes[proofType]?.let { proofSignerAlg ->
-                        algorithms.any { it in proofSignerAlg }
-                    } ?: false
-                } ?: false
-        } ?: false
+    selectSupportedProofType(conf.proofTypesSupported) != null
 }
 
 internal class DocTypeFilterFactory(private val docType: String) : CredentialConfigurationFilter {
