@@ -31,6 +31,14 @@ import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
+/**
+ * A [ProofSigner] and [JWSSigner] implementation for JWS.
+ * @property issuanceRequest the issuance request
+ * @constructor Creates a JWS proof signer.
+ * @param issuanceRequest The issuance request.
+ * @param jwsAlgorithm The JWS algorithm to use.
+ *
+ */
 internal class JWSProofSigner(
     private val issuanceRequest: IssuanceRequest,
     jwsAlgorithm: JWSAlgorithm
@@ -38,6 +46,9 @@ internal class JWSProofSigner(
 
     private val jcaContext = JCAContext()
 
+    /**
+     * The JWK of the public key.
+     */
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
 
     override val popSigner: PopSigner.Jwt = PopSigner.Jwt(

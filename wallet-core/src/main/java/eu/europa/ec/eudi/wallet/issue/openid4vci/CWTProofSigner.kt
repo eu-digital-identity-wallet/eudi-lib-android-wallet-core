@@ -24,12 +24,25 @@ import eu.europa.ec.eudi.openid4vci.PopSigner
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
+/**
+ * A [ProofSigner] implementation for CWT.
+ * @property issuanceRequest the issuance request
+ * @property coseAlgorithm the COSE algorithm to use
+ * @property coseCurve the COSE curve to use
+ * @constructor Creates a CWT proof signer.
+ * @param issuanceRequest The issuance request.
+ * @param coseAlgorithm The COSE algorithm to use.
+ * @param coseCurve The COSE curve to use.
+ */
 internal class CWTProofSigner(
     private val issuanceRequest: IssuanceRequest,
     private val coseAlgorithm: CoseAlgorithm,
     private val coseCurve: CoseCurve
 ) : ProofSigner() {
 
+    /**
+     * The JWK of the public key.
+     */
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
     override val popSigner: PopSigner.Cwt = PopSigner.Cwt(
         algorithm = coseAlgorithm,
@@ -43,6 +56,13 @@ internal class CWTProofSigner(
             CWTAlgorithmMap[it] ?: throw UnsupportedAlgorithmException()
         }
 
+    /**
+     * Signs the signing input with the authentication key from issuance request for the given algorithm and curve.
+     * @param signingInput The input to sign.
+     * @throws UserAuthRequiredException If user authentication is required.
+     * @throws Throwable If an error occurs during signing.
+     * @return The signature of the signing input.
+     */
     fun sign(signingInput: ByteArray): ByteArray {
         return doSign(issuanceRequest, signingInput, algorithm)
     }

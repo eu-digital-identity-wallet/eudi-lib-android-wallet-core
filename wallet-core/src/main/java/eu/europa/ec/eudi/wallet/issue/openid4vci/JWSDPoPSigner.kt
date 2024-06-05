@@ -35,7 +35,15 @@ import java.security.Signature
 import java.time.Instant
 import java.util.*
 
-class JWSDPoPSigner private constructor() {
+/**
+ * A [JWSSigner] implementation for DPoP.
+ * @property popSigner the DPoP signer [PopSigner.Jwt]
+ */
+internal class JWSDPoPSigner private constructor() : JWSSigner {
+
+    private val jcaContext = JCAContext()
+
+    override fun getJCAContext(): JCAContext = jcaContext
 
     private val keyStore: KeyStore
         get() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -47,38 +55,30 @@ class JWSDPoPSigner private constructor() {
         get() = PopSigner.Jwt(
             algorithm = SupportedAlgorithms.keys.first(),
             bindingKey = JwtBindingKey.Jwk(jwk),
-            jwsSigner = jwsSigner
+            jwsSigner = this
         )
 
     init {
         generateKeyPair()
     }
 
-    private val jwsSigner: JWSSigner
-        get() = object : JWSSigner {
+    override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
+        val algorithm = SupportedAlgorithms[header.algorithm]
+            ?: throw JOSEException(
+                AlgorithmSupportMessage.unsupportedJWSAlgorithm(
+                    header.algorithm,
+                    supportedJWSAlgorithms()
+                )
+            )
+        val privateKey = (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry).privateKey
+        val signature = Signature.getInstance(algorithm).apply {
+            initSign(privateKey)
+            update(signingInput)
+        }.sign()
+        return Base64URL.encode(signature.derToJose(header.algorithm))
+    }
 
-            private val jcaContext = JCAContext()
-
-            override fun getJCAContext(): JCAContext = jcaContext
-
-            override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-                val algorithm = SupportedAlgorithms[header.algorithm]
-                    ?: throw JOSEException(
-                        AlgorithmSupportMessage.unsupportedJWSAlgorithm(
-                            header.algorithm,
-                            supportedJWSAlgorithms()
-                        )
-                    )
-                val privateKey = (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry).privateKey
-                val signature = Signature.getInstance(algorithm).apply {
-                    initSign(privateKey)
-                    update(signingInput)
-                }.sign()
-                return Base64URL.encode(signature.derToJose(header.algorithm))
-            }
-
-            override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = SupportedAlgorithms.keys.toMutableSet()
-        }
+    override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = SupportedAlgorithms.keys.toMutableSet()
 
     private fun generateKeyPair() {
         if (keyStore.containsAlias(KEY_ALIAS)) {
@@ -101,6 +101,9 @@ class JWSDPoPSigner private constructor() {
         }
     }
 
+    /**
+     * Companion object for the JWSDPoPSigner class.
+     */
     companion object {
         private const val KEY_ALIAS = "eu.europa.ec.eudi.wallet.issue.openid4vci.DPoPKey"
 
@@ -108,6 +111,11 @@ class JWSDPoPSigner private constructor() {
         private val SupportedAlgorithms: Map<JWSAlgorithm, String>
             get() = mapOf(JWSAlgorithm.ES256 to "SHA256withECDSA")
 
+        /**
+         * Creates a [PopSigner.Jwt] instance.
+         * @return [Result<PopSigner.Jwt>] The result of the operation. If successful, the result contains the [PopSigner.Jwt] instance.
+         * If unsuccessful, the result contains the exception that occurred.
+         */
         operator fun invoke(): Result<PopSigner.Jwt> {
             return try {
                 Result.success(JWSDPoPSigner().popSigner)
