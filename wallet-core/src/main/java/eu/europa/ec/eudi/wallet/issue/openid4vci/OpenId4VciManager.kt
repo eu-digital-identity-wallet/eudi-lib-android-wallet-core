@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.IntDef
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import java.util.concurrent.Executor
 
@@ -166,14 +167,27 @@ interface OpenId4VciManager {
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
      * @property useStrongBoxIfSupported use StrongBox for document keys if supported
      * @property useDPoP flag that if set will enable the use of DPoP JWT
+     * @property parUsage if PAR should be used
      */
     data class Config(
         val issuerUrl: String,
         val clientId: String,
         val authFlowRedirectionURI: String,
         val useStrongBoxIfSupported: Boolean,
-        val useDPoPIfSupported: Boolean
+        val useDPoPIfSupported: Boolean,
+        @ParUsage val parUsage: Int,
     ) {
+
+        @Retention(AnnotationRetention.SOURCE)
+        @IntDef(value = [ParUsage.IF_SUPPORTED, ParUsage.ALWAYS, ParUsage.NEVER])
+        annotation class ParUsage {
+            companion object {
+                const val IF_SUPPORTED = 2
+                const val ALWAYS = 4
+                const val NEVER = 0
+            }
+        }
+
         /**
          * Builder to create an instance of [Config]
          * @property issuerUrl the issuer url
@@ -181,6 +195,7 @@ interface OpenId4VciManager {
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
          * @property useStrongBoxIfSupported use StrongBox for document keys if supported
          * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
+         * @property parUsage if PAR should be used
          *
          */
         class Builder {
@@ -189,6 +204,9 @@ interface OpenId4VciManager {
             var authFlowRedirectionURI: String? = null
             var useStrongBoxIfSupported: Boolean = false
             var useDPoPIfSupported: Boolean = false
+
+            @ParUsage
+            var parUsage: Int = ParUsage.IF_SUPPORTED
 
             /**
              * Set the issuer url
@@ -217,6 +235,8 @@ interface OpenId4VciManager {
              */
             fun useDPoP(useDPoP: Boolean) = apply { this.useDPoPIfSupported = useDPoP }
 
+            fun parUsage(@ParUsage parUsage: Int) = apply { this.parUsage = parUsage }
+
             /**
              * Build the [Config]
              * @throws [IllegalStateException] if issuerUrl, clientId or authFlowRedirectionURI is not set
@@ -231,7 +251,8 @@ interface OpenId4VciManager {
                     clientId!!,
                     authFlowRedirectionURI!!,
                     useStrongBoxIfSupported,
-                    useDPoPIfSupported
+                    useDPoPIfSupported,
+                    parUsage
                 )
             }
 

@@ -81,7 +81,7 @@ class ProofSignerTest {
     }
 
     @Test(expected = UnsupportedProofTypeException::class)
-    fun `invoke throws UnsupportedProofTypeException when no supported proof type is available`() {
+    fun `invoke return failure result when no supported proof type is available`() {
         val issuerProofTypesSupported = ProofTypesSupported(
             setOf(
                 ProofTypeMeta.LdpVp
@@ -93,8 +93,8 @@ class ProofSignerTest {
         result.getOrThrow()
     }
 
-    @Test(expected = UnsupportedAlgorithmException::class)
-    fun `invoke throws UnsupportedAlgorithmException when no supported algorithm is available`() {
+    @Test(expected = UnsupportedProofTypeException::class)
+    fun `invoke returns failure result when no supported algorithm is available`() {
         val issuerProofTypesSupported = ProofTypesSupported(
             setOf(
                 ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES384), listOf(CoseCurve.P_384))
@@ -110,8 +110,6 @@ class ProofSignerTest {
     fun `doSign returns the signature when issuanceRequest signWithAuthKey succeeds`() {
         val okInput = byteArrayOf()
         val okSignature = byteArrayOf()
-
-
 
         every {
             issuanceRequest.signWithAuthKey(

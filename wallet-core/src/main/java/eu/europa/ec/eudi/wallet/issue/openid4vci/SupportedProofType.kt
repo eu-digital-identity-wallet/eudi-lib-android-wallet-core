@@ -20,70 +20,25 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.Algorithm
-import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofAlgorithm.Cose
-import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofAlgorithm.Jws
+import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm.Cose
+import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm.Jws
 
 internal sealed interface SupportedProofType {
-    val algorithms: List<SupportedProofAlgorithm>
-
-    data class Jwt(override val algorithms: List<Jws>) : SupportedProofType {
-        val jwsAlgorithms: List<JWSAlgorithm>
-            get() = algorithms.map { it.algorithm }.toList()
-
-        override fun toString(): String {
-            return name
-        }
-    }
-
-    data class Cwt(override val algorithms: List<Cose>) : SupportedProofType {
-        override fun toString(): String {
-            return name
-        }
-
-        val coseAlgorithms: List<CoseAlgorithm>
-            get() = algorithms.map { it.coseAlgorithm }.toList()
-
-        val coseCurves: List<CoseCurve>
-            get() = algorithms.map { it.coseCurve }.toList()
-    }
-
+    val algorithms: List<ProofAlgorithm>
     val proofType: ProofType
-        get() = when (this) {
-            is Jwt -> ProofType.JWT
-            is Cwt -> ProofType.CWT
-        }
-
-    val proofTypeMeta: ProofTypeMeta
-        get() = when (this) {
-            is Jwt -> ProofTypeMeta.Jwt(algorithms.map { it.algorithm })
-            is Cwt -> ProofTypeMeta.Cwt(algorithms.map { it.coseAlgorithm }, algorithms.map { it.coseCurve })
-        }
-
     val name: String
-        get() = when (this) {
-            is Jwt -> "JWT for ${algorithms.map { it.name }}"
-            is Cwt -> "CWT for ${algorithms.map { it.name }}"
-        }
 
-    fun selectAlgorithm(issuerProofTypesSupported: ProofTypesSupported): SupportedProofAlgorithm? {
-        val issuerSupported = issuerProofTypesSupported.values.associateBy { it.type() }
-        val credentialProof = issuerSupported[proofType] ?: return null
-
-        return when (this) {
-            is Jwt -> credentialProof.takeIf { it is ProofTypeMeta.Jwt }
-                ?.let { it as ProofTypeMeta.Jwt }
-                ?.let { cProof -> algorithms.firstOrNull { it.algorithm in cProof.algorithms } }
-
-            is Cwt -> credentialProof.takeIf { it is ProofTypeMeta.Cwt }
-                ?.let { it as ProofTypeMeta.Cwt }
-                ?.let { cProof ->
-                    algorithms.firstOrNull { it.coseAlgorithm in cProof.algorithms && it.coseCurve in cProof.curves }
-                }
-        }
+    data class Jwt(override val algorithms: List<Jws>, override val proofType: ProofType = ProofType.JWT) :
+        SupportedProofType {
+        override val name: String
+            get() = "JWT for [${algorithms.joinToString(", ") { it.name }}]"
     }
 
-    fun selectAlgorithm(credentialConfiguration: CredentialConfiguration): SupportedProofAlgorithm? =
-        selectAlgorithm(credentialConfiguration.proofTypesSupported)
+    data class Cwt(override val algorithms: List<Cose>, override val proofType: ProofType = ProofType.CWT) :
+        SupportedProofType {
+        override val name: String
+            get() = "CWT for [${algorithms.joinToString(", ") { it.name }}]"
+    }
 
     companion object {
         val SupportedProofTypes: List<SupportedProofType> = listOf(
@@ -92,45 +47,73 @@ internal sealed interface SupportedProofType {
         )
 
         @JvmStatic
-        fun selectProofType(issuerProofTypesSupported: ProofTypesSupported): SupportedProofType? {
-            val issuerSupported = issuerProofTypesSupported.values.associateBy { it.type() }
-            return SupportedProofTypes.firstOrNull { it.proofType in issuerSupported.keys }
+        fun selectProofType(issuerProofTypesSupported: ProofTypesSupported): SelectedProofType {
+            val issuerProofTypesSupportedMap = issuerProofTypesSupported.values.associateBy { it.type() }
+            for (supportedProofType in SupportedProofTypes) {
+                val issuerProofTypeMeta = issuerProofTypesSupportedMap[supportedProofType.proofType] ?: continue
+
+                when (issuerProofTypeMeta) {
+                    is ProofTypeMeta.Cwt -> {
+                        val issuerCoseAlgorithms = issuerProofTypeMeta.algorithms
+                        val issuerCoseCurves = issuerProofTypeMeta.curves
+                        for (supportedProofAlgorithm in supportedProofType.algorithms) {
+                            if (supportedProofAlgorithm !is Cose) continue
+                            if (supportedProofAlgorithm.coseAlgorithm in issuerCoseAlgorithms &&
+                                supportedProofAlgorithm.coseCurve in issuerCoseCurves
+                            ) {
+                                return SelectedProofType.Cwt(supportedProofAlgorithm)
+                            }
+                        }
+                    }
+
+                    is ProofTypeMeta.Jwt -> {
+                        val issuerAlgorithms = issuerProofTypeMeta.algorithms
+                        for (supportedProofAlgorithm in supportedProofType.algorithms) {
+                            if (supportedProofAlgorithm !is Jws) continue
+                            if (supportedProofAlgorithm.algorithm in issuerAlgorithms) {
+                                return SelectedProofType.Jwt(supportedProofAlgorithm)
+                            }
+                        }
+                    }
+
+                    else -> continue
+                }
+            }
+            throw UnsupportedProofTypeException(SupportedProofTypes)
         }
 
         @JvmStatic
-        fun selectProofType(credentialConfiguration: CredentialConfiguration): SupportedProofType? =
+        fun selectProofType(credentialConfiguration: CredentialConfiguration): SelectedProofType =
             selectProofType(credentialConfiguration.proofTypesSupported)
     }
-}
 
-sealed interface SupportedProofAlgorithm {
-    val name: String
+    sealed interface ProofAlgorithm {
+        val name: String
 
-    @get:Algorithm
-    val signAlgorithmName: String
+        @get:Algorithm
+        val signAlgorithmName: String
 
-    data class Jws(val algorithm: JWSAlgorithm, @Algorithm override val signAlgorithmName: String) :
-        SupportedProofAlgorithm {
-        override val name: String
-            get() = algorithm.name
+        data class Jws(
+            val algorithm: JWSAlgorithm,
+            @Algorithm override val signAlgorithmName: String,
+            override val name: String = algorithm.name
+        ) : ProofAlgorithm {
 
-        companion object {
-            val ES256 = Jws(JWSAlgorithm.ES256, Algorithm.SHA256withECDSA)
+            companion object {
+                val ES256 = Jws(JWSAlgorithm.ES256, Algorithm.SHA256withECDSA)
+            }
+        }
+
+        data class Cose(
+            val coseAlgorithm: CoseAlgorithm,
+            val coseCurve: CoseCurve,
+            @Algorithm override val signAlgorithmName: String,
+            override val name: String = "${coseAlgorithm.name()}_${coseCurve.name()}"
+        ) : ProofAlgorithm {
+
+            companion object {
+                val ES256_P_256 = Cose(CoseAlgorithm.ES256, CoseCurve.P_256, Algorithm.SHA256withECDSA)
+            }
         }
     }
-
-    data class Cose(
-        val coseAlgorithm: CoseAlgorithm,
-        val coseCurve: CoseCurve,
-        @Algorithm override val signAlgorithmName: String
-    ) : SupportedProofAlgorithm {
-        override val name: String
-            get() = "${coseAlgorithm.name()} with curve ${coseCurve.name()}"
-
-        companion object {
-            val ES256_P_256 = Cose(CoseAlgorithm.ES256, CoseCurve.P_256, Algorithm.SHA256withECDSA)
-        }
-    }
-
-
 }

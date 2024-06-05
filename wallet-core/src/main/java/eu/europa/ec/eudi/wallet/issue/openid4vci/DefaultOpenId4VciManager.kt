@@ -388,7 +388,13 @@ internal class DefaultOpenId4VciManager(
                 authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
                 keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048),
                 credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
-                dPoPSigner = if (useDPoPIfSupported) JWSDPoPSigner().getOrNull() else null
+                dPoPSigner = if (useDPoPIfSupported) JWSDPoPSigner().getOrNull() else null,
+                parUsage = when (parUsage) {
+                    OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
+                    OpenId4VciManager.Config.ParUsage.ALWAYS -> ParUsage.Always
+                    OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
+                    else -> ParUsage.IfSupported
+                }
             )
         }
     }

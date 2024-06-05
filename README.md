@@ -181,6 +181,7 @@ val config = EudiWalletConfig.Builder(applicationContext)
         authFlowRedirectionURI("eudi-openid4ci://authorize")
         useStrongBoxIfSupported(false)
         useDPoP(false)
+        parUsage(ParUsage.IF_SUPPORTED)
     }
     .build()
 
