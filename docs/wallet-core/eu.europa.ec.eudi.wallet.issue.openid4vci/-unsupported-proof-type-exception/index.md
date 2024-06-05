@@ -5,12 +5,6 @@
 [androidJvm]\
 class [UnsupportedProofTypeException](index.md) : [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)
 
-## Constructors
-
-|                                                                       |                               |
-|-----------------------------------------------------------------------|-------------------------------|
-| [UnsupportedProofTypeException](-unsupported-proof-type-exception.md) | [androidJvm]<br>constructor() |
-
 ## Functions
 
 | Name                                                                | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                     |

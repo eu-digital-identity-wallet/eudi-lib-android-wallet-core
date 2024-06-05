@@ -31,7 +31,6 @@ import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.JWSProofSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
-import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofAlgorithm
 import eu.europa.ec.eudi.wallet.issue.openid4vci.UserAuthRequiredException
 import org.junit.Assert
 import org.junit.Assert.assertEquals
@@ -43,6 +42,7 @@ import org.junit.runner.RunWith
 import java.io.IOException
 import java.time.Instant
 import java.util.*
+import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm as SupportedProofAlgorithm
 
 @RunWith(AndroidJUnit4::class)
 class JWSProofSignerTest {

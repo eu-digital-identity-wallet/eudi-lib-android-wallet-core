@@ -32,7 +32,8 @@ class OpenId4VciManagerBuilderTest {
         clientId = "testClientId",
         authFlowRedirectionURI = "app://redirect",
         useStrongBoxIfSupported = true,
-        useDPoPIfSupported = true
+        useDPoPIfSupported = true,
+        parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED
     )
 
     @Test

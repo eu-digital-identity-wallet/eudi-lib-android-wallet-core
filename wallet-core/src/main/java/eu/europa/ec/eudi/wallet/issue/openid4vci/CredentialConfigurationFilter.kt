@@ -51,7 +51,12 @@ internal fun interface CredentialConfigurationFilter {
 
         @JvmSynthetic
         internal val ProofTypeFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
-            SupportedProofType.selectProofType(conf)?.selectAlgorithm(conf)?.let { true } ?: false
+            try {
+                SupportedProofType.selectProofType(conf)
+                true
+            } catch (e: Throwable) {
+                false
+            }
         }
 
 

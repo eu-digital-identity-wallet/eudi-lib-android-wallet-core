@@ -38,7 +38,7 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
  */
 internal class JWSProofSigner(
     private val issuanceRequest: IssuanceRequest,
-    private val supportedProofAlgorithm: SupportedProofAlgorithm.Jws
+    private val supportedProofAlgorithm: SupportedProofType.ProofAlgorithm.Jws
 ) : ProofSigner(), JWSSigner {
 
     private val jcaContext = JCAContext()
@@ -57,8 +57,7 @@ internal class JWSProofSigner(
     override fun getJCAContext(): JCAContext = jcaContext
 
     override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> {
-        return SupportedProofType.SupportedProofTypes.filterIsInstance<SupportedProofType.Jwt>()
-            .firstOrNull()?.jwsAlgorithms?.toMutableSet() ?: mutableSetOf(supportedProofAlgorithm.algorithm)
+        return mutableSetOf(supportedProofAlgorithm.algorithm)
     }
 
     override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {

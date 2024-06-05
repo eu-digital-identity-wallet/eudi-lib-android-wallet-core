@@ -33,7 +33,7 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
  */
 internal class CWTProofSigner(
     private val issuanceRequest: IssuanceRequest,
-    private val supportedProofAlgorithm: SupportedProofAlgorithm.Cose
+    private val supportedProofAlgorithm: SupportedProofType.ProofAlgorithm.Cose
 ) : ProofSigner() {
 
     /**

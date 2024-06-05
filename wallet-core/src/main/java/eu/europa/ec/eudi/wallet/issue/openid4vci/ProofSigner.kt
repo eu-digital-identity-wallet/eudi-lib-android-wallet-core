@@ -92,18 +92,13 @@ internal abstract class ProofSigner {
             issuanceRequest: IssuanceRequest,
             issuerSupportedProofTypes: ProofTypesSupported,
         ): Result<ProofSigner> {
-            val selectedProofType = SupportedProofType.selectProofType(issuerSupportedProofTypes)
-                ?: return Result.failure(UnsupportedProofTypeException())
-
-
-            val supportedAlgorithm =
-                selectedProofType.selectAlgorithm(issuerSupportedProofTypes) ?: return Result.failure(
-                    UnsupportedAlgorithmException()
+            return try {
+                Result.success(
+                    SupportedProofType.selectProofType(issuerSupportedProofTypes).createProofSigner(issuanceRequest)
                 )
-            return when (supportedAlgorithm) {
-                is SupportedProofAlgorithm.Cose -> CWTProofSigner(issuanceRequest, supportedAlgorithm)
-                is SupportedProofAlgorithm.Jws -> JWSProofSigner(issuanceRequest, supportedAlgorithm)
-            }.let { Result.success(it) }
+            } catch (e: Throwable) {
+                Result.failure(e)
+            }
         }
     }
 

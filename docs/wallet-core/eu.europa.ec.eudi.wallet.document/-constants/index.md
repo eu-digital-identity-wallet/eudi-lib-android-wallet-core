@@ -3,7 +3,13 @@
 # Constants
 
 [androidJvm]\
-object [Constants](index.md)
+object [~~Constants~~](index.md)---
+
+### Deprecated
+
+Will be removed completely in following version. Replace with actual values.
+
+---
 
 Shared constant values for doc types and namespaces
 
