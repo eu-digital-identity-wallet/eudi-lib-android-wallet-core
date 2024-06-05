@@ -18,36 +18,13 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
-import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
-import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
-import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.Companion.selectSupportedProofType
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
-
-internal fun interface CredentialConfigurationFilter {
-    operator fun invoke(conf: CredentialConfiguration): Boolean
-}
-
-@JvmSynthetic
-internal val FormatFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
-    conf is MsoMdocCredential
-}
-
-@JvmSynthetic
-internal val ProofTypeFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
-    selectSupportedProofType(conf.proofTypesSupported) != null
-}
-
-internal class DocTypeFilterFactory(private val docType: String) : CredentialConfigurationFilter {
-    override fun invoke(conf: CredentialConfiguration): Boolean {
-        return conf is MsoMdocCredential && conf.docType == docType
-    }
-}
 
 internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
     @JvmSynthetic get() = when (this) {

@@ -26,9 +26,6 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
-import eu.europa.ec.eudi.openid4vci.ProofType
-import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
-import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
 /**
@@ -41,7 +38,7 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
  */
 internal class JWSProofSigner(
     private val issuanceRequest: IssuanceRequest,
-    jwsAlgorithm: JWSAlgorithm
+    private val supportedProofAlgorithm: SupportedProofAlgorithm.Jws
 ) : ProofSigner(), JWSSigner {
 
     private val jcaContext = JCAContext()
@@ -52,7 +49,7 @@ internal class JWSProofSigner(
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
 
     override val popSigner: PopSigner.Jwt = PopSigner.Jwt(
-        algorithm = jwsAlgorithm,
+        algorithm = supportedProofAlgorithm.algorithm,
         bindingKey = JwtBindingKey.Jwk(jwk),
         jwsSigner = this
     )
@@ -60,24 +57,21 @@ internal class JWSProofSigner(
     override fun getJCAContext(): JCAContext = jcaContext
 
     override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> {
-        return (SupportedProofTypes[ProofType.JWT] as ProofTypeMeta.Jwt).algorithms.toMutableSet()
+        return SupportedProofType.SupportedProofTypes.filterIsInstance<SupportedProofType.Jwt>()
+            .firstOrNull()?.jwsAlgorithms?.toMutableSet() ?: mutableSetOf(supportedProofAlgorithm.algorithm)
     }
 
     override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-        val alg = JWSAlgorithmsMap[header.algorithm] ?: throw JOSEException(
-            AlgorithmSupportMessage.unsupportedJWSAlgorithm(
-                header.algorithm,
-                supportedJWSAlgorithms()
+        if (header.algorithm != supportedProofAlgorithm.algorithm) {
+            throw JOSEException(
+                AlgorithmSupportMessage.unsupportedJWSAlgorithm(
+                    header.algorithm,
+                    supportedJWSAlgorithms()
+                )
             )
-        )
-        return doSign(issuanceRequest, signingInput, alg).let { signature ->
+        }
+        return doSign(issuanceRequest, signingInput, supportedProofAlgorithm.signAlgorithmName).let { signature ->
             Base64URL.encode(signature.derToJose(header.algorithm))
         }
-    }
-
-    companion object {
-        private val JWSAlgorithmsMap = mapOf(
-            JWSAlgorithm.ES256 to Algorithm.SHA256withECDSA,
-        )
     }
 }

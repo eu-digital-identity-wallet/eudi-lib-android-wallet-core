@@ -27,6 +27,9 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.DocTypeFilterFactory
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.UserAuthStatus
 import kotlinx.coroutines.*
@@ -59,7 +62,7 @@ internal class DefaultOpenId4VciManager(
                     val credentialConfigurationId =
                         credentialIssuerMetadata.credentialConfigurationsSupported.filter { (_, conf) ->
                             listOf(
-                                FormatFilter,
+                                MsoMdocFormatFilter,
                                 DocTypeFilterFactory(docType),
                                 ProofTypeFilter
                             ).all { filter -> filter(conf) }

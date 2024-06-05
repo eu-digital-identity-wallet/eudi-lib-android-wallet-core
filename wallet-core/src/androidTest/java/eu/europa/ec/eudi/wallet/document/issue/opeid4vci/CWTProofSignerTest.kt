@@ -21,11 +21,11 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import eu.europa.ec.eudi.openid4vci.*
-import eu.europa.ec.eudi.wallet.document.Constants.EU_PID_DOCTYPE
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CWTProofSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofAlgorithm
 import eu.europa.ec.eudi.wallet.issue.openid4vci.UserAuthRequiredException
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
@@ -67,13 +67,13 @@ class CWTProofSignerTest {
             .build()
 
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
+        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
         assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
 
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = CWTProofSigner(issuanceRequest, CoseAlgorithm.ES256, CoseCurve.P_256)
+        val proofSigner = CWTProofSigner(issuanceRequest, SupportedProofAlgorithm.Cose.ES256_P_256)
         assertEquals(CoseAlgorithm.ES256, proofSigner.popSigner.algorithm)
         assertEquals(CoseCurve.P_256, proofSigner.popSigner.curve)
 
@@ -97,13 +97,13 @@ class CWTProofSignerTest {
             .build()
 
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
+        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
         assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
 
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = CWTProofSigner(issuanceRequest, CoseAlgorithm.ES256, CoseCurve.P_256)
+        val proofSigner = CWTProofSigner(issuanceRequest, SupportedProofAlgorithm.Cose.ES256_P_256)
         assertEquals(CoseAlgorithm.ES256, proofSigner.popSigner.algorithm)
         assertEquals(CoseCurve.P_256, proofSigner.popSigner.curve)
 
