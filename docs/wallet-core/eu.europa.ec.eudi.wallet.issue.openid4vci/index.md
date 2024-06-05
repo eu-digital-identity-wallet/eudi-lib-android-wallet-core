@@ -4,9 +4,11 @@
 
 ## Types
 
-| Name | Summary |
-|---|---|
-| [IssueEvent](-issue-event/index.md) | [androidJvm]<br>interface [IssueEvent](-issue-event/index.md) |
-| [Offer](-offer/index.md) | [androidJvm]<br>interface [Offer](-offer/index.md)<br>An offer of credentials to be issued. |
-| [OfferResult](-offer-result/index.md) | [androidJvm]<br>interface [OfferResult](-offer-result/index.md)<br>The result of an offer operation. |
-| [OpenId4VciManager](-open-id4-vci-manager/index.md) | [androidJvm]<br>interface [OpenId4VciManager](-open-id4-vci-manager/index.md)<br>OpenId4VciManager is the main entry point to issue documents using the OpenId4Vci protocol It provides methods to issue documents using a document type or an offer, and to resolve an offer |
+| Name                                                                        | Summary                                                                                                                                                                                                                                                                       |
+|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [IssueEvent](-issue-event/index.md)                                         | [androidJvm]<br>interface [IssueEvent](-issue-event/index.md)                                                                                                                                                                                                                 |
+| [Offer](-offer/index.md)                                                    | [androidJvm]<br>interface [Offer](-offer/index.md)<br>An offer of credentials to be issued.                                                                                                                                                                                   |
+| [OfferResult](-offer-result/index.md)                                       | [androidJvm]<br>interface [OfferResult](-offer-result/index.md)<br>The result of an offer operation.                                                                                                                                                                          |
+| [OpenId4VciManager](-open-id4-vci-manager/index.md)                         | [androidJvm]<br>interface [OpenId4VciManager](-open-id4-vci-manager/index.md)<br>OpenId4VciManager is the main entry point to issue documents using the OpenId4Vci protocol It provides methods to issue documents using a document type or an offer, and to resolve an offer |
+| [UnsupportedAlgorithmException](-unsupported-algorithm-exception/index.md)  | [androidJvm]<br>class [UnsupportedAlgorithmException](-unsupported-algorithm-exception/index.md) : [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)                                                                                     |
+| [UnsupportedProofTypeException](-unsupported-proof-type-exception/index.md) | [androidJvm]<br>class [UnsupportedProofTypeException](-unsupported-proof-type-exception/index.md) : [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)                                                                                    |

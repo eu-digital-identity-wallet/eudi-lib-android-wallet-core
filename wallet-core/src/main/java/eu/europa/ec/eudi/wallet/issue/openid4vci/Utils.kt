@@ -23,7 +23,7 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
-import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.Factory.selectSupportedProofType
+import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.Companion.selectSupportedProofType
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter

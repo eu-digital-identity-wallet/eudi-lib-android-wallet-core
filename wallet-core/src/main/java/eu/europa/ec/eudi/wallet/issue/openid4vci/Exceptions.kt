@@ -16,6 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-class UserAuthRequiredException : Throwable()
+internal class UserAuthRequiredException : Throwable()
 class UnsupportedAlgorithmException : Throwable()
 class UnsupportedProofTypeException : Throwable()
