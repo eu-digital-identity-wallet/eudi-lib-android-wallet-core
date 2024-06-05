@@ -21,18 +21,17 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.openid4vci.CNonce
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
-import eu.europa.ec.eudi.wallet.document.Constants.EU_PID_DOCTYPE
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.JWSProofSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofAlgorithm
 import eu.europa.ec.eudi.wallet.issue.openid4vci.UserAuthRequiredException
 import org.junit.Assert
 import org.junit.Assert.assertEquals
@@ -69,13 +68,13 @@ class JWSProofSignerTest {
             .build()
 
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
+        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
         assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
 
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = JWSProofSigner(issuanceRequest, JWSAlgorithm.ES256)
+        val proofSigner = JWSProofSigner(issuanceRequest, SupportedProofAlgorithm.Jws.ES256)
         val algorithm = proofSigner.popSigner.algorithm
 
         assertTrue(proofSigner.popSigner.bindingKey is JwtBindingKey.Jwk)
@@ -108,13 +107,13 @@ class JWSProofSignerTest {
             .enableUserAuth(false)
             .build()
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest(EU_PID_DOCTYPE, false)
+        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
         assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
 
         val issuanceRequest =
             (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
 
-        val proofSigner = JWSProofSigner(issuanceRequest, JWSAlgorithm.ES256)
+        val proofSigner = JWSProofSigner(issuanceRequest, SupportedProofAlgorithm.Jws.ES256)
         val algorithm = proofSigner.popSigner.algorithm
 
         assertTrue(proofSigner.popSigner.bindingKey is JwtBindingKey.Jwk)

@@ -21,6 +21,9 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.DocTypeFilterFactory
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertFalse
@@ -32,13 +35,13 @@ class CredentialConfigurationFilterTest {
     @Test
     fun `FormatFilter returns true for MsoMdocCredential`() {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        assertTrue(FormatFilter(credentialConfiguration))
+        assertTrue(MsoMdocFormatFilter(credentialConfiguration))
     }
 
     @Test
     fun `FormatFilter returns false for non-MsoMdocCredential`() {
         val credentialConfiguration = mockk<SdJwtVcCredential>(relaxed = true)
-        assertFalse(FormatFilter(credentialConfiguration))
+        assertFalse(MsoMdocFormatFilter(credentialConfiguration))
     }
 
 

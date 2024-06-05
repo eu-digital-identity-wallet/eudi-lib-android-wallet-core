@@ -17,8 +17,9 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import androidx.biometric.BiometricPrompt.CryptoObject
-import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.openid4vci.*
+import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
+import eu.europa.ec.eudi.openid4vci.PopSigner
+import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
@@ -43,7 +44,7 @@ internal abstract class ProofSigner {
      * @throws Throwable If an error occurs during signing.
      * @return The signature of the signing input.
      */
-    protected fun doSign(
+    fun doSign(
         issuanceRequest: IssuanceRequest,
         signingInput: ByteArray,
         @Algorithm algorithm: String
@@ -63,58 +64,8 @@ internal abstract class ProofSigner {
 
     /**
      * Companion object for the ProofSigner class.
-     * @property SupportedProofTypes The supported proof types.
      */
     companion object {
-        val SupportedProofTypes = mapOf(
-            ProofType.JWT to ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256)),
-            ProofType.CWT to ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES256), listOf(CoseCurve.P_256))
-        )
-
-        /**
-         * Selects the supported proof type from the issuer supported proof types.
-         * @param issuerSupportedProofTypes The issuer supported proof types.
-         * @return The supported proof type or null if none is supported.
-         */
-        @JvmStatic
-        fun selectSupportedProofType(issuerSupportedProofTypes: ProofTypesSupported): ProofTypeMeta? {
-            return issuerSupportedProofTypes.values
-                .firstOrNull { it.type() in SupportedProofTypes.keys }
-                ?.let { proofType ->
-                    when (proofType.type()) {
-                        ProofType.JWT -> selectSupportedAlgorithm(proofType as ProofTypeMeta.Jwt)?.let { proofType }
-                        ProofType.CWT -> selectSupportedAlgorithm(proofType as ProofTypeMeta.Cwt)?.let { proofType }
-                        ProofType.LDP_VP -> null
-                    }
-                }
-        }
-
-        /**
-         * Selects the supported algorithm from given JWT proof type metadata.
-         * @param metadata The proof type metadata.
-         * @return The supported algorithm or null if none is supported.
-         */
-        @JvmStatic
-        fun selectSupportedAlgorithm(metadata: ProofTypeMeta.Jwt): JWSAlgorithm? {
-            val supportedType = SupportedProofTypes[ProofType.JWT] as ProofTypeMeta.Jwt
-            return supportedType.algorithms.firstOrNull { it in metadata.algorithms }
-        }
-
-        /**
-         * Selects the supported algorithm and curve from given CWT proof type metadata.
-         * @param metadata The proof type metadata.
-         * @return The supported algorithm and curve or null if none is supported.
-         */
-        @JvmStatic
-        fun selectSupportedAlgorithm(metadata: ProofTypeMeta.Cwt): Pair<CoseAlgorithm, CoseCurve>? {
-            val supportedType = SupportedProofTypes[ProofType.CWT] as ProofTypeMeta.Cwt
-            return supportedType.algorithms.firstOrNull { it in metadata.algorithms }
-                ?.let { algorithm ->
-                    supportedType.curves.firstOrNull { it in metadata.curves }
-                        ?.let { curve -> algorithm to curve }
-                }
-
-        }
 
         /**
          * Creates a proof signer for the given issuance request and credential configuration.
@@ -130,7 +81,7 @@ internal abstract class ProofSigner {
 
         /**
          * Creates a proof signer for the given issuance request and issuer supported proof types.
-         * The proof signer is selected based on the issuer supported proof types and the [SupportedProofTypes]
+         * The proof signer is selected based on the issuer supported proof types and the [SupportedProofType.SupportedProofTypes]
          * of the [ProofSigner].
          * @param issuanceRequest The issuance request.
          * @param issuerSupportedProofTypes The issuer supported proof types.
@@ -141,22 +92,18 @@ internal abstract class ProofSigner {
             issuanceRequest: IssuanceRequest,
             issuerSupportedProofTypes: ProofTypesSupported,
         ): Result<ProofSigner> {
-            val selectedProofType = selectSupportedProofType(issuerSupportedProofTypes)
+            val selectedProofType = SupportedProofType.selectProofType(issuerSupportedProofTypes)
                 ?: return Result.failure(UnsupportedProofTypeException())
 
 
-            return when (selectedProofType) {
-                is ProofTypeMeta.Jwt -> selectSupportedAlgorithm(selectedProofType)?.let { alg ->
-                    JWSProofSigner(issuanceRequest, alg)
-                }
-
-                is ProofTypeMeta.Cwt -> selectSupportedAlgorithm(selectedProofType)?.let { (alg, crv) ->
-                    CWTProofSigner(issuanceRequest, alg, crv)
-                }
-
-                else -> null // should never happen. LDP_VP is not supported in [SupportedProofTypes]
-            }?.let { Result.success(it) }
-                ?: Result.failure(UnsupportedAlgorithmException())
+            val supportedAlgorithm =
+                selectedProofType.selectAlgorithm(issuerSupportedProofTypes) ?: return Result.failure(
+                    UnsupportedAlgorithmException()
+                )
+            return when (supportedAlgorithm) {
+                is SupportedProofAlgorithm.Cose -> CWTProofSigner(issuanceRequest, supportedAlgorithm)
+                is SupportedProofAlgorithm.Jws -> JWSProofSigner(issuanceRequest, supportedAlgorithm)
+            }.let { Result.success(it) }
         }
     }
 

@@ -17,11 +17,8 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.openid4vci.CoseAlgorithm
-import eu.europa.ec.eudi.openid4vci.CoseCurve
 import eu.europa.ec.eudi.openid4vci.CwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
-import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
 /**
@@ -36,8 +33,7 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
  */
 internal class CWTProofSigner(
     private val issuanceRequest: IssuanceRequest,
-    private val coseAlgorithm: CoseAlgorithm,
-    private val coseCurve: CoseCurve
+    private val supportedProofAlgorithm: SupportedProofAlgorithm.Cose
 ) : ProofSigner() {
 
     /**
@@ -45,16 +41,11 @@ internal class CWTProofSigner(
      */
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
     override val popSigner: PopSigner.Cwt = PopSigner.Cwt(
-        algorithm = coseAlgorithm,
-        curve = coseCurve,
+        algorithm = supportedProofAlgorithm.coseAlgorithm,
+        curve = supportedProofAlgorithm.coseCurve,
         bindingKey = CwtBindingKey.CoseKey(jwk),
         sign = this::sign
     )
-
-    private val algorithm
-        get() = Pair(coseAlgorithm, coseCurve).let {
-            CWTAlgorithmMap[it] ?: throw UnsupportedAlgorithmException()
-        }
 
     /**
      * Signs the signing input with the authentication key from issuance request for the given algorithm and curve.
@@ -64,12 +55,6 @@ internal class CWTProofSigner(
      * @return The signature of the signing input.
      */
     fun sign(signingInput: ByteArray): ByteArray {
-        return doSign(issuanceRequest, signingInput, algorithm)
-    }
-
-    companion object {
-        private val CWTAlgorithmMap = mapOf(
-            Pair(CoseAlgorithm.ES256, CoseCurve.P_256) to Algorithm.SHA256withECDSA,
-        )
+        return doSign(issuanceRequest, signingInput, supportedProofAlgorithm.signAlgorithmName)
     }
 }

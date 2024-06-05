@@ -22,6 +22,8 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
 
 /**
  * An offer of credentials to be issued.
@@ -53,7 +55,10 @@ interface Offer {
 
 internal data class DefaultOffer(
     @JvmSynthetic val credentialOffer: CredentialOffer,
-    @JvmSynthetic val filterConfigurations: List<CredentialConfigurationFilter> = listOf(FormatFilter, ProofTypeFilter)
+    @JvmSynthetic val filterConfigurations: List<CredentialConfigurationFilter> = listOf(
+        MsoMdocFormatFilter,
+        ProofTypeFilter
+    )
 ) : Offer {
 
     override val issuerName: String
