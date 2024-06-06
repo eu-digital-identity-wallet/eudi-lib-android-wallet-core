@@ -33,7 +33,8 @@ class OpenId4VciManagerBuilderTest {
         authFlowRedirectionURI = "app://redirect",
         useStrongBoxIfSupported = true,
         useDPoPIfSupported = true,
-        parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED
+        parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
+        proofTypes = listOf(OpenId4VciManager.Config.ProofType.JWT),
     )
 
     @Test

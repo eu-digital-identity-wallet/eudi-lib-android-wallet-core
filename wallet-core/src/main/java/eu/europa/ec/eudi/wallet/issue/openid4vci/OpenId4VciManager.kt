@@ -22,6 +22,7 @@ import android.net.Uri
 import androidx.annotation.IntDef
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import java.util.concurrent.Executor
+import eu.europa.ec.eudi.openid4vci.ProofType as InternalProofType
 
 /**
  * OpenId4VciManager is the main entry point to issue documents using the OpenId4Vci protocol
@@ -176,16 +177,22 @@ interface OpenId4VciManager {
         val useStrongBoxIfSupported: Boolean,
         val useDPoPIfSupported: Boolean,
         @ParUsage val parUsage: Int,
+        val proofTypes: List<ProofType>
     ) {
 
         @Retention(AnnotationRetention.SOURCE)
-        @IntDef(value = [ParUsage.IF_SUPPORTED, ParUsage.ALWAYS, ParUsage.NEVER])
+        @IntDef(value = [ParUsage.IF_SUPPORTED, ParUsage.REQUIRED, ParUsage.NEVER])
         annotation class ParUsage {
             companion object {
                 const val IF_SUPPORTED = 2
-                const val ALWAYS = 4
+                const val REQUIRED = 4
                 const val NEVER = 0
             }
+        }
+
+        enum class ProofType(@JvmSynthetic internal val type: InternalProofType) {
+            JWT(InternalProofType.JWT),
+            CWT(InternalProofType.CWT)
         }
 
         /**
@@ -207,6 +214,8 @@ interface OpenId4VciManager {
 
             @ParUsage
             var parUsage: Int = ParUsage.IF_SUPPORTED
+
+            private var proofTypes: List<ProofType> = listOf(ProofType.JWT, ProofType.CWT)
 
             /**
              * Set the issuer url
@@ -237,6 +246,14 @@ interface OpenId4VciManager {
 
             fun parUsage(@ParUsage parUsage: Int) = apply { this.parUsage = parUsage }
 
+            fun proofTypes(vararg proofType: ProofType) = apply {
+                val distinctList = proofType.toList().distinct()
+                require(distinctList.size <= 2) {
+                    "Only 2 proof types are supported. You provided ${proofType.toList().size}"
+                }
+                this.proofTypes = distinctList
+            }
+
             /**
              * Build the [Config]
              * @throws [IllegalStateException] if issuerUrl, clientId or authFlowRedirectionURI is not set
@@ -252,7 +269,8 @@ interface OpenId4VciManager {
                     authFlowRedirectionURI!!,
                     useStrongBoxIfSupported,
                     useDPoPIfSupported,
-                    parUsage
+                    parUsage,
+                    proofTypes
                 )
             }
 

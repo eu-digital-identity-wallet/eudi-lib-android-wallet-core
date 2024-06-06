@@ -18,6 +18,9 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 class OpenId4VciManagerConfigBuilderTest {
 
@@ -106,5 +109,52 @@ class OpenId4VciManagerConfigBuilderTest {
         val config = builder.build()
 
         assertTrue(config.useDPoPIfSupported)
+    }
+
+    @ParameterizedTest(name = "parUsage: {0}")
+    @MethodSource("parUsageArgs")
+    fun `ConfigBuilder set the parUsage property correctly`(parUsage: Int) {
+        val builder = OpenId4VciManager.Config.Builder()
+            .issuerUrl("https://issuer.example.com")
+            .clientId("testClientId")
+            .authFlowRedirectionURI("app://redirect")
+            .parUsage(parUsage)
+
+        val config = builder.build()
+
+        assertEquals(parUsage, config.parUsage)
+    }
+
+    @ParameterizedTest(name = "proofTypes: {0}")
+    @MethodSource("proofTypesArgs")
+    fun `ConfigBuilder sets the proofTypes property correctly with same order as they given`(proofTypes: List<OpenId4VciManager.Config.ProofType>) {
+        val builder = OpenId4VciManager.Config.Builder()
+            .issuerUrl("https://issuer.example.com")
+            .clientId("testClientId")
+            .authFlowRedirectionURI("app://redirect")
+            .proofTypes(*proofTypes.toTypedArray())
+
+        val config = builder.build()
+
+        assertEquals(proofTypes, config.proofTypes)
+
+    }
+
+    companion object {
+
+        @JvmStatic
+        fun parUsageArgs() = listOf(
+            OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
+            OpenId4VciManager.Config.ParUsage.REQUIRED,
+            OpenId4VciManager.Config.ParUsage.NEVER
+        ).map { Arguments.of(it) }
+
+        @JvmStatic
+        fun proofTypesArgs() = listOf(
+            listOf(OpenId4VciManager.Config.ProofType.JWT),
+            listOf(OpenId4VciManager.Config.ProofType.CWT),
+            listOf(OpenId4VciManager.Config.ProofType.JWT, OpenId4VciManager.Config.ProofType.CWT),
+            listOf(OpenId4VciManager.Config.ProofType.CWT, OpenId4VciManager.Config.ProofType.JWT)
+        ).map { Arguments.of(it) }
     }
 }

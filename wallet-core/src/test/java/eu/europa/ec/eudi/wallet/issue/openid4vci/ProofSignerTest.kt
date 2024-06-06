@@ -13,7 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import COSE.AlgorithmID
+import COSE.OneKey
 import androidx.biometric.BiometricPrompt.CryptoObject
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -21,8 +24,6 @@ import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
-import eu.europa.ec.eudi.wallet.issue.openid4vci.*
-import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -30,14 +31,20 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ProofType as ConfigProofType
 
 class ProofSignerTest {
 
     private lateinit var issuanceRequest: IssuanceRequest
+    private lateinit var credentialConfiguration: CredentialConfiguration
 
     @Before
     fun setup() {
         issuanceRequest = mockk(relaxed = true)
+        credentialConfiguration = mockk<CredentialConfiguration>(relaxed = true)
         every { issuanceRequest.publicKey } returns mockk(relaxed = true)
     }
 
@@ -50,17 +57,22 @@ class ProofSignerTest {
             every { JWK.parseFromPEMEncodedObjects(any()) } returns mockk(relaxed = true)
 
         }
+
+        @JvmStatic
+        fun proofTypesArgs() = listOf(
+            listOf(listOf(ConfigProofType.CWT, ConfigProofType.JWT), CWTProofSigner::class.java),
+            listOf(listOf(ConfigProofType.JWT, ConfigProofType.CWT), JWSProofSigner::class.java),
+        ).map { Arguments.of(*it.toTypedArray()) }
     }
 
     @Test
     fun `invoke returns JWTProofSigner when supported jwt proof type and algorithm are available`() {
-        val issuerProofTypesSupported = ProofTypesSupported(
-            setOf(
-                ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256))
-            )
-        )
+        every {
+            credentialConfiguration.proofTypesSupported
+        } returns ProofTypesSupported(setOf(ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256))))
 
-        val result = ProofSigner(issuanceRequest, issuerProofTypesSupported)
+
+        val result = ProofSigner(issuanceRequest, credentialConfiguration)
         assertTrue(result.isSuccess)
         val signer = result.getOrThrow()
         assertTrue(signer is JWSProofSigner)
@@ -68,13 +80,15 @@ class ProofSignerTest {
 
     @Test
     fun `invoke returns CWTProofSigner when supported cwt proof type and algorithm are available`() {
-        val issuerProofTypesSupported = ProofTypesSupported(
+        every {
+            credentialConfiguration.proofTypesSupported
+        } returns ProofTypesSupported(
             setOf(
                 ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES256), listOf(CoseCurve.P_256))
             )
         )
 
-        val result = ProofSigner(issuanceRequest, issuerProofTypesSupported)
+        val result = ProofSigner(issuanceRequest, credentialConfiguration)
         assertTrue(result.isSuccess)
         val signer = result.getOrThrow()
         assertTrue(signer is CWTProofSigner)
@@ -82,28 +96,73 @@ class ProofSignerTest {
 
     @Test(expected = UnsupportedProofTypeException::class)
     fun `invoke return failure result when no supported proof type is available`() {
-        val issuerProofTypesSupported = ProofTypesSupported(
+        every {
+            credentialConfiguration.proofTypesSupported
+        } returns ProofTypesSupported(
             setOf(
                 ProofTypeMeta.LdpVp
             )
         )
 
-        val result = ProofSigner(issuanceRequest, issuerProofTypesSupported)
+        val result = ProofSigner(issuanceRequest, credentialConfiguration)
         assertTrue(result.isFailure)
         result.getOrThrow()
     }
 
     @Test(expected = UnsupportedProofTypeException::class)
     fun `invoke returns failure result when no supported algorithm is available`() {
-        val issuerProofTypesSupported = ProofTypesSupported(
+        every {
+            credentialConfiguration.proofTypesSupported
+        } returns ProofTypesSupported(
             setOf(
                 ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES384), listOf(CoseCurve.P_384))
             )
         )
 
-        val result = ProofSigner(issuanceRequest, issuerProofTypesSupported)
+        val result = ProofSigner(issuanceRequest, credentialConfiguration)
         assertTrue(result.isFailure)
         result.getOrThrow()
+    }
+
+    @Test
+    fun `invoke returns failure with UnsupportedProofTypeException when configured proof type is not supported`() {
+        every {
+            credentialConfiguration.proofTypesSupported
+        } returns ProofTypesSupported(
+            setOf(
+                ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES256), listOf(CoseCurve.P_256))
+            )
+        )
+
+        val result = ProofSigner(issuanceRequest, credentialConfiguration, listOf(ConfigProofType.JWT))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is UnsupportedProofTypeException)
+    }
+
+    @ParameterizedTest(name = "ordered proofTypes: {0} -> {1}")
+    @MethodSource("proofTypesArgs")
+    internal fun `invoke returns JWTProofSigner when prioritized over cwt proof type and algorithm are available`(
+        orderedTypes: List<ConfigProofType>, signerClass: Class<ProofSigner>
+    ) {
+        val issuanceRequest = mockk<IssuanceRequest>(relaxed = true)
+        val credentialConfiguration = mockk<CredentialConfiguration>(relaxed = true)
+        every { issuanceRequest.publicKey } returns OneKey.generateKey(AlgorithmID.ECDSA_256).AsPublicKey()
+        every {
+            credentialConfiguration.proofTypesSupported
+        } returns ProofTypesSupported(
+            setOf(
+                ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256)),
+                ProofTypeMeta.Cwt(
+                    listOf(CoseAlgorithm.ES256), listOf(CoseCurve.P_256)
+                )
+            )
+        )
+
+
+        val result = ProofSigner(issuanceRequest, credentialConfiguration, orderedTypes)
+        assertTrue(result.isSuccess)
+        val signer = result.getOrThrow()
+        assertTrue(signerClass.isAssignableFrom(signer::class.java))
     }
 
     @Test
@@ -167,4 +226,6 @@ class ProofSignerTest {
         }
         assertSame(exception, e)
     }
+
+
 }
