@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm.Cose
 import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm.Jws
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ProofType as ConfigProofType
 
 internal sealed interface SupportedProofType {
     val algorithms: List<ProofAlgorithm>
@@ -41,15 +42,32 @@ internal sealed interface SupportedProofType {
     }
 
     companion object {
-        val SupportedProofTypes: List<SupportedProofType> = listOf(
-            Jwt(listOf(Jws.ES256)),
-            Cwt(listOf(Cose.ES256_P_256))
-        )
+
+        private var priority: List<ProofType>? = null
+
+        private val supportedProofTypes: List<SupportedProofType>
+            get() = listOf(
+                Jwt(listOf(Jws.ES256)),
+                Cwt(listOf(Cose.ES256_P_256))
+            ).prioritize()
+
+        private fun List<SupportedProofType>.prioritize(): List<SupportedProofType> {
+            return priority?.let { order ->
+                val supportedProofTypesMap = associateBy { it.proofType }
+                order.mapNotNull { supportedProofTypesMap[it] }
+            } ?: this
+
+        }
+
+        fun prioritize(supportedProofTypesPrioritized: List<ConfigProofType>) = apply {
+            priority = supportedProofTypesPrioritized.map { it.type }
+        }
 
         @JvmStatic
-        fun selectProofType(issuerProofTypesSupported: ProofTypesSupported): SelectedProofType {
-            val issuerProofTypesSupportedMap = issuerProofTypesSupported.values.associateBy { it.type() }
-            for (supportedProofType in SupportedProofTypes) {
+        fun selectProofType(credentialConfiguration: CredentialConfiguration): SelectedProofType {
+            val issuerProofTypesSupportedMap =
+                credentialConfiguration.proofTypesSupported.values.associateBy { it.type() }
+            for (supportedProofType in supportedProofTypes) {
                 val issuerProofTypeMeta = issuerProofTypesSupportedMap[supportedProofType.proofType] ?: continue
 
                 when (issuerProofTypeMeta) {
@@ -79,12 +97,8 @@ internal sealed interface SupportedProofType {
                     else -> continue
                 }
             }
-            throw UnsupportedProofTypeException(SupportedProofTypes)
+            throw UnsupportedProofTypeException(supportedProofTypes)
         }
-
-        @JvmStatic
-        fun selectProofType(credentialConfiguration: CredentialConfiguration): SelectedProofType =
-            selectProofType(credentialConfiguration.proofTypesSupported)
     }
 
     sealed interface ProofAlgorithm {

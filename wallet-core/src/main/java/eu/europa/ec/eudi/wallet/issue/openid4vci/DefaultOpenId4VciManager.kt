@@ -278,7 +278,7 @@ internal class DefaultOpenId4VciManager(
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
-        val proofSigner = ProofSigner(issuanceRequest, credentialConfiguration).getOrThrow()
+        val proofSigner = ProofSigner(issuanceRequest, credentialConfiguration, config.proofTypes).getOrThrow()
         try {
             when (val outcome = authRequest.requestSingle(payload, proofSigner.popSigner).getOrThrow()) {
                 is SubmittedRequest.Failed -> onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))
@@ -391,7 +391,7 @@ internal class DefaultOpenId4VciManager(
                 dPoPSigner = if (useDPoPIfSupported) JWSDPoPSigner().getOrNull() else null,
                 parUsage = when (parUsage) {
                     OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
-                    OpenId4VciManager.Config.ParUsage.ALWAYS -> ParUsage.Always
+                    OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required
                     OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
                     else -> ParUsage.IfSupported
                 }

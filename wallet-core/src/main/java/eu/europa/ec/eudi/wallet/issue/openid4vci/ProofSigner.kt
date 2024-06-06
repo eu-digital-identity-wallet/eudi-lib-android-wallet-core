@@ -19,7 +19,6 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import androidx.biometric.BiometricPrompt.CryptoObject
 import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.PopSigner
-import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
@@ -71,30 +70,21 @@ internal abstract class ProofSigner {
          * Creates a proof signer for the given issuance request and credential configuration.
          * @param issuanceRequest The issuance request.
          * @param credentialConfiguration The credential configuration.
+         * @param supportedProofTypesPrioritized The supported proof types prioritized.
          * @return The proof signer or a failure if the proof type is not supported.
          */
         @JvmStatic
         operator fun invoke(
             issuanceRequest: IssuanceRequest,
             credentialConfiguration: CredentialConfiguration,
-        ) = invoke(issuanceRequest, credentialConfiguration.proofTypesSupported)
-
-        /**
-         * Creates a proof signer for the given issuance request and issuer supported proof types.
-         * The proof signer is selected based on the issuer supported proof types and the [SupportedProofType.SupportedProofTypes]
-         * of the [ProofSigner].
-         * @param issuanceRequest The issuance request.
-         * @param issuerSupportedProofTypes The issuer supported proof types.
-         * @return The proof signer or a failure if the proof type is not supported.
-         */
-        @JvmStatic
-        operator fun invoke(
-            issuanceRequest: IssuanceRequest,
-            issuerSupportedProofTypes: ProofTypesSupported,
+            supportedProofTypesPrioritized: List<OpenId4VciManager.Config.ProofType>? = null,
         ): Result<ProofSigner> {
             return try {
                 Result.success(
-                    SupportedProofType.selectProofType(issuerSupportedProofTypes).createProofSigner(issuanceRequest)
+                    SupportedProofType
+                        .apply { supportedProofTypesPrioritized?.let { prioritize(it) } }
+                        .selectProofType(credentialConfiguration)
+                        .createProofSigner(issuanceRequest)
                 )
             } catch (e: Throwable) {
                 Result.failure(e)

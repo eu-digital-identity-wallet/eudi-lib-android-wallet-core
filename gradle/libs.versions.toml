@@ -51,6 +51,7 @@ eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop
 identity-credential = { module = "com.android.identity:identity-credential", version.ref = "identity-credential" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 mockito-android = { module = "org.mockito:mockito-android", version.ref = "mockito-android" }
 mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito-inline" }
