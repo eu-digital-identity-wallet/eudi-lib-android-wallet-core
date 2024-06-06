@@ -38,6 +38,7 @@ The library provides the following functionality:
         - [ ] Support for sd-jwt-vc format
       - [x] Support credential offer
       - [x] Support for DPoP JWT in authorization
+      - [x] Support for JWT and CWT proof types
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -86,7 +87,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.2-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.3-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -130,8 +131,9 @@ the following options:
 The following example shows how to initialize the library:
 
 ```kotlin
-import eu.europa.ec.eudi.wallet.EudiWalletConfig
+
 import eu.europa.ec.eudi.wallet.EudiWallet
+import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import java.security.cert.X509Certificate
 
 val storageDir = applicationContext.noBackupFilesDir
@@ -182,6 +184,7 @@ val config = EudiWalletConfig.Builder(applicationContext)
         useStrongBoxIfSupported(false)
         useDPoP(false)
         parUsage(ParUsage.IF_SUPPORTED)
+        proofTypes(Config.ProofType.JWT, Config.ProofType.CWT)
     }
     .build()
 
