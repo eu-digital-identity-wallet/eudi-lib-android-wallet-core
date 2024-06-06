@@ -74,7 +74,7 @@ internal data class DefaultOffer(
 }
 
 internal val CredentialConfiguration.name: String
-    @JvmSynthetic get() = display[0].name
+    @JvmSynthetic get() = this.display.takeUnless { it.isEmpty() }?.get(0)?.name ?: docType
 
 internal val CredentialConfiguration.docType: String
     @JvmSynthetic get() = when (this) {
