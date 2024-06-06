@@ -21,23 +21,8 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import kotlin.reflect.KClass
 
 internal fun interface CredentialConfigurationFilter {
-    operator fun invoke(conf: CredentialConfiguration): Boolean
-
-    /**
-     *
-     */
-    class DocTypeFilterFactory(private val docType: String) : CredentialConfigurationFilter {
-        override fun invoke(conf: CredentialConfiguration): Boolean {
-            return conf is MsoMdocCredential && conf.docType == docType
-        }
-    }
-
-    class FormatFilterFactory<in F : CredentialConfiguration>(private val format: KClass<F>) :
-        CredentialConfigurationFilter {
-        override fun invoke(conf: CredentialConfiguration): Boolean {
-            return format.isInstance(conf)
-        }
-    }
+    operator fun invoke(conf: CredentialConfiguration): Boolean = filter(conf)
+    fun filter(conf: CredentialConfiguration): Boolean
 
     /**
      * Default [CredentialConfigurationFilter] implementations for credential format and proof type.
@@ -46,19 +31,44 @@ internal fun interface CredentialConfigurationFilter {
      */
     companion object {
         @JvmSynthetic
+        internal fun FormatFilterFactory(format: KClass<out CredentialConfiguration>) =
+            CredentialConfigurationFilter { conf ->
+                format.isInstance(conf)
+            }
+
+        @JvmSynthetic
         internal val MsoMdocFormatFilter: CredentialConfigurationFilter =
             FormatFilterFactory(MsoMdocCredential::class)
 
         @JvmSynthetic
-        internal val ProofTypeFilter: CredentialConfigurationFilter = CredentialConfigurationFilter { conf ->
-            try {
-                SupportedProofType.selectProofType(conf)
-                true
-            } catch (e: Throwable) {
-                false
-            }
-        }
+        internal fun DocTypeFilter(docType: String): CredentialConfigurationFilter =
+            Compose(MsoMdocFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
 
+        @JvmSynthetic
+        internal fun ProofTypeFilter(vararg supportedProofTypes: OpenId4VciManager.Config.ProofType): CredentialConfigurationFilter =
+            ProofTypeFilter(supportedProofTypes.toList())
+
+        @JvmSynthetic
+        internal fun ProofTypeFilter(supportedProofTypes: List<OpenId4VciManager.Config.ProofType>): CredentialConfigurationFilter =
+            CredentialConfigurationFilter { conf ->
+                try {
+                    SupportedProofType.prioritize(supportedProofTypes).select(conf)
+                    true
+                } catch (e: Throwable) {
+                    false
+                }
+            }
+
+        /**
+         * Composed(
+         *    MsoMdocFormatFilter,
+         *    ProofTypeFilter(supportedProofTypes)
+         *    DocTypeFilterFactory(docType)
+         * )(conf)
+         */
+        @JvmSynthetic
+        internal fun Compose(vararg filters: CredentialConfigurationFilter): CredentialConfigurationFilter =
+            CredentialConfigurationFilter { conf -> filters.all { it(conf) } }
 
     }
 }

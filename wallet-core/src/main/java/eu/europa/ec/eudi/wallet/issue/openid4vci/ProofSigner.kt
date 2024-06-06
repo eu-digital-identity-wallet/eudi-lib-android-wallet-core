@@ -83,7 +83,7 @@ internal abstract class ProofSigner {
                 Result.success(
                     SupportedProofType
                         .apply { supportedProofTypesPrioritized?.let { prioritize(it) } }
-                        .selectProofType(credentialConfiguration)
+                        .select(credentialConfiguration)
                         .createProofSigner(issuanceRequest)
                 )
             } catch (e: Throwable) {

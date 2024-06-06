@@ -37,7 +37,7 @@ class SupportedProofTypeTest {
             )
         )
 
-        SupportedProofType.selectProofType(credentialConfiguration)
+        SupportedProofType.select(credentialConfiguration)
     }
 
     @Test
@@ -51,7 +51,7 @@ class SupportedProofTypeTest {
         )
         val expected = SelectedProofType.Jwt(ProofAlgorithm.Jws(JWSAlgorithm.ES256, Algorithm.SHA256withECDSA))
 
-        val selected = SupportedProofType.selectProofType(credentialConfiguration)
+        val selected = SupportedProofType.select(credentialConfiguration)
         assertEquals(expected, selected)
     }
 
@@ -65,7 +65,7 @@ class SupportedProofTypeTest {
             )
         )
 
-        SupportedProofType.selectProofType(credentialConfiguration)
+        SupportedProofType.select(credentialConfiguration)
     }
 
     @Test
@@ -79,7 +79,7 @@ class SupportedProofTypeTest {
         )
         val expected = SelectedProofType.Jwt(ProofAlgorithm.Jws(JWSAlgorithm.ES256, Algorithm.SHA256withECDSA))
 
-        val selected = SupportedProofType.selectProofType(credentialConfiguration)
+        val selected = SupportedProofType.select(credentialConfiguration)
         assertEquals(expected, selected)
     }
 }
