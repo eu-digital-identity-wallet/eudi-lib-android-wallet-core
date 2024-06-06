@@ -64,7 +64,7 @@ internal sealed interface SupportedProofType {
         }
 
         @JvmStatic
-        fun selectProofType(credentialConfiguration: CredentialConfiguration): SelectedProofType {
+        fun select(credentialConfiguration: CredentialConfiguration): SelectedProofType {
             val issuerProofTypesSupportedMap =
                 credentialConfiguration.proofTypesSupported.values.associateBy { it.type() }
             for (supportedProofType in supportedProofTypes) {

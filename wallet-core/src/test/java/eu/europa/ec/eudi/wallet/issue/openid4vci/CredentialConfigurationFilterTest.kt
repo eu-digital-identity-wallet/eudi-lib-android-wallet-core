@@ -21,9 +21,10 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.DocTypeFilterFactory
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ProofType
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertFalse
@@ -54,7 +55,7 @@ class CredentialConfigurationFilterTest {
             )
         )
 
-        assertTrue(ProofTypeFilter(credentialConfiguration))
+        assertTrue(ProofTypeFilter(ProofType.JWT)(credentialConfiguration))
     }
 
     @Test
@@ -66,7 +67,7 @@ class CredentialConfigurationFilterTest {
             )
         )
 
-        assertFalse(ProofTypeFilter(credentialConfiguration))
+        assertFalse(ProofTypeFilter(ProofType.CWT)(credentialConfiguration))
     }
 
     @Test
@@ -78,7 +79,7 @@ class CredentialConfigurationFilterTest {
             )
         )
 
-        assertFalse(ProofTypeFilter(credentialConfiguration))
+        assertFalse(ProofTypeFilter(ProofType.JWT)(credentialConfiguration))
     }
 
     @Test
@@ -86,7 +87,7 @@ class CredentialConfigurationFilterTest {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
         every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported.Empty
 
-        assertFalse(ProofTypeFilter(credentialConfiguration))
+        assertFalse(ProofTypeFilter(ProofType.JWT)(credentialConfiguration))
     }
 
     @Test
@@ -95,7 +96,7 @@ class CredentialConfigurationFilterTest {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
         every { credentialConfiguration.docType } returns docType
 
-        assertTrue(DocTypeFilterFactory(docType).invoke(credentialConfiguration))
+        assertTrue(DocTypeFilter(docType).invoke(credentialConfiguration))
     }
 
     @Test
@@ -104,6 +105,6 @@ class CredentialConfigurationFilterTest {
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
         every { credentialConfiguration.docType } returns "differentDocType"
 
-        assertFalse(DocTypeFilterFactory(docType).invoke(credentialConfiguration))
+        assertFalse(DocTypeFilter(docType).invoke(credentialConfiguration))
     }
 }

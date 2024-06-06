@@ -27,9 +27,10 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.DocTypeFilterFactory
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.UserAuthStatus
 import kotlinx.coroutines.*
@@ -59,13 +60,13 @@ internal class DefaultOpenId4VciManager(
                         .use { client ->
                             Issuer.metaData(client, credentialIssuerId)
                         }
+                    val credentialConfigurationFilter = Compose(
+                        DocTypeFilter(docType),
+                        ProofTypeFilter(config.proofTypes)
+                    )
                     val credentialConfigurationId =
-                        credentialIssuerMetadata.credentialConfigurationsSupported.filter { (_, conf) ->
-                            listOf(
-                                MsoMdocFormatFilter,
-                                DocTypeFilterFactory(docType),
-                                ProofTypeFilter
-                            ).all { filter -> filter(conf) }
+                        credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
+                            credentialConfigurationFilter(conf)
                         }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
 
                     val credentialOffer = CredentialOffer(
@@ -75,7 +76,7 @@ internal class DefaultOpenId4VciManager(
                         credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
                     )
 
-                    val offer = DefaultOffer(credentialOffer)
+                    val offer = DefaultOffer(credentialOffer, credentialConfigurationFilter)
                     doIssueDocumentByOffer(offer, config, listener)
 
                 } catch (e: Throwable) {
@@ -114,7 +115,14 @@ internal class DefaultOpenId4VciManager(
                 try {
                     val offer = offerUriCache[offerUri]
                         ?: CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
-                            .let { DefaultOffer(it) }
+                            .let {
+                                DefaultOffer(
+                                    it, Compose(
+                                        MsoMdocFormatFilter,
+                                        ProofTypeFilter(config.proofTypes)
+                                    )
+                                )
+                            }
                     doIssueDocumentByOffer(offer, config, listener)
                 } catch (e: Throwable) {
                     listener(failure(e))
@@ -132,7 +140,8 @@ internal class DefaultOpenId4VciManager(
         launch(onResolvedOffer.wrap(executor)) { coroutineScope, callback ->
             try {
                 val credentialOffer = CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
-                val offer = DefaultOffer(credentialOffer)
+                val offer =
+                    DefaultOffer(credentialOffer, Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes)))
                 offerUriCache[offerUri] = offer
                 callback(OfferResult.Success(offer))
                 coroutineScope.cancel("resolveDocumentOffer succeeded")
@@ -220,7 +229,11 @@ internal class DefaultOpenId4VciManager(
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
-        val payload = IssuanceRequestPayload.ConfigurationBased(credentialConfigurationIdentifier, null)
+        val claimSet = when (credentialConfiguration) {
+            is MsoMdocCredential -> credentialConfiguration.claims.toClaimSet()
+            else -> null
+        }
+        val payload = IssuanceRequestPayload.ConfigurationBased(credentialConfigurationIdentifier, claimSet)
         when (authRequest) {
             is AuthorizedRequest.NoProofRequired -> doRequestSingleNoProof(
                 authRequest,
