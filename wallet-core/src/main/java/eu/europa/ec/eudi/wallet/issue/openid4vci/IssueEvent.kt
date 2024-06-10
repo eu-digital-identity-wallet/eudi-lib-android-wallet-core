@@ -19,6 +19,9 @@ import androidx.biometric.BiometricPrompt
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
+/**
+ * Events related to document issuance.
+ */
 sealed interface IssueEvent {
 
     /**

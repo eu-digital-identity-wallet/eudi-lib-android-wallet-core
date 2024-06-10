@@ -2,8 +2,17 @@
 
 # UnsupportedProofTypeException
 
-[androidJvm]\
 class [UnsupportedProofTypeException](index.md) : [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)
+
+Exception thrown when the proof type is not supported.
+
+#### Parameters
+
+androidJvm
+
+|                     |                       |
+|---------------------|-----------------------|
+| supportedProofTypes | supported proof types |
 
 ## Functions
 

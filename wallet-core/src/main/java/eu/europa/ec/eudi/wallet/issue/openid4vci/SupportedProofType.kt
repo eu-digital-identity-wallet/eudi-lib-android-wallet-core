@@ -24,33 +24,69 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorit
 import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm.Jws
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ProofType as ConfigProofType
 
+/**
+ * Supported proof types. It is used to select a proof type.
+ * @property algorithms the proof algorithms
+ * @property proofType the proof type
+ * @property name the name of the supported proof type
+ */
 internal sealed interface SupportedProofType {
     val algorithms: List<ProofAlgorithm>
     val proofType: ProofType
     val name: String
 
+    /**
+     * Proof type using JWT.
+     * @property algorithms the proof algorithms
+     * @property proofType the proof type
+     * @constructor Creates a new [Jwt] instance.
+     * @param algorithms the proof algorithms
+     * @param proofType the proof type
+     */
     data class Jwt(override val algorithms: List<Jws>, override val proofType: ProofType = ProofType.JWT) :
         SupportedProofType {
         override val name: String
             get() = "JWT for [${algorithms.joinToString(", ") { it.name }}]"
     }
 
+    /**
+     * Proof type using CWT.
+     * @property algorithms the proof algorithms
+     * @property proofType the proof type
+     * @constructor Creates a new [Cwt] instance.
+     * @param algorithms the proof algorithms
+     * @param proofType the proof type
+     */
     data class Cwt(override val algorithms: List<Cose>, override val proofType: ProofType = ProofType.CWT) :
         SupportedProofType {
         override val name: String
             get() = "CWT for [${algorithms.joinToString(", ") { it.name }}]"
     }
 
+    /**
+     * Companion object for [SupportedProofType] instances.
+     */
     companion object {
 
+        /**
+         * Prioritized proof types.
+         */
         private var priority: List<ProofType>? = null
 
+        /**
+         * Supported proof types.
+         */
         private val supportedProofTypes: List<SupportedProofType>
             get() = listOf(
                 Jwt(listOf(Jws.ES256)),
                 Cwt(listOf(Cose.ES256_P_256))
             ).prioritize()
 
+        /**
+         * Prioritizes the supported proof types.
+         * @receiver the supported proof types
+         * @return the supported proof types prioritized
+         */
         private fun List<SupportedProofType>.prioritize(): List<SupportedProofType> {
             return priority?.let { order ->
                 val supportedProofTypesMap = associateBy { it.proofType }
@@ -59,10 +95,22 @@ internal sealed interface SupportedProofType {
 
         }
 
-        fun prioritize(supportedProofTypesPrioritized: List<ConfigProofType>) = apply {
+        /**
+         * Sets the priority of the supported proof types.
+         * @param supportedProofTypesPrioritized the supported proof types prioritized
+         */
+        fun withPriority(supportedProofTypesPrioritized: List<ConfigProofType>) = apply {
             priority = supportedProofTypesPrioritized.map { it.type }
         }
 
+        /**
+         * Selects a proof type based on the credential configuration. It takes into account the supported proof types and their algorithms.
+         * Also, the selection is based on the given priority
+         * @see withPriority to set priority for the selection of a proof type
+         * @param credentialConfiguration the credential configuration
+         * @return the selected proof type
+         * @throws UnsupportedProofTypeException if the proof type is not supported
+         */
         @JvmStatic
         fun select(credentialConfiguration: CredentialConfiguration): SelectedProofType {
             val issuerProofTypesSupportedMap =
@@ -101,23 +149,47 @@ internal sealed interface SupportedProofType {
         }
     }
 
+    /**
+     * Proof algorithm for the supported proof type.
+     * @property name the name of the proof algorithm
+     * @property signAlgorithmName the name of the sign algorithm that it is used in the [eu.europa.ec.eudi.wallet.document.IssuanceRequest.signWithAuthKey]
+     * method
+     */
     sealed interface ProofAlgorithm {
         val name: String
 
         @get:Algorithm
         val signAlgorithmName: String
 
+        /**
+         * Proof algorithm for signing JWT with JWS.
+         * @property algorithm the JWS algorithm
+         * @constructor Creates a new [Jws] instance.
+         * @param algorithm the JWS algorithm
+         */
         data class Jws(
             val algorithm: JWSAlgorithm,
             @Algorithm override val signAlgorithmName: String,
             override val name: String = algorithm.name
         ) : ProofAlgorithm {
 
+            /**
+             * Companion object for [Jws] instances.
+             * @property ES256 the ES256 proof algorithm
+             */
             companion object {
                 val ES256 = Jws(JWSAlgorithm.ES256, Algorithm.SHA256withECDSA)
             }
         }
 
+        /**
+         * Proof algorithm for signing CWT with COSE.
+         * @property coseAlgorithm the COSE algorithm
+         * @property coseCurve the COSE curve
+         * @constructor Creates a new [Cose] instance.
+         * @param coseAlgorithm the COSE algorithm
+         * @param coseCurve the COSE curve
+         */
         data class Cose(
             val coseAlgorithm: CoseAlgorithm,
             val coseCurve: CoseCurve,
@@ -125,6 +197,10 @@ internal sealed interface SupportedProofType {
             override val name: String = "${coseAlgorithm.name()}_${coseCurve.name()}"
         ) : ProofAlgorithm {
 
+            /**
+             * Companion object for [Cose] instances.
+             * @property ES256_P_256 the ES256_P_256 proof algorithm for COSE ES256 with P-256 curve
+             */
             companion object {
                 val ES256_P_256 = Cose(CoseAlgorithm.ES256, CoseCurve.P_256, Algorithm.SHA256withECDSA)
             }

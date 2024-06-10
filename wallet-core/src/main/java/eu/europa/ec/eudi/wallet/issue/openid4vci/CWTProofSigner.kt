@@ -23,23 +23,19 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
 /**
  * A [ProofSigner] implementation for CWT.
- * @property issuanceRequest the issuance request
- * @property coseAlgorithm the COSE algorithm to use
- * @property coseCurve the COSE curve to use
+ * @property popSigner the PoP signer
+ *
  * @constructor Creates a CWT proof signer.
  * @param issuanceRequest The issuance request.
- * @param coseAlgorithm The COSE algorithm to use.
- * @param coseCurve The COSE curve to use.
+ * @param supportedProofAlgorithm The supported proof algorithm.
  */
 internal class CWTProofSigner(
     private val issuanceRequest: IssuanceRequest,
     private val supportedProofAlgorithm: SupportedProofType.ProofAlgorithm.Cose
 ) : ProofSigner() {
 
-    /**
-     * The JWK of the public key.
-     */
     private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
+
     override val popSigner: PopSigner.Cwt = PopSigner.Cwt(
         algorithm = supportedProofAlgorithm.coseAlgorithm,
         curve = supportedProofAlgorithm.coseCurve,

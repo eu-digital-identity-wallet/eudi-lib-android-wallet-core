@@ -4,6 +4,8 @@
 
 interface [IssueEvent](index.md)
 
+Events related to document issuance.
+
 #### Inheritors
 
 | |

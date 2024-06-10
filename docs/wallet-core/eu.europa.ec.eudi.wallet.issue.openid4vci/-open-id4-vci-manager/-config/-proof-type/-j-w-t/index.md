@@ -5,6 +5,8 @@
 [androidJvm]\
 [JWT](index.md)
 
+JWT proof type
+
 ## Properties
 
 | Name                                                               | Summary                                                                                                                                                               |

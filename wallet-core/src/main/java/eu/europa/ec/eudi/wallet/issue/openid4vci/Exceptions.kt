@@ -14,10 +14,19 @@
  *  limitations under the License.
  */
 @file:JvmMultifileClass
+
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+/**
+ * Exception thrown when user authentication is required.
+ */
 internal class UserAuthRequiredException : Throwable()
 
+/**
+ * Exception thrown when the proof type is not supported.
+ * @constructor Creates a new [UnsupportedProofTypeException] instance.
+ * @param supportedProofTypes supported proof types
+ */
 class UnsupportedProofTypeException internal constructor(supportedProofTypes: Collection<SupportedProofType>? = null) :
     Throwable(
         message = "Supported proof types are: " + supportedProofTypes?.joinToString(", ") { it.name }

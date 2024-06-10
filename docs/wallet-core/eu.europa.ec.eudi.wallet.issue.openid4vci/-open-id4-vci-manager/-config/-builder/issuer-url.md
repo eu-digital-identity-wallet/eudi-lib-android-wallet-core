@@ -7,5 +7,13 @@ fun [issuerUrl](issuer-url.md)(issuerUrl: [String](https://kotlinlang.org/api/la
 
 Set the issuer url
 
+#### Parameters
+
+androidJvm
+
+|           |                |
+|-----------|----------------|
+| issuerUrl | the issuer url |
+
 [androidJvm]\
 var [issuerUrl](issuer-url.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?
