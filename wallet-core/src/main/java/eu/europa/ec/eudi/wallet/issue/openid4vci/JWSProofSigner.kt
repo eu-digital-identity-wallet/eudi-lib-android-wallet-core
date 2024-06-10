@@ -70,7 +70,7 @@ internal class JWSProofSigner(
             )
         }
         return doSign(issuanceRequest, signingInput, supportedProofAlgorithm.signAlgorithmName).let { signature ->
-            Base64URL.encode(signature.derToJose(header.algorithm))
+            Base64URL.encode(signature.derToConcat(supportedProofAlgorithm))
         }
     }
 }

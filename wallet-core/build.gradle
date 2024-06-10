@@ -83,6 +83,12 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.all {
+            useJUnitPlatform()
+        }
+    }
+
 //    publishing {
 //        singleVariant('release') {
 //            withSourcesJar()

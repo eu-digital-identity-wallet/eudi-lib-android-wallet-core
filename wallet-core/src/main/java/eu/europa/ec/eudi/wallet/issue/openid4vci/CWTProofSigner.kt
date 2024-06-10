@@ -52,5 +52,6 @@ internal class CWTProofSigner(
      */
     fun sign(signingInput: ByteArray): ByteArray {
         return doSign(issuanceRequest, signingInput, supportedProofAlgorithm.signAlgorithmName)
+            .derToConcat(supportedProofAlgorithm)
     }
 }

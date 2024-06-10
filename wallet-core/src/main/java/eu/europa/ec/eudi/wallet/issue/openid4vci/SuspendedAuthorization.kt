@@ -18,6 +18,8 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
+import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager.Companion.TAG
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import java.io.Closeable
@@ -50,13 +52,21 @@ internal class SuspendedAuthorization(
      * @throws Throwable if the uri is invalid
      */
     fun resumeFromUri(uri: Uri) {
+        Log.d(TAG, "resumeFromUri: $uri")
         try {
             uri.getQueryParameter("code")?.let { authorizationCode ->
                 uri.getQueryParameter("state")?.let { serverState ->
                     continuation.resume(Result.success(Response(authorizationCode, serverState)))
-                } ?: continuation.resumeWith(Result.failure(IllegalStateException("No server state found")))
-            } ?: continuation.resumeWith(Result.failure(IllegalStateException("No authorization code found")))
+                } ?: "No server state found".let { msg ->
+                    Log.e(TAG, "resumeFromUri: msg")
+                    continuation.resumeWith(Result.failure(IllegalStateException(msg)))
+                }
+            } ?: "No authorization code found".let { msg ->
+                Log.e(TAG, "resumeFromUri: msg")
+                continuation.resumeWith(Result.failure(IllegalStateException(msg)))
+            }
         } catch (e: Throwable) {
+            Log.e(TAG, "resumeFromUri exception", e)
             continuation.resumeWith(Result.failure(e))
         }
     }

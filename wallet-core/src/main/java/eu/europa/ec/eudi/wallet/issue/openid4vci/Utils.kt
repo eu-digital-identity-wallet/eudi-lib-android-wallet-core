@@ -68,6 +68,26 @@ internal val PublicKey.pem: String
     }
 
 /**
+ * Converts a signature in DER format to a concatenated format.
+ * @receiver the [ByteArray]
+ * @param signatureLength the length of the signature
+ * @return the concatenated signature
+ */
+@JvmSynthetic
+internal fun ByteArray.derToConcat(signatureLength: Int) =
+    ECDSA.transcodeSignatureToConcat(this, signatureLength)
+
+/**
+ * Converts a signature in DER format to a concatenated format.
+ * @receiver the [ByteArray]
+ * @param algorithm the supported proof algorithm
+ * @return the concatenated signature
+ */
+@JvmSynthetic
+internal fun ByteArray.derToConcat(algorithm: SupportedProofType.ProofAlgorithm) =
+    derToConcat(algorithm.signatureByteArrayLength)
+
+/**
  * Converts the [ByteArray] to a JOSE signature.
  * @receiver the [ByteArray]
  * @param algorithm the JWS algorithm
@@ -76,5 +96,7 @@ internal val PublicKey.pem: String
 @JvmSynthetic
 internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): ByteArray {
     val len = ECDSA.getSignatureByteArrayLength(algorithm)
-    return ECDSA.transcodeSignatureToConcat(this, len)
+    return derToConcat(len)
 }
+
+

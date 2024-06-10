@@ -16,15 +16,11 @@
 
 package eu.europa.ec.eudi.wallet.document.issue.opeid4vci
 
-import COSE.AlgorithmID
-import COSE.Message
-import COSE.MessageTag
-import COSE.OneKey
 import android.app.KeyguardManager
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.upokecenter.cbor.CBORObject
+import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -37,7 +33,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.BeforeClass
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.IOException
@@ -117,6 +112,7 @@ class CWTProofSignerTest {
 
         val payload = "some random bytes".toByteArray()
         val proofSignature = proofSigner.sign(payload)
+            .let { ECDSA.transcodeSignatureToDER(it) } // convert it back to DER
         val publicKey = (proofSigner.popSigner.bindingKey as CwtBindingKey.CoseKey).jwk.toECKey().toPublicKey()
 
         val result = Signature.getInstance("SHA256withECDSA", BC).apply {
@@ -125,47 +121,5 @@ class CWTProofSignerTest {
         }.verify(proofSignature)
         assertTrue(result)
         documentManager.deleteDocumentById(issuanceRequest.documentId)
-    }
-
-    @Ignore("This is not for CI/CD use. This is just to test the sign1 message")
-    @Test
-    fun test_doSign_when_used_in_sign1_message_is_verified() {
-        val documentManager = DocumentManager.Builder(context)
-            .enableUserAuth(false)
-            .build()
-
-        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
-        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
-
-        val issuanceRequest =
-            (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
-
-        val cwtSigner = CWTProofSigner(issuanceRequest, SupportedProofAlgorithm.Cose.ES256_P_256)
-        val oneKey = OneKey(issuanceRequest.publicKey, null).AsCBOR()
-        val protectedHeaders = CBORObject.NewMap()
-            .Add(CBORObject.FromObject(1), AlgorithmID.ECDSA_256.AsCBOR())
-            .Add(CBORObject.FromObject(3), "openid4vci-proof+cwt")
-            .Add("COSE_Key", oneKey)
-            .EncodeToBytes()
-        val unProtectedHeaders = CBORObject.NewMap()
-        val payload = byteArrayOf(1, 2, 3)
-        val structureToSign = CBORObject.NewArray()
-            .Add(protectedHeaders)
-            .Add(payload)
-            .EncodeToBytes()
-        val signature = cwtSigner.sign(structureToSign)
-
-        val sign1Bytes = CBORObject.FromObjectAndTag(
-            CBORObject.NewArray().apply {
-                Add(protectedHeaders)
-                Add(unProtectedHeaders)
-                Add(payload)
-                Add(signature)
-            }, MessageTag.Sign1.value
-        ).EncodeToBytes()
-
-        val sign1 = Message.DecodeFromBytes(sign1Bytes, MessageTag.Sign1) as COSE.Sign1Message
-
-        sign1.validate(OneKey(sign1.protectedAttributes.get("COSE_Key")))
     }
 }

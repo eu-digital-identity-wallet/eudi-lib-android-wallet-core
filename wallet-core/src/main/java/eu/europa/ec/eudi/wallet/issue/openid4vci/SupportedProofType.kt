@@ -18,6 +18,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm.Cose
@@ -153,6 +154,7 @@ internal sealed interface SupportedProofType {
      * Proof algorithm for the supported proof type.
      * @property name the name of the proof algorithm
      * @property signAlgorithmName the name of the sign algorithm that it is used in the [eu.europa.ec.eudi.wallet.document.IssuanceRequest.signWithAuthKey]
+     * @property signatureByteArrayLength the length of the signature byte array to be use when converting the signature from DER to Concat format
      * method
      */
     sealed interface ProofAlgorithm {
@@ -160,6 +162,8 @@ internal sealed interface SupportedProofType {
 
         @get:Algorithm
         val signAlgorithmName: String
+
+        val signatureByteArrayLength: Int
 
         /**
          * Proof algorithm for signing JWT with JWS.
@@ -170,8 +174,10 @@ internal sealed interface SupportedProofType {
         data class Jws(
             val algorithm: JWSAlgorithm,
             @Algorithm override val signAlgorithmName: String,
-            override val name: String = algorithm.name
+            override val name: String = algorithm.name,
+            override val signatureByteArrayLength: Int = ECDSA.getSignatureByteArrayLength(algorithm)
         ) : ProofAlgorithm {
+
 
             /**
              * Companion object for [Jws] instances.
@@ -194,7 +200,8 @@ internal sealed interface SupportedProofType {
             val coseAlgorithm: CoseAlgorithm,
             val coseCurve: CoseCurve,
             @Algorithm override val signAlgorithmName: String,
-            override val name: String = "${coseAlgorithm.name()}_${coseCurve.name()}"
+            override val name: String = "${coseAlgorithm.name()}_${coseCurve.name()}",
+            override val signatureByteArrayLength: Int
         ) : ProofAlgorithm {
 
             /**
@@ -202,7 +209,8 @@ internal sealed interface SupportedProofType {
              * @property ES256_P_256 the ES256_P_256 proof algorithm for COSE ES256 with P-256 curve
              */
             companion object {
-                val ES256_P_256 = Cose(CoseAlgorithm.ES256, CoseCurve.P_256, Algorithm.SHA256withECDSA)
+                val ES256_P_256 =
+                    Cose(CoseAlgorithm.ES256, CoseCurve.P_256, Algorithm.SHA256withECDSA, signatureByteArrayLength = 64)
             }
         }
     }
