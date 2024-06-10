@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.3-SNAPSHOT]
+
+_10 Jun 2024_
+
+- Bump eudi-lib-jvm-openid4vci-kt to v0.3.0
+- Support CWT proofs for OpenId4VCI
+- Configure the usage of PAR for OpendId4VCI
+- Improvements for proof type selection
+
 ## [0.9.2-SNAPSHOT]
 
 _04 Jun 2024_
