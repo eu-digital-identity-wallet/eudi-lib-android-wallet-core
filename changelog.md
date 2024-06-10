@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.4-SNAPSHOT]
+
+__10 Jun 2024__
+
+- Security improvements for dPoP Signer for OpendI4VCI
+
 ## [0.9.3-SNAPSHOT]
 
 _10 Jun 2024_

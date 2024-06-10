@@ -82,12 +82,28 @@ The released software is a initial development release version:
 
 ### Dependencies
 
+In order to use snapshot versions add the following to your project's settings.gradle file:
+
+```groovy
+
+dependencyResolutionManagement {
+    repositories {
+        // ...
+        maven {
+            url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+            mavenContent { snapshotsOnly() }
+        }
+        // ...
+    }
+}
+```
+
 To include the library in your project, add the following dependencies to your app's build.gradle
 file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.3-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.4-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
