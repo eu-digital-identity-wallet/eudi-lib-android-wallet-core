@@ -6,12 +6,14 @@
 enum [ProofType](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-enum/index.html)
 &lt;[OpenId4VciManager.Config.ProofType](index.md)&gt;
 
+Proof type for the OpenId4Vci issuer
+
 ## Entries
 
-|                        |                                        |
-|------------------------|----------------------------------------|
-| [JWT](-j-w-t/index.md) | [androidJvm]<br>[JWT](-j-w-t/index.md) |
-| [CWT](-c-w-t/index.md) | [androidJvm]<br>[CWT](-c-w-t/index.md) |
+|                        |                                                          |
+|------------------------|----------------------------------------------------------|
+| [JWT](-j-w-t/index.md) | [androidJvm]<br>[JWT](-j-w-t/index.md)<br>JWT proof type |
+| [CWT](-c-w-t/index.md) | [androidJvm]<br>[CWT](-c-w-t/index.md)<br>CWT proof type |
 
 ## Functions
 

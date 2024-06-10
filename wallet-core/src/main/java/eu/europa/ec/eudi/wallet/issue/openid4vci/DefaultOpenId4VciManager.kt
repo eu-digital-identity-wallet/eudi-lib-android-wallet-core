@@ -38,6 +38,18 @@ import java.net.URI
 import java.util.*
 import java.util.concurrent.Executor
 
+/**
+ * Default implementation of [OpenId4VciManager].
+ * @property context the context
+ * @property documentManager the document manager
+ * @property config the configuration
+ *
+ * @constructor Creates a default OpenId4VCI manager.
+ * @param context The context.
+ * @param documentManager The document manager.
+ * @param config The configuration.
+ * @see OpenId4VciManager
+ */
 internal class DefaultOpenId4VciManager(
     private val context: Context,
     private val documentManager: DocumentManager,
@@ -168,6 +180,12 @@ internal class DefaultOpenId4VciManager(
             ?: throw IllegalStateException("No authorization request to resume")
     }
 
+    /**
+     * Issues a document by the given offer.
+     * @param offer The offer.
+     * @param config The configuration.
+     * @param onEvent The event listener.
+     */
     private suspend fun doIssueDocumentByOffer(
         offer: Offer,
         config: OpenId4VciManager.Config,
@@ -204,7 +222,11 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
-
+    /**
+     * Opens a browser for authorization.
+     * @param prepareAuthorizationCodeRequest The prepared authorization request.
+     * @return The authorization response wrapped in a [Result].
+     */
     private suspend fun openBrowserForAuthorization(prepareAuthorizationCodeRequest: AuthorizationRequestPrepared): Result<SuspendedAuthorization.Response> {
         val authorizationCodeUri =
             Uri.parse(prepareAuthorizationCodeRequest.authorizationCodeURL.value.toString())
@@ -220,7 +242,17 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
-
+    /**
+     * Issues a credential.
+     * @param authRequest The authorized request.
+     * @param credentialConfigurationIdentifier The credential configuration identifier.
+     * @param credentialConfiguration The credential configuration.
+     * @param issuanceRequest The issuance request.
+     * @param addedDocuments The added documents.
+     * @param onEvent The event listener.
+     * @throws Exception If an error occurs during the issuance.
+     * @receiver The issuer.
+     */
     private suspend fun Issuer.doIssueCredential(
         authRequest: AuthorizedRequest,
         credentialConfigurationIdentifier: CredentialConfigurationIdentifier,
@@ -229,11 +261,7 @@ internal class DefaultOpenId4VciManager(
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
-        val claimSet = when (credentialConfiguration) {
-            is MsoMdocCredential -> credentialConfiguration.claims.toClaimSet()
-            else -> null
-        }
-        val payload = IssuanceRequestPayload.ConfigurationBased(credentialConfigurationIdentifier, claimSet)
+        val payload = IssuanceRequestPayload.ConfigurationBased(credentialConfigurationIdentifier, null)
         when (authRequest) {
             is AuthorizedRequest.NoProofRequired -> doRequestSingleNoProof(
                 authRequest,
@@ -255,6 +283,17 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+    /**
+     * Requests a single document without proof.
+     * @param authRequest The authorized request.
+     * @param payload The issuance request payload.
+     * @param credentialConfiguration The credential configuration.
+     * @param issuanceRequest The issuance request.
+     * @param addedDocuments The added documents.
+     * @param onEvent The event listener.
+     * @receiver The issuer.
+     * @throws Exception If an error occurs during the issuance.
+     */
     private suspend fun Issuer.doRequestSingleNoProof(
         authRequest: AuthorizedRequest.NoProofRequired,
         payload: IssuanceRequestPayload,
@@ -283,6 +322,17 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+    /**
+     * Requests a single document with proof.
+     * @param authRequest The authorized request.
+     * @param payload The issuance request payload.
+     * @param credentialConfiguration The credential configuration.
+     * @param issuanceRequest The issuance request.
+     * @param addedDocuments The added documents.
+     * @param onEvent The event listener.
+     * @receiver The issuer.
+     * @throws Exception If an error occurs during the issuance.
+     */
     private suspend fun Issuer.doRequestSingleWithProof(
         authRequest: AuthorizedRequest.ProofRequired,
         payload: IssuanceRequestPayload,
@@ -339,6 +389,13 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+    /**
+     * Stores the issued credential.
+     * @param issuedCredential The issued credential.
+     * @param issuanceRequest The issuance request.
+     * @param onEvent The event listener.
+     * @param addedDocuments The added documents.
+     */
     private fun storeIssuedCredential(
         issuedCredential: IssuedCredential,
         issuanceRequest: IssuanceRequest,
@@ -370,6 +427,12 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+    /**
+     * Wraps the given [OpenId4VciManager.OnResult] with the given [Executor].
+     * @param executor The executor.
+     * @receiver The [OpenId4VciManager.OnResult].
+     * @return The wrapped [OpenId4VciManager.OnResult].
+     */
     private fun <R : OpenId4VciManager.OnResult<V>, V> R.wrap(executor: Executor?): OpenId4VciManager.OnResult<V> {
         return OpenId4VciManager.OnResult { result: V ->
             (executor ?: context.mainExecutor()).execute {
@@ -378,6 +441,11 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+    /**
+     * Launches a coroutine.
+     * @param onResult The result listener.
+     * @param block The coroutine block.
+     */
     private fun <R : OpenId4VciManager.OnResult<V>, V> launch(
         onResult: R,
         block: suspend (coroutineScope: CoroutineScope, onResult: R) -> Unit
@@ -395,6 +463,11 @@ internal class DefaultOpenId4VciManager(
     companion object {
         private const val TAG = "DefaultOpenId4VciManage"
 
+        /**
+         * Converts the [OpenId4VciManager.Config] to [OpenId4VCIConfig].
+         * @receiver The [OpenId4VciManager.Config].
+         * @return The [OpenId4VCIConfig].
+         */
         private fun OpenId4VciManager.Config.toOpenId4VCIConfig(): OpenId4VCIConfig {
             return OpenId4VCIConfig(
                 clientId = clientId,

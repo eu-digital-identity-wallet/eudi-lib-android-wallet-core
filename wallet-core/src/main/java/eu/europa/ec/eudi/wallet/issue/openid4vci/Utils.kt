@@ -26,12 +26,24 @@ import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
 
+/**
+ * Converts the [CreateIssuanceRequestResult] to a [Result].
+ * @receiver the [CreateIssuanceRequestResult]
+ * @return the [Result]
+ */
 internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
     @JvmSynthetic get() = when (this) {
         is CreateIssuanceRequestResult.Success -> Result.success(issuanceRequest)
         is CreateIssuanceRequestResult.Failure -> Result.failure(throwable)
     }
 
+/**
+ * Creates an issuance request for the given document type.
+ * @receiver the [DocumentManager]
+ * @param docType the document type
+ * @param hardwareBacked whether the key should be hardware backed
+ * @return the [Result] with the issuance request
+ */
 @JvmSynthetic
 internal fun DocumentManager.createIssuanceRequest(
     offerOfferedDocument: Offer.OfferedDocument,
@@ -41,6 +53,11 @@ internal fun DocumentManager.createIssuanceRequest(
         .result
         .map { it.apply { name = offerOfferedDocument.name } }
 
+/**
+ * Converts the [PublicKey] to a PEM string.
+ * @receiver the [PublicKey]
+ * @return the PEM string
+ */
 internal val PublicKey.pem: String
     @JvmSynthetic get() = StringWriter().use { wr ->
         PemWriter(wr).use { pwr ->
@@ -50,6 +67,12 @@ internal val PublicKey.pem: String
         wr.toString()
     }
 
+/**
+ * Converts the [ByteArray] to a JOSE signature.
+ * @receiver the [ByteArray]
+ * @param algorithm the JWS algorithm
+ * @return the JOSE signature
+ */
 @JvmSynthetic
 internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): ByteArray {
     val len = ECDSA.getSignatureByteArrayLength(algorithm)

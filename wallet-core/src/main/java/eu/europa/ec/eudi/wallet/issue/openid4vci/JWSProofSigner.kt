@@ -30,10 +30,10 @@ import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 
 /**
  * A [ProofSigner] and [JWSSigner] implementation for JWS.
- * @property issuanceRequest the issuance request
+ * @property popSigner
  * @constructor Creates a JWS proof signer.
  * @param issuanceRequest The issuance request.
- * @param jwsAlgorithm The JWS algorithm to use.
+ * @param supportedProofAlgorithm The supported proof algorithm.
  *
  */
 internal class JWSProofSigner(

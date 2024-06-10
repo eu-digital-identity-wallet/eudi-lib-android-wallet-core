@@ -6,4 +6,15 @@
 fun [parUsage](par-usage.md)(
 parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)): [OpenId4VciManager.Config.Builder](index.md)
 
+Set the PAR usage
+
+#### Parameters
+
+androidJvm
+
+|          |               |
+|----------|---------------|
+| parUsage | the PAR usage |
+
+[androidJvm]\
 var [parUsage](par-usage.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)

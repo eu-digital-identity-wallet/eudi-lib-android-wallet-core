@@ -5,8 +5,10 @@
 [androidJvm]\
 annotation class [ParUsage](index.md)
 
+PAR usage for the OpenId4Vci issuer
+
 ## Types
 
-| Name                             | Summary                                                 |
-|----------------------------------|---------------------------------------------------------|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
+| Name                             | Summary                                                                        |
+|----------------------------------|--------------------------------------------------------------------------------|
+| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md)<br>If PAR is supported |

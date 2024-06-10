@@ -167,8 +167,9 @@ interface OpenId4VciManager {
      * @property clientId the client id
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
      * @property useStrongBoxIfSupported use StrongBox for document keys if supported
-     * @property useDPoP flag that if set will enable the use of DPoP JWT
+     * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
      * @property parUsage if PAR should be used
+     * @property proofTypes the proof types to use
      */
     data class Config(
         val issuerUrl: String,
@@ -180,9 +181,18 @@ interface OpenId4VciManager {
         val proofTypes: List<ProofType>
     ) {
 
+        /**
+         * PAR usage for the OpenId4Vci issuer
+         */
         @Retention(AnnotationRetention.SOURCE)
         @IntDef(value = [ParUsage.IF_SUPPORTED, ParUsage.REQUIRED, ParUsage.NEVER])
         annotation class ParUsage {
+            /**
+             * If PAR is supported
+             * @property IF_SUPPORTED use PAR if supported
+             * @property REQUIRED use PAR always
+             * @property NEVER never use PAR
+             */
             companion object {
                 const val IF_SUPPORTED = 2
                 const val REQUIRED = 4
@@ -190,8 +200,18 @@ interface OpenId4VciManager {
             }
         }
 
+        /**
+         * Proof type for the OpenId4Vci issuer
+         */
         enum class ProofType(@JvmSynthetic internal val type: InternalProofType) {
+            /**
+             * JWT proof type
+             */
             JWT(InternalProofType.JWT),
+
+            /**
+             * CWT proof type
+             */
             CWT(InternalProofType.CWT)
         }
 
@@ -219,36 +239,51 @@ interface OpenId4VciManager {
 
             /**
              * Set the issuer url
+             * @param issuerUrl the issuer url
              */
             fun issuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
 
             /**
              * Set the client id
+             * @param clientId the client id
              */
             fun clientId(clientId: String) = apply { this.clientId = clientId }
 
             /**
              * Set the redirection URI for the authorization flow
+             * @param authFlowRedirectionURI the redirection URI for the authorization flow
              */
             fun authFlowRedirectionURI(authFlowRedirectionURI: String) =
                 apply { this.authFlowRedirectionURI = authFlowRedirectionURI }
 
             /**
              * Set the flag that if set will enable the use of StrongBox for document keys if supported
+             * @param useStrongBoxIfSupported the flag that if set will enable the use of StrongBox for document keys if supported
              */
             fun useStrongBoxIfSupported(useStrongBoxIfSupported: Boolean) =
                 apply { this.useStrongBoxIfSupported = useStrongBoxIfSupported }
 
             /**
              * Set the flag that if set will enable the use of DPoP JWT
+             * @param useDPoP the flag that if set will enable the use of DPoP JWT
              */
             fun useDPoP(useDPoP: Boolean) = apply { this.useDPoPIfSupported = useDPoP }
 
+            /**
+             * Set the PAR usage
+             * @param parUsage the PAR usage
+             */
             fun parUsage(@ParUsage parUsage: Int) = apply { this.parUsage = parUsage }
 
+            /**
+             * Set the proof types. The supported proof types are [ProofType].
+             * The order of the proof types is the order in which they will be used.
+             * @param proofType the proof types
+             * @throws [IllegalArgumentException] if a proof type is provided more than once
+             */
             fun proofTypes(vararg proofType: ProofType) = apply {
                 val distinctList = proofType.toList().distinct()
-                require(distinctList.size <= 2) {
+                require(distinctList.size <= ProofType.values().size) {
                     "Only 2 proof types are supported. You provided ${proofType.toList().size}"
                 }
                 this.proofTypes = distinctList

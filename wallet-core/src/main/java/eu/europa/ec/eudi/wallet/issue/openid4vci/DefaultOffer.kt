@@ -17,15 +17,26 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 
+/**
+ * Default implementation of [Offer].
+ * @property issuerName issuer name
+ * @property offeredDocuments offered documents
+ *
+ * @constructor Creates a new [DefaultOffer] instance.
+ * @param credentialOffer [CredentialOffer] instance
+ * @param credentialConfigurationFilter [CredentialConfigurationFilter] instance
+ * @see Offer
+ */
 internal data class DefaultOffer(
     @JvmSynthetic val credentialOffer: CredentialOffer,
     @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.MsoMdocFormatFilter
 ) : Offer {
 
-    private val issuerMetadata = credentialOffer.credentialIssuerMetadata
+    private val issuerMetadata: CredentialIssuerMetadata = credentialOffer.credentialIssuerMetadata
 
     override val issuerName: String = issuerMetadata.credentialIssuerIdentifier.value.value.host
     override val offeredDocuments: List<Offer.OfferedDocument> = issuerMetadata.credentialConfigurationsSupported
@@ -34,9 +45,19 @@ internal data class DefaultOffer(
         .map { (id, conf) -> Offer.OfferedDocument(conf.name, conf.docType, id, conf) }
 }
 
+/**
+ * Credential name based on the display name or the document type.
+ * If the display name is empty, the docType is used.
+ * @receiver [CredentialConfiguration] instance
+ */
 internal val CredentialConfiguration.name: String
     @JvmSynthetic get() = this.display.takeUnless { it.isEmpty() }?.get(0)?.name ?: docType
 
+/**
+ * Document type based on the credential configuration.
+ * DocType is currently only supported for [MsoMdocCredential].
+ * @receiver [CredentialConfiguration] instance
+ */
 internal val CredentialConfiguration.docType: String
     @JvmSynthetic get() = when (this) {
         is MsoMdocCredential -> docType

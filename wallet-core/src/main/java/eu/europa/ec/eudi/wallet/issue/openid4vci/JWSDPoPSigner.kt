@@ -38,6 +38,10 @@ import java.util.*
 /**
  * A [JWSSigner] implementation for DPoP.
  * @property popSigner the DPoP signer [PopSigner.Jwt]
+ * @property jcaContext the JCA context
+ * @constructor Creates a DPoP signer.
+ * @throws Exception If an error occurs during key generation.
+ * @see JWSSigner
  */
 internal class JWSDPoPSigner private constructor() : JWSSigner {
 
@@ -58,6 +62,9 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
             jwsSigner = this
         )
 
+    /**
+     * Initializes the DPoP signer by generating a key pair.
+     */
     init {
         generateKeyPair()
     }
@@ -80,6 +87,9 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
 
     override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = SupportedAlgorithms.keys.toMutableSet()
 
+    /**
+     * Generates a key pair for DPoP.
+     */
     private fun generateKeyPair() {
         if (keyStore.containsAlias(KEY_ALIAS)) {
             keyStore.deleteEntry(KEY_ALIAS)
@@ -107,7 +117,9 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
     companion object {
         private const val KEY_ALIAS = "eu.europa.ec.eudi.wallet.issue.openid4vci.DPoPKey"
 
-
+        /**
+         * Supported algorithms for DPoP.
+         */
         private val SupportedAlgorithms: Map<JWSAlgorithm, String>
             get() = mapOf(JWSAlgorithm.ES256 to "SHA256withECDSA")
 

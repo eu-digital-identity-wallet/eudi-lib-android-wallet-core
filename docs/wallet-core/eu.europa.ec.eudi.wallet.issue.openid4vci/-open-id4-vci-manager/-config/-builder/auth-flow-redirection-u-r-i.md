@@ -7,5 +7,13 @@ fun [authFlowRedirectionURI](auth-flow-redirection-u-r-i.md)(authFlowRedirection
 
 Set the redirection URI for the authorization flow
 
+#### Parameters
+
+androidJvm
+
+|                        |                                                |
+|------------------------|------------------------------------------------|
+| authFlowRedirectionURI | the redirection URI for the authorization flow |
+
 [androidJvm]\
 var [authFlowRedirectionURI](auth-flow-redirection-u-r-i.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?
