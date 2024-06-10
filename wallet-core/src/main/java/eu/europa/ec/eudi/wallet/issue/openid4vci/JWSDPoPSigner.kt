@@ -16,9 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties.DIGEST_SHA256
-import android.security.keystore.KeyProperties.PURPOSE_SIGN
 import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -29,11 +26,12 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.KeyStore
 import java.security.Signature
-import java.time.Instant
-import java.util.*
+import java.security.spec.ECGenParameterSpec
+
 
 /**
  * A [JWSSigner] implementation for DPoP.
@@ -45,15 +43,20 @@ import java.util.*
  */
 internal class JWSDPoPSigner private constructor() : JWSSigner {
 
+    private val BC by lazy { BouncyCastleProvider() }
+    private val keyPair: KeyPair by lazy {
+        val kg: KeyPairGenerator = KeyPairGenerator.getInstance("EC", BC)
+        val params = ECGenParameterSpec("secp256r1")
+        kg.initialize(params)
+        kg.generateKeyPair()
+    }
+
     private val jcaContext = JCAContext()
 
     override fun getJCAContext(): JCAContext = jcaContext
 
-    private val keyStore: KeyStore
-        get() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-
     private val jwk: JWK
-        get() = JWK.parseFromPEMEncodedObjects(keyStore.getCertificate(KEY_ALIAS).publicKey.pem)
+        get() = JWK.parseFromPEMEncodedObjects(keyPair.public.pem)
 
     val popSigner: PopSigner.Jwt
         get() = PopSigner.Jwt(
@@ -61,13 +64,6 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
             bindingKey = JwtBindingKey.Jwk(jwk),
             jwsSigner = this
         )
-
-    /**
-     * Initializes the DPoP signer by generating a key pair.
-     */
-    init {
-        generateKeyPair()
-    }
 
     override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
         val algorithm = SupportedAlgorithms[header.algorithm]
@@ -77,7 +73,7 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
                     supportedJWSAlgorithms()
                 )
             )
-        val privateKey = (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry).privateKey
+        val privateKey = keyPair.private
         val signature = Signature.getInstance(algorithm).apply {
             initSign(privateKey)
             update(signingInput)
@@ -88,34 +84,9 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
     override fun supportedJWSAlgorithms(): MutableSet<JWSAlgorithm> = SupportedAlgorithms.keys.toMutableSet()
 
     /**
-     * Generates a key pair for DPoP.
-     */
-    private fun generateKeyPair() {
-        if (keyStore.containsAlias(KEY_ALIAS)) {
-            keyStore.deleteEntry(KEY_ALIAS)
-        }
-        val now = Instant.now()
-        val notBefore = Date.from(now)
-        val notAfter = Date.from(now.plusSeconds(180L))
-        val keySpec = KeyGenParameterSpec.Builder(KEY_ALIAS, PURPOSE_SIGN)
-            .setDigests(DIGEST_SHA256)
-            .setUserAuthenticationRequired(false)
-            .setKeyValidityStart(notBefore)
-            .setKeyValidityEnd(notAfter)
-            .setCertificateNotBefore(notBefore)
-            .setCertificateNotAfter(notAfter)
-            .build()
-        with(KeyPairGenerator.getInstance("EC", "AndroidKeyStore")) {
-            initialize(keySpec)
-            generateKeyPair()
-        }
-    }
-
-    /**
      * Companion object for the JWSDPoPSigner class.
      */
     companion object {
-        private const val KEY_ALIAS = "eu.europa.ec.eudi.wallet.issue.openid4vci.DPoPKey"
 
         /**
          * Supported algorithms for DPoP.

@@ -272,7 +272,9 @@ internal class DefaultOpenId4VciManager(
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
-        val payload = IssuanceRequestPayload.ConfigurationBased(credentialConfigurationIdentifier, null)
+        val claimSet = null
+        val payload = IssuanceRequestPayload.ConfigurationBased(credentialConfigurationIdentifier, claimSet)
+        Log.d(TAG, "doIssueCredential payload: $payload")
         when (authRequest) {
             is AuthorizedRequest.NoProofRequired -> doRequestSingleNoProof(
                 authRequest,
