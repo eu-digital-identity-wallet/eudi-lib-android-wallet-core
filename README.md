@@ -103,7 +103,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.4-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.5-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -201,6 +201,7 @@ val config = EudiWalletConfig.Builder(applicationContext)
         useDPoP(false)
         parUsage(ParUsage.IF_SUPPORTED)
         proofTypes(Config.ProofType.JWT, Config.ProofType.CWT)
+        debugLogging(true)
     }
     .build()
 

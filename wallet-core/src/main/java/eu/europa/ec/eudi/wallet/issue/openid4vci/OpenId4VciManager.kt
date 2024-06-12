@@ -170,6 +170,7 @@ interface OpenId4VciManager {
      * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
      * @property parUsage if PAR should be used
      * @property proofTypes the proof types to use
+     * @property debugLogging flag to enable debug logging
      */
     data class Config(
         val issuerUrl: String,
@@ -178,7 +179,8 @@ interface OpenId4VciManager {
         val useStrongBoxIfSupported: Boolean,
         val useDPoPIfSupported: Boolean,
         @ParUsage val parUsage: Int,
-        val proofTypes: List<ProofType>
+        val proofTypes: List<ProofType>,
+        val debugLogging: Boolean
     ) {
 
         /**
@@ -223,6 +225,7 @@ interface OpenId4VciManager {
          * @property useStrongBoxIfSupported use StrongBox for document keys if supported
          * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
          * @property parUsage if PAR should be used
+         * @property debugLogging flag to enable debug logging. Default is false
          *
          */
         class Builder {
@@ -236,6 +239,8 @@ interface OpenId4VciManager {
             var parUsage: Int = ParUsage.IF_SUPPORTED
 
             private var proofTypes: List<ProofType> = listOf(ProofType.JWT, ProofType.CWT)
+
+            var debugLogging: Boolean = false
 
             /**
              * Set the issuer url
@@ -290,6 +295,11 @@ interface OpenId4VciManager {
             }
 
             /**
+             * Set the debug logging flag
+             */
+            fun debugLogging(debugLogging: Boolean) = apply { this.debugLogging = debugLogging }
+
+            /**
              * Build the [Config]
              * @throws [IllegalStateException] if issuerUrl, clientId or authFlowRedirectionURI is not set
              */
@@ -305,7 +315,8 @@ interface OpenId4VciManager {
                     useStrongBoxIfSupported,
                     useDPoPIfSupported,
                     parUsage,
-                    proofTypes
+                    proofTypes,
+                    debugLogging
                 )
             }
 

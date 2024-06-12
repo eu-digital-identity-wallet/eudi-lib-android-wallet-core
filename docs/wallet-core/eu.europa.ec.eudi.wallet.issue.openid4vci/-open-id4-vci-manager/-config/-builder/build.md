@@ -9,6 +9,6 @@ Build the [Config](../index.md)
 
 #### Throws
 
-| | |
-|---|---|
+|                                                                                                                  |                                                             |
+|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if issuerUrl, clientId or authFlowRedirectionURI is not set |

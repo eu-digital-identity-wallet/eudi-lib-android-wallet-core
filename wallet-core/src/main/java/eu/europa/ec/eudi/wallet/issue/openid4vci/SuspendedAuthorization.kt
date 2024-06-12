@@ -52,7 +52,6 @@ internal class SuspendedAuthorization(
      * @throws Throwable if the uri is invalid
      */
     fun resumeFromUri(uri: Uri) {
-        Log.d(TAG, "resumeFromUri: $uri")
         try {
             uri.getQueryParameter("code")?.let { authorizationCode ->
                 uri.getQueryParameter("state")?.let { serverState ->

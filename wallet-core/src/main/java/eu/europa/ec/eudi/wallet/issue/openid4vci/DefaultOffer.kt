@@ -43,6 +43,10 @@ internal data class DefaultOffer(
         .filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
         .filterValues { credentialConfigurationFilter(it) }
         .map { (id, conf) -> Offer.OfferedDocument(conf.name, conf.docType, id, conf) }
+
+    override fun toString(): String {
+        return "Offer(issuerName='$issuerName', offeredDocuments=$offeredDocuments)"
+    }
 }
 
 /**
