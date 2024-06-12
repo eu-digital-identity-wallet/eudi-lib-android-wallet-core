@@ -16,11 +16,22 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import android.util.Log
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
+import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
+import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import io.ktor.client.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
@@ -97,6 +108,37 @@ internal fun ByteArray.derToConcat(algorithm: SupportedProofType.ProofAlgorithm)
 internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): ByteArray {
     val len = ECDSA.getSignatureByteArrayLength(algorithm)
     return derToConcat(len)
+}
+
+@JvmSynthetic
+internal fun createKtorHttpClient(debug: Boolean = false): KtorHttpClientFactory {
+    return when {
+        debug -> {
+            {
+                HttpClient {
+                    install(ContentNegotiation) {
+                        json(
+                            json = Json {
+                                ignoreUnknownKeys = true
+                            },
+                        )
+                    }
+                    install(Logging) {
+                        logger = object : Logger {
+                            override fun log(message: String) {
+                                Log.d(DefaultOpenId4VciManager.TAG, message)
+                            }
+                        }
+                        level = LogLevel.ALL
+                    }
+                }
+            }
+        }
+
+        else -> DefaultHttpClientFactory
+
+
+    }
 }
 
 

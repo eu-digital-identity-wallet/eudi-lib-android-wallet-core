@@ -43,6 +43,10 @@ interface Offer {
          * Converts this item to a pair of name and document type.
          */
         fun asPair() = Pair(name, docType)
+
+        override fun toString(): String {
+            return "OfferedDocument(name='$name', docType='$docType')"
+        }
     }
 }
 
