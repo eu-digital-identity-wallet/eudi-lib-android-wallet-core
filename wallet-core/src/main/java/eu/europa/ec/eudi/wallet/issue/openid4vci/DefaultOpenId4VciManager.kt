@@ -17,9 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import android.content.Intent
-import android.content.Intent.ACTION_VIEW
-import android.net.Uri
 import android.util.Log
 import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.*
@@ -58,46 +55,44 @@ internal class DefaultOpenId4VciManager(
     var config: OpenId4VciManager.Config
 ) : OpenId4VciManager {
 
-    private var suspendedAuthorization: SuspendedAuthorization? = null
     private val offerUriCache = mutableMapOf<String, Offer>()
 
     override fun issueDocumentByDocType(
         docType: String,
         executor: Executor?,
+        authorizationHandler: AuthorizationHandler,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        clearStateThen {
-            launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
-                try {
-                    val credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow()
-                    val (credentialIssuerMetadata, authorizationServerMetadata) = DefaultHttpClientFactory()
-                        .use { client ->
-                            Issuer.metaData(client, credentialIssuerId)
-                        }
-                    val credentialConfigurationFilter = Compose(
-                        DocTypeFilter(docType),
-                        ProofTypeFilter(config.proofTypes)
-                    )
-                    val credentialConfigurationId =
-                        credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
-                            credentialConfigurationFilter(conf)
-                        }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
+        launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
+            try {
+                val credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow()
+                val (credentialIssuerMetadata, authorizationServerMetadata) = DefaultHttpClientFactory()
+                    .use { client ->
+                        Issuer.metaData(client, credentialIssuerId)
+                    }
+                val credentialConfigurationFilter = Compose(
+                    DocTypeFilter(docType),
+                    ProofTypeFilter(config.proofTypes)
+                )
+                val credentialConfigurationId =
+                    credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
+                        credentialConfigurationFilter(conf)
+                    }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
 
-                    val credentialOffer = CredentialOffer(
-                        credentialIssuerIdentifier = credentialIssuerId,
-                        credentialIssuerMetadata = credentialIssuerMetadata,
-                        authorizationServerMetadata = authorizationServerMetadata.first(),
-                        credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
-                    )
+                val credentialOffer = CredentialOffer(
+                    credentialIssuerIdentifier = credentialIssuerId,
+                    credentialIssuerMetadata = credentialIssuerMetadata,
+                    authorizationServerMetadata = authorizationServerMetadata.first(),
+                    credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
+                )
 
-                    val offer = DefaultOffer(credentialOffer, credentialConfigurationFilter)
-                    doIssueDocumentByOffer(offer, config, listener)
+                val offer = DefaultOffer(credentialOffer, credentialConfigurationFilter)
+                doIssueDocumentByOffer(offer, config, authorizationHandler, listener)
 
-                } catch (e: Throwable) {
-                    Log.e(TAG, "issueDocumentByDocType failed", e)
-                    listener(failure(e))
-                    coroutineScope.cancel("issueDocumentByDocType failed", e)
-                }
+            } catch (e: Throwable) {
+                Log.e(TAG, "issueDocumentByDocType failed", e)
+                listener(failure(e))
+                coroutineScope.cancel("issueDocumentByDocType failed", e)
             }
         }
     }
@@ -105,17 +100,16 @@ internal class DefaultOpenId4VciManager(
     override fun issueDocumentByOffer(
         offer: Offer,
         executor: Executor?,
+        authorizationHandler: AuthorizationHandler,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        clearStateThen {
-            launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
-                try {
-                    doIssueDocumentByOffer(offer, config, listener)
-                } catch (e: Throwable) {
-                    Log.e(TAG, "issueDocumentByOffer failed", e)
-                    listener(failure(e))
-                    coroutineScope.cancel("issueDocumentByOffer failed", e)
-                }
+        launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
+            try {
+                doIssueDocumentByOffer(offer, config, authorizationHandler, listener)
+            } catch (e: Throwable) {
+                Log.e(TAG, "issueDocumentByOffer failed", e)
+                listener(failure(e))
+                coroutineScope.cancel("issueDocumentByOffer failed", e)
             }
         }
     }
@@ -124,28 +118,27 @@ internal class DefaultOpenId4VciManager(
     override fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor?,
+        authorizationHandler: AuthorizationHandler,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        clearStateThen {
-            launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
-                try {
-                    val offer = offerUriCache[offerUri].also {
-                        Log.d(TAG, "OfferUri $offerUri cache hit")
-                    } ?: CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
-                        .let {
-                            DefaultOffer(
-                                it, Compose(
-                                    MsoMdocFormatFilter,
-                                    ProofTypeFilter(config.proofTypes)
-                                )
+        launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
+            try {
+                val offer = offerUriCache[offerUri].also {
+                    Log.d(TAG, "OfferUri $offerUri cache hit")
+                } ?: CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
+                    .let {
+                        DefaultOffer(
+                            it, Compose(
+                                MsoMdocFormatFilter,
+                                ProofTypeFilter(config.proofTypes)
                             )
-                        }.also { offerUriCache[offerUri] = it }
-                    doIssueDocumentByOffer(offer, config, listener)
-                } catch (e: Throwable) {
-                    Log.e(TAG, "issueDocumentByOfferUri failed", e)
-                    listener(failure(e))
-                    coroutineScope.cancel("issueDocumentByOffer failed", e)
-                }
+                        )
+                    }.also { offerUriCache[offerUri] = it }
+                doIssueDocumentByOffer(offer, config, authorizationHandler, listener)
+            } catch (e: Throwable) {
+                Log.e(TAG, "issueDocumentByOfferUri failed", e)
+                listener(failure(e))
+                coroutineScope.cancel("issueDocumentByOffer failed", e)
             }
         }
     }
@@ -158,8 +151,7 @@ internal class DefaultOpenId4VciManager(
         launch(onResolvedOffer.wrap(executor)) { coroutineScope, callback ->
             try {
                 val credentialOffer = CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
-                val offer =
-                    DefaultOffer(credentialOffer, Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes)))
+                val offer = DefaultOffer(credentialOffer, Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes)))
                 offerUriCache[offerUri] = offer
                 Log.d(TAG, "OfferUri $offerUri resolved")
                 callback(OfferResult.Success(offer))
@@ -173,21 +165,6 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
-    override fun resumeWithAuthorization(intent: Intent) {
-        suspendedAuthorization?.use { it.resumeFromIntent(intent) }
-            ?: throw IllegalStateException("No authorization request to resume")
-    }
-
-    override fun resumeWithAuthorization(uri: String) {
-        suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: throw IllegalStateException("No authorization request to resume")
-    }
-
-    override fun resumeWithAuthorization(uri: Uri) {
-        suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: throw IllegalStateException("No authorization request to resume")
-    }
-
     /**
      * Issues a document by the given offer.
      * @param offer The offer.
@@ -197,6 +174,7 @@ internal class DefaultOpenId4VciManager(
     private suspend fun doIssueDocumentByOffer(
         offer: Offer,
         config: OpenId4VciManager.Config,
+        authorizationHandler: AuthorizationHandler,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
         offer as DefaultOffer
@@ -205,7 +183,7 @@ internal class DefaultOpenId4VciManager(
         onEvent(IssueEvent.Started(offer.offeredDocuments.size))
         with(issuer) {
             val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
-            val authResponse = openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
+            val authResponse = authorizationHandler.doAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
             val authorizedRequest = prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
                 AuthorizationCode(authResponse.authorizationCode),
                 authResponse.serverState
@@ -230,26 +208,6 @@ internal class DefaultOpenId4VciManager(
                 )
             }
             onEvent(IssueEvent.Finished(addedDocuments.toList()))
-        }
-    }
-
-    /**
-     * Opens a browser for authorization.
-     * @param prepareAuthorizationCodeRequest The prepared authorization request.
-     * @return The authorization response wrapped in a [Result].
-     */
-    private suspend fun openBrowserForAuthorization(prepareAuthorizationCodeRequest: AuthorizationRequestPrepared): Result<SuspendedAuthorization.Response> {
-        val authorizationCodeUri =
-            Uri.parse(prepareAuthorizationCodeRequest.authorizationCodeURL.value.toString())
-
-        return suspendCancellableCoroutine { continuation ->
-            suspendedAuthorization = SuspendedAuthorization(continuation)
-            continuation.invokeOnCancellation {
-                suspendedAuthorization = null
-            }
-            context.startActivity(Intent(ACTION_VIEW, authorizationCodeUri).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
         }
     }
 
@@ -516,12 +474,6 @@ internal class DefaultOpenId4VciManager(
     ) {
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch { block(scope, onResult) }
-    }
-
-    private fun clearStateThen(block: () -> Unit) {
-        suspendedAuthorization?.close()
-        suspendedAuthorization = null
-        block()
     }
 
     companion object {

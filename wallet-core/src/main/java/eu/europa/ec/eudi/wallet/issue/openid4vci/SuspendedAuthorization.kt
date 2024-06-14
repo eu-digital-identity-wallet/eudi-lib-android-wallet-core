@@ -29,9 +29,8 @@ import kotlin.coroutines.resume
  * Suspended authorization. It is used to resume the authorization process.
  */
 internal class SuspendedAuthorization(
-    private val continuation: CancellableContinuation<Result<Response>>,
+    private val continuation: CancellableContinuation<Result<AuthorizationResponse>>,
 ) : Closeable {
-
 
     /**
      * Resumes the authorization process from the given uri.
@@ -56,7 +55,7 @@ internal class SuspendedAuthorization(
         try {
             uri.getQueryParameter("code")?.let { authorizationCode ->
                 uri.getQueryParameter("state")?.let { serverState ->
-                    continuation.resume(Result.success(Response(authorizationCode, serverState)))
+                    continuation.resume(Result.success(AuthorizationResponse(authorizationCode, serverState)))
                 } ?: "No server state found".let { msg ->
                     Log.e(TAG, "resumeFromUri: msg")
                     continuation.resumeWith(Result.failure(IllegalStateException(msg)))
@@ -87,14 +86,4 @@ internal class SuspendedAuthorization(
     override fun close() {
         continuation.takeIf { it.isActive }?.cancel(CancellationException("Authorization was cancelled"))
     }
-
-    /**
-     * Response of the authorization process.
-     * @property authorizationCode the authorization code
-     * @property serverState the server state
-     * @constructor Creates a new [Response] instance.
-     * @param authorizationCode the authorization code
-     * @param serverState the server state
-     */
-    data class Response(val authorizationCode: String, val serverState: String)
 }

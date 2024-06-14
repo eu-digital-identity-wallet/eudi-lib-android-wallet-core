@@ -230,8 +230,13 @@ object EudiWallet {
         "Use issueDocumentByDocType instead",
         ReplaceWith("issueDocumentByDocType(docType, executor, onResult)")
     )
-    fun issueDocument(docType: String, executor: Executor? = null, onEvent: OpenId4VciManager.OnIssueEvent) {
-        issueDocumentByDocType(docType, executor, onEvent)
+    fun issueDocument(
+        docType: String,
+        executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
+        onEvent: OpenId4VciManager.OnIssueEvent
+    ) {
+        issueDocumentByDocType(docType, executor, authorizationHandler, onEvent)
     }
 
     /**
@@ -248,6 +253,7 @@ object EudiWallet {
     fun issueDocumentByDocType(
         docType: String,
         executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
         onEvent: OpenId4VciManager.OnIssueEvent
     ) {
         requireInit {
@@ -255,7 +261,7 @@ object EudiWallet {
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
-                }.also { it.issueDocumentByDocType(docType, executor, onEvent) }
+                }.also { it.issueDocumentByDocType(docType, executor, authorizationHandler, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -278,6 +284,7 @@ object EudiWallet {
     fun issueDocumentByOffer(
         offer: Offer,
         executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
         onEvent: OpenId4VciManager.OnIssueEvent
     ) {
         requireInit {
@@ -285,7 +292,7 @@ object EudiWallet {
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
-                }.also { it.issueDocumentByOffer(offer, executor, onEvent) }
+                }.also { it.issueDocumentByOffer(offer, executor, authorizationHandler, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -308,6 +315,7 @@ object EudiWallet {
     fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
         onEvent: OpenId4VciManager.OnIssueEvent
     ) {
         requireInit {
@@ -315,7 +323,7 @@ object EudiWallet {
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
-                }.also { it.issueDocumentByOfferUri(offerUri, executor, onEvent) }
+                }.also { it.issueDocumentByOfferUri(offerUri, executor, authorizationHandler, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -351,36 +359,6 @@ object EudiWallet {
                 }
             }
         }
-    }
-
-    /**
-     * Resumes the OpenId4VCI flow with the given [intent]
-     * @param intent the intent that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     */
-    fun resumeOpenId4VciWithAuthorization(intent: Intent) {
-        openId4VciManager?.resumeWithAuthorization(intent)
-            ?: throw IllegalStateException("No OpenId4VciManager to resume")
-    }
-
-    /**
-     * Resumes the OpenId4VCI flow with the given [intent]
-     * @param uri the uri that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     */
-    fun resumeOpenId4VciWithAuthorization(uri: String) {
-        openId4VciManager?.resumeWithAuthorization(uri)
-            ?: throw IllegalStateException("No OpenId4VciManager to resume")
-    }
-
-    /**
-     * Resumes the OpenId4VCI flow with the given [intent]
-     * @param uri the uri that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     */
-    fun resumeOpenId4VciWithAuthorization(uri: Uri) {
-        openId4VciManager?.resumeWithAuthorization(uri)
-            ?: throw IllegalStateException("No OpenId4VciManager to resume")
     }
 
     /**

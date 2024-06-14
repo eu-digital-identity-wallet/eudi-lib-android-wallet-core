@@ -96,7 +96,7 @@ class SuspendedAuthorizationTest {
     @Test
     fun `close cancels the continuation`() {
         var suspendedAuthorization: SuspendedAuthorization? = null
-        var cont: CancellableContinuation<Result<SuspendedAuthorization.Response>>? = null
+        var cont: CancellableContinuation<Result<AuthorizationResponse>>? = null
         CoroutineScope(Dispatchers.Default).launch {
             val result = suspendCancellableCoroutine { continuation ->
                 cont = continuation

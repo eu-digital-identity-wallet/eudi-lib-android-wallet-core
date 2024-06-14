@@ -17,8 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.annotation.IntDef
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import java.util.concurrent.Executor
@@ -42,6 +40,7 @@ interface OpenId4VciManager {
     fun issueDocumentByDocType(
         docType: String,
         executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
         onIssueEvent: OnIssueEvent
     )
 
@@ -57,6 +56,7 @@ interface OpenId4VciManager {
     fun issueDocumentByOffer(
         offer: Offer,
         executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
         onIssueEvent: OnIssueEvent
     )
 
@@ -71,6 +71,7 @@ interface OpenId4VciManager {
     fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor? = null,
+        authorizationHandler: AuthorizationHandler,
         onIssueEvent: OnIssueEvent
     )
 
@@ -83,30 +84,6 @@ interface OpenId4VciManager {
      *
      */
     fun resolveDocumentOffer(offerUri: String, executor: Executor? = null, onResolvedOffer: OnResolvedOffer)
-
-    /**
-     * Resume the authorization flow after the user has been redirected back to the app
-     * @param intent the intent that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     *
-     */
-    fun resumeWithAuthorization(intent: Intent)
-
-    /**
-     * Resume the authorization flow after the user has been redirected back to the app
-     * @param uri the uri that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     *
-     */
-    fun resumeWithAuthorization(uri: Uri)
-
-    /**
-     * Resume the authorization flow after the user has been redirected back to the app
-     * @param uri the uri that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     *
-     */
-    fun resumeWithAuthorization(uri: String)
 
     fun interface OnResult<T> {
         fun onResult(result: T)
