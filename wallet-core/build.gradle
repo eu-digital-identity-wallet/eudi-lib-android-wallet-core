@@ -19,7 +19,6 @@ import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
 import com.github.jk1.license.render.InventoryMarkdownReportRenderer
 
-
 plugins {
     alias libs.plugins.android.library
     alias libs.plugins.kotlin.android
@@ -33,6 +32,7 @@ plugins {
 }
 
 apply from: 'jacoco.gradle'
+apply plugin: 'maven-publish'
 
 android {
     namespace NAMESPACE
@@ -100,6 +100,22 @@ android {
 //    }
 }
 
+afterEvaluate {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                groupId = 'com.github.TICESoftware'
+                artifactId = 'eudi-lib-android-wallet-core'
+                version = '0.0.1'
+
+                afterEvaluate {
+                    from components.release
+                }
+            }
+        }
+    }
+}
+
 dependencies {
 
     implementation libs.appcompat
@@ -113,15 +129,15 @@ dependencies {
     implementation libs.nimbus.oauth2.oidc.sdk
 
     // Siop-Openid4VP library
-    implementation (libs.eudi.lib.jvm.siop.openid4vp.kt) {
+    implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
         exclude group: "org.bouncycastle"
     }
 
     // Google library
-    implementation (libs.identity.credential) {
+    implementation(libs.identity.credential) {
         exclude group: "org.bouncycastle"
     }
-    implementation (libs.android.identity.credential) {
+    implementation(libs.android.identity.credential) {
         exclude group: "org.bouncycastle"
     }
 
