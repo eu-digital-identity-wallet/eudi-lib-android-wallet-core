@@ -38,6 +38,7 @@ import org.bouncycastle.util.encoders.Hex
 import java.net.URI
 import java.util.*
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Default implementation of [OpenId4VciManager].
@@ -224,7 +225,7 @@ internal class DefaultOpenId4VciManager(
             ).getOrThrow()
 
             val addedDocuments = mutableSetOf<DocumentId>()
-
+            val cNonceHolder = AtomicReference<CNonce>().apply { update(authorizedRequest) }
             offer.offeredDocuments.forEach { item ->
                 val issuanceRequest = documentManager
                     .createIssuanceRequest(item, config.useStrongBoxIfSupported)
@@ -237,10 +238,12 @@ internal class DefaultOpenId4VciManager(
                     item.configurationIdentifier,
                     item.configuration,
                     issuanceRequest,
+                    cNonceHolder,
                     addedDocuments,
                     onEvent
                 )
             }
+            cNonceHolder.set(null)
             onEvent(IssueEvent.Finished(addedDocuments.toList()))
         }
     }
@@ -271,6 +274,7 @@ internal class DefaultOpenId4VciManager(
      * @param credentialConfigurationIdentifier The credential configuration identifier.
      * @param credentialConfiguration The credential configuration.
      * @param issuanceRequest The issuance request.
+     * @param cNonceHolder The cNonce holder. Holds the fresh cNonce.
      * @param addedDocuments The added documents.
      * @param onEvent The event listener.
      * @throws Exception If an error occurs during the issuance.
@@ -281,6 +285,7 @@ internal class DefaultOpenId4VciManager(
         credentialConfigurationIdentifier: CredentialConfigurationIdentifier,
         credentialConfiguration: CredentialConfiguration,
         issuanceRequest: IssuanceRequest,
+        cNonceHolder: AtomicReference<CNonce>,
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
@@ -293,15 +298,17 @@ internal class DefaultOpenId4VciManager(
                 payload,
                 credentialConfiguration,
                 issuanceRequest,
+                cNonceHolder,
                 addedDocuments,
                 onEvent
             )
 
             is AuthorizedRequest.ProofRequired -> doRequestSingleWithProof(
-                authRequest,
+                authRequest.copy(cNonce = cNonceHolder.get()),
                 payload,
                 credentialConfiguration,
                 issuanceRequest,
+                cNonceHolder,
                 addedDocuments,
                 onEvent
             )
@@ -314,6 +321,7 @@ internal class DefaultOpenId4VciManager(
      * @param payload The issuance request payload.
      * @param credentialConfiguration The credential configuration.
      * @param issuanceRequest The issuance request.
+     * @param cNonceHolder The cNonce holder. Holds the fresh cNonce.
      * @param addedDocuments The added documents.
      * @param onEvent The event listener.
      * @receiver The issuer.
@@ -324,11 +332,14 @@ internal class DefaultOpenId4VciManager(
         payload: IssuanceRequestPayload,
         credentialConfiguration: CredentialConfiguration,
         issuanceRequest: IssuanceRequest,
+        cNonceHolder: AtomicReference<CNonce>,
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
         logDebug("doRequestSingleNoProof for ${issuanceRequest.documentId}")
-        when (val outcome = authRequest.requestSingle(payload).getOrThrow()) {
+        val outcome = authRequest.requestSingle(payload).getOrThrow()
+        cNonceHolder.update(outcome)
+        when (outcome) {
             is SubmittedRequest.InvalidProof -> {
                 logDebug("doRequestSingleNoProof invalid proof")
                 doRequestSingleWithProof(
@@ -336,6 +347,7 @@ internal class DefaultOpenId4VciManager(
                     payload,
                     credentialConfiguration,
                     issuanceRequest,
+                    cNonceHolder,
                     addedDocuments,
                     onEvent
                 )
@@ -361,6 +373,7 @@ internal class DefaultOpenId4VciManager(
      * @param payload The issuance request payload.
      * @param credentialConfiguration The credential configuration.
      * @param issuanceRequest The issuance request.
+     * @param cNonceHolder The cNonce holder. Holds the fresh cNonce.
      * @param addedDocuments The added documents.
      * @param onEvent The event listener.
      * @receiver The issuer.
@@ -371,6 +384,7 @@ internal class DefaultOpenId4VciManager(
         payload: IssuanceRequestPayload,
         credentialConfiguration: CredentialConfiguration,
         issuanceRequest: IssuanceRequest,
+        cNonceHolder: AtomicReference<CNonce>,
         addedDocuments: MutableSet<DocumentId>,
         onEvent: OpenId4VciManager.OnResult<IssueEvent>
     ) {
@@ -379,8 +393,7 @@ internal class DefaultOpenId4VciManager(
         logDebug("doRequestSingleWithProof proofSigner: ${proofSigner::class.java.name}")
         try {
             val outcome = authRequest.requestSingle(payload, proofSigner.popSigner).getOrThrow()
-            // refresh cNonce for next issuing
-//                    outcome.cNonce
+            cNonceHolder.update(outcome)
             when (outcome) {
                 is SubmittedRequest.Failed -> {
                     clearFailedIssuance(issuanceRequest)
@@ -403,6 +416,7 @@ internal class DefaultOpenId4VciManager(
                     onEvent,
                     addedDocuments
                 )
+
             }
 
         } catch (e: Throwable) {
@@ -418,6 +432,7 @@ internal class DefaultOpenId4VciManager(
                                     payload,
                                     credentialConfiguration,
                                     issuanceRequest,
+                                    cNonceHolder,
                                     addedDocuments,
                                     onEvent
                                 )
@@ -433,6 +448,41 @@ internal class DefaultOpenId4VciManager(
                 }
 
                 else -> onEvent(IssueEvent.DocumentFailed(issuanceRequest, e))
+            }
+        }
+    }
+
+    /**
+     * Updates the cNonce.
+     * @param authRequest The authorized request.
+     * @receiver The cNonce holder.
+     */
+    private fun AtomicReference<CNonce>.update(authRequest: AuthorizedRequest) {
+        when (authRequest) {
+            is AuthorizedRequest.NoProofRequired -> {}
+            is AuthorizedRequest.ProofRequired -> {
+                val prev = getAndSet(authRequest.cNonce)
+                logDebug("cNonceUpdate: $prev -> ${authRequest.cNonce}")
+            }
+        }
+    }
+
+    /**
+     * Updates the cNonce.
+     * @param submittedRequest The submitted request.
+     * @receiver The cNonce holder.
+     */
+    private fun AtomicReference<CNonce>.update(submittedRequest: SubmittedRequest) {
+        when (submittedRequest) {
+            is SubmittedRequest.Failed -> {}
+            is SubmittedRequest.InvalidProof -> {
+                val prev = getAndSet(submittedRequest.cNonce)
+                logDebug("cNonceUpdate: $prev -> ${submittedRequest.cNonce}")
+            }
+
+            is SubmittedRequest.Success -> {
+                val prev = getAndSet(submittedRequest.cNonce)
+                logDebug("cNonceUpdate: $prev -> ${submittedRequest.cNonce}")
             }
         }
     }
