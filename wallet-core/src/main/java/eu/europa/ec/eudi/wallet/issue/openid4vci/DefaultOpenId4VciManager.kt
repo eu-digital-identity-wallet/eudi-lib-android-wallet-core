@@ -378,7 +378,10 @@ internal class DefaultOpenId4VciManager(
         val proofSigner = ProofSigner(issuanceRequest, credentialConfiguration, config.proofTypes).getOrThrow()
         logDebug("doRequestSingleWithProof proofSigner: ${proofSigner::class.java.name}")
         try {
-            when (val outcome = authRequest.requestSingle(payload, proofSigner.popSigner).getOrThrow()) {
+            val outcome = authRequest.requestSingle(payload, proofSigner.popSigner).getOrThrow()
+            // refresh cNonce for next issuing
+//                    outcome.cNonce
+            when (outcome) {
                 is SubmittedRequest.Failed -> {
                     clearFailedIssuance(issuanceRequest)
                     onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))

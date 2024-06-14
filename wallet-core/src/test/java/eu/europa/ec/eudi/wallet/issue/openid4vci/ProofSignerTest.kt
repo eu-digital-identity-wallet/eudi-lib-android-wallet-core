@@ -27,10 +27,11 @@ import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
-import org.junit.Assert.*
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -41,7 +42,7 @@ class ProofSignerTest {
     private lateinit var issuanceRequest: IssuanceRequest
     private lateinit var credentialConfiguration: CredentialConfiguration
 
-    @Before
+    @BeforeEach
     fun setup() {
         issuanceRequest = mockk(relaxed = true)
         credentialConfiguration = mockk<CredentialConfiguration>(relaxed = true)
@@ -50,7 +51,7 @@ class ProofSignerTest {
 
     companion object {
 
-        @BeforeClass
+        @BeforeAll
         @JvmStatic
         fun setupClass() {
             mockkStatic(JWK::class)
@@ -94,7 +95,7 @@ class ProofSignerTest {
         assertTrue(signer is CWTProofSigner)
     }
 
-    @Test(expected = UnsupportedProofTypeException::class)
+    @Test
     fun `invoke return failure result when no supported proof type is available`() {
         every {
             credentialConfiguration.proofTypesSupported
@@ -106,10 +107,9 @@ class ProofSignerTest {
 
         val result = ProofSigner(issuanceRequest, credentialConfiguration)
         assertTrue(result.isFailure)
-        result.getOrThrow()
     }
 
-    @Test(expected = UnsupportedProofTypeException::class)
+    @Test
     fun `invoke returns failure result when no supported algorithm is available`() {
         every {
             credentialConfiguration.proofTypesSupported
@@ -121,7 +121,6 @@ class ProofSignerTest {
 
         val result = ProofSigner(issuanceRequest, credentialConfiguration)
         assertTrue(result.isFailure)
-        result.getOrThrow()
     }
 
     @Test

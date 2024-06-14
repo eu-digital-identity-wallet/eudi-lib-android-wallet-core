@@ -56,13 +56,13 @@ import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.SEX
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.SIGNATURE_USUAL_MARK
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.UN_DISTINGUISHING_SIGN
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.WEIGHT
-import org.junit.Before
-import org.junit.Test
-import java.util.Locale
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import java.util.*
 
 class MDLAllFieldsTest : BaseTest() {
 
-    @Before
+    @BeforeEach
     override fun setUp() {
         super.setUp()
     }

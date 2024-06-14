@@ -22,22 +22,26 @@ import eu.europa.ec.eudi.wallet.document.Algorithm
 import eu.europa.ec.eudi.wallet.issue.openid4vci.SupportedProofType.ProofAlgorithm
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+
 
 class SupportedProofTypeTest {
 
-    @Test(expected = UnsupportedProofTypeException::class)
+    @Test
     fun `selectProofType returns null for unsupported types`() {
-        val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
-            setOf(
-                ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES384)),
-                ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES384), listOf(CoseCurve.P_384))
+        assertThrows<UnsupportedProofTypeException> {
+            val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
+            every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
+                setOf(
+                    ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES384)),
+                    ProofTypeMeta.Cwt(listOf(CoseAlgorithm.ES384), listOf(CoseCurve.P_384))
+                )
             )
-        )
 
-        SupportedProofType.select(credentialConfiguration)
+            SupportedProofType.select(credentialConfiguration)
+        }
     }
 
     @Test
@@ -55,17 +59,19 @@ class SupportedProofTypeTest {
         assertEquals(expected, selected)
     }
 
-    @Test(expected = UnsupportedProofTypeException::class)
+    @Test
     fun `selectProofType returns a null when only one type is supported but has unsupported algorithms`() {
-        val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
-        every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
-            setOf(
-                ProofTypeMeta.LdpVp,
-                ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES384))
+        assertThrows<UnsupportedProofTypeException> {
+            val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
+            every { credentialConfiguration.proofTypesSupported } returns ProofTypesSupported(
+                setOf(
+                    ProofTypeMeta.LdpVp,
+                    ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES384))
+                )
             )
-        )
 
-        SupportedProofType.select(credentialConfiguration)
+            SupportedProofType.select(credentialConfiguration)
+        }
     }
 
     @Test
