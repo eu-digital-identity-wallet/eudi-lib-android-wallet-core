@@ -16,6 +16,12 @@ Document issuance failed.
 |---------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [DocumentFailed](-document-failed.md) | [androidJvm]<br>constructor(name: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)) |
 
+## Functions
+
+| Name                     | Summary                                                                                                                                        |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| [toString](to-string.md) | [androidJvm]<br>open override fun [toString](to-string.md)(): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+
 ## Properties
 
 | Name                   | Summary                                                                                                                                                            |

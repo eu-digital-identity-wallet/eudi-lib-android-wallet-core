@@ -130,6 +130,10 @@ sealed interface IssueEvent {
 
         abstract fun resume()
         abstract fun cancel()
+
+        override fun toString(): String {
+            return "DocumentRequiresUserAuth(name='$name', docType='$docType')"
+        }
     }
 
     /**
@@ -159,6 +163,10 @@ sealed interface IssueEvent {
             issuanceRequest.docType,
             cause
         )
+
+        override fun toString(): String {
+            return "DocumentFailed(name='$name', docType='$docType')"
+        }
     }
 
     companion object {

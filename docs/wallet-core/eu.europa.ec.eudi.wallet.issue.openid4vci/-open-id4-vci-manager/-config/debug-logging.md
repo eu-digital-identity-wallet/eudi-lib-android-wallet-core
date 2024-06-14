@@ -3,4 +3,4 @@
 # debugLogging
 
 [androidJvm]\
-val [debugLogging](debug-logging.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
+val [debugLogging](debug-logging.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)

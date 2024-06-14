@@ -1,11 +1,11 @@
-//[wallet-core](../../../../../index.md)/[eu.europa.ec.eudi.wallet.issue.openid4vci](../../../index.md)/[OpenId4VciManager](../../index.md)/[Config](../index.md)/[ParUsage](index.md)
+//[wallet-core](../../../../../index.md)/[eu.europa.ec.eudi.wallet.issue.openid4vci](../../../index.md)/[OpenId4VciManager](../../index.md)/[Config](../index.md)/[LogLevel](index.md)
 
-# ParUsage
+# LogLevel
 
 [androidJvm]\
-annotation class [ParUsage](index.md)
+annotation class [LogLevel](index.md)
 
-PAR usage for the OpenId4Vci issuer
+Log level for the OpenId4Vci issuer
 
 ## Types
 

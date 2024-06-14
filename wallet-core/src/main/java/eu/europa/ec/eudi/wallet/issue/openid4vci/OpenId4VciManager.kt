@@ -20,7 +20,16 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.IntDef
+import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.DEBUG
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.DEBUG_WITH_HTTP
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.ERRORS
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.OFF
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
+import io.ktor.client.*
 import java.util.concurrent.Executor
 import eu.europa.ec.eudi.openid4vci.ProofType as InternalProofType
 
@@ -171,6 +180,7 @@ interface OpenId4VciManager {
      * @property parUsage if PAR should be used
      * @property proofTypes the proof types to use
      * @property debugLogging flag to enable debug logging
+     * @property ktorHttpClientFactory the Ktor HTTP client factory
      */
     data class Config(
         val issuerUrl: String,
@@ -180,25 +190,41 @@ interface OpenId4VciManager {
         val useDPoPIfSupported: Boolean,
         @ParUsage val parUsage: Int,
         val proofTypes: List<ProofType>,
-        val debugLogging: Boolean
+        @LogLevel val debugLogging: Int,
+        val ktorHttpClientFactory: () -> HttpClient
     ) {
 
         /**
          * PAR usage for the OpenId4Vci issuer
+         * @property IF_SUPPORTED use PAR if supported
+         * @property REQUIRED use PAR always
+         * @property NEVER never use PAR
          */
         @Retention(AnnotationRetention.SOURCE)
-        @IntDef(value = [ParUsage.IF_SUPPORTED, ParUsage.REQUIRED, ParUsage.NEVER])
+        @IntDef(value = [IF_SUPPORTED, REQUIRED, NEVER])
         annotation class ParUsage {
-            /**
-             * If PAR is supported
-             * @property IF_SUPPORTED use PAR if supported
-             * @property REQUIRED use PAR always
-             * @property NEVER never use PAR
-             */
             companion object {
                 const val IF_SUPPORTED = 2
                 const val REQUIRED = 4
                 const val NEVER = 0
+            }
+        }
+
+        /**
+         * Log level for the OpenId4Vci issuer
+         * @property OFF no logging
+         * @property ERRORS log only errors
+         * @property DEBUG basic logging
+         * @property DEBUG_WITH_HTTP log HTTP requests and responses
+         */
+        @Retention(AnnotationRetention.SOURCE)
+        @IntDef(value = [OFF, ERRORS, DEBUG, DEBUG_WITH_HTTP])
+        annotation class LogLevel {
+            companion object {
+                const val OFF = 0
+                const val ERRORS = 1
+                const val DEBUG = 2
+                const val DEBUG_WITH_HTTP = 3
             }
         }
 
@@ -217,6 +243,18 @@ interface OpenId4VciManager {
             CWT(InternalProofType.CWT)
         }
 
+        @get:JvmSynthetic
+        internal val errorLoggingStatus: Boolean
+            get() = debugLogging >= ERRORS
+
+        @get:JvmSynthetic
+        internal val basicLoggingStatus: Boolean
+            get() = debugLogging >= DEBUG
+
+        @get:JvmSynthetic
+        internal val httpLoggingStatus: Boolean
+            get() = debugLogging >= DEBUG_WITH_HTTP
+
         /**
          * Builder to create an instance of [Config]
          * @property issuerUrl the issuer url
@@ -226,6 +264,7 @@ interface OpenId4VciManager {
          * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
          * @property parUsage if PAR should be used
          * @property debugLogging flag to enable debug logging. Default is false
+         * @property ktorHttpClientFactory the Ktor HTTP client factory. If not set, the default factory will be used
          *
          */
         class Builder {
@@ -236,11 +275,13 @@ interface OpenId4VciManager {
             var useDPoPIfSupported: Boolean = false
 
             @ParUsage
-            var parUsage: Int = ParUsage.IF_SUPPORTED
+            var parUsage: Int = IF_SUPPORTED
 
             private var proofTypes: List<ProofType> = listOf(ProofType.JWT, ProofType.CWT)
 
-            var debugLogging: Boolean = false
+            @LogLevel
+            var debugLogging: Int = OFF
+            var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
 
             /**
              * Set the issuer url
@@ -297,7 +338,15 @@ interface OpenId4VciManager {
             /**
              * Set the debug logging flag
              */
-            fun debugLogging(debugLogging: Boolean) = apply { this.debugLogging = debugLogging }
+            fun debugLogging(@LogLevel logLevel: Int) = apply {
+                this.debugLogging = logLevel
+            }
+
+            /**
+             * Set the Ktor HTTP client factory
+             */
+            fun ktorHttpClientFactory(ktorHttpClientFactory: () -> HttpClient) =
+                apply { this.ktorHttpClientFactory = ktorHttpClientFactory }
 
             /**
              * Build the [Config]
@@ -316,7 +365,8 @@ interface OpenId4VciManager {
                     useDPoPIfSupported,
                     parUsage,
                     proofTypes,
-                    debugLogging
+                    debugLogging,
+                    ktorHttpClientFactory
                 )
             }
 

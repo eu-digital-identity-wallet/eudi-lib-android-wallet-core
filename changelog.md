@@ -2,10 +2,12 @@
 
 ## [0.9.5-SNAPSHOT]
 
-__12 Jun 2024__
+__14 Jun 2024__
 
 - Bump eudi-lib-jvm-openid4vci-kt to v0.3.1
-- Configurable debug logging for OpenId4VCI
+- Configurable debug logging with level support for OpenId4VCI
+- Support for overriding ktor client for OpenId4VCI
+- Bug fixes in OpenId4VCI
 
 ## [0.9.4-SNAPSHOT]
 
