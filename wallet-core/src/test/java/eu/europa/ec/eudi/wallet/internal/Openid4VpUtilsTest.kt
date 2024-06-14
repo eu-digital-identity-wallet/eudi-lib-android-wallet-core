@@ -17,8 +17,9 @@
 package eu.europa.ec.eudi.wallet.internal
 
 import org.bouncycastle.util.encoders.Hex
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+
 
 /**
 *    Examples has been taken from:
@@ -41,7 +42,7 @@ class Openid4VpUtilsTest {
             responseUri,
             nonce,
             mdocGeneratedNonce).EncodeToBytes()
-        Assert.assertEquals(ANNEX_B_OPENID4VP_HANDOVER, Hex.toHexString(openid4VpHandover).uppercase())
+        assertEquals(ANNEX_B_OPENID4VP_HANDOVER, Hex.toHexString(openid4VpHandover).uppercase())
     }
 
     @Test
@@ -52,6 +53,6 @@ class Openid4VpUtilsTest {
             nonce,
             mdocGeneratedNonce
         )
-        Assert.assertEquals(ANNEX_B_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
+        assertEquals(ANNEX_B_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
     }
 }

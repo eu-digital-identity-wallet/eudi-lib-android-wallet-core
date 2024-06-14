@@ -19,9 +19,10 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import io.mockk.mockk
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertThrows
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Test
+
 
 class OpenId4VciManagerBuilderTest {
 
@@ -35,7 +36,8 @@ class OpenId4VciManagerBuilderTest {
         useDPoPIfSupported = true,
         parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
         proofTypes = listOf(OpenId4VciManager.Config.ProofType.JWT),
-        debugLogging = true,
+        debugLogging = OpenId4VciManager.Config.LogLevel.OFF,
+        ktorHttpClientFactory = { mockk(relaxed = true) }
     )
 
     @Test

@@ -22,14 +22,14 @@ import eu.europa.ec.eudi.wallet.documentsTest.ResourceHelper
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.MDL_MANDATORY_FIELDS
 import eu.europa.ec.eudi.wallet.documentsTest.util.Constants.PID_MANDATORY_FIELDS
 import org.json.JSONObject
-import org.junit.Before
-import java.util.Base64
+import org.junit.jupiter.api.BeforeEach
+import java.util.*
 
 open class BaseTest {
 
     private lateinit var data: Map<String, Map<String, DataItem>>
 
-    @Before
+    @BeforeEach
     open fun setUp() {
         val sampleJson = ResourceHelper.loadString("sample_data.json")
 

@@ -16,11 +16,16 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import org.junit.Assert.*
-import org.junit.Test
+import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel
+import io.ktor.client.*
+import io.mockk.mockk
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
+
 
 class OpenId4VciManagerConfigBuilderTest {
 
@@ -140,6 +145,54 @@ class OpenId4VciManagerConfigBuilderTest {
 
     }
 
+    @ParameterizedTest
+    @MethodSource("debugArgs")
+    fun `ConfigBuilder sets the correct logging level`(
+        @LogLevel level: Int,
+        expectedError: Boolean,
+        expectedBasic: Boolean,
+        expectedHttp: Boolean
+    ) {
+        val config = OpenId4VciManager.Config {
+            issuerUrl = "https://issuer.example.com"
+            clientId = "clientId"
+            authFlowRedirectionURI = "app://redirect"
+            debugLogging = level
+        }
+
+        assertEquals(level, config.debugLogging)
+        assertEquals(expectedError, config.errorLoggingStatus)
+        assertEquals(expectedBasic, config.basicLoggingStatus)
+        assertEquals(expectedHttp, config.httpLoggingStatus)
+    }
+
+    @Test
+    fun `ConfigBuilder sets the default ktorHttpClientFactory if not provided`() {
+
+        val config = OpenId4VciManager.Config {
+            issuerUrl = "https://issuer.example.com"
+            clientId = "clientId"
+            authFlowRedirectionURI = "app://redirect"
+        }
+
+        assertSame(DefaultHttpClientFactory, config.ktorHttpClientFactory)
+    }
+
+    private fun factory(): HttpClient = mockk()
+
+    @Test
+    fun `ConfigBuilder sets the correct ktorHttpClientFactory`() {
+        val f = ::factory
+        val config = OpenId4VciManager.Config {
+            issuerUrl = "https://issuer.example.com"
+            clientId = "clientId"
+            authFlowRedirectionURI = "app://redirect"
+            ktorHttpClientFactory = f
+        }
+
+        assertSame(f, config.ktorHttpClientFactory)
+    }
+
     companion object {
 
         @JvmStatic
@@ -156,5 +209,13 @@ class OpenId4VciManagerConfigBuilderTest {
             listOf(OpenId4VciManager.Config.ProofType.JWT, OpenId4VciManager.Config.ProofType.CWT),
             listOf(OpenId4VciManager.Config.ProofType.CWT, OpenId4VciManager.Config.ProofType.JWT)
         ).map { Arguments.of(it) }
+
+        @JvmStatic
+        fun debugArgs() = listOf(
+            Arguments.of(LogLevel.OFF, false, false, false),
+            Arguments.of(LogLevel.ERRORS, true, false, false),
+            Arguments.of(LogLevel.DEBUG, true, true, false),
+            Arguments.of(LogLevel.DEBUG_WITH_HTTP, true, true, true),
+        )
     }
 }

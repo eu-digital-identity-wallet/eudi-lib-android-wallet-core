@@ -22,6 +22,7 @@ import android.util.Log
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager.Companion.TAG
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
+import org.jetbrains.annotations.VisibleForTesting
 import java.io.Closeable
 import kotlin.coroutines.resume
 
@@ -29,7 +30,7 @@ import kotlin.coroutines.resume
  * Suspended authorization. It is used to resume the authorization process.
  */
 internal class SuspendedAuthorization(
-    private val continuation: CancellableContinuation<Result<Response>>,
+    @VisibleForTesting val continuation: CancellableContinuation<Result<Response>>,
 ) : Closeable {
 
 
@@ -58,15 +59,15 @@ internal class SuspendedAuthorization(
                     continuation.resume(Result.success(Response(authorizationCode, serverState)))
                 } ?: "No server state found".let { msg ->
                     Log.e(TAG, "resumeFromUri: msg")
-                    continuation.resumeWith(Result.failure(IllegalStateException(msg)))
+                    continuation.resume(Result.failure(IllegalStateException(msg)))
                 }
             } ?: "No authorization code found".let { msg ->
                 Log.e(TAG, "resumeFromUri: msg")
-                continuation.resumeWith(Result.failure(IllegalStateException(msg)))
+                continuation.resume(Result.failure(IllegalStateException(msg)))
             }
         } catch (e: Throwable) {
             Log.e(TAG, "resumeFromUri exception", e)
-            continuation.resumeWith(Result.failure(e))
+            continuation.resume(Result.failure(e))
         }
     }
 

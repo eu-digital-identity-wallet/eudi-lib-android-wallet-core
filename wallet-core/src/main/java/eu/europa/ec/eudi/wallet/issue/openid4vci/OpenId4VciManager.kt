@@ -381,8 +381,15 @@ interface OpenId4VciManager {
         companion object {
             /**
              * Create an instance of [Config]
+             * @param block the block to configure the [Builder]
              */
-            operator fun invoke(block: Builder.() -> Unit) = Builder().apply(block).build()
+            operator fun invoke(block: Builder.() -> Unit) = make(block)
+
+            /**
+             * Create an instance of [Config]
+             * @param block the block to configure the [Builder]
+             */
+            fun make(block: Builder.() -> Unit) = Builder().apply(block).build()
         }
     }
 }
