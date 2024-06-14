@@ -18,10 +18,11 @@ The document issuance requires user authentication.
 
 ## Functions
 
-| Name                | Summary                                            |
-|---------------------|----------------------------------------------------|
-| [cancel](cancel.md) | [androidJvm]<br>abstract fun [cancel](cancel.md)() |
-| [resume](resume.md) | [androidJvm]<br>abstract fun [resume](resume.md)() |
+| Name                     | Summary                                                                                                                                        |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| [cancel](cancel.md)      | [androidJvm]<br>abstract fun [cancel](cancel.md)()                                                                                             |
+| [resume](resume.md)      | [androidJvm]<br>abstract fun [resume](resume.md)()                                                                                             |
+| [toString](to-string.md) | [androidJvm]<br>open override fun [toString](to-string.md)(): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
 
 ## Properties
 

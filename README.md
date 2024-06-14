@@ -201,7 +201,7 @@ val config = EudiWalletConfig.Builder(applicationContext)
         useDPoP(false)
         parUsage(ParUsage.IF_SUPPORTED)
         proofTypes(Config.ProofType.JWT, Config.ProofType.CWT)
-        debugLogging(true)
+        debugLogging(LogLevel.DEBUG)
     }
     .build()
 

@@ -20,7 +20,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_VIEW
 import android.net.Uri
-import android.util.Log
 import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.AddDocumentResult
@@ -94,7 +93,7 @@ internal class DefaultOpenId4VciManager(
                     doIssueDocumentByOffer(offer, config, listener)
 
                 } catch (e: Throwable) {
-                    Log.e(TAG, "issueDocumentByDocType failed", e)
+                    logError("issueDocumentByDocType failed", e)
                     listener(failure(e))
                     coroutineScope.cancel("issueDocumentByDocType failed", e)
                 }
@@ -112,7 +111,7 @@ internal class DefaultOpenId4VciManager(
                 try {
                     doIssueDocumentByOffer(offer, config, listener)
                 } catch (e: Throwable) {
-                    Log.e(TAG, "issueDocumentByOffer failed", e)
+                    logError("issueDocumentByOffer failed", e)
                     listener(failure(e))
                     coroutineScope.cancel("issueDocumentByOffer failed", e)
                 }
@@ -142,7 +141,7 @@ internal class DefaultOpenId4VciManager(
                         }.also { offerUriCache[offerUri] = it }
                     doIssueDocumentByOffer(offer, config, listener)
                 } catch (e: Throwable) {
-                    Log.e(TAG, "issueDocumentByOfferUri failed", e)
+                    logError("issueDocumentByOfferUri failed", e)
                     listener(failure(e))
                     coroutineScope.cancel("issueDocumentByOffer failed", e)
                 }
@@ -158,7 +157,7 @@ internal class DefaultOpenId4VciManager(
         launch(onResolvedOffer.wrap(executor)) { coroutineScope, callback ->
             try {
                 val credentialOffer =
-                    CredentialOfferRequestResolver(createKtorHttpClient(config.debugLogging)).resolve(offerUri)
+                    CredentialOfferRequestResolver(config.ktorHttpClientFactoryWithLogging).resolve(offerUri)
                         .getOrThrow()
                 val offer =
                     DefaultOffer(credentialOffer, Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes)))
@@ -168,7 +167,7 @@ internal class DefaultOpenId4VciManager(
                 coroutineScope.cancel("resolveDocumentOffer succeeded")
             } catch (e: Throwable) {
                 offerUriCache.remove(offerUri)
-                Log.e(TAG, "OfferUri $offerUri resolution failed", e)
+                logError("OfferUri $offerUri resolution failed", e)
                 callback(OfferResult.Failure(e))
                 coroutineScope.cancel("resolveDocumentOffer failed", e)
             }
@@ -178,19 +177,25 @@ internal class DefaultOpenId4VciManager(
     override fun resumeWithAuthorization(intent: Intent) {
         logDebug("resumeWithAuthorization: ${intent.data}")
         suspendedAuthorization?.use { it.resumeFromIntent(intent) }
-            ?: throw IllegalStateException("No authorization request to resume")
+            ?: run {
+                throw IllegalStateException("No authorization request to resume")
+            }
     }
 
     override fun resumeWithAuthorization(uri: String) {
         logDebug("resumeWithAuthorization: $uri")
         suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: throw IllegalStateException("No authorization request to resume")
+            ?: run {
+                throw IllegalStateException("No authorization request to resume")
+            }
     }
 
     override fun resumeWithAuthorization(uri: Uri) {
         logDebug("resumeWithAuthorization: $uri")
         suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: throw IllegalStateException("No authorization request to resume")
+            ?: run {
+                throw IllegalStateException("No authorization request to resume")
+            }
     }
 
     /**
@@ -207,7 +212,7 @@ internal class DefaultOpenId4VciManager(
         offer as DefaultOffer
         val credentialOffer = offer.credentialOffer
         val issuer =
-            Issuer.make(config.toOpenId4VCIConfig(), credentialOffer, createKtorHttpClient(config.debugLogging))
+            Issuer.make(config.toOpenId4VCIConfig(), credentialOffer, config.ktorHttpClientFactoryWithLogging)
                 .getOrThrow()
         onEvent(IssueEvent.Started(offer.offeredDocuments.size))
         with(issuer) {
@@ -336,7 +341,11 @@ internal class DefaultOpenId4VciManager(
                 )
             }
 
-            is SubmittedRequest.Failed -> onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))
+            is SubmittedRequest.Failed -> {
+                clearFailedIssuance(issuanceRequest)
+                onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))
+            }
+
             is SubmittedRequest.Success -> storeIssuedCredential(
                 outcome.credentials[0],
                 issuanceRequest,
@@ -370,13 +379,20 @@ internal class DefaultOpenId4VciManager(
         logDebug("doRequestSingleWithProof proofSigner: ${proofSigner::class.java.name}")
         try {
             when (val outcome = authRequest.requestSingle(payload, proofSigner.popSigner).getOrThrow()) {
-                is SubmittedRequest.Failed -> onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))
-                is SubmittedRequest.InvalidProof -> onEvent(
-                    IssueEvent.DocumentFailed(
-                        issuanceRequest,
-                        Exception(outcome.errorDescription)
+                is SubmittedRequest.Failed -> {
+                    clearFailedIssuance(issuanceRequest)
+                    onEvent(IssueEvent.DocumentFailed(issuanceRequest, outcome.error))
+                }
+
+                is SubmittedRequest.InvalidProof -> {
+                    clearFailedIssuance(issuanceRequest)
+                    onEvent(
+                        IssueEvent.DocumentFailed(
+                            issuanceRequest,
+                            Exception(outcome.errorDescription)
+                        )
                     )
-                )
+                }
 
                 is SubmittedRequest.Success -> storeIssuedCredential(
                     outcome.credentials[0],
@@ -406,7 +422,7 @@ internal class DefaultOpenId4VciManager(
                         }
 
                         override fun cancel() {
-                            Log.e(TAG, "doRequestSingleWithProof cancel from user auth")
+                            logError("doRequestSingleWithProof cancel from user auth", e)
                             onEvent(IssueEvent.DocumentFailed(issuanceRequest, e.cause ?: e))
                         }
                     }
@@ -432,12 +448,15 @@ internal class DefaultOpenId4VciManager(
         addedDocuments: MutableSet<DocumentId>
     ) {
         when (issuedCredential) {
-            is IssuedCredential.Deferred -> onEvent(
-                IssueEvent.DocumentFailed(
-                    issuanceRequest,
-                    Exception("Deferred credential not implemented yet"),
+            is IssuedCredential.Deferred -> {
+                clearFailedIssuance(issuanceRequest)
+                onEvent(
+                    IssueEvent.DocumentFailed(
+                        issuanceRequest,
+                        Exception("Deferred credential not implemented yet"),
+                    )
                 )
-            )
+            }
 
             is IssuedCredential.Issued -> {
                 val cbor = Base64.getUrlDecoder().decode(issuedCredential.credential)
@@ -447,7 +466,7 @@ internal class DefaultOpenId4VciManager(
 
                 when (val addResult = documentManager.addDocument(issuanceRequest, cbor)) {
                     is AddDocumentResult.Failure -> {
-                        documentManager.deleteDocumentById(issuanceRequest.documentId)
+                        clearFailedIssuance(issuanceRequest)
                         onEvent(IssueEvent.DocumentFailed(issuanceRequest, addResult.throwable))
                     }
 
@@ -457,6 +476,18 @@ internal class DefaultOpenId4VciManager(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Deletes the pending issuance request. Ensures that the document is not left in a pending state.
+     * @param issuanceRequest The issuance request.
+     */
+    private fun clearFailedIssuance(issuanceRequest: IssuanceRequest) {
+        val document = documentManager.getDocumentById(issuanceRequest.documentId)
+        if (document == null || document.nameSpaces.isEmpty()) {
+            logDebug("clearFailedIssuance for ${issuanceRequest.documentId}")
+            documentManager.deleteDocumentById(issuanceRequest.documentId)
         }
     }
 
@@ -478,38 +509,18 @@ internal class DefaultOpenId4VciManager(
      * Wraps the given [OpenId4VciManager.OnResult] with debug logging.
      */
     private inline fun <R : OpenId4VciManager.OnResult<V>, reified V> R.logResult(): OpenId4VciManager.OnResult<V> {
-        return if (config.debugLogging) {
+        return if (config.errorLoggingStatus) {
             OpenId4VciManager.OnResult { result: V ->
                 when (result) {
-                    is IssueEvent.DocumentIssued -> Log.d(
-                        TAG,
-                        "${IssueEvent.DocumentIssued::class.java.name} for ${result.documentId}"
-                    )
+                    is IssueEvent.Started,
+                    is IssueEvent.DocumentIssued,
+                    is IssueEvent.DocumentRequiresUserAuth,
+                    is IssueEvent.Finished,
+                    is OfferResult.Success -> logDebug("$result")
 
-                    is IssueEvent.DocumentFailed -> Log.e(
-                        TAG,
-                        IssueEvent.DocumentFailed::class.java.simpleName,
-                        result.cause
-                    )
-
-                    is IssueEvent.DocumentRequiresUserAuth -> Log.d(
-                        TAG,
-                        IssueEvent.DocumentRequiresUserAuth::class.java.simpleName
-                    )
-
-                    is IssueEvent.Started -> Log.d(
-                        TAG,
-                        "${IssueEvent.Started::class.java.name} for ${result.total} documents"
-                    )
-
-                    is IssueEvent.Finished -> Log.d(
-                        TAG,
-                        "${IssueEvent.Finished::class.java.name} for ${result.issuedDocuments}"
-                    )
-
-                    is IssueEvent.Failure -> Log.e(TAG, IssueEvent.Failure::class.java.simpleName, result.cause)
-                    is OfferResult.Failure -> Log.e(TAG, OfferResult.Failure::class.java.simpleName, result.error)
-                    is OfferResult.Success -> logDebug("${OfferResult.Success::class.java.name} for ${result.offer}")
+                    is IssueEvent.DocumentFailed -> logError("$result", result.cause)
+                    is IssueEvent.Failure -> logError("$result", result.cause)
+                    is OfferResult.Failure -> logError("$result", result.error)
                     else -> logDebug(V::class.java.simpleName)
                 }
                 this.onResult(result)
@@ -536,12 +547,15 @@ internal class DefaultOpenId4VciManager(
         block()
     }
 
-    private fun logDebug(message: String, throwable: Throwable? = null) {
-        if (config.debugLogging) {
-            when (throwable) {
-                null -> Log.d(TAG, message)
-                else -> Log.d(TAG, message, throwable)
-            }
+    private fun logDebug(message: String) {
+        if (config.basicLoggingStatus) {
+            debugLog(TAG, message)
+        }
+    }
+
+    private fun logError(message: String, throwable: Throwable) {
+        if (config.errorLoggingStatus) {
+            debugLog(TAG, message, throwable)
         }
     }
 

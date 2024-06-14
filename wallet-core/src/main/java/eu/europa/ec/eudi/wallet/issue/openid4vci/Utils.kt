@@ -19,19 +19,12 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.util.Log
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
-import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuanceRequest
-import io.ktor.client.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
+import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager.Companion.TAG
 import io.ktor.client.plugins.logging.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
@@ -51,7 +44,7 @@ internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
 /**
  * Creates an issuance request for the given document type.
  * @receiver the [DocumentManager]
- * @param docType the document type
+ * @param offerOfferedDocument the offered document
  * @param hardwareBacked whether the key should be hardware backed
  * @return the [Result] with the issuance request
  */
@@ -110,34 +103,46 @@ internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): 
     return derToConcat(len)
 }
 
-@JvmSynthetic
-internal fun createKtorHttpClient(debug: Boolean = false): KtorHttpClientFactory {
-    return when {
-        debug -> {
-            {
-                HttpClient {
-                    install(ContentNegotiation) {
-                        json(
-                            json = Json {
-                                ignoreUnknownKeys = true
-                            },
-                        )
-                    }
+@get:JvmSynthetic
+internal val OpenId4VciManager.Config.ktorHttpClientFactoryWithLogging: KtorHttpClientFactory
+    get() = {
+        ktorHttpClientFactory().let { client ->
+            if (httpLoggingStatus) {
+                client.config {
                     install(Logging) {
                         logger = object : Logger {
                             override fun log(message: String) {
-                                Log.d(DefaultOpenId4VciManager.TAG, message)
+                                debugLog(TAG, message)
                             }
                         }
                         level = LogLevel.ALL
                     }
                 }
-            }
+            } else client
         }
+    }
 
-        else -> DefaultHttpClientFactory
-
-
+/**
+ * Logs a message with the given tag. If a [Throwable] is provided, it will be logged as an error.
+ * If the message is too long, it will be split into multiple log messages.
+ * @param tag the tag
+ * @param message the message
+ * @param throwable the throwable
+ */
+@JvmSynthetic
+internal fun debugLog(tag: String, message: String, throwable: Throwable? = null) {
+    val maxLogSize = 1000
+    for (i in 0..message.length step maxLogSize) {
+        val end = if (i + maxLogSize < message.length) i + maxLogSize else message.length
+        if (i == 0 && throwable != null) {
+            Log.e(tag, message.substring(i, end), throwable)
+            continue
+        }
+        if (throwable != null) {
+            Log.e(tag, message.substring(i, end))
+            continue
+        }
+        Log.d(tag, message.substring(i, end))
     }
 }
 
