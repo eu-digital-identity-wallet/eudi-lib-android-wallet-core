@@ -125,7 +125,7 @@ dependencies {
     api libs.eudi.iso18013.data.transfer
 
     // OpenID4VCI
-    implementation libs.eudi.lib.jvm.openid4vci.kt
+    api libs.eudi.lib.jvm.openid4vci.kt
     implementation libs.nimbus.oauth2.oidc.sdk
 
     // Siop-Openid4VP library
