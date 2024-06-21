@@ -16,44 +16,43 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import android.util.Log
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
-import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
+import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
-import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import io.ktor.client.plugins.logging.*
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
+import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 /**
- * Converts the [CreateIssuanceRequestResult] to a [Result].
- * @receiver the [CreateIssuanceRequestResult]
+ * Converts the [CreateDocumentResult] to a [Result].
+ * @receiver the [CreateDocumentResult]
  * @return the [Result]
  */
-internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
+internal val CreateDocumentResult.result: Result<UnsignedDocument>
     @JvmSynthetic get() = when (this) {
-        is CreateIssuanceRequestResult.Success -> Result.success(issuanceRequest)
-        is CreateIssuanceRequestResult.Failure -> Result.failure(throwable)
+        is CreateDocumentResult.Success -> Result.success(unsignedDocument)
+        is CreateDocumentResult.Failure -> Result.failure(throwable)
     }
 
 /**
  * Creates an issuance request for the given document type.
  * @receiver the [DocumentManager]
  * @param offerOfferedDocument the offered document
- * @param hardwareBacked whether the key should be hardware backed
+ * @param useStrongBox whether the key should be hardware backed
  * @return the [Result] with the issuance request
  */
 @JvmSynthetic
-internal fun DocumentManager.createIssuanceRequest(
+internal fun DocumentManager.createDocument(
     offerOfferedDocument: Offer.OfferedDocument,
-    hardwareBacked: Boolean = true
-): Result<IssuanceRequest> =
-    createIssuanceRequest(offerOfferedDocument.docType, hardwareBacked)
+    useStrongBox: Boolean = true
+): Result<UnsignedDocument> =
+    createDocument(offerOfferedDocument.docType, useStrongBox)
         .result
         .map { it.apply { name = offerOfferedDocument.name } }
 
@@ -108,11 +107,12 @@ internal val OpenId4VciManager.Config.ktorHttpClientFactoryWithLogging: KtorHttp
     get() = {
         ktorHttpClientFactory().let { client ->
             if (httpLoggingStatus) {
+                val baseLogger = OpenId4VciLogger(this)
                 client.config {
                     install(Logging) {
-                        logger = object : Logger {
+                        logger = object : KtorLogger {
                             override fun log(message: String) {
-                                debugLog(TAG, message)
+                                baseLogger.log(message)
                             }
                         }
                         level = LogLevel.ALL
@@ -121,29 +121,5 @@ internal val OpenId4VciManager.Config.ktorHttpClientFactoryWithLogging: KtorHttp
             } else client
         }
     }
-
-/**
- * Logs a message with the given tag. If a [Throwable] is provided, it will be logged as an error.
- * If the message is too long, it will be split into multiple log messages.
- * @param tag the tag
- * @param message the message
- * @param throwable the throwable
- */
-@JvmSynthetic
-internal fun debugLog(tag: String, message: String, throwable: Throwable? = null) {
-    val maxLogSize = 1000
-    for (i in 0..message.length step maxLogSize) {
-        val end = if (i + maxLogSize < message.length) i + maxLogSize else message.length
-        if (i == 0 && throwable != null) {
-            Log.e(tag, message.substring(i, end), throwable)
-            continue
-        }
-        if (throwable != null) {
-            Log.e(tag, message.substring(i, end))
-            continue
-        }
-        Log.d(tag, message.substring(i, end))
-    }
-}
 
 

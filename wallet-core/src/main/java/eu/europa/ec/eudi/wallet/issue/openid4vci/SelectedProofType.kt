@@ -16,7 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 /**
  * Selected proof type. It is used to create a proof signer.
@@ -27,10 +27,10 @@ internal sealed interface SelectedProofType {
 
     /**
      * Creates a proof signer.
-     * @param issuanceRequest the issuance request
+     * @param document the document which will sign the proof
      * @return the proof signer
      */
-    fun createProofSigner(issuanceRequest: IssuanceRequest): ProofSigner
+    fun createProofSigner(document: UnsignedDocument): ProofSigner
 
     /**
      * Proof type using JWT.
@@ -39,8 +39,8 @@ internal sealed interface SelectedProofType {
      * @param algorithm the proof algorithm
      */
     data class Jwt(override val algorithm: SupportedProofType.ProofAlgorithm.Jws) : SelectedProofType {
-        override fun createProofSigner(issuanceRequest: IssuanceRequest): ProofSigner {
-            return JWSProofSigner(issuanceRequest, algorithm)
+        override fun createProofSigner(document: UnsignedDocument): ProofSigner {
+            return JWSProofSigner(document, algorithm)
         }
     }
 
@@ -51,8 +51,8 @@ internal sealed interface SelectedProofType {
      * @param algorithm the proof algorithm
      */
     data class Cwt(override val algorithm: SupportedProofType.ProofAlgorithm.Cose) : SelectedProofType {
-        override fun createProofSigner(issuanceRequest: IssuanceRequest): ProofSigner {
-            return CWTProofSigner(issuanceRequest, algorithm)
+        override fun createProofSigner(document: UnsignedDocument): ProofSigner {
+            return CWTProofSigner(document, algorithm)
         }
     }
 }

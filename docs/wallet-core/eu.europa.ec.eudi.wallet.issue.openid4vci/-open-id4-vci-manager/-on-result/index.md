@@ -2,7 +2,11 @@
 
 # OnResult
 
-fun interface [OnResult](index.md)&lt;[T](index.md)&gt;
+fun interface [OnResult](index.md)&lt;[T](index.md) : [OpenId4VciResult](../../-open-id4-vci-result/index.md)&gt;
+
+Callback to be called
+for [OpenId4VciManager.issueDocumentByDocType](../issue-document-by-doc-type.md), [OpenId4VciManager.issueDocumentByOffer](../issue-document-by-offer.md), [OpenId4VciManager.issueDocumentByOfferUri](../issue-document-by-offer-uri.md)
+and [OpenId4VciManager.resolveDocumentOffer](../resolve-document-offer.md) methods
 
 #### Inheritors
 

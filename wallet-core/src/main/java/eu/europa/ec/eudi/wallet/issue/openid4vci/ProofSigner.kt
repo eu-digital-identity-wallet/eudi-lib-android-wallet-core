@@ -20,8 +20,8 @@ import androidx.biometric.BiometricPrompt.CryptoObject
 import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.PopSigner
 import eu.europa.ec.eudi.wallet.document.Algorithm
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 /**
  * Abstract class for signing proofs.
@@ -36,26 +36,26 @@ internal abstract class ProofSigner {
 
     /**
      * Signs the signing input with the authentication key from issuance request for the given algorithm.
-     * @param issuanceRequest The issuance request.
+     * @param document the document which will sign the proof
      * @param signingInput The input to sign.
      * @param algorithm The algorithm to use for signing.
-     * @throws UserAuthRequiredException If user authentication is required.
+     * @throws IllegalStateException If user authentication is required.
      * @throws Throwable If an error occurs during signing.
      * @return The signature of the signing input.
      */
     fun doSign(
-        issuanceRequest: IssuanceRequest,
+        document: UnsignedDocument,
         signingInput: ByteArray,
         @Algorithm algorithm: String
     ): ByteArray {
         userAuthStatus = UserAuthStatus.NotRequired
-        return issuanceRequest.signWithAuthKey(signingInput, algorithm).let { signResult ->
+        return document.signWithAuthKey(signingInput, algorithm).let { signResult ->
             when (signResult) {
                 is SignedWithAuthKeyResult.Success -> signResult.signature
                 is SignedWithAuthKeyResult.Failure -> throw signResult.throwable
                 is SignedWithAuthKeyResult.UserAuthRequired -> {
                     userAuthStatus = UserAuthStatus.Required(signResult.cryptoObject)
-                    throw UserAuthRequiredException()
+                    throw IllegalStateException("User authentication required")
                 }
             }
         }
@@ -75,7 +75,7 @@ internal abstract class ProofSigner {
          */
         @JvmStatic
         operator fun invoke(
-            issuanceRequest: IssuanceRequest,
+            issuanceRequest: UnsignedDocument,
             credentialConfiguration: CredentialConfiguration,
             supportedProofTypesPrioritized: List<OpenId4VciManager.Config.ProofType>? = null,
         ): Result<ProofSigner> {

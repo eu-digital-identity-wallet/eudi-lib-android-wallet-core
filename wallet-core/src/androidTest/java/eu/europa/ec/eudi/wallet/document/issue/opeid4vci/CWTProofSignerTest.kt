@@ -22,11 +22,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.openid4vci.*
-import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
+import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CWTProofSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
-import eu.europa.ec.eudi.wallet.issue.openid4vci.UserAuthRequiredException
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Assert.assertEquals
@@ -68,13 +67,13 @@ class CWTProofSignerTest {
             .build()
 
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
-        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+        val unsignedDocumentResult = documentManager.createDocument("eu.europa.ec.eudiw.pid.1", false)
+        assertTrue(unsignedDocumentResult is CreateDocumentResult.Success)
 
-        val issuanceRequest =
-            (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
+        val unsignedDocument =
+            (unsignedDocumentResult as CreateDocumentResult.Success).unsignedDocument
 
-        val proofSigner = CWTProofSigner(issuanceRequest, SupportedProofAlgorithm.Cose.ES256_P_256)
+        val proofSigner = CWTProofSigner(unsignedDocument, SupportedProofAlgorithm.Cose.ES256_P_256)
         assertEquals(CoseAlgorithm.ES256, proofSigner.popSigner.algorithm)
         assertEquals(CoseCurve.P_256, proofSigner.popSigner.curve)
 
@@ -84,10 +83,10 @@ class CWTProofSignerTest {
         try {
             proofSigner.sign(payload)
             Assert.fail("Expected UserAuthRequiredException")
-        } catch (e: UserAuthRequiredException) {
+        } catch (e: IllegalStateException) {
             assertTrue(proofSigner.userAuthStatus is ProofSigner.UserAuthStatus.Required)
         } finally {
-            documentManager.deleteDocumentById(issuanceRequest.documentId)
+            documentManager.deleteDocumentById(unsignedDocument.id)
         }
     }
 
@@ -98,13 +97,13 @@ class CWTProofSignerTest {
             .build()
 
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
-        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+        val unsignedDocumentResult = documentManager.createDocument("eu.europa.ec.eudiw.pid.1", false)
+        assertTrue(unsignedDocumentResult is CreateDocumentResult.Success)
 
-        val issuanceRequest =
-            (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
+        val unsignedDocument =
+            (unsignedDocumentResult as CreateDocumentResult.Success).unsignedDocument
 
-        val proofSigner = CWTProofSigner(issuanceRequest, SupportedProofAlgorithm.Cose.ES256_P_256)
+        val proofSigner = CWTProofSigner(unsignedDocument, SupportedProofAlgorithm.Cose.ES256_P_256)
         assertEquals(CoseAlgorithm.ES256, proofSigner.popSigner.algorithm)
         assertEquals(CoseCurve.P_256, proofSigner.popSigner.curve)
 
@@ -120,6 +119,6 @@ class CWTProofSignerTest {
             update(payload)
         }.verify(proofSignature)
         assertTrue(result)
-        documentManager.deleteDocumentById(issuanceRequest.documentId)
+        documentManager.deleteDocumentById(unsignedDocument.id)
     }
 }

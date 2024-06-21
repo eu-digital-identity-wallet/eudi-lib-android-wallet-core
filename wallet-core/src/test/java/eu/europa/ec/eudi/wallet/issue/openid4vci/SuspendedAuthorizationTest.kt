@@ -16,9 +16,9 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerAuthorization.SuspendedAuthorization
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
@@ -38,89 +38,92 @@ class SuspendedAuthorizationTest {
             every { Log.e(any(), any()) } returns 0
             every { Log.e(any(), any(), any()) } returns 0
         }
+
+        @JvmStatic
+        internal val dummyLogger: OpenId4VciLogger = mockk(relaxed = true)
     }
 
     @Test
-    fun `resumeFromIntent resumes with success when authorization code and server state are present`() {
+    fun `resumeFromUri resumes with success when authorization code and server state are present`() {
 
         var suspendedAuthorization: SuspendedAuthorization? = null
-        val intent = mockk<Intent> {
-            every { data?.getQueryParameter("code") } returns "testCode"
-            every { data?.getQueryParameter("state") } returns "testState"
+        val uri = mockk<Uri>(relaxed = true) {
+            every { getQueryParameter("code") } returns "testCode"
+            every { getQueryParameter("state") } returns "testState"
         }
         var result: Result<SuspendedAuthorization.Response>? = null
         runTest {
             launch {
                 result = suspendCancellableCoroutine { continuation ->
-                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation))
+                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation, dummyLogger))
                 }
             }
 
             launch {
                 delay(500.milliseconds)
-                suspendedAuthorization!!.use { it.resumeFromIntent(intent) }
+                suspendedAuthorization!!.use { it.resumeFromUri(uri) }
             }
         }
         assertTrue(result!!.isSuccess, "Result succeed")
         assertEquals("testCode", result!!.getOrNull()?.authorizationCode)
         assertEquals("testState", result!!.getOrNull()?.serverState)
         verify(exactly = 1) {
-            suspendedAuthorization!!.resumeFromIntent(intent)
+            suspendedAuthorization!!.resumeFromUri(uri)
         }
     }
 
     @Test
-    fun `resumeFromIntent resumes with failure when authorization code is missing`() {
+    fun `resumeFromUri resumes with failure when authorization code is missing`() {
         var suspendedAuthorization: SuspendedAuthorization? = null
-        val intent = mockk<Intent> {
-            every { data?.getQueryParameter("code") } returns null
-            every { data?.getQueryParameter("state") } returns "testState"
+        val uri = mockk<Uri>(relaxed = true) {
+            every { getQueryParameter("code") } returns null
+            every { getQueryParameter("state") } returns "testState"
         }
         var result: Result<SuspendedAuthorization.Response>? = null
         runTest {
             launch {
                 result = suspendCancellableCoroutine { continuation ->
-                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation))
+                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation, dummyLogger))
                 }
             }
 
             launch {
                 delay(500.milliseconds)
                 suspendedAuthorization!!.use {
-                    it.resumeFromIntent(intent)
+                    it.resumeFromUri(uri)
                 }
             }
         }
         assertTrue(result!!.isFailure, "Result failed")
         verify(exactly = 1) {
-            suspendedAuthorization!!.resumeFromIntent(intent)
+            suspendedAuthorization!!.resumeFromUri(uri)
         }
     }
 
     @Test
-    fun `resumeFromIntent resumes with failure when server state is missing`() {
+    fun `resumeFromUri resumes with failure when server state is missing`() {
         var suspendedAuthorization: SuspendedAuthorization? = null
-        val intent = mockk<Intent> {
-            every { data?.getQueryParameter("code") } returns "testCode"
-            every { data?.getQueryParameter("state") } returns null
+        val uri = mockk<Uri> {
+            every { getQueryParameter("code") } returns "testCode"
+            every { getQueryParameter("state") } returns null
         }
         var result: Result<SuspendedAuthorization.Response>? = null
         runTest {
             launch(Dispatchers.Default) {
                 result = suspendCancellableCoroutine { continuation ->
-                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation))
+                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation, dummyLogger))
                 }
             }
 
 
             launch(Dispatchers.Default) {
                 delay(500.milliseconds)
-                suspendedAuthorization!!.use { it.resumeFromIntent(intent) }
+                suspendedAuthorization!!.use { it.resumeFromUri(uri) }
             }
         }
         assertTrue(result!!.isFailure, "Result failed")
         verify(exactly = 1) {
-            suspendedAuthorization!!.resumeFromIntent(intent)
+            suspendedAuthorization!!.resumeFromUri(uri)
         }
     }
 
@@ -131,7 +134,7 @@ class SuspendedAuthorizationTest {
         runTest {
             launch {
                 result = suspendCancellableCoroutine { continuation ->
-                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation))
+                    suspendedAuthorization = spyk(SuspendedAuthorization(continuation, dummyLogger))
                 }
             }
 
@@ -147,16 +150,16 @@ class SuspendedAuthorizationTest {
     }
 
     @Test
-    fun `verify that method resumeFromIntent calls resumeFromUri`() {
+    fun `verify that method resumeFromUri calls resumeFromUri`() {
         val continuation = mockk<CancellableContinuation<Result<SuspendedAuthorization.Response>>>(relaxed = true)
-        val suspendedAuthorization = spyk(SuspendedAuthorization(continuation))
-        val intent = mockk<Intent> {
-            every { data?.getQueryParameter("code") } returns "testCode"
-            every { data?.getQueryParameter("state") } returns "testState"
+        val suspendedAuthorization = spyk(SuspendedAuthorization(continuation, dummyLogger))
+        val uri = mockk<Uri> {
+            every { getQueryParameter("code") } returns "testCode"
+            every { getQueryParameter("state") } returns "testState"
         }
-        suspendedAuthorization.resumeFromIntent(intent)
+        suspendedAuthorization.resumeFromUri(uri)
         verify(exactly = 1) {
-            suspendedAuthorization.resumeFromUri(intent.data!!)
+            suspendedAuthorization.resumeFromUri(uri)
         }
     }
 
@@ -165,7 +168,7 @@ class SuspendedAuthorizationTest {
         mockkStatic(Uri::class)
 
         val continuation = mockk<CancellableContinuation<Result<SuspendedAuthorization.Response>>>(relaxed = true)
-        val suspendedAuthorization = spyk(SuspendedAuthorization(continuation))
+        val suspendedAuthorization = spyk(SuspendedAuthorization(continuation, dummyLogger))
         val uriStr = "https://test.com?code=testCode&state=testState"
         val uri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "testCode"

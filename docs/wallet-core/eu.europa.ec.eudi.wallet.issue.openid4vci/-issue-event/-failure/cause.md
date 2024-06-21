@@ -3,4 +3,5 @@
 # cause
 
 [androidJvm]\
+open override
 val [cause](cause.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)

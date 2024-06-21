@@ -153,7 +153,7 @@ internal sealed interface SupportedProofType {
     /**
      * Proof algorithm for the supported proof type.
      * @property name the name of the proof algorithm
-     * @property signAlgorithmName the name of the sign algorithm that it is used in the [eu.europa.ec.eudi.wallet.document.IssuanceRequest.signWithAuthKey]
+     * @property signAlgorithmName the name of the sign algorithm that it is used in the [eu.europa.ec.eudi.wallet.document.UnsignedDocument.signWithAuthKey]
      * @property signatureByteArrayLength the length of the signature byte array to be use when converting the signature from DER to Concat format
      * method
      */

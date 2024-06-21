@@ -19,7 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 /**
  * The result of an offer operation.
  */
-sealed interface OfferResult {
+sealed interface OfferResult : OpenId4VciResult {
     /**
      * The offer was successful.
      * @property offer the offer
@@ -28,7 +28,7 @@ sealed interface OfferResult {
 
     /**
      * The offer failed.
-     * @property error the error that caused the failure
+     * @property cause the error that caused the failure
      */
-    data class Failure(val error: Throwable) : OfferResult
+    data class Failure(override val cause: Throwable) : OfferResult, OpenId4VciResult.Erroneous
 }
