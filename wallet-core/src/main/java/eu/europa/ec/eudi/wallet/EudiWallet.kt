@@ -156,12 +156,22 @@ object EudiWallet {
     }
 
     /**
-     * Returns the list of documents
+     * Returns the list of [IssuedDocument]
      * @see [DocumentManager.getDocuments]
-     * @return the list of documents
+     * @return the list of [IssuedDocument]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    fun getDocuments(): List<Document> = documentManager.getDocuments()
+    fun getDocuments(): List<IssuedDocument> = documentManager
+        .getDocuments(Document.State.ISSUED)
+        .filterIsInstance<IssuedDocument>()
+
+    /**
+     * Returns the list of all documents
+     * @see [DocumentManager.getDocuments]
+     * @return the list of [Document]
+     * @throws IllegalStateException if [EudiWallet] in not firstly initialized via the [init] method
+     */
+    fun getAllDocuments(): List<Document> = documentManager.getDocuments()
 
     /**
      * Returns the document with the given [documentId]
@@ -189,16 +199,16 @@ object EudiWallet {
      * @param hardwareBacked flag that indicates if the document's keys should be stored in hardware or not
      * @param attestationChallenge the attestation challenge to be used for the document's keys
      * attestation (optional). If not provided, the sdk will generate a random challenge
-     * @see [DocumentManager.createIssuanceRequest]
+     * @see [DocumentManager.createDocument]
      * @return [CreateIssuanceRequestResult]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    fun createIssuanceRequest(
+    fun createDocument(
         docType: String,
         hardwareBacked: Boolean,
         attestationChallenge: ByteArray? = null,
-    ): CreateIssuanceRequestResult =
-        documentManager.createIssuanceRequest(docType, hardwareBacked, attestationChallenge)
+    ): CreateDocumentResult =
+        documentManager.createDocument(docType, hardwareBacked, attestationChallenge)
 
     /**
      * Add a document to the wallet
@@ -208,31 +218,10 @@ object EudiWallet {
      * @return [AddDocumentResult]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    fun addDocument(request: IssuanceRequest, data: ByteArray): AddDocumentResult =
-        documentManager.addDocument(request, data)
+    fun storeIssuedDocument(request: UnsignedDocument, data: ByteArray): StoreDocumentResult =
+        documentManager.storeIssuedDocument(request, data)
 
     private var openId4VciManager: OpenId4VciManager? = null
-
-    /**
-     * Issue a document using the OpenId4VCI protocol
-     * @param docType the document type to issue
-     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
-     * @param onEvent the callback to be called when the document is issued
-     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
-     * @throws IllegalStateException if [EudiWalletConfig.openId4VciConfig] is not set
-     * @see [OpenId4VciManager.issueDocumentByDocType]
-     * @see [OpenId4VciManager.OnIssueEvent] on how to handle the result
-     * @see [IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
-     *
-     * @Deprecated Use [issueDocumentByDocType] instead
-     */
-    @Deprecated(
-        "Use issueDocumentByDocType instead",
-        ReplaceWith("issueDocumentByDocType(docType, executor, onResult)")
-    )
-    fun issueDocument(docType: String, executor: Executor? = null, onEvent: OpenId4VciManager.OnIssueEvent) {
-        issueDocumentByDocType(docType, executor, onEvent)
-    }
 
     /**
      * Issue a document using the OpenId4VCI protocol
@@ -267,7 +256,8 @@ object EudiWallet {
     /**
      * Issue a document using an offer and the OpenId4VCI protocol
      * @param offer the offer to issue
-     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will
+     * be called on the main thread
      * @param onEvent the callback to be called when the document is issued
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      * @throws IllegalStateException if [EudiWalletConfig.openId4VciConfig] is not set
@@ -351,6 +341,14 @@ object EudiWallet {
                 }
             }
         }
+    }
+
+    fun issueDeferredDocument(
+        deferred: IssueEvent.DocumentDeferred,
+        executor: Executor?,
+        onEvent: OpenId4VciManager.OnIssueEvent
+    ) {
+
     }
 
     /**
@@ -635,17 +633,18 @@ object EudiWallet {
 
     private val transferManagerDocumentsResolver: DocumentsResolver
         get() = DocumentsResolver { req ->
-            documentManager.getDocuments().filter { doc ->
-                doc.docType == req.docType
-            }.map { doc ->
-                RequestDocument(
-                    documentId = doc.id,
-                    docType = doc.docType,
-                    docName = doc.name,
-                    userAuthentication = doc.requiresUserAuth,
-                    docRequest = req
-                )
-            }
+            documentManager.getDocuments(Document.State.ISSUED)
+                .filterIsInstance<IssuedDocument>()
+                .filter { doc -> doc.docType == req.docType }
+                .map { doc ->
+                    RequestDocument(
+                        documentId = doc.id,
+                        docType = doc.docType,
+                        docName = doc.name,
+                        userAuthentication = doc.requiresUserAuth,
+                        docRequest = req
+                    )
+                }
         }
 
     private val deviceResponseGenerator: ResponseGenerator<DeviceRequest> by lazy {

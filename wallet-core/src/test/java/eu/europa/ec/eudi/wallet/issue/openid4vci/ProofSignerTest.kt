@@ -22,8 +22,8 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.Algorithm
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
 import eu.europa.ec.eudi.wallet.document.SignedWithAuthKeyResult
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -31,7 +31,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -39,14 +38,14 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ProofT
 
 class ProofSignerTest {
 
-    private lateinit var issuanceRequest: IssuanceRequest
+    private lateinit var unsignedDocument: UnsignedDocument
     private lateinit var credentialConfiguration: CredentialConfiguration
 
     @BeforeEach
     fun setup() {
-        issuanceRequest = mockk(relaxed = true)
+        unsignedDocument = mockk(relaxed = true)
         credentialConfiguration = mockk<CredentialConfiguration>(relaxed = true)
-        every { issuanceRequest.publicKey } returns mockk(relaxed = true)
+        every { unsignedDocument.publicKey } returns mockk(relaxed = true)
     }
 
     companion object {
@@ -73,7 +72,7 @@ class ProofSignerTest {
         } returns ProofTypesSupported(setOf(ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256))))
 
 
-        val result = ProofSigner(issuanceRequest, credentialConfiguration)
+        val result = ProofSigner(unsignedDocument, credentialConfiguration)
         assertTrue(result.isSuccess)
         val signer = result.getOrThrow()
         assertTrue(signer is JWSProofSigner)
@@ -89,7 +88,7 @@ class ProofSignerTest {
             )
         )
 
-        val result = ProofSigner(issuanceRequest, credentialConfiguration)
+        val result = ProofSigner(unsignedDocument, credentialConfiguration)
         assertTrue(result.isSuccess)
         val signer = result.getOrThrow()
         assertTrue(signer is CWTProofSigner)
@@ -105,7 +104,7 @@ class ProofSignerTest {
             )
         )
 
-        val result = ProofSigner(issuanceRequest, credentialConfiguration)
+        val result = ProofSigner(unsignedDocument, credentialConfiguration)
         assertTrue(result.isFailure)
     }
 
@@ -119,7 +118,7 @@ class ProofSignerTest {
             )
         )
 
-        val result = ProofSigner(issuanceRequest, credentialConfiguration)
+        val result = ProofSigner(unsignedDocument, credentialConfiguration)
         assertTrue(result.isFailure)
     }
 
@@ -133,7 +132,7 @@ class ProofSignerTest {
             )
         )
 
-        val result = ProofSigner(issuanceRequest, credentialConfiguration, listOf(ConfigProofType.JWT))
+        val result = ProofSigner(unsignedDocument, credentialConfiguration, listOf(ConfigProofType.JWT))
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is UnsupportedProofTypeException)
     }
@@ -143,7 +142,7 @@ class ProofSignerTest {
     internal fun `invoke returns JWTProofSigner when prioritized over cwt proof type and algorithm are available`(
         orderedTypes: List<ConfigProofType>, signerClass: Class<ProofSigner>
     ) {
-        val issuanceRequest = mockk<IssuanceRequest>(relaxed = true)
+        val issuanceRequest = mockk<UnsignedDocument>(relaxed = true)
         val credentialConfiguration = mockk<CredentialConfiguration>(relaxed = true)
         every { issuanceRequest.publicKey } returns OneKey.generateKey(AlgorithmID.ECDSA_256).AsPublicKey()
         every {
@@ -170,7 +169,7 @@ class ProofSignerTest {
         val okSignature = byteArrayOf()
 
         every {
-            issuanceRequest.signWithAuthKey(
+            unsignedDocument.signWithAuthKey(
                 okInput,
                 Algorithm.SHA256withECDSA
             )
@@ -179,7 +178,7 @@ class ProofSignerTest {
         val signer = object : ProofSigner() {
             override val popSigner: PopSigner = mockk(relaxed = true)
         }
-        val signature = signer.doSign(issuanceRequest, okInput, Algorithm.SHA256withECDSA)
+        val signature = signer.doSign(unsignedDocument, okInput, Algorithm.SHA256withECDSA)
         assertSame(okSignature, signature)
     }
 
@@ -188,7 +187,7 @@ class ProofSignerTest {
         val userAuthRequiredInput = byteArrayOf()
         val cryptoObject = mockk<CryptoObject>()
         every {
-            issuanceRequest.signWithAuthKey(
+            unsignedDocument.signWithAuthKey(
                 userAuthRequiredInput,
                 Algorithm.SHA256withECDSA
             )
@@ -198,8 +197,8 @@ class ProofSignerTest {
             override val popSigner: PopSigner = mockk(relaxed = true)
         }
         assertEquals(ProofSigner.UserAuthStatus.NotRequired, signer.userAuthStatus)
-        assertThrows(UserAuthRequiredException::class.java) {
-            signer.doSign(issuanceRequest, userAuthRequiredInput, Algorithm.SHA256withECDSA)
+        assertThrows(IllegalStateException::class.java) {
+            signer.doSign(unsignedDocument, userAuthRequiredInput, Algorithm.SHA256withECDSA)
         }
         assertTrue(signer.userAuthStatus is ProofSigner.UserAuthStatus.Required)
         val status = signer.userAuthStatus as ProofSigner.UserAuthStatus.Required
@@ -211,7 +210,7 @@ class ProofSignerTest {
         val errorInput = byteArrayOf()
         val exception = mockk<Exception>()
         every {
-            issuanceRequest.signWithAuthKey(
+            unsignedDocument.signWithAuthKey(
                 errorInput,
                 Algorithm.SHA256withECDSA
             )
@@ -221,7 +220,7 @@ class ProofSignerTest {
             override val popSigner: PopSigner = mockk(relaxed = true)
         }
         val e = assertThrows(Exception::class.java) {
-            signer.doSign(issuanceRequest, errorInput, Algorithm.SHA256withECDSA)
+            signer.doSign(unsignedDocument, errorInput, Algorithm.SHA256withECDSA)
         }
         assertSame(exception, e)
     }

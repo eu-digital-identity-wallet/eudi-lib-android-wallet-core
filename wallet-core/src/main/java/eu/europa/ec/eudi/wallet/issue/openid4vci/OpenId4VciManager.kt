@@ -21,6 +21,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.annotation.IntDef
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.DEBUG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.DEBUG_WITH_HTTP
@@ -46,7 +47,6 @@ interface OpenId4VciManager {
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued
      * @see[IssueEvent] on how to handle the result
-     * @see[IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
     fun issueDocumentByDocType(
         docType: String,
@@ -61,7 +61,6 @@ interface OpenId4VciManager {
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      *
      * @see[IssueEvent] on how to handle the result
-     * @see[IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
     fun issueDocumentByOffer(
         offer: Offer,
@@ -75,11 +74,23 @@ interface OpenId4VciManager {
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      * @see[IssueEvent] on how to handle the result
-     * @see[IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
     fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor? = null,
+        onIssueEvent: OnIssueEvent
+    )
+
+    /**
+     * Issue a deferred document
+     * @param deferredDocument the deferred document to issue
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onIssueEvent the callback to be called when the document is issued
+     * @see[IssueEvent] on how to handle the result
+     */
+    fun issueDeferredDocument(
+        deferredDocument: DeferredDocument,
+        executor: Executor?,
         onIssueEvent: OnIssueEvent
     )
 
@@ -117,7 +128,12 @@ interface OpenId4VciManager {
      */
     fun resumeWithAuthorization(uri: String)
 
-    fun interface OnResult<T> {
+    /**
+     * Callback to be called for [OpenId4VciManager.issueDocumentByDocType],
+     * [OpenId4VciManager.issueDocumentByOffer], [OpenId4VciManager.issueDocumentByOfferUri]
+     * and [OpenId4VciManager.resolveDocumentOffer] methods
+     */
+    fun interface OnResult<T : OpenId4VciResult> {
         fun onResult(result: T)
         operator fun invoke(result: T) = onResult(result)
     }
@@ -137,6 +153,7 @@ interface OpenId4VciManager {
      * @param context the context
      * @property config the [Config] to use
      * @property documentManager the [DocumentManager] to use
+     * requires user authentication
      */
     class Builder(private val context: Context) {
         var config: Config? = null

@@ -3,13 +3,14 @@
 # getDocuments
 
 [androidJvm]\
-fun [getDocuments](get-documents.md)(): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Document&gt;
+fun [getDocuments](get-documents.md)(): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)
+&lt;IssuedDocument&gt;
 
-Returns the list of documents
+Returns the list of IssuedDocument
 
 #### Return
 
-the list of documents
+the list of IssuedDocument
 
 #### See also
 

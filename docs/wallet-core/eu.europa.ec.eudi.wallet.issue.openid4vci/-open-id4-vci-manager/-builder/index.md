@@ -31,7 +31,7 @@ androidJvm
 
 ## Properties
 
-| Name                                   | Summary                                                                                                                               |
-|----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| [config](config.md)                    | [androidJvm]<br>var [config](config.md): [OpenId4VciManager.Config](../-config/index.md)?<br>the [Config](../-config/index.md) to use |
-| [documentManager](document-manager.md) | [androidJvm]<br>var [documentManager](document-manager.md): DocumentManager?<br>the DocumentManager to use                            |
+| Name                                   | Summary                                                                                                                                 |
+|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| [config](config.md)                    | [androidJvm]<br>var [config](config.md): [OpenId4VciManager.Config](../-config/index.md)?<br>the [Config](../-config/index.md) to use   |
+| [documentManager](document-manager.md) | [androidJvm]<br>var [documentManager](document-manager.md): DocumentManager?<br>the DocumentManager to use requires user authentication |

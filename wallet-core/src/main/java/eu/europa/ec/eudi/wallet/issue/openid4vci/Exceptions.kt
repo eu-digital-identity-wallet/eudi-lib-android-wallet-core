@@ -17,10 +17,16 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import androidx.biometric.BiometricPrompt.CryptoObject
+import eu.europa.ec.eudi.openid4vci.SubmittedRequest
+
 /**
  * Exception thrown when user authentication is required.
  */
-internal class UserAuthRequiredException : Throwable()
+internal class UserAuthRequiredException(
+    val cryptoObject: CryptoObject?,
+    val resume: suspend (Boolean) -> SubmittedRequest
+) : Throwable()
 
 /**
  * Exception thrown when the proof type is not supported.

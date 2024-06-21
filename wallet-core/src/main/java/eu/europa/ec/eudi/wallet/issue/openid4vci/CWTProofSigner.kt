@@ -19,22 +19,22 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.openid4vci.CwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 /**
  * A [ProofSigner] implementation for CWT.
  * @property popSigner the PoP signer
  *
  * @constructor Creates a CWT proof signer.
- * @param issuanceRequest The issuance request.
+ * @param document the document which will sign the proof
  * @param supportedProofAlgorithm The supported proof algorithm.
  */
 internal class CWTProofSigner(
-    private val issuanceRequest: IssuanceRequest,
+    private val document: UnsignedDocument,
     private val supportedProofAlgorithm: SupportedProofType.ProofAlgorithm.Cose
 ) : ProofSigner() {
 
-    private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
+    private val jwk = JWK.parseFromPEMEncodedObjects(document.publicKey.pem)
 
     override val popSigner: PopSigner.Cwt = PopSigner.Cwt(
         algorithm = supportedProofAlgorithm.coseAlgorithm,
@@ -46,12 +46,12 @@ internal class CWTProofSigner(
     /**
      * Signs the signing input with the authentication key from issuance request for the given algorithm and curve.
      * @param signingInput The input to sign.
-     * @throws UserAuthRequiredException If user authentication is required.
+     * @throws IllegalStateException If user authentication is required.
      * @throws Throwable If an error occurs during signing.
      * @return The signature of the signing input.
      */
     fun sign(signingInput: ByteArray): ByteArray {
-        return doSign(issuanceRequest, signingInput, supportedProofAlgorithm.signAlgorithmName)
+        return doSign(document, signingInput, supportedProofAlgorithm.signAlgorithmName)
             .derToConcat(supportedProofAlgorithm)
     }
 }

@@ -26,18 +26,18 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 /**
  * A [ProofSigner] and [JWSSigner] implementation for JWS.
  * @property popSigner
  * @constructor Creates a JWS proof signer.
- * @param issuanceRequest The issuance request.
+ * @param document The issuance request.
  * @param supportedProofAlgorithm The supported proof algorithm.
  *
  */
 internal class JWSProofSigner(
-    private val issuanceRequest: IssuanceRequest,
+    private val document: UnsignedDocument,
     private val supportedProofAlgorithm: SupportedProofType.ProofAlgorithm.Jws
 ) : ProofSigner(), JWSSigner {
 
@@ -46,7 +46,7 @@ internal class JWSProofSigner(
     /**
      * The JWK of the public key.
      */
-    private val jwk = JWK.parseFromPEMEncodedObjects(issuanceRequest.publicKey.pem)
+    private val jwk = JWK.parseFromPEMEncodedObjects(document.publicKey.pem)
 
     override val popSigner: PopSigner.Jwt = PopSigner.Jwt(
         algorithm = supportedProofAlgorithm.algorithm,
@@ -69,7 +69,7 @@ internal class JWSProofSigner(
                 )
             )
         }
-        return doSign(issuanceRequest, signingInput, supportedProofAlgorithm.signAlgorithmName).let { signature ->
+        return doSign(document, signingInput, supportedProofAlgorithm.signAlgorithmName).let { signature ->
             Base64URL.encode(signature.derToConcat(supportedProofAlgorithm))
         }
     }

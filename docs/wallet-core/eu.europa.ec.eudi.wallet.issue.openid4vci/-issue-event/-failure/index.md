@@ -4,7 +4,7 @@
 
 [androidJvm]\
 data class [Failure](index.md)(val
-cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)) : [IssueEvent](../index.md)
+cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)) : [IssueEvent](../index.md), [OpenId4VciResult.Erroneous](../../-open-id4-vci-result/-erroneous/index.md)
 
 The issuance failed.
 
@@ -16,6 +16,6 @@ The issuance failed.
 
 ## Properties
 
-| Name              | Summary                                                                                                                                                            |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [cause](cause.md) | [androidJvm]<br>val [cause](cause.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)<br>the error that caused the failure |
+| Name              | Summary                                                                                                                                                                          |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [cause](cause.md) | [androidJvm]<br>open override val [cause](cause.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)<br>the error that caused the failure |

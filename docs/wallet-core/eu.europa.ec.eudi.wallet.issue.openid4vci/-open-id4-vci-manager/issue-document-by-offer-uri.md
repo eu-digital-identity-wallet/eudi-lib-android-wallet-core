@@ -22,7 +22,6 @@ androidJvm
 
 #### See also
 
-|                                                                                              |                                      |
-|----------------------------------------------------------------------------------------------|--------------------------------------|
-| [IssueEvent](../-issue-event/index.md)                                                       | on how to handle the result          |
-| [IssueEvent.DocumentRequiresUserAuth](../-issue-event/-document-requires-user-auth/index.md) | on how to handle user authentication |
+|                                        |                             |
+|----------------------------------------|-----------------------------|
+| [IssueEvent](../-issue-event/index.md) | on how to handle the result |
