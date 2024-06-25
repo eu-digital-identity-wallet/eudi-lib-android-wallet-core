@@ -19,12 +19,18 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.*
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.logging.Logger
+import io.ktor.client.*
+import io.ktor.client.plugins.logging.*
 import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.Executor
+import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 /**
  * Default implementation of [OpenId4VciManager].
@@ -44,17 +50,33 @@ internal class DefaultOpenId4VciManager(
     var config: OpenId4VciManager.Config,
 ) : OpenId4VciManager {
 
-    private val logger: OpenId4VciLogger by lazy {
-        OpenId4VciLogger(config)
-    }
+    var logger: Logger? = null
+    var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
+        get() = {
+            logger?.let { l ->
+                field().let { client ->
+                    client.config {
+                        install(Logging) {
+                            logger = object : KtorLogger {
+                                override fun log(message: String) {
+                                    l.d(TAG, message)
+                                }
+                            }
+                            level = LogLevel.ALL
+                        }
+                    }
+                }
+            } ?: field()
+        }
+
     private val offerCreator: OfferCreator by lazy {
-        OfferCreator(config)
+        OfferCreator(config, ktorHttpClientFactory)
     }
     private val offerResolver: OfferResolver by lazy {
-        OfferResolver(config)
+        OfferResolver(config, ktorHttpClientFactory)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(config)
+        IssuerCreator(config, ktorHttpClientFactory)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         IssuerAuthorization(config, context, logger)
@@ -63,7 +85,7 @@ internal class DefaultOpenId4VciManager(
     override fun issueDocumentByDocType(
         docType: String,
         executor: Executor?,
-        onIssueEvent: OpenId4VciManager.OnIssueEvent
+        onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
             try {
@@ -79,7 +101,7 @@ internal class DefaultOpenId4VciManager(
     override fun issueDocumentByOffer(
         offer: Offer,
         executor: Executor?,
-        onIssueEvent: OpenId4VciManager.OnIssueEvent
+        onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
             try {
@@ -95,7 +117,7 @@ internal class DefaultOpenId4VciManager(
     override fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor?,
-        onIssueEvent: OpenId4VciManager.OnIssueEvent
+        onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
             try {
@@ -111,15 +133,18 @@ internal class DefaultOpenId4VciManager(
     override fun issueDeferredDocument(
         deferredDocument: DeferredDocument,
         executor: Executor?,
-        onIssueEvent: OpenId4VciManager.OnIssueEvent
+        onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
+        val deferredState = deferredDocument.relatedData.let { DeferredState.decode(it) }
+        // check tokens for expiration
+        // if not expires proceed with deferred issuer call
         TODO("Not yet implemented")
     }
 
     override fun resolveDocumentOffer(
         offerUri: String,
         executor: Executor?,
-        onResolvedOffer: OpenId4VciManager.OnResolvedOffer
+        onResolvedOffer: OpenId4VciManager.OnResolvedOffer,
     ) {
         launch(onResolvedOffer.wrap(executor)) { coroutineScope, callback ->
             try {
@@ -159,15 +184,16 @@ internal class DefaultOpenId4VciManager(
      * Wraps the given [OpenId4VciManager.OnResult] with debug logging.
      */
     private inline fun <R : OpenId4VciManager.OnResult<V>, reified V : OpenId4VciResult> R.logResult(): OpenId4VciManager.OnResult<V> {
-        return if (config.errorLoggingStatus) {
-            OpenId4VciManager.OnResult { result: V ->
+        return when (val l = logger) {
+            null -> this
+            else -> OpenId4VciManager.OnResult { result: V ->
                 when (result) {
-                    is OpenId4VciResult.Erroneous -> logger.log("$result", result.cause)
-                    else -> logger.log("$result")
+                    is OpenId4VciResult.Erroneous -> l.e(TAG, "$result", result.cause)
+                    else -> l.d(TAG, "$result")
                 }
                 this.onResult(result)
             }
-        } else this
+        }
     }
 
     /**
@@ -177,7 +203,7 @@ internal class DefaultOpenId4VciManager(
      */
     private fun <R : OpenId4VciManager.OnResult<V>, V : OpenId4VciResult> launch(
         onResult: R,
-        block: suspend (coroutineScope: CoroutineScope, onResult: R) -> Unit
+        block: suspend (coroutineScope: CoroutineScope, onResult: R) -> Unit,
     ) {
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch { block(scope, onResult) }
@@ -188,7 +214,7 @@ internal class DefaultOpenId4VciManager(
      */
     private suspend fun doIssue(
         offer: Offer,
-        listener: OpenId4VciManager.OnResult<IssueEvent>
+        listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
         offer as DefaultOffer
         val issuer = issuerCreator.createIssuer(offer)
@@ -205,7 +231,8 @@ internal class DefaultOpenId4VciManager(
         val response = request.request(requestMap).also {
             authorizedRequest = request.authorizedRequest
         }
-        ProcessResponse(documentManager, listener, issuedDocumentIds).use { it.process(response) }
+        val deferredState = DeferredState(config.clientId, issuer, authorizedRequest)
+        ProcessResponse(documentManager, listener, issuedDocumentIds, deferredState).use { it.process(response) }
         listener(IssueEvent.Finished(issuedDocumentIds))
     }
 }

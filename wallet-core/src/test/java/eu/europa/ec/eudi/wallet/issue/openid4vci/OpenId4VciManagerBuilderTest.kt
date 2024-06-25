@@ -36,8 +36,6 @@ class OpenId4VciManagerBuilderTest {
         useDPoPIfSupported = true,
         parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
         proofTypes = listOf(OpenId4VciManager.Config.ProofType.JWT),
-        debugLogging = OpenId4VciManager.Config.LogLevel.OFF,
-        ktorHttpClientFactory = { mockk(relaxed = true) }
     )
 
     @Test

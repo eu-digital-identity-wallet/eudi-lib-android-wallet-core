@@ -20,7 +20,8 @@ class [Builder](index.md)(context: [Context](https://developer.android.com/refer
 
 ## Properties
 
-| Name | Summary |
-|---|---|
-| [documentsResolver](documents-resolver.md) | [androidJvm]<br>var [documentsResolver](documents-resolver.md): DocumentsResolver? |
-| [readerTrustStore](reader-trust-store.md) | [androidJvm]<br>var [readerTrustStore](reader-trust-store.md): ReaderTrustStore? |
+| Name                                       | Summary                                                                                                        |
+|--------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| [documentsResolver](documents-resolver.md) | [androidJvm]<br>var [documentsResolver](documents-resolver.md): DocumentsResolver?                             |
+| [logger](logger.md)                        | [androidJvm]<br>var [logger](logger.md): [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? |
+| [readerTrustStore](reader-trust-store.md)  | [androidJvm]<br>var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?                               |

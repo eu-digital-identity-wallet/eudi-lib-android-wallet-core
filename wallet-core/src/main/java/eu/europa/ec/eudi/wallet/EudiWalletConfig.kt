@@ -24,10 +24,13 @@ import eu.europa.ec.eudi.wallet.EudiWalletConfig.Builder
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.BLE_CLIENT_CENTRAL_MODE
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.BLE_SERVER_PERIPHERAL_MODE
 import eu.europa.ec.eudi.wallet.internal.getCertificate
+import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpConfig
+import io.ktor.client.*
 import java.io.File
 import java.security.cert.X509Certificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as OpenId4VciConfig
+import eu.europa.ec.eudi.wallet.logging.Logger.Level as LogLevel
 
 /**
  * Eudi wallet config.
@@ -35,7 +38,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as Ope
  * This class is used to configure the Eudi wallet.
  * Use the [Builder] to create an instance of this class.
  *
- * @property builder
  * @constructor Create empty Eudi wallet config
  *
  * @property documentsStorageDir This is the directory where the documents will be stored. If not set, the default directory is the noBackupFilesDir.
@@ -49,7 +51,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as Ope
  * @property verifyMsoPublicKey If true, the MSO public key will be verified against the public key that is used to issue the document. The default value is true.
  * @property openId4VPConfig This is the config that will be used for OpenId4Vp transfer. If not set OpenId4Vp will not be available.
  * @property openId4VciConfig This is the config that will be used to issue using OpenId4Vci. If not set OpenId4Vci will not be available.
- *
+ * @property logLevel This is the debug logging level. The default value is [Logger.LEVEL_ERROR].
+ * @property ktorHttpClientFactory This is the factory that will be used to create the Ktor HttpClient. This [HttpClient] will be used by the [eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager] and [eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager]
  */
 
 class EudiWalletConfig private constructor(builder: Builder) {
@@ -156,6 +159,16 @@ class EudiWalletConfig private constructor(builder: Builder) {
     val openId4VciConfig: OpenId4VciConfig? = builder.openId4VciConfig
 
     /**
+     * Debug logging level
+     */
+    val logLevel: Int = builder.logLevel
+
+    /**
+     * Ktor http client factory
+     */
+    val ktorHttpClientFactory: (() -> HttpClient)? = builder.ktorHttpClientFactory
+
+    /**
      * Builder
      *
      * @constructor Create Builder
@@ -189,6 +202,8 @@ class EudiWalletConfig private constructor(builder: Builder) {
         var verifyMsoPublicKey: Boolean = true
         var openId4VpConfig: OpenId4VpConfig? = null
         var openId4VciConfig: OpenId4VciConfig? = null
+        var logLevel: Int = Logger.LEVEL_ERROR
+        var ktorHttpClientFactory: (() -> HttpClient)? = null
 
         /**
          * Documents storage dir. This is the directory where the documents will be stored.
@@ -349,6 +364,27 @@ class EudiWalletConfig private constructor(builder: Builder) {
          */
         fun openId4VciConfig(block: OpenId4VciConfig.Builder.() -> Unit) = apply {
             this.openId4VciConfig = OpenId4VciConfig.Builder().apply(block).build()
+        }
+
+        /**
+         * Set the debug logging level.
+         * The default value is [LogLevel.OFF].
+         * @param level
+         * @return [EudiWalletConfig.Builder]
+         */
+        fun logLevel(@Logger.Level level: Int) = apply {
+            this.logLevel = level
+        }
+
+        /**
+         * Set the Ktor HttpClient factory.
+         * This factory will be used to create the Ktor HttpClient.
+         * This [HttpClient] will be used by the [eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager] and [eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager]
+         * @param factory
+         * @return [EudiWalletConfig.Builder]
+         */
+        fun ktorHttpClientFactory(factory: () -> HttpClient) = apply {
+            this.ktorHttpClientFactory = factory
         }
 
         /**

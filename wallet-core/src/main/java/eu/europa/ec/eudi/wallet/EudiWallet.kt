@@ -35,6 +35,7 @@ import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.issue.openid4vci.*
+import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponseGeneratorImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
@@ -74,6 +75,12 @@ object EudiWallet {
     private lateinit var context: Context
     private lateinit var _config: EudiWalletConfig
     private var transferMode: TransferMode? = null
+
+    private val logger by lazy {
+        requireInit {
+            Logger(_config)
+        }
+    }
 
     /**
      * Initialize the sdk with the given [config]
@@ -145,8 +152,9 @@ object EudiWallet {
                 OpenId4vpManager(
                     context,
                     openId4VpConfig,
-                    openId4VpCBORResponseGenerator
+                    openId4VpCBORResponseGenerator,
                 ).apply {
+                    logger = this@EudiWallet.logger
                     _config.trustedReaderCertificates?.let {
                         setReaderTrustStore(ReaderTrustStore.getDefault(it))
                     }
@@ -194,13 +202,13 @@ object EudiWallet {
         documentManager.deleteDocumentById(documentId)
 
     /**
-     * Create an issuance request for the given [docType]
+     * Create an [UnsignedDocument] for the given [docType]
      * @param docType the docType of the document
      * @param hardwareBacked flag that indicates if the document's keys should be stored in hardware or not
      * @param attestationChallenge the attestation challenge to be used for the document's keys
      * attestation (optional). If not provided, the sdk will generate a random challenge
      * @see [DocumentManager.createDocument]
-     * @return [CreateIssuanceRequestResult]
+     * @return [CreateDocumentResult]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun createDocument(
@@ -212,14 +220,14 @@ object EudiWallet {
 
     /**
      * Add a document to the wallet
-     * @param request the issuance request
+     * @param unsignedDocument the issuance request
      * @param data the document data provided by the issuer
-     * @see [DocumentManager.addDocument]
-     * @return [AddDocumentResult]
+     * @see [DocumentManager.storeIssuedDocument]
+     * @return [StoreDocumentResult]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    fun storeIssuedDocument(request: UnsignedDocument, data: ByteArray): StoreDocumentResult =
-        documentManager.storeIssuedDocument(request, data)
+    fun storeIssuedDocument(unsignedDocument: UnsignedDocument, data: ByteArray): StoreDocumentResult =
+        documentManager.storeIssuedDocument(unsignedDocument, data)
 
     private var openId4VciManager: OpenId4VciManager? = null
 
@@ -237,13 +245,14 @@ object EudiWallet {
     fun issueDocumentByDocType(
         docType: String,
         executor: Executor? = null,
-        onEvent: OpenId4VciManager.OnIssueEvent
+        onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         requireInit {
             config.openId4VciConfig?.let { config ->
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
+                    logger = this@EudiWallet.logger
                 }.also { it.issueDocumentByDocType(docType, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -268,13 +277,14 @@ object EudiWallet {
     fun issueDocumentByOffer(
         offer: Offer,
         executor: Executor? = null,
-        onEvent: OpenId4VciManager.OnIssueEvent
+        onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         requireInit {
             config.openId4VciConfig?.let { config ->
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
+                    logger = this@EudiWallet.logger
                 }.also { it.issueDocumentByOffer(offer, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -298,13 +308,14 @@ object EudiWallet {
     fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor? = null,
-        onEvent: OpenId4VciManager.OnIssueEvent
+        onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         requireInit {
             config.openId4VciConfig?.let { config ->
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
+                    logger = this@EudiWallet.logger
                 }.also { it.issueDocumentByOfferUri(offerUri, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -327,13 +338,14 @@ object EudiWallet {
     fun resolveDocumentOffer(
         offerUri: String,
         executor: Executor? = null,
-        onResult: OpenId4VciManager.OnResolvedOffer
+        onResult: OpenId4VciManager.OnResolvedOffer,
     ) {
         requireInit {
             config.openId4VciConfig?.let { config ->
                 openId4VciManager = OpenId4VciManager(context) {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
+                    logger = this@EudiWallet.logger
                 }.also { it.resolveDocumentOffer(offerUri, executor, onResult) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -341,14 +353,6 @@ object EudiWallet {
                 }
             }
         }
-    }
-
-    fun issueDeferredDocument(
-        deferred: IssueEvent.DocumentDeferred,
-        executor: Executor?,
-        onEvent: OpenId4VciManager.OnIssueEvent
-    ) {
-
     }
 
     /**
@@ -667,6 +671,7 @@ object EudiWallet {
                         readerTrustStore = ReaderTrustStore.getDefault(it)
                     }
                     documentsResolver = transferManagerDocumentsResolver
+                    logger = this@EudiWallet.logger
                 }.build()
         }
     }

@@ -24,6 +24,8 @@ import eu.europa.ec.eudi.openid4vci.AuthorizationCode
 import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.Closeable
@@ -34,7 +36,7 @@ import kotlin.coroutines.resume
 internal class IssuerAuthorization(
     private val config: OpenId4VciManager.Config,
     private val context: Context,
-    private val logger: OpenId4VciLogger = OpenId4VciLogger(config)
+    private val logger: Logger? = null,
 ) : Closeable {
 
     private var suspendedAuthorization: SuspendedAuthorization? = null
@@ -52,9 +54,10 @@ internal class IssuerAuthorization(
     }
 
     fun resumeFromUri(uri: Uri) {
-        logger.log("${this::class.simpleName}.resumeFromUri($uri)")
+        logger?.d(TAG, "IssuerAuthorization.resumeFromUri($uri)")
         suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: logger.log(
+            ?: logger?.e(
+                TAG,
                 "${this::class.simpleName}.resumeFromUri failed",
                 IllegalStateException("No suspended authorization found")
             )
@@ -90,7 +93,7 @@ internal class IssuerAuthorization(
      */
     class SuspendedAuthorization(
         val continuation: CancellableContinuation<Result<Response>>,
-        val logger: OpenId4VciLogger
+        val logger: Logger? = null,
     ) : Closeable {
 
 
@@ -106,16 +109,16 @@ internal class IssuerAuthorization(
                         continuation.resume(Result.success(Response(authorizationCode, serverState)))
                     } ?: "No server state found".let { msg ->
                         val exception = IllegalStateException(msg)
-                        logger.log("resumeFromUri: $msg", exception)
+                        logger?.e(TAG, "resumeFromUri: $msg", exception)
                         continuation.resume(Result.failure(exception))
                     }
                 } ?: "No authorization code found".let { msg ->
                     val exception = IllegalStateException(msg)
-                    logger.log("resumeFromUri: $msg", exception)
+                    logger?.e(TAG, "resumeFromUri: $msg", exception)
                     continuation.resume(Result.failure(exception))
                 }
             } catch (e: Throwable) {
-                logger.log("resumeFromUri: ${e.message}", e)
+                logger?.e(TAG, "resumeFromUri: ${e.message}", e)
                 continuation.resume(Result.failure(e))
             }
         }

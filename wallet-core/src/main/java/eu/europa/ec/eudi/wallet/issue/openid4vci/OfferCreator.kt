@@ -23,15 +23,19 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.C
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import io.ktor.client.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal class OfferCreator(val config: OpenId4VciManager.Config) {
+internal class OfferCreator(
+    val config: OpenId4VciManager.Config,
+    val ktorHttpClientFactory: () -> HttpClient,
+) {
 
     suspend fun createOffer(docType: String): Offer {
         return withContext(Dispatchers.IO) {
             val credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow()
-            val (credentialIssuerMetadata, authorizationServerMetadata) = config.ktorHttpClientFactoryWithLogging()
+            val (credentialIssuerMetadata, authorizationServerMetadata) = ktorHttpClientFactory()
                 .use { client ->
                     Issuer.metaData(client, credentialIssuerId)
                 }

@@ -10,6 +10,4 @@ useStrongBoxIfSupported: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/
 useDPoPIfSupported: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html),
 parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html),
 proofTypes: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)
-&lt;[OpenId4VciManager.Config.ProofType](-proof-type/index.md)&gt;,
-debugLogging: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html), ktorHttpClientFactory: ()
--&gt; HttpClient)
+&lt;[OpenId4VciManager.Config.ProofType](-proof-type/index.md)&gt;)

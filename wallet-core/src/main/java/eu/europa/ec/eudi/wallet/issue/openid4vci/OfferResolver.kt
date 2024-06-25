@@ -20,15 +20,17 @@ import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import io.ktor.client.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 
-internal class OfferResolver(private val config: OpenId4VciManager.Config) {
+internal class OfferResolver(
+    private val config: OpenId4VciManager.Config,
+    private val ktorHttpClientFactory: () -> HttpClient,
+) {
     private val resolver by lazy {
-        CredentialOfferRequestResolver(
-            config.ktorHttpClientFactoryWithLogging
-        )
+        CredentialOfferRequestResolver(ktorHttpClientFactory)
     }
     private val credentialConfigurationFilter by lazy {
         Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes))
