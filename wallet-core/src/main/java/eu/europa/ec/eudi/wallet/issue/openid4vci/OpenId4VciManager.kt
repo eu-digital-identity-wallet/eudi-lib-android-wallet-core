@@ -20,16 +20,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.IntDef
-import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.DEBUG
-import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.DEBUG_WITH_HTTP
-import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.ERRORS
-import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.LogLevel.Companion.OFF
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
+import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.*
 import java.util.concurrent.Executor
 import eu.europa.ec.eudi.openid4vci.ProofType as InternalProofType
@@ -51,7 +47,7 @@ interface OpenId4VciManager {
     fun issueDocumentByDocType(
         docType: String,
         executor: Executor? = null,
-        onIssueEvent: OnIssueEvent
+        onIssueEvent: OnIssueEvent,
     )
 
     /**
@@ -65,7 +61,7 @@ interface OpenId4VciManager {
     fun issueDocumentByOffer(
         offer: Offer,
         executor: Executor? = null,
-        onIssueEvent: OnIssueEvent
+        onIssueEvent: OnIssueEvent,
     )
 
     /**
@@ -78,7 +74,7 @@ interface OpenId4VciManager {
     fun issueDocumentByOfferUri(
         offerUri: String,
         executor: Executor? = null,
-        onIssueEvent: OnIssueEvent
+        onIssueEvent: OnIssueEvent,
     )
 
     /**
@@ -91,7 +87,7 @@ interface OpenId4VciManager {
     fun issueDeferredDocument(
         deferredDocument: DeferredDocument,
         executor: Executor?,
-        onIssueEvent: OnIssueEvent
+        onIssueEvent: OnIssueEvent,
     )
 
     /**
@@ -158,6 +154,8 @@ interface OpenId4VciManager {
     class Builder(private val context: Context) {
         var config: Config? = null
         var documentManager: DocumentManager? = null
+        var logger: Logger? = null
+        var ktorHttpClientFactory: (() -> HttpClient)? = null
 
         /**
          * Set the [Config] to use
@@ -169,6 +167,18 @@ interface OpenId4VciManager {
          */
         fun documentManager(documentManager: DocumentManager) = apply { this.documentManager = documentManager }
 
+
+        fun logger(logger: Logger) = apply {
+            this.logger = logger
+        }
+
+        /**
+         * Override the Ktor HTTP client factory
+         */
+        fun ktHttpClientFactory(factory: () -> HttpClient) = apply {
+            this.ktorHttpClientFactory = factory
+        }
+
         /**
          * Build the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
@@ -176,11 +186,16 @@ interface OpenId4VciManager {
         fun build(): OpenId4VciManager {
             checkNotNull(config) { "config is required" }
             checkNotNull(documentManager) { "documentManager is required" }
-            return DefaultOpenId4VciManager(context, documentManager!!, config!!)
+            return DefaultOpenId4VciManager(context, documentManager!!, config!!).apply {
+                this@Builder.logger?.let { this.logger = it }
+                this@Builder.ktorHttpClientFactory?.let { this.ktorHttpClientFactory = it }
+            }
         }
     }
 
     companion object {
+        internal const val TAG = "OpenId4VciManager"
+
         /**
          * Create an instance of [OpenId4VciManager]
          */
@@ -207,8 +222,6 @@ interface OpenId4VciManager {
         val useDPoPIfSupported: Boolean,
         @ParUsage val parUsage: Int,
         val proofTypes: List<ProofType>,
-        @LogLevel val debugLogging: Int,
-        val ktorHttpClientFactory: () -> HttpClient
     ) {
 
         /**
@@ -228,24 +241,6 @@ interface OpenId4VciManager {
         }
 
         /**
-         * Log level for the OpenId4Vci issuer
-         * @property OFF no logging
-         * @property ERRORS log only errors
-         * @property DEBUG basic logging
-         * @property DEBUG_WITH_HTTP log HTTP requests and responses
-         */
-        @Retention(AnnotationRetention.SOURCE)
-        @IntDef(value = [OFF, ERRORS, DEBUG, DEBUG_WITH_HTTP])
-        annotation class LogLevel {
-            companion object {
-                const val OFF = 0
-                const val ERRORS = 1
-                const val DEBUG = 2
-                const val DEBUG_WITH_HTTP = 3
-            }
-        }
-
-        /**
          * Proof type for the OpenId4Vci issuer
          */
         enum class ProofType(@JvmSynthetic internal val type: InternalProofType) {
@@ -259,18 +254,6 @@ interface OpenId4VciManager {
              */
             CWT(InternalProofType.CWT)
         }
-
-        @get:JvmSynthetic
-        internal val errorLoggingStatus: Boolean
-            get() = debugLogging >= ERRORS
-
-        @get:JvmSynthetic
-        internal val basicLoggingStatus: Boolean
-            get() = debugLogging >= DEBUG
-
-        @get:JvmSynthetic
-        internal val httpLoggingStatus: Boolean
-            get() = debugLogging >= DEBUG_WITH_HTTP
 
         /**
          * Builder to create an instance of [Config]
@@ -296,9 +279,6 @@ interface OpenId4VciManager {
 
             private var proofTypes: List<ProofType> = listOf(ProofType.JWT, ProofType.CWT)
 
-            @LogLevel
-            var debugLogging: Int = OFF
-            var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
 
             /**
              * Set the issuer url
@@ -353,19 +333,6 @@ interface OpenId4VciManager {
             }
 
             /**
-             * Set the debug logging flag
-             */
-            fun debugLogging(@LogLevel logLevel: Int) = apply {
-                this.debugLogging = logLevel
-            }
-
-            /**
-             * Set the Ktor HTTP client factory
-             */
-            fun ktorHttpClientFactory(ktorHttpClientFactory: () -> HttpClient) =
-                apply { this.ktorHttpClientFactory = ktorHttpClientFactory }
-
-            /**
              * Build the [Config]
              * @throws [IllegalStateException] if issuerUrl, clientId or authFlowRedirectionURI is not set
              */
@@ -382,8 +349,6 @@ interface OpenId4VciManager {
                     useDPoPIfSupported,
                     parUsage,
                     proofTypes,
-                    debugLogging,
-                    ktorHttpClientFactory
                 )
             }
 

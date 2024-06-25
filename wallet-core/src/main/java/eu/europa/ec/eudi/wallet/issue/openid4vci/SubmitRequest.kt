@@ -19,7 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
-import eu.europa.ec.eudi.openid4vci.SubmittedRequest
+import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 internal class SubmitRequest(
@@ -43,8 +43,8 @@ internal class SubmitRequest(
 
     private suspend fun submitRequest(
         unsignedDocument: UnsignedDocument,
-        offeredDocument: Offer.OfferedDocument
-    ): SubmittedRequest {
+        offeredDocument: Offer.OfferedDocument,
+    ): SubmissionOutcome {
         var proofSigner: ProofSigner? = null
         val claimSet = null
         val payload = IssuanceRequestPayload.ConfigurationBased(offeredDocument.configurationIdentifier, claimSet)
@@ -85,36 +85,34 @@ internal class SubmitRequest(
         }
     }
 
-    suspend fun SubmittedRequest.updateCNonce() {
+    suspend fun SubmissionOutcome.updateCNonce() {
         authorizedRequest = authorizedRequest.withUpdatedCNonce(this)
     }
 
-    suspend fun AuthorizedRequest.withUpdatedCNonce(submittedRequest: SubmittedRequest): AuthorizedRequest {
+    fun AuthorizedRequest.withUpdatedCNonce(outcome: SubmissionOutcome): AuthorizedRequest {
         return when {
             this is AuthorizedRequest.NoProofRequired &&
-                    submittedRequest is SubmittedRequest.InvalidProof -> with(issuer) {
-                handleInvalidProof(submittedRequest.cNonce)
-            }
+                    outcome is SubmissionOutcome.InvalidProof -> withCNonce(outcome.cNonce)
 
             this is AuthorizedRequest.ProofRequired &&
-                    submittedRequest is SubmittedRequest.Success -> {
-                submittedRequest.cNonce?.let {
+                    outcome is SubmissionOutcome.Success -> {
+                outcome.cNonce?.let {
                     copy(cNonce = it)
                 } ?: this
             }
 
             this is AuthorizedRequest.ProofRequired &&
-                    submittedRequest is SubmittedRequest.InvalidProof -> {
-                copy(cNonce = submittedRequest.cNonce)
+                    outcome is SubmissionOutcome.InvalidProof -> {
+                copy(cNonce = outcome.cNonce)
             }
 
             else -> this
         }
     }
 
-    suspend fun SubmittedRequest.retryIfProofRequired(block: suspend () -> SubmittedRequest): SubmittedRequest {
+    suspend fun SubmissionOutcome.retryIfProofRequired(block: suspend () -> SubmissionOutcome): SubmissionOutcome {
         return when {
-            this is SubmittedRequest.InvalidProof && authorizedRequest is AuthorizedRequest.NoProofRequired -> {
+            this is SubmissionOutcome.InvalidProof && authorizedRequest is AuthorizedRequest.NoProofRequired -> {
                 updateCNonce()
                 block()
             }
@@ -123,6 +121,6 @@ internal class SubmitRequest(
         }
     }
 
-    class Response(map: Map<UnsignedDocument, Result<SubmittedRequest>>) :
-        Map<UnsignedDocument, Result<SubmittedRequest>> by map
+    class Response(map: Map<UnsignedDocument, Result<SubmissionOutcome>>) :
+        Map<UnsignedDocument, Result<SubmissionOutcome>> by map
 }

@@ -18,12 +18,16 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.*
+import io.ktor.client.*
 import java.net.URI
 
 /**
  * Creates an [Issuer] from the given [Offer].
  */
-internal class IssuerCreator(private val config: OpenId4VciManager.Config) {
+internal class IssuerCreator(
+    private val config: OpenId4VciManager.Config,
+    private val ktorHttpClientFactory: () -> HttpClient,
+) {
 
     /**
      * Creates an [Issuer] from the given [Offer].
@@ -32,7 +36,7 @@ internal class IssuerCreator(private val config: OpenId4VciManager.Config) {
      */
     fun createIssuer(offer: Offer): Issuer {
         val credentialOffer = (offer as DefaultOffer).credentialOffer
-        return Issuer.make(config.toOpenId4VCIConfig(), credentialOffer, config.ktorHttpClientFactoryWithLogging)
+        return Issuer.make(config.toOpenId4VCIConfig(), credentialOffer, ktorHttpClientFactory)
             .getOrThrow()
     }
 

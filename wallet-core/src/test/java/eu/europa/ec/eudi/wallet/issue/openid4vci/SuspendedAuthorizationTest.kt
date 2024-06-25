@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.net.Uri
 import android.util.Log
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerAuthorization.SuspendedAuthorization
+import eu.europa.ec.eudi.wallet.logging.Logger
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
@@ -40,7 +41,7 @@ class SuspendedAuthorizationTest {
         }
 
         @JvmStatic
-        internal val dummyLogger: OpenId4VciLogger = mockk(relaxed = true)
+        internal val dummyLogger: Logger = mockk(relaxed = true)
     }
 
     @Test

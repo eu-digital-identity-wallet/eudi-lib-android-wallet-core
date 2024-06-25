@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
 import android.content.Context
-import android.util.Log
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialRequest
@@ -32,20 +31,13 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
 import com.android.identity.util.Timestamp
-import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocument
-import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.DocItem
-import eu.europa.ec.eudi.iso18013.transfer.DocRequest
-import eu.europa.ec.eudi.iso18013.transfer.DocumentsResolver
-import eu.europa.ec.eudi.iso18013.transfer.ReaderAuth
-import eu.europa.ec.eudi.iso18013.transfer.RequestDocument
-import eu.europa.ec.eudi.iso18013.transfer.RequestedDocumentData
-import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
+import eu.europa.ec.eudi.iso18013.transfer.*
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
+import eu.europa.ec.eudi.wallet.logging.Logger
 
 private const val TAG = "OpenId4VpCBORResponseGe"
 
@@ -56,10 +48,12 @@ private const val TAG = "OpenId4VpCBORResponseGe"
  * @param storageEngine storage engine used to store documents
  * @param secureArea secure area used to store documents' keys
  */
-class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: DocumentsResolver,
-                                         private val storageEngine: StorageEngine,
-                                         private val secureArea: AndroidKeystoreSecureArea
-): ResponseGenerator<OpenId4VpRequest>() {
+class OpenId4VpCBORResponseGeneratorImpl(
+    private val documentsResolver: DocumentsResolver,
+    private val storageEngine: StorageEngine,
+    private val secureArea: AndroidKeystoreSecureArea,
+    private val logger: Logger? = null,
+) : ResponseGenerator<OpenId4VpRequest>() {
 
     private var readerTrustStore: ReaderTrustStore? = null
     private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
@@ -128,7 +122,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
                                 .mapValues { (_, values) -> values.toList() }
                                 .toMap()
                         } ?: run {
-                        Log.w(
+                        logger?.i(
                             TAG,
                             "Input descriptor with id ${inputDescriptor.id} and format ${inputDescriptor.format} is skipped. Format is not mso_mdoc."
                         )
@@ -153,7 +147,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
      * @return a [ResponseResult]
      */
     override fun createResponse(
-        disclosedDocuments: DisclosedDocuments
+        disclosedDocuments: DisclosedDocuments,
     ): ResponseResult {
         try {
             val deviceResponse = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
@@ -182,7 +176,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
     private fun addDocumentToResponse(
         responseGenerator: DeviceResponseGenerator,
         disclosedDocument: DisclosedDocument,
-        transcript: ByteArray
+        transcript: ByteArray,
     ): AddDocumentToResponse {
         val dataElements = disclosedDocument.selectedDocItems.map {
             CredentialRequest.DataElement(it.namespace, it.elementIdentifier, false)
@@ -212,7 +206,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
             val data = generator.generate()
             responseGenerator.addDocument(data)
         } catch (lockedException: SecureArea.KeyLockedException) {
-            Log.e(TAG, "error", lockedException)
+            logger?.e(TAG, "error", lockedException)
             return AddDocumentToResponse.UserAuthRequired(keyUnlockData)
         }
         return AddDocumentToResponse.Success
@@ -220,7 +214,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
 
     private fun createRequestedDocumentData(
         requestedFields: Map<String, Map<String, List<String>>>,
-        readerAuth: ReaderAuth?
+        readerAuth: ReaderAuth?,
     ): RequestedDocumentData {
         val requestedDocuments = mutableListOf<RequestDocument>()
         requestedFields.forEach { document ->
@@ -250,6 +244,7 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
         private val _context = context.applicationContext
         var documentsResolver: DocumentsResolver? = null
         var readerTrustStore: ReaderTrustStore? = null
+        var logger: Logger? = null
 
         /**
          * Reader trust store that will be used to validate the certificate chain of the mdoc verifier
@@ -264,7 +259,8 @@ class OpenId4VpCBORResponseGeneratorImpl(private val documentsResolver: Document
                 OpenId4VpCBORResponseGeneratorImpl(
                     documentsResolver,
                     storageEngine,
-                    androidSecureArea
+                    androidSecureArea,
+                    logger
                 ).apply {
                     readerTrustStore?.let { setReaderTrustStore(it) }
                 }

@@ -18,7 +18,10 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
+import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpConfig.Builder
+import io.ktor.client.*
+import io.ktor.client.plugins.logging.*
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config as OpenId4VciConfig
 
 /**
@@ -80,6 +83,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      * @property encryptionAlgorithms list of [EncryptionAlgorithm] that defines the supported encryption algorithms
      * @property encryptionMethods list of [EncryptionMethod] that defines the supported encryption methods
      * @property schemes for OpenId4Vp. Optionally, you can set one or more schemes. By default, "mdoc-openid4vp" is used.
+     * @property logLevel the debug logging level. By default, [LogLevel.OFF] is used
+     * @property ktorHttpClientFactory the HttpClient factory for the OpenId4Vp. By default, [DefaultHttpClientFactory] is used
      */
     class Builder {
         lateinit var clientIdSchemes: List<ClientIdScheme>
@@ -90,7 +95,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          *
          * @param issuerUrl the issuer url
          */
-        fun withClientIdSchemes(clientIdSchemes: List<ClientIdScheme>) = apply { this.clientIdSchemes = clientIdSchemes }
+        fun withClientIdSchemes(clientIdSchemes: List<ClientIdScheme>) =
+            apply { this.clientIdSchemes = clientIdSchemes }
 
         lateinit var encryptionAlgorithms: List<EncryptionAlgorithm>
             private set
@@ -100,7 +106,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          *
          * @param issuerUrl the issuer url
          */
-        fun withEncryptionAlgorithms(encryptionAlgorithms: List<EncryptionAlgorithm>) = apply { this.encryptionAlgorithms = encryptionAlgorithms }
+        fun withEncryptionAlgorithms(encryptionAlgorithms: List<EncryptionAlgorithm>) =
+            apply { this.encryptionAlgorithms = encryptionAlgorithms }
 
         lateinit var encryptionMethods: List<EncryptionMethod>
             private set
@@ -110,7 +117,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          *
          * @param issuerUrl the issuer url
          */
-        fun withEncryptionMethods(encryptionMethods: List<EncryptionMethod>) = apply { this.encryptionMethods = encryptionMethods }
+        fun withEncryptionMethods(encryptionMethods: List<EncryptionMethod>) =
+            apply { this.encryptionMethods = encryptionMethods }
 
         var schemes: List<String> = listOf("mdoc-openid4vp")
             private set
@@ -135,6 +143,19 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             this.schemes = schemes
         }
 
+
+        var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
+            private set
+
+        /**
+         * Sets the HttpClient factory for the OpenId4Vp.
+         * By default, the [DefaultHttpClientFactory] is used
+         * @param ktorHttpClientFactory the HttpClient factory
+         */
+        fun withHttpClientFactory(ktorHttpClientFactory: () -> HttpClient) = apply {
+            this.ktorHttpClientFactory = ktorHttpClientFactory
+        }
+
         fun build(): OpenId4VpConfig {
 
             require(this::clientIdSchemes.isInitialized && clientIdSchemes.isNotEmpty()) { "OpenId4VpConfig: clientIdSchemes must be initialized with a not empty list" }
@@ -153,17 +174,17 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
 }
 
 sealed interface ClientIdScheme {
-    data class Preregistered(var preregisteredVerifiers: List<PreregisteredVerifier>): ClientIdScheme
+    data class Preregistered(var preregisteredVerifiers: List<PreregisteredVerifier>) : ClientIdScheme
 
-    object X509SanDns: ClientIdScheme
+    object X509SanDns : ClientIdScheme
 
-    object X509SanUri: ClientIdScheme
+    object X509SanUri : ClientIdScheme
 }
 
 data class PreregisteredVerifier(
     var clientId: ClientId,
     var legalName: LegalName,
-    var verifierApi: VerifierApi
+    var verifierApi: VerifierApi,
 )
 
 typealias ClientId = String
@@ -174,35 +195,35 @@ sealed interface EncryptionAlgorithm {
 
     val name: String
 
-    object ECDH_ES: EncryptionAlgorithm {
+    object ECDH_ES : EncryptionAlgorithm {
         override val name: String = "ECDH-ES"
     }
 
-    object ECDH_ES_A128KW: EncryptionAlgorithm {
+    object ECDH_ES_A128KW : EncryptionAlgorithm {
         override val name: String = "ECDH-ES+A128KW"
     }
 
-    object ECDH_ES_A192KW: EncryptionAlgorithm {
+    object ECDH_ES_A192KW : EncryptionAlgorithm {
         override val name: String = "ECDH-ES+A192KW"
     }
 
-    object ECDH_ES_A256KW: EncryptionAlgorithm {
+    object ECDH_ES_A256KW : EncryptionAlgorithm {
         override val name: String = "ECDH-ES+A256KW"
     }
 
-    object ECDH_1PU: EncryptionAlgorithm {
+    object ECDH_1PU : EncryptionAlgorithm {
         override val name: String = "ECDH-1PU"
     }
 
-    object ECDH_1PU_A128KW: EncryptionAlgorithm {
+    object ECDH_1PU_A128KW : EncryptionAlgorithm {
         override val name: String = "ECDH-1PU+A128KW"
     }
 
-    object ECDH_1PU_A192KW: EncryptionAlgorithm {
+    object ECDH_1PU_A192KW : EncryptionAlgorithm {
         override val name: String = "ECDH-1PU+A192KW"
     }
 
-    object ECDH_1PU_A256KW: EncryptionAlgorithm {
+    object ECDH_1PU_A256KW : EncryptionAlgorithm {
         override val name: String = "ECDH-1PU+A256KW"
     }
 }
@@ -211,27 +232,27 @@ sealed interface EncryptionMethod {
 
     val name: String
 
-    object A128CBC_HS256: EncryptionMethod {
+    object A128CBC_HS256 : EncryptionMethod {
         override val name: String = "A128CBC-HS256"
     }
 
-    object A192CBC_HS384: EncryptionMethod {
+    object A192CBC_HS384 : EncryptionMethod {
         override val name: String = "A192CBC-HS384"
     }
 
-    object A256CBC_HS512: EncryptionMethod {
+    object A256CBC_HS512 : EncryptionMethod {
         override val name: String = "A256CBC-HS512"
     }
 
-    object A128GCM: EncryptionMethod {
+    object A128GCM : EncryptionMethod {
         override val name: String = "A128GCM"
     }
 
-    object A192GCM: EncryptionMethod {
+    object A192GCM : EncryptionMethod {
         override val name: String = "A192GCM"
     }
 
-    object A256GCM: EncryptionMethod {
+    object A256GCM : EncryptionMethod {
         override val name: String = "A256GCM"
     }
 }

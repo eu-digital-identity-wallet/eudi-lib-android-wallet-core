@@ -9,11 +9,11 @@ hardwareBacked: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-b
 attestationChallenge: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-byte-array/index.html)? = null):
 CreateDocumentResult
 
-Create an issuance request for the given [docType](create-document.md)
+Create an UnsignedDocument for the given [docType](create-document.md)
 
 #### Return
 
-CreateIssuanceRequestResult
+CreateDocumentResult
 
 #### Parameters
 

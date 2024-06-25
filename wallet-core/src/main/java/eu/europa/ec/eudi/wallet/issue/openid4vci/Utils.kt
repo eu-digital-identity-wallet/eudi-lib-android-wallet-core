@@ -18,16 +18,13 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
-import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
-import io.ktor.client.plugins.logging.*
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
-import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 /**
  * Converts the [CreateDocumentResult] to a [Result].
@@ -101,25 +98,5 @@ internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): 
     val len = ECDSA.getSignatureByteArrayLength(algorithm)
     return derToConcat(len)
 }
-
-@get:JvmSynthetic
-internal val OpenId4VciManager.Config.ktorHttpClientFactoryWithLogging: KtorHttpClientFactory
-    get() = {
-        ktorHttpClientFactory().let { client ->
-            if (httpLoggingStatus) {
-                val baseLogger = OpenId4VciLogger(this)
-                client.config {
-                    install(Logging) {
-                        logger = object : KtorLogger {
-                            override fun log(message: String) {
-                                baseLogger.log(message)
-                            }
-                        }
-                        level = LogLevel.ALL
-                    }
-                }
-            } else client
-        }
-    }
 
 

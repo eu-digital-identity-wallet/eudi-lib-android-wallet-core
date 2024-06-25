@@ -150,11 +150,17 @@ The following example shows how to initialize the library:
 
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
+import eu.europa.ec.eudi.wallet.Logger
 import java.security.cert.X509Certificate
 
 val storageDir = applicationContext.noBackupFilesDir
 val verifierApiUri = "https://verifier-api-uri"
 val config = EudiWalletConfig.Builder(applicationContext)
+    .logLevel(Logger.LEVEL_DEBUG)
+    .ktorHttpClientFactory {
+        // provide your own Ktor HttpClient
+        // this will be used for OpenId4VCI and OpenId4VP communication
+    }
     .bleTransferMode(
         EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE,
         EudiWalletConfig.BLE_CLIENT_CENTRAL_MODE
@@ -201,7 +207,6 @@ val config = EudiWalletConfig.Builder(applicationContext)
         useDPoP(false)
         parUsage(ParUsage.IF_SUPPORTED)
         proofTypes(Config.ProofType.JWT, Config.ProofType.CWT)
-        debugLogging(LogLevel.DEBUG)
     }
     .build()
 
@@ -219,26 +224,22 @@ Library initialization is recommended to be done in the `Application.onCreate` m
 
 ### Manage documents
 
-Document is a data structure that contains the following information:
-
-- `id` document's unique identifier
-- `docType` document's docType (example: "eu.europa.ec.eudiw.pid.1")
-- `name` document's name. This is a human readable name.
-- `hardwareBacked` document's storage is hardware backed
-- `createdAt` document's creation date
-- `requiresUserAuth` flag that indicates if the document requires user authentication to be accessed
-- `nameSpacedData` retrieves the document's data, grouped by nameSpace. Values are in CBOR bytes
-
 The library provides a set of methods to work with documents.
 
 #### Listing documents
 
 The `EudiWallet.getDocuments` method that returns the list of documents stored in the library.
 
-The following example shows how to list documents:
+The following example shows how to list issued documents:
 
 ```kotlin
-val documents = EudiWallet.getDocuments()
+val documents: List<IssuedDocument> = EudiWallet.getDocuments()
+```
+
+To list all documents, including unsigned and deferred, use the following code:
+
+```kotlin
+val documents: List<Document> = EudiWallet.getAllDocuments()
 ```
 
 #### Retrieving a document
@@ -273,49 +274,78 @@ when (result) {
 
 #### Issuing/Adding a document
 
-Adding a document is a two-step process. First, you need to create an issuanceRequest using the
-method `EudiWallet.createIssuanceRequest`. The issuanceRequest holds the public certificate
+Adding a document is a two-step process. First, you need to create an unsigned document using the
+method `EudiWallet.createDocument`. The unsigned document holds the public certificate
 that will be used from the issuer to sign the document.
 
 Later, when document's data is available, you can create the document using the
-method `EudiWallet.addDocument` to add the document to document storage.
+method `EudiWallet.storeIssuedDocument` to add the document to document storage.
 
 The following example shows how to add a document:
 
 ```kotlin
-val docType = "eu.europa.ec.eudiw.pid.1"
+val docType = "eu.europa.ec.eudi.pid.1"
 val hardwareBacked = false
 val attestationChallenge = byteArrayOf(
     // attestation challenge bytes
     // provided by the issuer
 )
-val requestResult =
-    EudiWallet.createIssuanceRequest(docType, hardwareBacked, attestationChallenge)
-when (requestResult) {
+val result = EudiWallet.createDocument(docType, hardwareBacked, attestationChallenge)
+when (result) {
     is CreateIssuanceRequestResult.Failure -> {
-        val error = requestResult.throwable
-        // handle error while creating issuance request
+        val error = result.throwable
+        // handle error
     }
+
     is CreateIssuanceRequestResult.Success -> {
-        val request = requestResult.issuanceRequest
-        val docType = request.docType
+        val unsignedDocument = result.issuanceRequest
+        val docType = unsignedDocument.docType
         // the device certificate that will be used in the signing of the document
         // from the issuer while creating the MSO (Mobile Security Object)
-        val certificateNeedAuth = request.certificateNeedAuth
+        val certificateNeedAuth = unsignedDocument.certificateNeedAuth
+        // or
+        val publicKey = unsignedDocument.publicKey
 
-        // ... code that sends certificate to issuer and receives document's data
+        // if the issuer requires the user to prove possession of the private key corresponding to the certificateNeedAuth
+        // then user can use the method below to sign issuer's data and send the signature to the issuer
+        val signingInputFromIssuer = byteArrayOf(
+            // signing input bytes from the issuer
+            // provided by the issuer
+        )
+        val signatureResult = unsignedDocument.signWithAuthKey(signingInputFromIssuer)
+        when (signatureResult) {
+            is SignedWithAuthKeyResult.Success -> {
+                val signature = signatureResult.signature
+                // signature for the issuer
+            }
+            is SignedWithAuthKeyResult.Failure -> {
+                val error = signatureResult.throwable
+                // handle error while signing with auth key
+            }
+            is SignedWithAuthKeyResult.UserAuthRequired -> {
+                // user authentication is required to sign with auth key
+                val cryptoObject = signatureResult.cryptoObject
+                // use cryptoObject to authenticate the user
+                // after user authentication, the user can sign with auth key again
+            }
+        }
 
-        val issuerData: ByteArray = byteArrayOf() // CBOR bytes received from issuer
+        // ... code that sends docType and certificates to issuer and signature if required
 
-        val addResult = EudiWallet.addDocument(request, issuerData)
+        // after receiving the MSO from the issuer, the user can start the issuance process
+        val issuerData: ByteArray = byteArrayOf(
+            // CBOR bytes of the document
+        )
 
-        when (addResult) {
+        val storeResult = EudiWallet.storeIssuedDocument(unsignedDocument, issuerData)
+
+        when (storeResult) {
             is AddDocumentResult.Failure -> {
-                val error = addResult.throwable
+                val error = storeResult.throwable
                 // handle error while adding document
             }
             is AddDocumentResult.Success -> {
-                val documentId = addResult.documentId
+                val documentId = storeResult.documentId
                 // the documentId of the newly added document
                 // use the documentId to retrieve the document
                 documentManager.getDocumentById(documentId)

@@ -17,15 +17,19 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.IssuedCredential
-import eu.europa.ec.eudi.openid4vci.SubmittedRequest
+import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.StoreDocumentResult
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentFailed
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentIssued
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.bouncycastle.util.encoders.Hex
 import java.io.Closeable
 import java.util.*
 import kotlin.coroutines.resume
@@ -34,6 +38,8 @@ internal class ProcessResponse(
     val documentManager: DocumentManager,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
+    val deferredState: DeferredState,
+    val logger: Logger? = null,
 ) : Closeable {
     private val continuations = mutableMapOf<DocumentId, CancellableContinuation<Boolean>>()
 
@@ -43,9 +49,9 @@ internal class ProcessResponse(
         }
     }
 
-    suspend fun process(unsignedDocument: UnsignedDocument, submittedRequestResult: Result<SubmittedRequest>) {
+    suspend fun process(unsignedDocument: UnsignedDocument, outcomeResult: Result<SubmissionOutcome>) {
         try {
-            processSubmittedRequest(unsignedDocument, submittedRequestResult.getOrThrow())
+            processSubmittedRequest(unsignedDocument, outcomeResult.getOrThrow())
         } catch (e: Throwable) {
             when (e) {
                 is UserAuthRequiredException -> {
@@ -66,49 +72,47 @@ internal class ProcessResponse(
         continuations.values.forEach { it.cancel() }
     }
 
-    fun processSubmittedRequest(unsignedDocument: UnsignedDocument, submittedRequest: SubmittedRequest) {
-        when (submittedRequest) {
-            is SubmittedRequest.Success -> when (val credential = submittedRequest.credentials[0]) {
+    fun processSubmittedRequest(unsignedDocument: UnsignedDocument, outcome: SubmissionOutcome) {
+        when (outcome) {
+            is SubmissionOutcome.Success -> when (val credential = outcome.credentials[0]) {
                 is IssuedCredential.Issued -> try {
                     val cborBytes = Base64.getUrlDecoder().decode(credential.credential)
+                    logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(cborBytes)}")
                     documentManager.storeIssuedDocument(unsignedDocument, cborBytes)
-                        .onFailure {
-                            documentManager.deleteDocumentById(unsignedDocument.id)
-                            listener(documentFailed(unsignedDocument, it))
-                        }
-                        .onSuccess { id, _ ->
-                            issuedDocumentIds.add(id)
-                            listener(documentIssued(unsignedDocument))
-                        }
+                        .notifyListener(unsignedDocument)
                 } catch (e: Throwable) {
                     documentManager.deleteDocumentById(unsignedDocument.id)
                     listener(documentFailed(unsignedDocument, e))
                 }
 
                 is IssuedCredential.Deferred -> {
-                    TODO("Not supported yet")
+                    val state = deferredState.copy(
+                        deferredCredential = credential
+                    ).encode()
+                    documentManager.storeDeferredDocument(unsignedDocument, state)
+                        .notifyListener(unsignedDocument)
                 }
             }
 
-            is SubmittedRequest.InvalidProof -> {
+            is SubmissionOutcome.InvalidProof -> {
                 documentManager.deleteDocumentById(unsignedDocument.id)
                 listener(
                     documentFailed(
                         unsignedDocument,
-                        IllegalStateException(submittedRequest.errorDescription)
+                        IllegalStateException(outcome.errorDescription)
                     )
                 )
             }
 
-            is SubmittedRequest.Failed -> {
+            is SubmissionOutcome.Failed -> {
                 documentManager.deleteDocumentById(unsignedDocument.id)
-                listener(documentFailed(unsignedDocument, submittedRequest.error))
+                listener(documentFailed(unsignedDocument, outcome.error))
             }
         }
     }
 
     private fun UserAuthRequiredException.toIssueEvent(
-        unsignedDocument: UnsignedDocument
+        unsignedDocument: UnsignedDocument,
     ): IssueEvent.DocumentRequiresUserAuth {
         return IssueEvent.DocumentRequiresUserAuth(
             unsignedDocument,
@@ -116,5 +120,17 @@ internal class ProcessResponse(
             resume = { runBlocking { continuations[unsignedDocument.id]!!.resume(true) } },
             cancel = { runBlocking { continuations[unsignedDocument.id]!!.resume(false) } }
         )
+    }
+
+    private fun StoreDocumentResult.notifyListener(unsignedDocument: UnsignedDocument) = when (this) {
+        is StoreDocumentResult.Success -> {
+            issuedDocumentIds.add(documentId)
+            listener(documentIssued(unsignedDocument))
+        }
+
+        is StoreDocumentResult.Failure -> {
+            documentManager.deleteDocumentById(unsignedDocument.id)
+            listener(documentFailed(unsignedDocument, throwable))
+        }
     }
 }
