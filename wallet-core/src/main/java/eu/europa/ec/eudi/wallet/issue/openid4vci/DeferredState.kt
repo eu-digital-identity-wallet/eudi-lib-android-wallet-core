@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.IssuedCredential
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.ClientId
+import java.io.*
 import java.net.URI
 
 internal data class DeferredState(
@@ -29,7 +30,7 @@ internal data class DeferredState(
     val credentialIssuerMetadata: CredentialIssuerMetadata,
     val authorizedRequest: AuthorizedRequest,
     val deferredCredential: IssuedCredential.Deferred? = null,
-) {
+) : Serializable {
 
     val version = VERSION
 
@@ -42,15 +43,26 @@ internal data class DeferredState(
     )
 
     fun encode(): ByteArray {
-        return byteArrayOf()
+        return ByteArrayOutputStream().use { baos ->
+            ObjectOutputStream(baos).use { oos ->
+                oos.writeObject(this)
+                oos.flush()
+                baos.toByteArray()
+            }
+        }
     }
 
 
     companion object {
-        private val VERSION = 1L
+        const val VERSION = 1L
         fun decode(encoded: ByteArray): DeferredState {
-            TODO()
+            return ByteArrayInputStream(encoded).use { bais ->
+                ObjectInputStream(bais).use { ois ->
+                    val obj = ois.readObject()
+                    if (obj is DeferredState) obj
+                    else throw IllegalArgumentException("Invalid object type")
+                }
+            }
         }
-
     }
 }
