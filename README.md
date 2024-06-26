@@ -33,12 +33,13 @@ The library provides the following functionality:
 - Document issuance
     - [x] Support for OpenId4VCI Draft 13 document issuance
         - [x] Authorization Code Flow
-        - [ ] Pre-authorization Code Flow
+        - [x] Pre-authorization Code Flow
         - [x] Support for mso_mdoc format
         - [ ] Support for sd-jwt-vc format
-      - [x] Support credential offer
-      - [x] Support for DPoP JWT in authorization
-      - [x] Support for JWT and CWT proof types
+        - [x] Support credential offer
+        - [x] Support for DPoP JWT in authorization
+        - [x] Support for JWT and CWT proof types
+        - [ ] Support for deferred issuing
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -454,6 +455,7 @@ EudiWallet.resolveDocumentOffer(offerUri) { result ->
             // display the offer's data to the user
             val issuerName = offer.issuerName
             val offeredDocuments: List<OfferedDocument> = offer.offeredDocuments
+            val txCodeSpec: Offer.TxCodeSpec? = offer.txCodeSpec // information about pre-authorized flow
             // ...
         }
         is OfferResult.Failure -> {
@@ -546,11 +548,23 @@ val onIssueEvent = OnIssueEvent { event ->
     }
 }
 
-EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", onIssueEvent)
+EudiWallet.issueDocumentByDocType(
+    docType = "eu.europa.ec.eudiw.pid.1",
+    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    onEvent = onIssueEvent
+)
 // or
-EudiWallet.issueDocumentByOfferUri("https://issuer.com/?credential_offer=...", onIssueEvent)
+EudiWallet.issueDocumentByOfferUri(
+    offerUri = "https://issuer.com/?credential_offer=...",
+    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    onEvent = onIssueEvent
+)
 // or given a resolved offer object
-EudiWallet.issueDocumentByOffer(offer, onIssueEvent)
+EudiWallet.issueDocumentByOffer(
+    offer = offer,
+    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    onEvent = onIssueEvent
+)
 ```
 
 There's also available for `issueDocumentByDocType`, `issueDocumentByOfferUri` and `issueDocumentByOffer` methods to
@@ -559,7 +573,10 @@ If the `executor` parameter is null, the callback will be executed on the main t
 
 ```kotlin
 val executor = Executors.newSingleThreadExecutor()
-EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", executor) { event ->
+EudiWallet.issueDocumentByDocType(
+    docType = "eu.europa.ec.eudiw.pid.1",
+    executor = executor
+) { event ->
     // ...
 }
 ```
@@ -578,8 +595,8 @@ Also, the redirect uri declared in the OpenId4VCI configuration must be declared
     <application>
         <!-- rest of manifest -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+                android:name=".MainActivity"
+                android:exported="true">
             <!-- rest of activity -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
@@ -620,6 +637,25 @@ class SomeActivity : AppCompatActivity() {
     // ...
 }
 ```
+
+##### Pre-Authorization code flow
+
+When Issuer supports the pre-authorization code flow, the resolved offer will also contain the corresponding
+information. Specifically, the `txCodeSpec` field in the `Offer` object will contain:
+
+- The input mode, whether it is NUMERIC or TEXT
+- The expected length of the input
+- The description of the input
+
+From the user's perspective, the application must provide a way to input the transaction code.
+
+When the transaction code is provided, the issuance process can be resumed by calling any of the following methods:
+
+- `EudiWallet.issueDocumentByDocType`
+- `EudiWallet.issueDocumentByOfferUri`
+- `EudiWallet.issueDocumentByOffer`
+
+passing the transaction code as in the `txCode` parameter.
 
 ### Transfer documents
 

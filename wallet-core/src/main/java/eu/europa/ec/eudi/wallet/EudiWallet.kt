@@ -234,6 +234,7 @@ object EudiWallet {
     /**
      * Issue a document using the OpenId4VCI protocol
      * @param docType the document type to issue
+     * @param txCode the transaction code for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onEvent the callback to be called when the document is issued
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
@@ -244,6 +245,7 @@ object EudiWallet {
      */
     fun issueDocumentByDocType(
         docType: String,
+        txCode: String? = null,
         executor: Executor? = null,
         onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
@@ -253,7 +255,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
-                }.also { it.issueDocumentByDocType(docType, executor, onEvent) }
+                }.also { it.issueDocumentByDocType(docType, txCode, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -265,6 +267,7 @@ object EudiWallet {
     /**
      * Issue a document using an offer and the OpenId4VCI protocol
      * @param offer the offer to issue
+     * @param txCode the transaction code for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will
      * be called on the main thread
      * @param onEvent the callback to be called when the document is issued
@@ -276,6 +279,7 @@ object EudiWallet {
      */
     fun issueDocumentByOffer(
         offer: Offer,
+        txCode: String? = null,
         executor: Executor? = null,
         onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
@@ -285,7 +289,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
-                }.also { it.issueDocumentByOffer(offer, executor, onEvent) }
+                }.also { it.issueDocumentByOffer(offer, txCode, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -297,6 +301,7 @@ object EudiWallet {
     /**
      * Issue a document using an offerUri and the OpenId4VCI protocol
      * @param offerUri the offer uri
+     * @param txCode the transaction code for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onEvent the callback to be called when the document is issued
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
@@ -307,6 +312,7 @@ object EudiWallet {
      */
     fun issueDocumentByOfferUri(
         offerUri: String,
+        txCode: String? = null,
         executor: Executor? = null,
         onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
@@ -316,7 +322,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
-                }.also { it.issueDocumentByOfferUri(offerUri, executor, onEvent) }
+                }.also { it.issueDocumentByOfferUri(offerUri, txCode, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))

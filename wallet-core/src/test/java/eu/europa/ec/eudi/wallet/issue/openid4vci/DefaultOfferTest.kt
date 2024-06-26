@@ -75,13 +75,13 @@ class DefaultOfferTest {
 
         assertEquals(1, offer.offeredDocuments.size)
 
-        val expectedOfferedDocument = Offer.OfferedDocument(
-            "testName",
-            "testDocType",
+        val expectedOfferedDocument = DefaultOfferedDocument(
             mockCredentialConfigurationIdentifiers[0],
             mockCredentialConfigurations[0]
         )
 
         assertEquals(listOf(expectedOfferedDocument), offer.offeredDocuments)
+        assertEquals("testName", offer.offeredDocuments[0].name)
+        assertEquals("testDocType", offer.offeredDocuments[0].docType)
     }
 }

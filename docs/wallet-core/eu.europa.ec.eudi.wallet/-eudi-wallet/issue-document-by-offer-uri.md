@@ -5,6 +5,7 @@
 [androidJvm]\
 fun [issueDocumentByOfferUri](issue-document-by-offer-uri.md)(
 offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
+txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null,
 executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null,
 onEvent: [OpenId4VciManager.OnIssueEvent](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-issue-event/index.md))
 
@@ -17,6 +18,7 @@ androidJvm
 |          |                                                                                                                               |
 |----------|-------------------------------------------------------------------------------------------------------------------------------|
 | offerUri | the offer uri                                                                                                                 |
+| txCode   | the transaction code for pre-authorized issuing                                                                               |
 | executor | the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread |
 | onEvent  | the callback to be called when the document is issued                                                                         |
 

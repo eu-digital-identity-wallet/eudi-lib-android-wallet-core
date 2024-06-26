@@ -40,12 +40,14 @@ interface OpenId4VciManager {
     /**
      * Issue a document using a document type
      * @param docType the document type to issue
+     * @param txCode the transaction code to use for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued
      * @see[IssueEvent] on how to handle the result
      */
     fun issueDocumentByDocType(
         docType: String,
+        txCode: String? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent,
     )
@@ -53,6 +55,7 @@ interface OpenId4VciManager {
     /**
      * Issue a document using an offer
      * @param offer the offer to issue
+     * @param txCode the transaction code to use for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      *
@@ -60,6 +63,7 @@ interface OpenId4VciManager {
      */
     fun issueDocumentByOffer(
         offer: Offer,
+        txCode: String? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent,
     )
@@ -67,12 +71,14 @@ interface OpenId4VciManager {
     /**
      * Issue a document using an offer URI
      * @param offerUri the offer URI
+     * @param txCode the transaction code to use for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      * @see[IssueEvent] on how to handle the result
      */
     fun issueDocumentByOfferUri(
         offerUri: String,
+        txCode: String? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent,
     )

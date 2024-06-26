@@ -32,41 +32,77 @@ import java.io.Closeable
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 
-
+/**
+ * Authorizes an [Issuer] and provides the authorization code.
+ * @property continuation The continuation for the authorization.
+ */
 internal class IssuerAuthorization(
-    private val config: OpenId4VciManager.Config,
     private val context: Context,
     private val logger: Logger? = null,
 ) : Closeable {
 
-    private var suspendedAuthorization: SuspendedAuthorization? = null
+    var continuation: CancellableContinuation<Result<Response>>? = null
 
-    suspend fun authorize(issuer: Issuer): AuthorizedRequest {
+    /**
+     * Authorizes the given [Issuer] and returns the authorized request.
+     * If txCode is provided, it will be used to authorize the issuer,
+     * otherwise the browser will be opened for user authorization
+     * @param issuer The issuer to authorize.
+     * @param txCode The pre-authorization code.
+     */
+    suspend fun authorize(issuer: Issuer, txCode: String?): AuthorizedRequest {
         close() // close any previous suspensions
         return with(issuer) {
-            val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
-            val authResponse = openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
-            prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
-                AuthorizationCode(authResponse.authorizationCode),
-                authResponse.serverState
-            ).getOrThrow()
+            when {
+                !txCode.isNullOrEmpty() -> authorizeWithPreAuthorizationCode(txCode)
+                else -> {
+                    val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
+                    val authResponse = openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
+                    prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
+                        AuthorizationCode(authResponse.authorizationCode),
+                        authResponse.serverState
+                    )
+
+                }
+            }.getOrThrow()
         }
     }
 
+    /**
+     * Resumes the authorization from the given [Uri].
+     */
     fun resumeFromUri(uri: Uri) {
         logger?.d(TAG, "IssuerAuthorization.resumeFromUri($uri)")
-        suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: logger?.e(
-                TAG,
-                "${this::class.simpleName}.resumeFromUri failed",
-                IllegalStateException("No suspended authorization found")
-            )
+        continuation?.let { cont ->
+            try {
+                uri.getQueryParameter("code")?.let { authorizationCode ->
+                    uri.getQueryParameter("state")?.let { serverState ->
+                        cont.resume(Result.success(Response(authorizationCode, serverState)))
+                    } ?: "No server state found".let { msg ->
+                        val exception = IllegalStateException(msg)
+                        logger?.e(TAG, "resumeFromUri: $msg", exception)
+                        cont.resume(Result.failure(exception))
+                    }
+                } ?: "No authorization code found".let { msg ->
+                    val exception = IllegalStateException(msg)
+                    logger?.e(TAG, "resumeFromUri: $msg", exception)
+                    cont.resume(Result.failure(exception))
+                }
+            } catch (e: Throwable) {
+                logger?.e(TAG, "resumeFromUri: ${e.message}", e)
+                cont.resume(Result.failure(e))
+            }
+        } ?: run {
+            val exception = IllegalStateException("No suspended authorization found")
+            logger?.e(TAG, "IssuerAuthorization.resumeFromUri failed", exception)
+            throw exception
+        }
 
     }
 
     override fun close() {
-        suspendedAuthorization?.close()
-        suspendedAuthorization = null
+        continuation?.cancel(CancellationException("Authorization was cancelled"))
+        continuation = null
     }
 
     /**
@@ -74,70 +110,17 @@ internal class IssuerAuthorization(
      * @param prepareAuthorizationCodeRequest The prepared authorization request.
      * @return The authorization response wrapped in a [Result].
      */
-    private suspend fun openBrowserForAuthorization(prepareAuthorizationCodeRequest: AuthorizationRequestPrepared): Result<SuspendedAuthorization.Response> {
+    suspend fun openBrowserForAuthorization(prepareAuthorizationCodeRequest: AuthorizationRequestPrepared): Result<Response> {
         val authorizationCodeUri =
             Uri.parse(prepareAuthorizationCodeRequest.authorizationCodeURL.value.toString())
-        return suspendCancellableCoroutine { continuation ->
-            suspendedAuthorization = SuspendedAuthorization(continuation, logger)
-            continuation.invokeOnCancellation {
-                suspendedAuthorization = null
-            }
+        return suspendCancellableCoroutine { cont ->
+            continuation = cont
+            cont.invokeOnCancellation { continuation = null }
             context.startActivity(Intent(ACTION_VIEW, authorizationCodeUri).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         }
     }
 
-    /**
-     * Suspended authorization. It is used to resume the authorization process.
-     */
-    class SuspendedAuthorization(
-        val continuation: CancellableContinuation<Result<Response>>,
-        val logger: Logger? = null,
-    ) : Closeable {
-
-
-        /**
-         * Resumes the authorization process from the given uri.
-         * @param uri the uri
-         * @throws Throwable if the uri is invalid
-         */
-        fun resumeFromUri(uri: Uri) {
-            try {
-                uri.getQueryParameter("code")?.let { authorizationCode ->
-                    uri.getQueryParameter("state")?.let { serverState ->
-                        continuation.resume(Result.success(Response(authorizationCode, serverState)))
-                    } ?: "No server state found".let { msg ->
-                        val exception = IllegalStateException(msg)
-                        logger?.e(TAG, "resumeFromUri: $msg", exception)
-                        continuation.resume(Result.failure(exception))
-                    }
-                } ?: "No authorization code found".let { msg ->
-                    val exception = IllegalStateException(msg)
-                    logger?.e(TAG, "resumeFromUri: $msg", exception)
-                    continuation.resume(Result.failure(exception))
-                }
-            } catch (e: Throwable) {
-                logger?.e(TAG, "resumeFromUri: ${e.message}", e)
-                continuation.resume(Result.failure(e))
-            }
-        }
-
-        /**
-         * Cancels the wrapped continuation.
-         */
-        override fun close() {
-            continuation.takeIf { it.isActive }?.cancel(CancellationException("Authorization was cancelled"))
-        }
-
-        /**
-         * Response of the authorization process.
-         * @property authorizationCode the authorization code
-         * @property serverState the server state
-         * @constructor Creates a new [Response] instance.
-         * @param authorizationCode the authorization code
-         * @param serverState the server state
-         */
-        data class Response(val authorizationCode: String, val serverState: String)
-    }
+    data class Response(val authorizationCode: String, val serverState: String)
 }
