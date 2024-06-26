@@ -79,18 +79,19 @@ internal class DefaultOpenId4VciManager(
         IssuerCreator(config, ktorHttpClientFactory)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
-        IssuerAuthorization(config, context, logger)
+        IssuerAuthorization(context, logger)
     }
 
     override fun issueDocumentByDocType(
         docType: String,
+        txCode: String?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
             try {
                 val offer = offerCreator.createOffer(docType)
-                doIssue(offer, listener)
+                doIssue(offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByDocType failed", e)
@@ -100,12 +101,13 @@ internal class DefaultOpenId4VciManager(
 
     override fun issueDocumentByOffer(
         offer: Offer,
+        txCode: String?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
             try {
-                doIssue(offer, listener)
+                doIssue(offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -116,13 +118,14 @@ internal class DefaultOpenId4VciManager(
 
     override fun issueDocumentByOfferUri(
         offerUri: String,
+        txCode: String?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(onIssueEvent.wrap(executor)) { coroutineScope, listener ->
             try {
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
-                doIssue(offer, listener)
+                doIssue(offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -214,11 +217,12 @@ internal class DefaultOpenId4VciManager(
      */
     private suspend fun doIssue(
         offer: Offer,
+        txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
         offer as DefaultOffer
         val issuer = issuerCreator.createIssuer(offer)
-        var authorizedRequest = issuerAuthorization.authorize(issuer)
+        var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
 
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()

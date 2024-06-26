@@ -45,6 +45,7 @@ internal class SubmitRequest(
         unsignedDocument: UnsignedDocument,
         offeredDocument: Offer.OfferedDocument,
     ): SubmissionOutcome {
+        offeredDocument as DefaultOfferedDocument
         var proofSigner: ProofSigner? = null
         val claimSet = null
         val payload = IssuanceRequestPayload.ConfigurationBased(offeredDocument.configurationIdentifier, claimSet)
