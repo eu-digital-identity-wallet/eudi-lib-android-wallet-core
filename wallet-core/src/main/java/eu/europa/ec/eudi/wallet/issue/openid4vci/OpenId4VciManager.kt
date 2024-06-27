@@ -87,13 +87,13 @@ interface OpenId4VciManager {
      * Issue a deferred document
      * @param deferredDocument the deferred document to issue
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
-     * @param onIssueEvent the callback to be called when the document is issued
-     * @see[IssueEvent] on how to handle the result
+     * @param onIssueResult the callback to be called when the document is issued
+     * @see[OnDeferredIssueResult] on how to handle the result
      */
     fun issueDeferredDocument(
         deferredDocument: DeferredDocument,
         executor: Executor?,
-        onIssueEvent: OnIssueEvent,
+        onIssueResult: OnDeferredIssueResult,
     )
 
     /**
@@ -149,6 +149,11 @@ interface OpenId4VciManager {
      * Callback to be called when an offer is resolved
      */
     fun interface OnResolvedOffer : OnResult<OfferResult>
+
+    /**
+     * Callback to be called when a deferred document is issued
+     */
+    fun interface OnDeferredIssueResult : OnResult<DeferredIssueResult>
 
     /**
      * Builder to create an instance of [OpenId4VciManager]

@@ -33,13 +33,18 @@ internal data class DefaultOffer(
     @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.MsoMdocFormatFilter,
 ) : Offer {
 
-    private val issuerMetadata: CredentialIssuerMetadata = credentialOffer.credentialIssuerMetadata
+    private val issuerMetadata: CredentialIssuerMetadata
+        get() = credentialOffer.credentialIssuerMetadata
 
-    override val issuerName: String = issuerMetadata.credentialIssuerIdentifier.value.value.host
-    override val offeredDocuments: List<Offer.OfferedDocument> = issuerMetadata.credentialConfigurationsSupported
-        .filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
-        .filterValues { credentialConfigurationFilter(it) }
-        .map { (id, conf) -> DefaultOfferedDocument(id, conf) }
+    override val issuerName: String
+        get() = issuerMetadata.credentialIssuerIdentifier.value.value.host
+
+    override val offeredDocuments: List<Offer.OfferedDocument>
+        get() = issuerMetadata.credentialConfigurationsSupported
+            .filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
+            .filterValues { credentialConfigurationFilter(it) }
+            .map { (id, conf) -> DefaultOfferedDocument(id, conf) }
+
     override val txCodeSpec: Offer.TxCodeSpec?
         get() = credentialOffer.txCodeSpec
 

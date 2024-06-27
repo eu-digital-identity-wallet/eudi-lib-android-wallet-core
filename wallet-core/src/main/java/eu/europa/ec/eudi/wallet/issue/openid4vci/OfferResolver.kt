@@ -21,39 +21,35 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.C
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
 import io.ktor.client.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 
 internal class OfferResolver(
-    private val config: OpenId4VciManager.Config,
+    private val proofTypes: List<OpenId4VciManager.Config.ProofType>,
     private val ktorHttpClientFactory: () -> HttpClient,
 ) {
-    private val resolver by lazy {
+    val resolver by lazy {
         CredentialOfferRequestResolver(ktorHttpClientFactory)
     }
-    private val credentialConfigurationFilter by lazy {
-        Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes))
+    val credentialConfigurationFilter by lazy {
+        Compose(MsoMdocFormatFilter, ProofTypeFilter(proofTypes))
     }
 
     @VisibleForTesting
     val cache = mutableMapOf<String, Offer>()
-    suspend fun resolve(offerUri: String): Result<Offer> {
-        if (cache.containsKey(offerUri)) {
-            return Result.success(cache[offerUri]!!)
-        }
-        return resolveOnceWithoutCache(offerUri)
+
+    suspend fun resolve(offerUri: String, useCache: Boolean = true): Result<Offer> {
+        return if (useCache) {
+            cache[offerUri]?.let { Result.success(it) } ?: resolveAndCache(offerUri)
+        } else resolveAndCache(offerUri)
     }
 
-    suspend fun resolveOnceWithoutCache(offerUri: String): Result<Offer> {
-        return withContext(Dispatchers.IO) {
-            resolver.resolve(offerUri).map { credentialOffer ->
-                DefaultOffer(credentialOffer, credentialConfigurationFilter)
-            }.onSuccess {
-                cache[offerUri] = it
-            }.onFailure {
-                cache.remove(offerUri)
-            }
+    private suspend fun resolveAndCache(offerUri: String): Result<Offer> {
+        return resolver.resolve(offerUri).map {
+            DefaultOffer(it, credentialConfigurationFilter)
+        }.also { result ->
+            result
+                .onSuccess { cache[offerUri] = it }
+                .onFailure { cache.remove(offerUri) }
         }
     }
 }

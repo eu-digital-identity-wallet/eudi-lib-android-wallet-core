@@ -3,17 +3,17 @@
 # TxCodeSpec
 
 [androidJvm]\
-data class [TxCodeSpec](index.md)(val inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = InputMode.NUMERIC,
-val length: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)?, val
+data class [TxCodeSpec](index.md)(val inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = NUMERIC, val
+length: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)?, val
 description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null)
 
 Specification for a transaction code.
 
 ## Constructors
 
-|                                |                                                                                                                                                                                                                                                                                                            |
-|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [TxCodeSpec](-tx-code-spec.md) | [androidJvm]<br>constructor(inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = InputMode.NUMERIC, length: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)?, description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null) |
+|                                |                                                                                                                                                                                                                                                                                                  |
+|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [TxCodeSpec](-tx-code-spec.md) | [androidJvm]<br>constructor(inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = NUMERIC, length: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)?, description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null) |
 
 ## Types
 

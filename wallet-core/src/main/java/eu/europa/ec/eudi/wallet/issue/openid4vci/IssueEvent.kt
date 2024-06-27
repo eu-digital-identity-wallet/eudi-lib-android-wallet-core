@@ -167,8 +167,6 @@ sealed interface IssueEvent : OpenId4VciResult {
 
     companion object {
         internal fun failure(e: Throwable) = Failure(e)
-        internal fun documentIssued(unsignedDocument: UnsignedDocument) =
-            DocumentIssued(unsignedDocument.id, unsignedDocument.name, unsignedDocument.docType)
 
         internal fun documentFailed(unsignedDocument: UnsignedDocument, cause: Throwable) =
             DocumentFailed(

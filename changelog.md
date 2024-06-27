@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0-SNAPSHOT]
+
+__27 Jun 2024__
+
+- Bump eudi-lib-jvm-openid4vci-kt to v0.3.2
+- Bump eudi-lib-android-wallet-document-manager to v0.4.0-SNAPSHOT
+- Support for OpenId4VCI pre-authorization flow
+- Support for OpenId4VCI deferred issuance
+- Extensive logging for OpenId4VCI and OpenId4VP
+- Allow overriding ktor client for OpenId4VCI and OpenId4VP
+- Bug fixes in OpenId4VCI
+
 ## [0.9.5-SNAPSHOT]
 
 __14 Jun 2024__

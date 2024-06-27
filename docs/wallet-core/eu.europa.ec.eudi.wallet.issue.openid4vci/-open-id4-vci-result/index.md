@@ -6,10 +6,11 @@ interface [OpenId4VciResult](index.md)
 
 #### Inheritors
 
-|                                          |
-|------------------------------------------|
-| [IssueEvent](../-issue-event/index.md)   |
-| [OfferResult](../-offer-result/index.md) |
+|                                                           |
+|-----------------------------------------------------------|
+| [DeferredIssueResult](../-deferred-issue-result/index.md) |
+| [IssueEvent](../-issue-event/index.md)                    |
+| [OfferResult](../-offer-result/index.md)                  |
 
 ## Types
 

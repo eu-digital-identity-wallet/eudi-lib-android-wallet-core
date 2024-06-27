@@ -10,10 +10,11 @@ and [OpenId4VciManager.resolveDocumentOffer](../resolve-document-offer.md) metho
 
 #### Inheritors
 
-|                                                   |
-|---------------------------------------------------|
-| [OnIssueEvent](../-on-issue-event/index.md)       |
-| [OnResolvedOffer](../-on-resolved-offer/index.md) |
+|                                                                |
+|----------------------------------------------------------------|
+| [OnIssueEvent](../-on-issue-event/index.md)                    |
+| [OnResolvedOffer](../-on-resolved-offer/index.md)              |
+| [OnDeferredIssueResult](../-on-deferred-issue-result/index.md) |
 
 ## Functions
 
