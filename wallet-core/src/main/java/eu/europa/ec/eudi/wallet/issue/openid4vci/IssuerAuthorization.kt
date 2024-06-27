@@ -54,7 +54,8 @@ internal class IssuerAuthorization(
         close() // close any previous suspensions
         return with(issuer) {
             when {
-                !txCode.isNullOrEmpty() -> authorizeWithPreAuthorizationCode(txCode)
+                isPreAuthorized() -> authorizeWithPreAuthorizationCode(txCode)
+
                 else -> {
                     val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
                     val authResponse = openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
@@ -123,4 +124,12 @@ internal class IssuerAuthorization(
     }
 
     data class Response(val authorizationCode: String, val serverState: String)
+
+    companion object {
+        /**
+         * Checks if the issuer's credential offer is pre-authorized.
+         * @receiver The issuer to check.
+         */
+        fun Issuer.isPreAuthorized(): Boolean = credentialOffer.grants?.preAuthorizedCode() != null
+    }
 }

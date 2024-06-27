@@ -6,11 +6,12 @@ interface [Erroneous](index.md)
 
 #### Inheritors
 
-|                                                                |
-|----------------------------------------------------------------|
-| [Failure](../../-issue-event/-failure/index.md)                |
-| [DocumentFailed](../../-issue-event/-document-failed/index.md) |
-| [Failure](../../-offer-result/-failure/index.md)               |
+|                                                                          |
+|--------------------------------------------------------------------------|
+| [DocumentFailed](../../-deferred-issue-result/-document-failed/index.md) |
+| [Failure](../../-issue-event/-failure/index.md)                          |
+| [DocumentFailed](../../-issue-event/-document-failed/index.md)           |
+| [Failure](../../-offer-result/-failure/index.md)                         |
 
 ## Properties
 

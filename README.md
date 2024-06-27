@@ -39,7 +39,7 @@ The library provides the following functionality:
         - [x] Support credential offer
         - [x] Support for DPoP JWT in authorization
         - [x] Support for JWT and CWT proof types
-        - [ ] Support for deferred issuing
+      - [x] Support for deferred issuing
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -293,12 +293,12 @@ val attestationChallenge = byteArrayOf(
 )
 val result = EudiWallet.createDocument(docType, hardwareBacked, attestationChallenge)
 when (result) {
-    is CreateIssuanceRequestResult.Failure -> {
+    is CreateDocumentResult.Failure -> {
         val error = result.throwable
         // handle error
     }
 
-    is CreateIssuanceRequestResult.Success -> {
+    is CreateDocumentResult.Success -> {
         val unsignedDocument = result.issuanceRequest
         val docType = unsignedDocument.docType
         // the device certificate that will be used in the signing of the document
@@ -341,11 +341,11 @@ when (result) {
         val storeResult = EudiWallet.storeIssuedDocument(unsignedDocument, issuerData)
 
         when (storeResult) {
-            is AddDocumentResult.Failure -> {
+            is StoreDocumentResult.Failure -> {
                 val error = storeResult.throwable
                 // handle error while adding document
             }
-            is AddDocumentResult.Success -> {
+            is StoreDocumentResult.Success -> {
                 val documentId = storeResult.documentId
                 // the documentId of the newly added document
                 // use the documentId to retrieve the document
@@ -545,6 +545,14 @@ val onIssueEvent = OnIssueEvent { event ->
             // or cancel the issuance process by calling
             event.cancel()
         }
+
+        is IssueEvent.DocumentDeferred -> {
+            // triggered when the document issuance is deferred
+            // and holds the documentId of the deferred document
+            val documentId: String = event.documentId
+            val documentName: String = event.name
+            val docType: String = event.docType
+        }
     }
 }
 
@@ -581,7 +589,7 @@ EudiWallet.issueDocumentByDocType(
 }
 ```
 
-##### Authorization code flow
+#### Authorization code flow
 
 For the authorization code flow to work, the application must handle the redirect URI. The redirect URI is the URI that
 the Issuer will redirect the user to after the user has authenticated and authorized. The redirect URI must be handled
@@ -638,7 +646,7 @@ class SomeActivity : AppCompatActivity() {
 }
 ```
 
-##### Pre-Authorization code flow
+#### Pre-Authorization code flow
 
 When Issuer supports the pre-authorization code flow, the resolved offer will also contain the corresponding
 information. Specifically, the `txCodeSpec` field in the `Offer` object will contain:
@@ -656,6 +664,30 @@ When the transaction code is provided, the issuance process can be resumed by ca
 - `EudiWallet.issueDocumentByOffer`
 
 passing the transaction code as in the `txCode` parameter.
+
+#### Deferred Issuance
+
+When the document issuance is deferred, the `IssueEvent.DocumentDeferred` event is triggered. The deferred document can
+be issued later by calling the `EudiWallet.issueDeferredDocument` method.
+
+```kotlin
+val documentId = "documentId"
+
+EudiWallet.issueDeferredDocument(documentId) { result ->
+    when (result) {
+        is DeferredIssueResult.DocumentIssued -> {
+            // document issued
+        }
+        is DeferredIssueResult.DocumentFailed -> {
+            // error
+            val cause = result.throwable
+        }
+        is DeferredIssueResult.DocumentNotReady -> {
+            // document is not issued yet
+        }
+    }
+}
+```
 
 ### Transfer documents
 

@@ -21,10 +21,15 @@ import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.logging.Logger
+import io.ktor.client.*
+import io.ktor.client.plugins.logging.*
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
+import java.util.concurrent.Executor
 
 /**
  * Converts the [CreateDocumentResult] to a [Result].
@@ -47,7 +52,7 @@ internal val CreateDocumentResult.result: Result<UnsignedDocument>
 @JvmSynthetic
 internal fun DocumentManager.createDocument(
     offerOfferedDocument: Offer.OfferedDocument,
-    useStrongBox: Boolean = true
+    useStrongBox: Boolean = true,
 ): Result<UnsignedDocument> =
     createDocument(offerOfferedDocument.docType, useStrongBox)
         .result
@@ -97,6 +102,65 @@ internal fun ByteArray.derToConcat(algorithm: SupportedProofType.ProofAlgorithm)
 internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): ByteArray {
     val len = ECDSA.getSignatureByteArrayLength(algorithm)
     return derToConcat(len)
+}
+
+/**
+ * Wraps the given [OpenId4VciManager.OnResult] with the given [Executor].
+ * @param executor The executor.
+ * @receiver The [OpenId4VciManager.OnResult].
+ * @return The wrapped [OpenId4VciManager.OnResult].
+ */
+@JvmSynthetic
+internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>.runOn(executor: Executor): OpenId4VciManager.OnResult<V> {
+    return OpenId4VciManager.OnResult { result: V ->
+        executor.execute {
+            this@runOn.onResult(result)
+        }
+    }
+}
+
+/**
+ * Wraps the given [OpenId4VciManager.OnResult] with debug logging.
+ */
+@JvmSynthetic
+internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>.wrapWithLogging(logger: Logger?): OpenId4VciManager.OnResult<V> {
+    return when (val l = logger) {
+        null -> this
+        else -> OpenId4VciManager.OnResult { result: V ->
+            when (result) {
+                is OpenId4VciResult.Erroneous -> l.e(TAG, "$result", result.cause)
+                else -> l.d(TAG, "$result")
+            }
+            this.onResult(result)
+        }
+    }
+}
+
+/**
+ * Wraps the [HttpClient] with a logging interceptor.
+ * @receiver the [HttpClient] factory
+ * @param libraryLogger the logger
+ * @return the wrapped [HttpClient] factory
+ */
+@JvmSynthetic
+internal fun (() -> HttpClient).wrappedWithLogging(libraryLogger: Logger?): (() -> HttpClient) {
+    return if (libraryLogger != null) {
+        {
+            val ktorLogger = object : io.ktor.client.plugins.logging.Logger {
+                override fun log(message: String) {
+                    libraryLogger.d(TAG, message)
+                }
+            }
+            this().let { client ->
+                client.config {
+                    install(Logging) {
+                        logger = ktorLogger
+                        level = LogLevel.ALL
+                    }
+                }
+            }
+        }
+    } else this
 }
 
 

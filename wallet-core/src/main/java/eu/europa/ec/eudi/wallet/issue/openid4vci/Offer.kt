@@ -15,10 +15,8 @@
  */
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
-import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
-import eu.europa.ec.eudi.openid4vci.TxCode
-import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.TxCodeSpec.InputMode.NUMERIC
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.TxCodeSpec.InputMode.TEXT
 
 /**
  * An offer of credentials to be issued.
@@ -55,7 +53,7 @@ interface Offer {
      * @property description a description of the transaction code
      */
     data class TxCodeSpec(
-        val inputMode: InputMode = InputMode.NUMERIC,
+        val inputMode: InputMode = NUMERIC,
         val length: Int?,
         val description: String? = null,
     ) {

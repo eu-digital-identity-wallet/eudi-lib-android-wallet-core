@@ -23,12 +23,12 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.StoreDocumentResult
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentFailed
-import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentIssued
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.json.Json
 import org.bouncycastle.util.encoders.Hex
 import java.io.Closeable
 import java.util.*
@@ -36,12 +36,16 @@ import kotlin.coroutines.resume
 
 internal class ProcessResponse(
     val documentManager: DocumentManager,
+    val deferredContextCreator: DeferredContextCreator,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
-    val deferredState: DeferredState,
     val logger: Logger? = null,
 ) : Closeable {
     private val continuations = mutableMapOf<DocumentId, CancellableContinuation<Boolean>>()
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
 
     suspend fun process(response: SubmitRequest.Response) {
         response.forEach { (unsignedDocument, result) ->
@@ -86,11 +90,9 @@ internal class ProcessResponse(
                 }
 
                 is IssuedCredential.Deferred -> {
-                    val state = deferredState.copy(
-                        deferredCredential = credential
-                    ).encode()
-                    documentManager.storeDeferredDocument(unsignedDocument, state)
-                        .notifyListener(unsignedDocument)
+                    val contextToStore = deferredContextCreator.create(credential)
+                    documentManager.storeDeferredDocument(unsignedDocument, contextToStore.toByteArray())
+                        .notifyListener(unsignedDocument, isDeferred = true)
                 }
             }
 
@@ -122,15 +124,20 @@ internal class ProcessResponse(
         )
     }
 
-    private fun StoreDocumentResult.notifyListener(unsignedDocument: UnsignedDocument) = when (this) {
-        is StoreDocumentResult.Success -> {
-            issuedDocumentIds.add(documentId)
-            listener(documentIssued(unsignedDocument))
-        }
+    private fun StoreDocumentResult.notifyListener(unsignedDocument: UnsignedDocument, isDeferred: Boolean = false) =
+        when (this) {
+            is StoreDocumentResult.Success -> {
+                issuedDocumentIds.add(documentId)
+                if (isDeferred) {
+                    listener(IssueEvent.DocumentDeferred(documentId, unsignedDocument.name, unsignedDocument.docType))
+                } else {
+                    listener(IssueEvent.DocumentIssued(documentId, unsignedDocument.name, unsignedDocument.docType))
+                }
+            }
 
-        is StoreDocumentResult.Failure -> {
-            documentManager.deleteDocumentById(unsignedDocument.id)
-            listener(documentFailed(unsignedDocument, throwable))
+            is StoreDocumentResult.Failure -> {
+                documentManager.deleteDocumentById(unsignedDocument.id)
+                listener(documentFailed(unsignedDocument, throwable))
+            }
         }
-    }
 }

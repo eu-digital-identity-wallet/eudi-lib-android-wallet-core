@@ -332,6 +332,53 @@ object EudiWallet {
     }
 
     /**
+     * Issue a deferred document using the OpenId4VCI protocol
+     * @param documentId the id of the deferred document
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onResult the callback to be called when the document is issued
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
+     * @see [OpenId4VciManager.issueDeferredDocument]
+     * @see [OpenId4VciManager.OnDeferredIssueResult] on how to handle the result
+     */
+    fun issueDeferredDocument(
+        documentId: DocumentId,
+        executor: Executor? = null,
+        onResult: OpenId4VciManager.OnDeferredIssueResult,
+    ) {
+        requireInit {
+            config.openId4VciConfig?.let { config ->
+                openId4VciManager = OpenId4VciManager(context) {
+                    documentManager(this@EudiWallet.documentManager)
+                    config(config)
+                    logger = this@EudiWallet.logger
+                }.also {
+                    when (val document = documentManager.getDocumentById(documentId)) {
+                        is DeferredDocument -> it.issueDeferredDocument(document, executor, onResult)
+                        else -> (executor ?: context.mainExecutor()).execute {
+                            onResult(
+                                DeferredIssueResult.DocumentFailed(
+                                    documentId,
+                                    IllegalStateException("Document is not deferred")
+                                )
+                            )
+                        }
+                    }
+
+                }
+            } ?: run {
+                (executor ?: context.mainExecutor()).execute {
+                    onResult(
+                        DeferredIssueResult.DocumentFailed(
+                            documentId,
+                            IllegalStateException("OpenId4Vci config is not set in configuration")
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /**
      * Resolves a document offer using OpenId4VCI protocol
      * @param offerUri the offer uri
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread

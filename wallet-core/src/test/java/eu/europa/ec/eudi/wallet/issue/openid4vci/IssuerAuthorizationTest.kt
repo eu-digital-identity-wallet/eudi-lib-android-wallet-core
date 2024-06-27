@@ -19,10 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
-import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
-import eu.europa.ec.eudi.openid4vci.HttpsUrl
-import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +40,6 @@ class IssuerAuthorizationTest {
         lateinit var logger: Logger
         lateinit var issuer: Issuer
 
-
         @BeforeAll
         @JvmStatic
         fun setup() {
@@ -53,9 +49,6 @@ class IssuerAuthorizationTest {
 
             mockkConstructor(Intent::class)
             every { anyConstructed<Intent>().addFlags(any()) } returns mockk(relaxed = true)
-
-            issuer = mockk(relaxed = true)
-
 
             context = mockk(relaxed = true)
             logger = mockk(relaxed = true)
@@ -72,8 +65,8 @@ class IssuerAuthorizationTest {
             preparedAuthorizationRequest.authorizationCodeURL
         } returns HttpsUrl("https://test.com").getOrThrow()
 
+        issuer = mockk(relaxed = true)
         authorizedRequest = mockk(relaxed = true)
-
         coEvery {
             issuer.prepareAuthorizationRequest()
         } returns Result.success(preparedAuthorizationRequest)
@@ -90,8 +83,12 @@ class IssuerAuthorizationTest {
     }
 
     @Test
-    fun `authorize method when txCode equals to null call openBrowserForAuthorization`() {
-
+    fun `authorize method when no preAuthorizedCode in offer and txCode is null calls openBrowserForAuthorization`() {
+        every { issuer.credentialOffer } returns mockk(relaxed = true) {
+            every { grants } returns mockk(relaxed = true) {
+                every { preAuthorizedCode() } returns null
+            }
+        }
         val issuerAuthorization = spyk(IssuerAuthorization(context, logger))
         runTest {
             launch {
@@ -109,12 +106,21 @@ class IssuerAuthorizationTest {
     }
 
     @Test
-    fun `authorize method when passing txCode does not call openBrowserForAuthorization but calls authorizeWithPreAuthorizationCode`() {
-
+    fun `authorize method when preAuthorizedCode in offer and passing txCode does not call openBrowserForAuthorization but calls authorizeWithPreAuthorizationCode`() {
+        every { issuer.credentialOffer } returns mockk(relaxed = true) {
+            every { grants } returns mockk(relaxed = true) {
+                every { preAuthorizedCode() } returns mockk(relaxed = true) {
+                    every { txCode } returns mockk(relaxed = true) {
+                        every { length } returns 4
+                        every { inputMode } returns TxCodeInputMode.NUMERIC
+                    }
+                }
+            }
+        }
         val issuerAuthorization = spyk(IssuerAuthorization(context, logger))
         runTest {
             launch {
-                issuerAuthorization.authorize(issuer, "testCode")
+                issuerAuthorization.authorize(issuer, "1234")
             }
             launch {
                 delay(500.milliseconds)
@@ -126,7 +132,7 @@ class IssuerAuthorizationTest {
             issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
         }
         coVerify(exactly = 1) {
-            issuer.authorizeWithPreAuthorizationCode("testCode")
+            issuer.authorizeWithPreAuthorizationCode("1234")
         }
     }
 

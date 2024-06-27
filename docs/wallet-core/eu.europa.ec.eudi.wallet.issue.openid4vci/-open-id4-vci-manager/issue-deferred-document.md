@@ -5,7 +5,7 @@
 [androidJvm]\
 abstract fun [issueDeferredDocument](issue-deferred-document.md)(deferredDocument: DeferredDocument,
 executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)?,
-onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+onIssueResult: [OpenId4VciManager.OnDeferredIssueResult](-on-deferred-issue-result/index.md))
 
 Issue a deferred document
 
@@ -17,10 +17,10 @@ androidJvm
 |------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | deferredDocument | the deferred document to issue                                                                                                |
 | executor         | the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread |
-| onIssueEvent     | the callback to be called when the document is issued                                                                         |
+| onIssueResult    | the callback to be called when the document is issued                                                                         |
 
 #### See also
 
-|                                        |                             |
-|----------------------------------------|-----------------------------|
-| [IssueEvent](../-issue-event/index.md) | on how to handle the result |
+|                                                                               |                             |
+|-------------------------------------------------------------------------------|-----------------------------|
+| [OpenId4VciManager.OnDeferredIssueResult](-on-deferred-issue-result/index.md) | on how to handle the result |
