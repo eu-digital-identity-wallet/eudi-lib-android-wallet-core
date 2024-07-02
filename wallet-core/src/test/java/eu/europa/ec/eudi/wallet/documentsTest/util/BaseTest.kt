@@ -172,7 +172,7 @@ open class BaseTest {
     }
 
     companion object {
-        private const val pid = "eu.europa.ec.eudiw.pid.1"
+        private const val pid = "eu.europa.ec.eudi.pid.1"
         private const val mDL = "org.iso.18013.5.1.mDL"
     }
 

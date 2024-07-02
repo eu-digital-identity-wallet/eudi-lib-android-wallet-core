@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.wallet.R
 /**
  * Document Type, e.g. MDL, PID, MICOV, MVR
  *
- * @property docTypeName the document type name, e.g. eu.europa.ec.eudiw.pid.1
+ * @property docTypeName the document type name, e.g. eu.europa.ec.eudi.pid.1
  * @property userFriendlyName a user friendly name for the document
  * @constructor Create empty Doc type
  */
@@ -32,7 +32,7 @@ enum class DocType(val docTypeName: String, val userFriendlyName: Int) {
      *
      * @constructor Create empty Pid
      */
-    PID("eu.europa.ec.eudiw.pid.1", R.string.eu_pid_doctype_name),
+    PID("eu.europa.ec.eudi.pid.1", R.string.eu_pid_doctype_name),
 
     /**
      * MDL Doc Type

@@ -117,7 +117,7 @@ sealed interface IssueEvent : OpenId4VciResult {
      *   }
      *
      *   fun issueDocument() {
-     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { event ->
+     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudi.pid.1", requireContext().mainExecutor) { event ->
      *          when (event) {
      *              is IssueEvent.DocumentRequiresUserAuth -> {
      *                  onIssuingResume = result::resume

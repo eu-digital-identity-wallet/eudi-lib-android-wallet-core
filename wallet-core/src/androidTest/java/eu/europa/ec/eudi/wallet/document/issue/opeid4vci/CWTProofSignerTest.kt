@@ -67,7 +67,7 @@ class CWTProofSignerTest {
             .build()
 
 
-        val unsignedDocumentResult = documentManager.createDocument("eu.europa.ec.eudiw.pid.1", false)
+        val unsignedDocumentResult = documentManager.createDocument("eu.europa.ec.eudi.pid.1", false)
         assertTrue(unsignedDocumentResult is CreateDocumentResult.Success)
 
         val unsignedDocument =
@@ -97,7 +97,7 @@ class CWTProofSignerTest {
             .build()
 
 
-        val unsignedDocumentResult = documentManager.createDocument("eu.europa.ec.eudiw.pid.1", false)
+        val unsignedDocumentResult = documentManager.createDocument("eu.europa.ec.eudi.pid.1", false)
         assertTrue(unsignedDocumentResult is CreateDocumentResult.Success)
 
         val unsignedDocument =
