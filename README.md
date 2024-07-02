@@ -104,7 +104,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.5-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.10.0-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
