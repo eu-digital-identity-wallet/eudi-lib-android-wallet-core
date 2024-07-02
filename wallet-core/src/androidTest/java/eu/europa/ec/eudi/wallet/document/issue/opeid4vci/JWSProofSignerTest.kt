@@ -67,7 +67,7 @@ class JWSProofSignerTest {
             .build()
 
 
-        val createDocumentResult = documentManager.createDocument("eu.europa.ec.eudiw.pid.1", false)
+        val createDocumentResult = documentManager.createDocument("eu.europa.ec.eudi.pid.1", false)
         assertTrue(createDocumentResult is CreateDocumentResult.Success)
 
         val unsignedDocument =
@@ -106,7 +106,7 @@ class JWSProofSignerTest {
             .enableUserAuth(false)
             .build()
 
-        val createDocumentResult = documentManager.createDocument("eu.europa.ec.eudiw.pid.1", false)
+        val createDocumentResult = documentManager.createDocument("eu.europa.ec.eudi.pid.1", false)
         assertTrue(createDocumentResult is CreateDocumentResult.Success)
 
         val unsignedDocument =

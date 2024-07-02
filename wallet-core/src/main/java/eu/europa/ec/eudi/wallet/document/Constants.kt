@@ -25,8 +25,8 @@ package eu.europa.ec.eudi.wallet.document
 object Constants {
 
     // EU PID
-    const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
-    const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
+    const val EU_PID_DOCTYPE = "eu.europa.ec.eudi.pid.1"
+    const val EU_PID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
 
     // mDL
     const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"

@@ -557,7 +557,7 @@ val onIssueEvent = OnIssueEvent { event ->
 }
 
 EudiWallet.issueDocumentByDocType(
-    docType = "eu.europa.ec.eudiw.pid.1",
+    docType = "eu.europa.ec.eudi.pid.1",
     txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
     onEvent = onIssueEvent
 )
@@ -582,7 +582,7 @@ If the `executor` parameter is null, the callback will be executed on the main t
 ```kotlin
 val executor = Executors.newSingleThreadExecutor()
 EudiWallet.issueDocumentByDocType(
-    docType = "eu.europa.ec.eudiw.pid.1",
+    docType = "eu.europa.ec.eudi.pid.1",
     executor = executor
 ) { event ->
     // ...
