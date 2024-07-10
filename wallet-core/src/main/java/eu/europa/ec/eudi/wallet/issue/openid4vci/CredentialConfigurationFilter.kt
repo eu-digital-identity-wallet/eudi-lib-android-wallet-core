@@ -67,8 +67,7 @@ internal fun interface CredentialConfigurationFilter {
          */
         @JvmSynthetic
         internal fun DocTypeFilter(docType: String): CredentialConfigurationFilter =
-            Compose(MsoMdocFormatFilter,
-                SdJwtFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
+            Compose(MsoMdocFormatFilter, SdJwtFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
 
         /**
          * Filter for [CredentialConfiguration] instances based on the proof type.
