@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
+import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 
 /**
  * Default implementation of [Offer].
@@ -61,5 +62,6 @@ internal val CredentialConfiguration.name: String
 internal val CredentialConfiguration.docType: String
     @JvmSynthetic get() = when (this) {
         is MsoMdocCredential -> docType
+        is SdJwtVcCredential -> docType
         else -> "unknown"
     }

@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
+import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import kotlin.reflect.KClass
 
 /**
@@ -52,13 +53,21 @@ internal fun interface CredentialConfigurationFilter {
             FormatFilter(MsoMdocCredential::class)
 
         /**
+         * Filter for [CredentialConfiguration] instances for sd-jwt format
+         */
+        @JvmSynthetic
+        internal val SdJwtFormatFilter: CredentialConfigurationFilter =
+            FormatFilter(SdJwtVcCredential::class)
+
+
+        /**
          * Filter for [CredentialConfiguration] instances based on the document type.
          * @param docType document type
          * @return [CredentialConfigurationFilter] instance
          */
         @JvmSynthetic
         internal fun DocTypeFilter(docType: String): CredentialConfigurationFilter =
-            Compose(MsoMdocFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
+            Compose(MsoMdocFormatFilter, SdJwtFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
 
         /**
          * Filter for [CredentialConfiguration] instances based on the proof type.

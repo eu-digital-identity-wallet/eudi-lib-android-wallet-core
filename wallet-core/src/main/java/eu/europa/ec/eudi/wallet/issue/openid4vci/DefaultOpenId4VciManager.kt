@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.C
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.SdJwtFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner.UserAuthStatus
 import kotlinx.coroutines.*
@@ -88,7 +89,6 @@ internal class DefaultOpenId4VciManager(
 
                 val offer = DefaultOffer(credentialOffer, credentialConfigurationFilter)
                 doIssueDocumentByOffer(offer, config, authorizationHandler, listener)
-
             } catch (e: Throwable) {
                 Log.e(TAG, "issueDocumentByDocType failed", e)
                 listener(failure(e))
@@ -130,6 +130,7 @@ internal class DefaultOpenId4VciManager(
                         DefaultOffer(
                             it, Compose(
                                 MsoMdocFormatFilter,
+                                SdJwtFormatFilter,
                                 ProofTypeFilter(config.proofTypes)
                             )
                         )
@@ -151,7 +152,11 @@ internal class DefaultOpenId4VciManager(
         launch(onResolvedOffer.wrap(executor)) { coroutineScope, callback ->
             try {
                 val credentialOffer = CredentialOfferRequestResolver().resolve(offerUri).getOrThrow()
-                val offer = DefaultOffer(credentialOffer, Compose(MsoMdocFormatFilter, ProofTypeFilter(config.proofTypes)))
+                val offer = DefaultOffer(credentialOffer.also {
+                    Log.d(
+                        "DefaultOpenId4VciManager",
+                        "DefaultOpenId4VciManager.resolveDocumentOffer: $it"
+                    ) }, Compose(MsoMdocFormatFilter, SdJwtFormatFilter, ProofTypeFilter(config.proofTypes)))
                 offerUriCache[offerUri] = offer
                 Log.d(TAG, "OfferUri $offerUri resolved")
                 callback(OfferResult.Success(offer))
