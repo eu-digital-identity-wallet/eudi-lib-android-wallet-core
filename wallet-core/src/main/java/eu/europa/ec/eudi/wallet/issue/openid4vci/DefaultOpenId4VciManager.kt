@@ -75,16 +75,17 @@ internal class DefaultOpenId4VciManager(
                     DocTypeFilter(docType),
                     ProofTypeFilter(config.proofTypes)
                 )
+
                 val credentialConfigurationId =
                     credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
                         credentialConfigurationFilter(conf)
-                    }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
+                    }.keys.takeUnless { it.isEmpty() } ?: throw IllegalStateException("No suitable configuration found")
 
                 val credentialOffer = CredentialOffer(
                     credentialIssuerIdentifier = credentialIssuerId,
                     credentialIssuerMetadata = credentialIssuerMetadata,
                     authorizationServerMetadata = authorizationServerMetadata.first(),
-                    credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
+                    credentialConfigurationIdentifiers = credentialConfigurationId.toList()
                 )
 
                 val offer = DefaultOffer(credentialOffer, credentialConfigurationFilter)
