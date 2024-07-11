@@ -34,7 +34,7 @@ import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
  */
 internal data class DefaultOffer(
     @JvmSynthetic val credentialOffer: CredentialOffer,
-    @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.MsoMdocFormatFilter
+    @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.SdJwtOrMsoMdocFormatFilter
 ) : Offer {
 
     private val issuerMetadata: CredentialIssuerMetadata = credentialOffer.credentialIssuerMetadata
@@ -62,6 +62,6 @@ internal val CredentialConfiguration.name: String
 internal val CredentialConfiguration.docType: String
     @JvmSynthetic get() = when (this) {
         is MsoMdocCredential -> docType
-        is SdJwtVcCredential -> docType
+        is SdJwtVcCredential -> "eu.europa.ec.eudi.pid_jwt_vc_json"
         else -> "unknown"
     }

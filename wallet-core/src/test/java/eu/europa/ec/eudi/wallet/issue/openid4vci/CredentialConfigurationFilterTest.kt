@@ -29,7 +29,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class CredentialConfigurationFilterTest {
 
@@ -92,6 +92,16 @@ class CredentialConfigurationFilterTest {
 
     @Test
     fun `DocTypeFilterFactory returns true for matching docType`() {
+        val docType = "testDocType"
+        val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
+        every { credentialConfiguration.docType } returns docType
+
+        assertTrue(DocTypeFilter(docType).invoke(credentialConfiguration))
+    }
+
+
+    @Test
+    fun `DocTypeFilterFactory returns true for matching docType 2`() {
         val docType = "testDocType"
         val credentialConfiguration = mockk<MsoMdocCredential>(relaxed = true)
         every { credentialConfiguration.docType } returns docType

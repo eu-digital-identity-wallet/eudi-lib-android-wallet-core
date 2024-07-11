@@ -204,7 +204,8 @@ internal class DefaultOpenId4VciManager(
 
                 Log.d(TAG, "Issuing document: ${issuanceRequest.documentId} for ${issuanceRequest.docType}")
 
-                doIssueCredential(
+                try {
+                    doIssueCredential(
                     authorizedRequest,
                     item.configurationIdentifier,
                     item.configuration,
@@ -212,6 +213,10 @@ internal class DefaultOpenId4VciManager(
                     addedDocuments,
                     onEvent
                 )
+                } catch (e: Exception){
+                    Log.e("DefaultOpenId4VciManager", "failed issue for ${issuanceRequest.docType}", e)
+                }
+
             }
             onEvent(IssueEvent.Finished(addedDocuments.toList()))
         }
