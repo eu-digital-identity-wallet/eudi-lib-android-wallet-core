@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.2-SNAPSHOT]
+
+__15 Jul 2024__
+
+- Fix overriding KtorHttpClientFactory for OpenId4VCI and OpenId4VP
+- Fix Deferred Issuance for OpenId4VCI by not deleting the deferred document after issuance failure
+
+## [0.10.1-SNAPSHOT]
+
+__3 Jul 2024__
+
+- Bump eudi-lib-android-wallet-document-manager to v0.4.1-SNAPSHOT
+
 ## [0.10.0-SNAPSHOT]
 
 __27 Jun 2024__

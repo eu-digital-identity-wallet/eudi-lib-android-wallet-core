@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -30,11 +30,11 @@ import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
 import eu.europa.ec.eudi.wallet.internal.Openid4VpUtils
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
-import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.util.CBOR
+import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
+import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
 import io.ktor.client.*
-import io.ktor.client.plugins.logging.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,7 +45,6 @@ import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.*
 import java.util.concurrent.Executor
-import io.ktor.client.plugins.logging.Logger as KtorLogger
 
 /**
  * OpenId4vp manager. This class is used to manage the OpenId4vp transfer method. It is used to resolve the request uri and send the response.
@@ -131,22 +130,7 @@ class OpenId4vpManager(
     var logger: Logger? = null
 
     var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
-        get() = {
-            logger?.let { l ->
-                field().let { client ->
-                    client.config {
-                        install(Logging) {
-                            logger = object : KtorLogger {
-                                override fun log(message: String) {
-                                    l.d(OpenId4VciManager.TAG, message)
-                                }
-                            }
-                            level = LogLevel.ALL
-                        }
-                    }
-                }
-            } ?: field()
-        }
+        get() = field.wrappedWithLogging(logger).wrappedWithContentNegotiation()
 
     private val appContext = context.applicationContext
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)

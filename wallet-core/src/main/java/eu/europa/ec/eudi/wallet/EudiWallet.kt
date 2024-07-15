@@ -154,6 +154,7 @@ object EudiWallet {
                     openId4VpConfig,
                     openId4VpCBORResponseGenerator,
                 ).apply {
+                    _config.ktorHttpClientFactory?.let { ktorHttpClientFactory = it }
                     logger = this@EudiWallet.logger
                     _config.trustedReaderCertificates?.let {
                         setReaderTrustStore(ReaderTrustStore.getDefault(it))
@@ -255,6 +256,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
+                    ktorHttpClientFactory = _config.ktorHttpClientFactory
                 }.also { it.issueDocumentByDocType(docType, txCode, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -289,6 +291,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
+                    ktorHttpClientFactory = _config.ktorHttpClientFactory
                 }.also { it.issueDocumentByOffer(offer, txCode, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -322,6 +325,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
+                    ktorHttpClientFactory = _config.ktorHttpClientFactory
                 }.also { it.issueDocumentByOfferUri(offerUri, txCode, executor, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
@@ -351,6 +355,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
+                    ktorHttpClientFactory = _config.ktorHttpClientFactory
                 }.also {
                     when (val document = documentManager.getDocumentById(documentId)) {
                         is DeferredDocument -> it.issueDeferredDocument(document, executor, onResult)
@@ -399,6 +404,7 @@ object EudiWallet {
                     documentManager(this@EudiWallet.documentManager)
                     config(config)
                     logger = this@EudiWallet.logger
+                    ktorHttpClientFactory = _config.ktorHttpClientFactory
                 }.also { it.resolveDocumentOffer(offerUri, executor, onResult) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
