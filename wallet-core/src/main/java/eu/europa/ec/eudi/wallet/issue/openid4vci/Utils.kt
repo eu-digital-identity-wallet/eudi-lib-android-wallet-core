@@ -23,8 +23,6 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
-import io.ktor.client.*
-import io.ktor.client.plugins.logging.*
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
@@ -134,33 +132,6 @@ internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>
             this.onResult(result)
         }
     }
-}
-
-/**
- * Wraps the [HttpClient] with a logging interceptor.
- * @receiver the [HttpClient] factory
- * @param libraryLogger the logger
- * @return the wrapped [HttpClient] factory
- */
-@JvmSynthetic
-internal fun (() -> HttpClient).wrappedWithLogging(libraryLogger: Logger?): (() -> HttpClient) {
-    return if (libraryLogger != null) {
-        {
-            val ktorLogger = object : io.ktor.client.plugins.logging.Logger {
-                override fun log(message: String) {
-                    libraryLogger.d(TAG, message)
-                }
-            }
-            this().let { client ->
-                client.config {
-                    install(Logging) {
-                        logger = ktorLogger
-                        level = LogLevel.ALL
-                    }
-                }
-            }
-        }
-    } else this
 }
 
 

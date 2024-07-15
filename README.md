@@ -104,7 +104,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.10.1-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.10.2-SNAPSHOT"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -159,8 +159,11 @@ val verifierApiUri = "https://verifier-api-uri"
 val config = EudiWalletConfig.Builder(applicationContext)
     .logLevel(Logger.LEVEL_DEBUG)
     .ktorHttpClientFactory {
-        // provide your own Ktor HttpClient
-        // this will be used for OpenId4VCI and OpenId4VP communication
+        // Provide your own Ktor HttpClient.
+        // This will be used for OpenId4VCI and OpenId4VP communication.
+        // If a httpClient is not provided, the library will create a default one.
+        // For every httpClientFactory, the result httpClient will be configured
+        // for logging (when logLevel is set to debug) and with json content negotiation 
     }
     .bleTransferMode(
         EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE,

@@ -186,7 +186,7 @@ interface OpenId4VciManager {
         /**
          * Override the Ktor HTTP client factory
          */
-        fun ktHttpClientFactory(factory: () -> HttpClient) = apply {
+        fun ktorHttpClientFactory(factory: () -> HttpClient) = apply {
             this.ktorHttpClientFactory = factory
         }
 

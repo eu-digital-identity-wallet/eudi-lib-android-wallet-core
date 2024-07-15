@@ -37,7 +37,6 @@ internal class ProcessDeferredOutcome(
         try {
             when (outcome) {
                 is DeferredCredentialQueryOutcome.Errored -> {
-                    documentManager.deleteDocumentById(deferredDocument.id)
                     callback(
                         DeferredIssueResult.DocumentFailed(
                             deferredDocument.id,
