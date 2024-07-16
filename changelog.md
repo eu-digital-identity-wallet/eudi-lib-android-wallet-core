@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.2]
+
+__ 17 Jul 2024__
+
+- Release version 0.10.2
+
 ## [0.10.2-SNAPSHOT]
 
 __15 Jul 2024__
