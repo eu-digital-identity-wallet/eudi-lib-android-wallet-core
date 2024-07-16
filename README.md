@@ -83,7 +83,7 @@ The released software is a initial development release version:
 
 ### Dependencies
 
-In order to use snapshot versions add the following to your project's settings.gradle file:
+To use snapshot versions add the following to your project's settings.gradle file:
 
 ```groovy
 
@@ -104,7 +104,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.10.2-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.10.2"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -116,7 +116,7 @@ dependencies {
 The library must be initialized before it can be used. The initialization must be done only once in
 the application.
 
-In order to initialize the library, you need to provide a configuration object. The configuration
+To initialize the library, you need to provide a configuration object. The configuration
 object is created using the `EudiWalletConfig.Builder` class. The builder allows you to configure
 the following options:
 
@@ -136,7 +136,7 @@ the following options:
 - `userAuthenticationRequired` method allows you to specify if the user authentication is required
   when using documents' keys. The default value is `false`.
 - `userAuthenticationTimeOut` method allows you to specify the user authentication timeout in
-  milliseconds. If the value is 0, the user authentication is required for every use of the key,
+  milliseconds. If the value is 0, the user authentication is required for every use of the key;
   otherwise it's required within the given amount of milliseconds. The default value is 30000.
 - `trustedReaderCertificates` method allows you to specify the list of trusted reader certificates.
   The default value is an empty list.
@@ -280,7 +280,7 @@ when (result) {
 
 Adding a document is a two-step process. First, you need to create an unsigned document using the
 method `EudiWallet.createDocument`. The unsigned document holds the public certificate
-that will be used from the issuer to sign the document.
+that will be used by the issuer to sign the document.
 
 Later, when document's data is available, you can create the document using the
 method `EudiWallet.storeIssuedDocument` to add the document to document storage.
@@ -346,7 +346,7 @@ when (result) {
         when (storeResult) {
             is StoreDocumentResult.Failure -> {
                 val error = storeResult.throwable
-                // handle error while adding document
+                // handle error while adding the document
             }
             is StoreDocumentResult.Success -> {
                 val documentId = storeResult.documentId
@@ -491,7 +491,7 @@ There are two ways to issue a document using OpenID4VCI:
 _Important Notes_:
 
 - Currently, only mso_mdoc format is supported
-- Currently, only ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
+- Currently, only the ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
   publicKey.
 
 The following example shows how to issue a document using OpenID4VCI:
@@ -686,7 +686,7 @@ EudiWallet.issueDeferredDocument(documentId) { result ->
             val cause = result.throwable
         }
         is DeferredIssueResult.DocumentNotReady -> {
-            // document is not issued yet
+            // The document is not issued yet
         }
     }
 }
@@ -753,7 +753,7 @@ val transferEventListener = TransferEvent.Listener { event ->
                     // handle the failure
                 }
                 is ResponseResult.Success -> {
-                    // response has been send successfully
+                    // response has been sent successfully
                 }
                 is ResponseResult.UserAuthRequired -> {
                     // user authentication is required. Get the crypto object from responseResult.cryptoObject
@@ -793,7 +793,7 @@ EudiWallet.addTransferEventListener(transferEventListener)
 
 1. BLE transfer using QR Engagement
 
-   Once the a transfer event listener is attached, use the `EudiWallet.startQrEngagement()`
+   Once a transfer event listener is attached, use the `EudiWallet.startQrEngagement()`
    method to start the QR code engagement.
 
     ```kotlin
@@ -815,7 +815,7 @@ EudiWallet.addTransferEventListener(transferEventListener)
     ```
 2. BLE transfer using NFC Engagement
 
-In order to use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's
+To use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's
 manifest file, like shown below:
 
     ```xml
@@ -861,9 +861,9 @@ when the activity is paused.
     }
     ```
 
-3. RestAPI using app link
+1. RestAPI using app link
 
-   To enable 18013-7 REST API functionality, declare to your app's manifest file
+   To enable ISO 18013-7 REST API functionality, declare to your app's manifest file
    (AndroidManifest.xml) an Intent Filter for your MainActivity:
 
     ```xml
@@ -902,7 +902,7 @@ when the activity is paused.
     }
     ```
 
-4. OpenID4VP
+2. OpenID4VP
 
    To use the OpenID4VP functionality, the configuration that is used to initialize the library
    must contain the `openId4VpConfig`. See the [Initialize the library](#initialize-the-library) section.
@@ -951,7 +951,7 @@ when the activity is paused.
                           // handle the failure
                       }
                       is ResponseResult.Success -> {
-                          // response has been send successfully
+                          // response has been sent successfully
                       }
                       is ResponseResult.UserAuthRequired -> {
                           // user authentication is required. Get the crypto object from responseResult.cryptoObject
@@ -994,7 +994,7 @@ when the activity is paused.
    }
    ```
 
-#### Receiving request and sending response
+#### Receiving a request and sending a response
 
 When a request is received, the `TransferEvent.RequestReceived` event is triggered. The parsed request can
 be retrieved from `event.requestedDocumentData`, while the initial request, as received by the verifier,
