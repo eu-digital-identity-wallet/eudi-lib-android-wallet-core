@@ -164,6 +164,11 @@ class EudiWalletConfig private constructor(builder: Builder) {
     val logLevel: Int = builder.logLevel
 
     /**
+     * The logger. If no [Logger] instance is provided and [logLevel] is not [Logger.OFF], then the default will be used
+     */
+    val logger: Logger? = builder.logger ?: Logger(this).takeUnless { builder.logLevel == Logger.OFF }
+
+    /**
      * Ktor http client factory
      */
     val ktorHttpClientFactory: (() -> HttpClient)? = builder.ktorHttpClientFactory
@@ -202,6 +207,7 @@ class EudiWalletConfig private constructor(builder: Builder) {
         var verifyMsoPublicKey: Boolean = true
         var openId4VpConfig: OpenId4VpConfig? = null
         var openId4VciConfig: OpenId4VciConfig? = null
+        var logger: Logger? = null
         var logLevel: Int = Logger.LEVEL_ERROR
         var ktorHttpClientFactory: (() -> HttpClient)? = null
 
@@ -364,6 +370,15 @@ class EudiWalletConfig private constructor(builder: Builder) {
          */
         fun openId4VciConfig(block: OpenId4VciConfig.Builder.() -> Unit) = apply {
             this.openId4VciConfig = OpenId4VciConfig.Builder().apply(block).build()
+        }
+
+        /**
+         * Set a logger
+         * @param logger The logger
+         * @return [EudiWalletConfig.Builder]
+         */
+        fun logger(logger: Logger) = apply {
+            this.logger = logger
         }
 
         /**

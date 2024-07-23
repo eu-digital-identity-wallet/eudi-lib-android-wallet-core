@@ -17,6 +17,8 @@
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
+import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.logging.LoggerImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionMethod
@@ -123,5 +125,33 @@ class EudiWalletConfigTest {
         assertNull(config.trustedReaderCertificates)
         assertNull(config.openId4VPConfig)
         assertNull(config.openId4VciConfig)
+    }
+
+    @Test
+    fun testLoggerIsNullWhenLogLevelIsOff() {
+        val config = EudiWalletConfig(context) {
+            logLevel = Logger.OFF
+        }
+
+        assertNull(config.logger)
+    }
+
+    @Test
+    fun testLoggerIsDefaultImplementationWhenLogLevelIsNotOff() {
+        val config = EudiWalletConfig(context) {
+            logLevel = Logger.LEVEL_ERROR
+        }
+
+        assertTrue(config.logger is LoggerImpl)
+    }
+
+    @Test
+    fun testCustomLogger() {
+        val logger = Logger { record -> println(record) }
+        val config = EudiWalletConfig(context) {
+            this.logger = logger
+        }
+
+        assertTrue(config.logger == logger)
     }
 }

@@ -35,7 +35,6 @@ import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.issue.openid4vci.*
-import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponseGeneratorImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
@@ -77,9 +76,7 @@ object EudiWallet {
     private var transferMode: TransferMode? = null
 
     private val logger by lazy {
-        requireInit {
-            Logger(_config)
-        }
+        requireInit { _config.logger }
     }
 
     /**

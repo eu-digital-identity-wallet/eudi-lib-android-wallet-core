@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -38,6 +38,8 @@ import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.logging.e
+import eu.europa.ec.eudi.wallet.logging.i
 
 private const val TAG = "OpenId4VpCBORResponseGe"
 
