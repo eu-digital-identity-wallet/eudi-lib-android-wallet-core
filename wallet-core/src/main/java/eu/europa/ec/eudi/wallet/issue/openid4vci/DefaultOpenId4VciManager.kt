@@ -127,15 +127,29 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueResult) { coroutineScope, callback ->
             try {
                 val deferredContext = deferredDocument.relatedData.toDeferredIssuanceContext()
-                val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(deferredContext, ktorHttpClientFactory)
-                    .getOrThrow()
-                ProcessDeferredOutcome(
-                    documentManager = documentManager,
-                    callback = callback,
-                    deferredIssuanceContext = ctx,
-                    logger = logger
-                ).process(deferredDocument, outcome)
+                when {
+                    deferredContext.hasExpired -> callback(
+                        DeferredIssueResult.DocumentExpired(
+                            documentId = deferredDocument.id,
+                            name = deferredDocument.name,
+                            docType = deferredDocument.docType
+                        )
+                    )
 
+                    else -> {
+                        val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
+                            deferredContext,
+                            ktorHttpClientFactory
+                        )
+                            .getOrThrow()
+                        ProcessDeferredOutcome(
+                            documentManager = documentManager,
+                            callback = callback,
+                            deferredIssuanceContext = ctx,
+                            logger = logger
+                        ).process(deferredDocument, outcome)
+                    }
+                }
             } catch (e: Throwable) {
                 callback(
                     DeferredIssueResult.DocumentFailed(

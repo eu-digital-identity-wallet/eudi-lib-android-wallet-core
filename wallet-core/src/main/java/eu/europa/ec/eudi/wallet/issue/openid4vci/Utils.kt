@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
+import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
@@ -27,6 +28,7 @@ import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
+import java.time.Instant
 import java.util.concurrent.Executor
 
 /**
@@ -122,16 +124,27 @@ internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>
  */
 @JvmSynthetic
 internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>.wrapWithLogging(logger: Logger?): OpenId4VciManager.OnResult<V> {
-    return when (val l = logger) {
+    return when (logger) {
         null -> this
         else -> OpenId4VciManager.OnResult { result: V ->
             when (result) {
-                is OpenId4VciResult.Erroneous -> l.e(TAG, "$result", result.cause)
-                else -> l.d(TAG, "$result")
+                is OpenId4VciResult.Erroneous -> logger.e(TAG, "$result", result.cause)
+                else -> logger.d(TAG, "$result")
             }
             this.onResult(result)
         }
     }
 }
+
+@get:JvmSynthetic
+internal val DeferredIssuanceContext.hasExpired: Boolean
+    get() = with(authorizedTransaction.authorizedRequest) {
+        when (val rt = refreshToken) {
+            null -> accessToken.isExpired(timestamp, Instant.now())
+            else -> if (accessToken.isExpired(timestamp, Instant.now())) {
+                rt.isExpired(timestamp, Instant.now())
+            } else false
+        }
+    }
 
 
