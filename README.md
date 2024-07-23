@@ -144,6 +144,10 @@ the following options:
   default value is null.
 - `openId4VciConfig` method allows you to specify the configuration for OpenID4VCI. The default
   value is null.
+- `logger` method allows you to specify the logger. If the logger is not provided, the default
+  logger will be used.
+- `logLevel` method allows you to specify the log level for the default logger. The default value
+  is `Logger.LEVEL_ERROR`.
 
 The following example shows how to initialize the library:
 
@@ -153,11 +157,16 @@ import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.Logger
 import java.security.cert.X509Certificate
-
+val logger = Logger { record: Logger.Record ->
+    // log the record
+}
 val storageDir = applicationContext.noBackupFilesDir
 val verifierApiUri = "https://verifier-api-uri"
 val config = EudiWalletConfig.Builder(applicationContext)
+    // set the log level for the default logger
     .logLevel(Logger.LEVEL_DEBUG)
+    // or set a custom logger
+    .logger(logger)
     .ktorHttpClientFactory {
         // Provide your own Ktor HttpClient.
         // This will be used for OpenId4VCI and OpenId4VP communication.

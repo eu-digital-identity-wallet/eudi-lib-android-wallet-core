@@ -22,17 +22,21 @@ import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.logging.Logger.Companion.LEVEL_DEBUG
 import eu.europa.ec.eudi.wallet.logging.Logger.Companion.LEVEL_ERROR
 import eu.europa.ec.eudi.wallet.logging.Logger.Companion.LEVEL_INFO
+import java.time.Instant
 
 
-interface Logger {
+fun interface Logger {
 
-    @Level
-    val level: Int
-    fun log(level: Int, tag: String, message: String, throwable: Throwable? = null)
+    data class Record(
+        @Level val level: Int,
+        val instant: Instant = Instant.now(),
+        val message: String,
+        val thrown: Throwable? = null,
+        val sourceClassName: String? = null,
+        val sourceMethod: String? = null,
+    )
 
-    fun d(tag: String, message: String) = log(LEVEL_DEBUG, tag, message)
-    fun i(tag: String, message: String) = log(LEVEL_INFO, tag, message)
-    fun e(tag: String, message: String, throwable: Throwable? = null) = log(LEVEL_ERROR, tag, message, throwable)
+    fun log(record: Record)
 
     companion object {
         const val OFF = 0
@@ -51,19 +55,16 @@ interface Logger {
 }
 
 class LoggerImpl(val config: EudiWalletConfig, private val maxLogSize: Int = 1000) : Logger {
-    override val level: Int = config.logLevel
-    override fun log(level: Int, tag: String, message: String, throwable: Throwable?) {
-        splitMessage(message).forEachIndexed { i, m ->
+    override fun log(record: Logger.Record) {
+        val tag = record.sourceClassName ?: ""
+        splitMessage(record.message).forEachIndexed { i, m ->
             when {
-                level == LEVEL_ERROR && config.logLevel >= LEVEL_ERROR && i == 0 && throwable != null -> Log.e(
-                    tag,
-                    m,
-                    throwable
-                )
+                record.level == LEVEL_ERROR && config.logLevel >= LEVEL_ERROR && i == 0 && record.thrown != null ->
+                    Log.e(tag, m, record.thrown)
 
-                level == LEVEL_ERROR && config.logLevel >= LEVEL_ERROR -> Log.e(tag, m)
-                level == LEVEL_INFO && config.logLevel >= LEVEL_INFO -> Log.i(tag, m)
-                level == LEVEL_DEBUG && config.logLevel >= LEVEL_DEBUG -> Log.d(tag, m)
+                record.level == LEVEL_ERROR && config.logLevel >= LEVEL_ERROR -> Log.e(tag, m)
+                record.level == LEVEL_INFO && config.logLevel >= LEVEL_INFO -> Log.i(tag, m)
+                record.level == LEVEL_DEBUG && config.logLevel >= LEVEL_DEBUG -> Log.d(tag, m)
             }
         }
     }
@@ -76,7 +77,34 @@ class LoggerImpl(val config: EudiWalletConfig, private val maxLogSize: Int = 100
         }
         return messages
     }
-
-
 }
+
+@JvmSynthetic
+internal fun Logger.d(tag: String, message: String) = log(
+    Logger.Record(
+        level = LEVEL_DEBUG,
+        sourceClassName = tag,
+        message = message
+    )
+)
+
+@JvmSynthetic
+internal fun Logger.i(tag: String, message: String) = log(
+    Logger.Record(
+        level = LEVEL_INFO,
+        sourceClassName = tag,
+        message = message
+    )
+)
+
+@JvmSynthetic
+internal fun Logger.e(tag: String, message: String, throwable: Throwable? = null) =
+    log(
+        Logger.Record(
+            level = LEVEL_ERROR,
+            sourceClassName = tag,
+            message = message,
+            thrown = throwable
+        )
+    )
 

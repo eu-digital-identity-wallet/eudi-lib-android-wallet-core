@@ -31,6 +31,9 @@ import eu.europa.ec.eudi.prex.PresentationSubmission
 import eu.europa.ec.eudi.wallet.internal.Openid4VpUtils
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.logging.d
+import eu.europa.ec.eudi.wallet.logging.e
+import eu.europa.ec.eudi.wallet.logging.i
 import eu.europa.ec.eudi.wallet.util.CBOR
 import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
