@@ -69,4 +69,16 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
         override val name: String,
         override val docType: String,
     ) : DeferredIssueResult
+
+    /**
+     * Document issuance expired.
+     * @property documentId the id of the expired document
+     * @property name the name of the document
+     * @property docType the document type
+     */
+    data class DocumentExpired(
+        override val documentId: DocumentId,
+        override val name: String,
+        override val docType: String,
+    ) : DeferredIssueResult
 }
