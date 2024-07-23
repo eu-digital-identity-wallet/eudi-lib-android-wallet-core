@@ -137,7 +137,14 @@ internal class DefaultOpenId4VciManager(
                 ).process(deferredDocument, outcome)
 
             } catch (e: Throwable) {
-                callback(DeferredIssueResult.DocumentFailed(deferredDocument.id, e))
+                callback(
+                    DeferredIssueResult.DocumentFailed(
+                        documentId = deferredDocument.id,
+                        name = deferredDocument.name,
+                        docType = deferredDocument.docType,
+                        cause = e
+                    )
+                )
                 coroutineScope.cancel("issueDeferredDocument failed", e)
             }
         }
@@ -194,7 +201,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         offer as DefaultOffer
         val issuer = issuerCreator.createIssuer(offer)
-        var authorizedRequest = issuerAuthorization.use { it.authorize(issuer, txCode) }
+        var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
         val requestMap = offer.offeredDocuments.associateBy { offeredDocument ->

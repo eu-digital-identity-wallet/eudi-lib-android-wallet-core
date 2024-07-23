@@ -39,8 +39,10 @@ internal class ProcessDeferredOutcome(
                 is DeferredCredentialQueryOutcome.Errored -> {
                     callback(
                         DeferredIssueResult.DocumentFailed(
-                            deferredDocument.id,
-                            IllegalStateException(outcome.error)
+                            documentId = deferredDocument.id,
+                            name = deferredDocument.name,
+                            docType = deferredDocument.docType,
+                            cause = IllegalStateException(outcome.error)
                         )
                     )
                 }
@@ -51,9 +53,9 @@ internal class ProcessDeferredOutcome(
                             .notifyListener(deferredDocument, true)
                     } ?: callback(
                         DeferredIssueResult.DocumentNotReady(
-                            deferredDocument.id,
-                            deferredDocument.name,
-                            deferredDocument.docType
+                            documentId = deferredDocument.id,
+                            name = deferredDocument.name,
+                            docType = deferredDocument.docType
                         )
                     )
                 }
@@ -66,8 +68,14 @@ internal class ProcessDeferredOutcome(
                 }
             }
         } catch (e: Throwable) {
-            documentManager.deleteDocumentById(deferredDocument.id)
-            callback(DeferredIssueResult.DocumentFailed(deferredDocument.id, e))
+            callback(
+                DeferredIssueResult.DocumentFailed(
+                    documentId = deferredDocument.id,
+                    name = deferredDocument.name,
+                    docType = deferredDocument.docType,
+                    cause = e
+                )
+            )
         }
     }
 
@@ -78,17 +86,17 @@ internal class ProcessDeferredOutcome(
                 if (isDeferred) {
                     callback(
                         DeferredIssueResult.DocumentNotReady(
-                            documentId,
-                            deferredDocument.name,
-                            deferredDocument.docType
+                            documentId = documentId,
+                            name = deferredDocument.name,
+                            docType = deferredDocument.docType
                         )
                     )
                 } else {
                     callback(
                         DeferredIssueResult.DocumentIssued(
-                            documentId,
-                            deferredDocument.name,
-                            deferredDocument.docType
+                            documentId = documentId,
+                            name = deferredDocument.name,
+                            docType = deferredDocument.docType
                         )
                     )
                 }
@@ -97,7 +105,12 @@ internal class ProcessDeferredOutcome(
             is StoreDocumentResult.Failure -> {
                 documentManager.deleteDocumentById(deferredDocument.id)
                 callback(
-                    DeferredIssueResult.DocumentFailed(deferredDocument.id, throwable)
+                    DeferredIssueResult.DocumentFailed(
+                        documentId = deferredDocument.id,
+                        name = deferredDocument.name,
+                        docType = deferredDocument.docType,
+                        cause = throwable
+                    )
                 )
             }
         }

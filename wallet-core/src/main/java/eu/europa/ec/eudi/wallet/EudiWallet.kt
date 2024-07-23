@@ -362,8 +362,10 @@ object EudiWallet {
                         else -> (executor ?: context.mainExecutor()).execute {
                             onResult(
                                 DeferredIssueResult.DocumentFailed(
-                                    documentId,
-                                    IllegalStateException("Document is not deferred")
+                                    documentId = documentId,
+                                    name = document?.name ?: "",
+                                    docType = document?.docType ?: "",
+                                    cause = IllegalStateException("Document is not deferred")
                                 )
                             )
                         }
@@ -374,8 +376,10 @@ object EudiWallet {
                 (executor ?: context.mainExecutor()).execute {
                     onResult(
                         DeferredIssueResult.DocumentFailed(
-                            documentId,
-                            IllegalStateException("OpenId4Vci config is not set in configuration")
+                            documentId = documentId,
+                            name = "",
+                            docType = "",
+                            cause = IllegalStateException("OpenId4Vci config is not set in configuration")
                         )
                     )
                 }
