@@ -8,4 +8,8 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
  * @param authorizationCode the authorization code
  * @param serverState the server state
  */
-public data class AuthorizationResponse(val authorizationCode: String, val serverState: String)
+public data class AuthorizationResponse(
+    val authorizationCode: String,
+    val serverState: String,
+    val dpopNonce: String
+)

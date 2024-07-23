@@ -55,7 +55,7 @@ internal class SuspendedAuthorization(
         try {
             uri.getQueryParameter("code")?.let { authorizationCode ->
                 uri.getQueryParameter("state")?.let { serverState ->
-                    continuation.resume(Result.success(AuthorizationResponse(authorizationCode, serverState)))
+                    continuation.resume(Result.success(AuthorizationResponse(authorizationCode, serverState, "no dopoNonce")))
                 } ?: "No server state found".let { msg ->
                     Log.e(TAG, "resumeFromUri: msg")
                     continuation.resumeWith(Result.failure(IllegalStateException(msg)))
