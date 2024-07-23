@@ -28,7 +28,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.io.Closeable
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 
@@ -39,7 +38,7 @@ import kotlin.coroutines.resume
 internal class IssuerAuthorization(
     private val context: Context,
     private val logger: Logger? = null,
-) : Closeable {
+) {
 
     var continuation: CancellableContinuation<Result<Response>>? = null
 
@@ -101,7 +100,10 @@ internal class IssuerAuthorization(
 
     }
 
-    override fun close() {
+    /**
+     * Cancels the continuation.
+     */
+    fun close() {
         continuation?.cancel(CancellationException("Authorization was cancelled"))
         continuation = null
     }

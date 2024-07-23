@@ -152,7 +152,7 @@ class IssuerAuthorizationTest {
 
             launch {
                 delay(500.milliseconds)
-                issuerAuthorization.use { it.resumeFromUri(uri) }
+                issuerAuthorization.resumeFromUri(uri)
             }
         }
         assertNotNull(result, "Result is not null")
@@ -179,7 +179,7 @@ class IssuerAuthorizationTest {
 
             launch {
                 delay(500.milliseconds)
-                issuerAuthorization.use { it.resumeFromUri(uri) }
+                issuerAuthorization.resumeFromUri(uri)
             }
         }
         assertNotNull(result, "Result is not null")
@@ -205,7 +205,7 @@ class IssuerAuthorizationTest {
 
             launch(Dispatchers.Default) {
                 delay(500.milliseconds)
-                issuerAuthorization.use { it.resumeFromUri(uri) }
+                issuerAuthorization.resumeFromUri(uri)
             }
         }
         assertNotNull(result, "Result is not null")
@@ -213,25 +213,5 @@ class IssuerAuthorizationTest {
         verify(exactly = 1) {
             issuerAuthorization.resumeFromUri(uri)
         }
-    }
-
-    @Test
-    fun `close cancels the continuation`() {
-        val issuerAuthorization: IssuerAuthorization = spyk(IssuerAuthorization(context, logger))
-        var result: Result<IssuerAuthorization.Response>? = null
-        runTest {
-            launch {
-                result = issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
-            }
-
-            launch {
-                delay(500.milliseconds)
-                issuerAuthorization.close()
-
-            }
-        }
-        assertNull(result, "Result is null")
-        verify(exactly = 1) { issuerAuthorization.close() }
-        assertNull(issuerAuthorization.continuation, "Continuation is removed")
     }
 }

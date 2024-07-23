@@ -18,7 +18,18 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.wallet.document.DocumentId
 
+/**
+ * Result of a deferred document issuance.
+ * @property documentId the id of the document
+ * @property name the name of the document
+ * @property docType the document type
+ */
 sealed interface DeferredIssueResult : OpenId4VciResult {
+
+    val documentId: DocumentId
+    val name: String
+    val docType: String
+
     /**
      * Document issued successfully.
      * @property documentId the id of the issued document
@@ -26,15 +37,25 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property docType the document type
      * @see[DocumentId] for the document id
      */
-    data class DocumentIssued(val documentId: DocumentId, val name: String, val docType: String) : DeferredIssueResult
+    data class DocumentIssued(
+        override val documentId: DocumentId,
+        override val name: String,
+        override val docType: String,
+    ) : DeferredIssueResult
 
     /**
      * Document issuance failed.
+     * @property documentId the id of the failed document
      * @property name the name of the document
      * @property docType the document type
      * @property cause the error that caused the failure
      */
-    data class DocumentFailed(val documentId: DocumentId, override val cause: Throwable) : DeferredIssueResult,
+    data class DocumentFailed(
+        override val documentId: DocumentId,
+        override val name: String,
+        override val docType: String,
+        override val cause: Throwable,
+    ) : DeferredIssueResult,
         OpenId4VciResult.Erroneous
 
     /**
@@ -43,5 +64,9 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property name the name of the document
      * @property docType the document type
      */
-    data class DocumentNotReady(val documentId: DocumentId, val name: String, val docType: String) : DeferredIssueResult
+    data class DocumentNotReady(
+        override val documentId: DocumentId,
+        override val name: String,
+        override val docType: String,
+    ) : DeferredIssueResult
 }
