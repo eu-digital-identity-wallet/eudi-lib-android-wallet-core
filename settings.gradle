@@ -15,6 +15,7 @@ dependencyResolutionManagement {
             url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
             mavenContent { snapshotsOnly() }
         }
+        maven { url 'https://jitpack.io' }
     }
 }
 rootProject.name = "eudi-lib-android-wallet-core"

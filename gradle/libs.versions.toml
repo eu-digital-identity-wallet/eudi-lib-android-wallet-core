@@ -10,7 +10,7 @@ espresso-contrib = "3.5.1"
 espresso-core = "3.5.1"
 eudi-document-manager = "0.3.0-SNAPSHOT"
 eudi-iso18013-data-transfer = "0.2.0-SNAPSHOT"
-eudi-lib-jvm-openid4vci-kt = "0.3.0"
+eudi-lib-jvm-openid4vci-kt = "workingBranch-SNAPSHOT"
 eudi-lib-jvm-siop-openid4vp-kt = "0.4.2"
 gradle-plugin = "7.4.0"
 identity-credential = "20231002"
@@ -46,7 +46,7 @@ espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref =
 espresso-intents = { module = "androidx.test.espresso:espresso-intents", version.ref = "espresso-core" }
 eudi-document-manager = { module = "eu.europa.ec.eudi:eudi-lib-android-wallet-document-manager", version.ref = "eudi-document-manager" }
 eudi-iso18013-data-transfer = { module = "eu.europa.ec.eudi:eudi-lib-android-iso18013-data-transfer", version.ref = "eudi-iso18013-data-transfer" }
-eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
+eudi-lib-jvm-openid4vci-kt = { module = "com.github.TICESoftware:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
 eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
 identity-credential = { module = "com.android.identity:identity-credential", version.ref = "identity-credential" }
 json = { module = "org.json:json", version.ref = "json" }
