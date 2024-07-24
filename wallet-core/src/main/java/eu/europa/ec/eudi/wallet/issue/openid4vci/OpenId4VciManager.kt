@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import androidx.annotation.IntDef
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
@@ -106,13 +105,6 @@ interface OpenId4VciManager {
      */
     fun resolveDocumentOffer(offerUri: String, executor: Executor? = null, onResolvedOffer: OnResolvedOffer)
 
-    /**
-     * Resume the authorization flow after the user has been redirected back to the app
-     * @param intent the intent that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
-     *
-     */
-    fun resumeWithAuthorization(intent: Intent)
 
     /**
      * Resume the authorization flow after the user has been redirected back to the app

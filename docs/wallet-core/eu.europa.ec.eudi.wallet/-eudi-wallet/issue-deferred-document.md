@@ -3,9 +3,18 @@
 # issueDeferredDocument
 
 [androidJvm]\
-fun [issueDeferredDocument](issue-deferred-document.md)(documentId: DocumentId,
+fun [~~issueDeferredDocument~~](issue-deferred-document.md)(documentId: DocumentId,
 executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null,
 onResult: [OpenId4VciManager.OnDeferredIssueResult](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-deferred-issue-result/index.md))
+
+---
+
+### Deprecated
+
+Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the
+OpendId4VciManager.issueDeferredDocument() instead
+
+---
 
 Issue a deferred document using the OpenId4VCI protocol
 

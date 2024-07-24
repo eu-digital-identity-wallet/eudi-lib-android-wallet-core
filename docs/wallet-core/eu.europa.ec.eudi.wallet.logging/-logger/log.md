@@ -3,7 +3,4 @@
 # log
 
 [androidJvm]\
-abstract fun [log](log.md)(level: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html),
-tag: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-message: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-throwable: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)? = null)
+abstract fun [log](log.md)(record: [Logger.Record](-record/index.md))

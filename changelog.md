@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.11.0-SNAPSHOT]
+
+__ 25 Jul 2024__
+
+- Deprecate OpenId4Vci methods through EudiWallet object
+- Add Eudi.createOpenId4VciManager method to create OpenId4VciManager object
+- Bumb eudi-lib-andorid-wallet-document-manager to v0.4.2
+
+## [0.10.3-SNAPSHOT]
+
+__ 23 Jul 2024__
+
+- Support custom logger for OpenId4VCI and OpenId4VP via OpenId4VCIConfig
+- Fix OpenId4VCI resume authorization
+- Return DocumentExpired data class from issueDeferredDocument method when the document is expired
+
 ## [0.10.2]
 
 __ 17 Jul 2024__

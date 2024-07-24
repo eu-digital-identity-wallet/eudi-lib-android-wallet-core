@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
@@ -182,27 +181,10 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
-    override fun resumeWithAuthorization(intent: Intent) = intent.data?.let { uri ->
-        resumeWithAuthorization(uri)
-    } ?: throw IllegalStateException("No uri to resume from Intent")
-
-    override fun resumeWithAuthorization(uri: String) = resumeWithAuthorization(Uri.parse(uri))
-
     override fun resumeWithAuthorization(uri: Uri) = issuerAuthorization.resumeFromUri(uri)
 
-
-    /**
-     * Launches a coroutine.
-     * @param onResult The result listener.
-     * @param block The coroutine block.
-     */
-    private inline fun <reified V : OpenId4VciResult> launch(
-        executor: Executor?,
-        onResult: OpenId4VciManager.OnResult<V>,
-        crossinline block: suspend (coroutineScope: CoroutineScope, onResult: OpenId4VciManager.OnResult<V>) -> Unit,
-    ) {
-        val scope = CoroutineScope(Dispatchers.IO)
-        scope.launch { block(scope, onResult.runOn(executor ?: context.mainExecutor()).wrapWithLogging(logger)) }
+    override fun resumeWithAuthorization(uri: String) {
+        resumeWithAuthorization(Uri.parse(uri))
     }
 
     /**
@@ -235,5 +217,25 @@ internal class DefaultOpenId4VciManager(
             logger = logger
         ).use { it.process(response) }
         listener(IssueEvent.Finished(issuedDocumentIds))
+    }
+
+    /**
+     * Launches a coroutine.
+     * @param onResult The result listener.
+     * @param block The coroutine block.
+     */
+    private inline fun <reified V : OpenId4VciResult> launch(
+        executor: Executor?,
+        onResult: OpenId4VciManager.OnResult<V>,
+        crossinline block: suspend (coroutineScope: CoroutineScope, onResult: OpenId4VciManager.OnResult<V>) -> Unit,
+    ) {
+        val scope = CoroutineScope(Dispatchers.IO)
+        scope.launch {
+            block(
+                scope, onResult
+                    .runOn(executor ?: context.mainExecutor())
+                    .wrapWithLogging(logger)
+            )
+        }
     }
 }

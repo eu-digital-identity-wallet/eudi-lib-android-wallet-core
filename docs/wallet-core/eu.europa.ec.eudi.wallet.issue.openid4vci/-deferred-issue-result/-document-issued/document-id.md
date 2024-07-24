@@ -3,4 +3,4 @@
 # documentId
 
 [androidJvm]\
-val [documentId](document-id.md): DocumentId
+open override val [documentId](document-id.md): DocumentId
