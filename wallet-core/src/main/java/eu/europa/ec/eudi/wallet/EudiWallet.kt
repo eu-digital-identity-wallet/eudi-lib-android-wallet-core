@@ -227,7 +227,29 @@ object EudiWallet {
     fun storeIssuedDocument(unsignedDocument: UnsignedDocument, data: ByteArray): StoreDocumentResult =
         documentManager.storeIssuedDocument(unsignedDocument, data)
 
-    private var openId4VciManager: OpenId4VciManager? = null
+    /**
+     * Creates and returns an [OpenId4VciManager] instance
+     *
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method or if the [EudiWalletConfig.openId4VciConfig] is not set
+     * @see [OpenId4VciManager]
+     * @return [OpenId4VciManager]
+     */
+    fun createOpenId4VciManager(): OpenId4VciManager {
+        return requireInit {
+            config.openId4VciConfig?.let { config ->
+                OpenId4VciManager(context) {
+                    documentManager(this@EudiWallet.documentManager)
+                    config(config)
+                    logger = this@EudiWallet.logger
+                    ktorHttpClientFactory = _config.ktorHttpClientFactory
+                }
+            } ?: throw IllegalStateException("OpenId4Vci config is not set in configuration")
+        }
+    }
+
+    private val openId4VciManager: OpenId4VciManager by lazy {
+        createOpenId4VciManager()
+    }
 
     /**
      * Issue a document using the OpenId4VCI protocol
@@ -241,24 +263,18 @@ object EudiWallet {
      * @see [OpenId4VciManager.OnIssueEvent] on how to handle the result
      * @see [IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.issueDocumentByDocType() instead")
     fun issueDocumentByDocType(
         docType: String,
         txCode: String? = null,
         executor: Executor? = null,
         onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
-        requireInit {
-            config.openId4VciConfig?.let { config ->
-                openId4VciManager = OpenId4VciManager(context) {
-                    documentManager(this@EudiWallet.documentManager)
-                    config(config)
-                    logger = this@EudiWallet.logger
-                    ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByDocType(docType, txCode, executor, onEvent) }
-            } ?: run {
-                (executor ?: context.mainExecutor()).execute {
-                    onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
-                }
+        try {
+            openId4VciManager.issueDocumentByDocType(docType, txCode, executor, onEvent)
+        } catch (e: Throwable) {
+            (executor ?: context.mainExecutor()).execute {
+                onEvent(IssueEvent.failure(e))
             }
         }
     }
@@ -275,25 +291,24 @@ object EudiWallet {
      * @see [OpenId4VciManager.issueDocumentByOffer]
      * @see [OpenId4VciManager.OnIssueEvent] on how to handle the result
      * @see [IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
+     * Creates and returns an [OpenId4VciManager] instance
+     *
+     * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method or if the [EudiWalletConfig.openId4VciConfig] is not set
+     * @see [OpenId4VciManager]
+     * @return [OpenId4VciManager]
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.issueDocumentByOffer() instead")
     fun issueDocumentByOffer(
         offer: Offer,
         txCode: String? = null,
         executor: Executor? = null,
         onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
-        requireInit {
-            config.openId4VciConfig?.let { config ->
-                openId4VciManager = OpenId4VciManager(context) {
-                    documentManager(this@EudiWallet.documentManager)
-                    config(config)
-                    logger = this@EudiWallet.logger
-                    ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByOffer(offer, txCode, executor, onEvent) }
-            } ?: run {
-                (executor ?: context.mainExecutor()).execute {
-                    onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
-                }
+        try {
+            openId4VciManager.issueDocumentByOffer(offer, txCode, executor, onEvent)
+        } catch (e: Throwable) {
+            (executor ?: context.mainExecutor()).execute {
+                onEvent(IssueEvent.failure(e))
             }
         }
     }
@@ -310,24 +325,18 @@ object EudiWallet {
      * @see [OpenId4VciManager.OnIssueEvent] on how to handle the result
      * @see [IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.issueDocumentByOfferUri() instead")
     fun issueDocumentByOfferUri(
         offerUri: String,
         txCode: String? = null,
         executor: Executor? = null,
         onEvent: OpenId4VciManager.OnIssueEvent,
     ) {
-        requireInit {
-            config.openId4VciConfig?.let { config ->
-                openId4VciManager = OpenId4VciManager(context) {
-                    documentManager(this@EudiWallet.documentManager)
-                    config(config)
-                    logger = this@EudiWallet.logger
-                    ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByOfferUri(offerUri, txCode, executor, onEvent) }
-            } ?: run {
-                (executor ?: context.mainExecutor()).execute {
-                    onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
-                }
+        try {
+            openId4VciManager.issueDocumentByOfferUri(offerUri, txCode, executor, onEvent)
+        } catch (e: Throwable) {
+            (executor ?: context.mainExecutor()).execute {
+                onEvent(IssueEvent.failure(e))
             }
         }
     }
@@ -341,45 +350,36 @@ object EudiWallet {
      * @see [OpenId4VciManager.issueDeferredDocument]
      * @see [OpenId4VciManager.OnDeferredIssueResult] on how to handle the result
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.issueDeferredDocument() instead")
     fun issueDeferredDocument(
         documentId: DocumentId,
         executor: Executor? = null,
         onResult: OpenId4VciManager.OnDeferredIssueResult,
     ) {
-        requireInit {
-            config.openId4VciConfig?.let { config ->
-                openId4VciManager = OpenId4VciManager(context) {
-                    documentManager(this@EudiWallet.documentManager)
-                    config(config)
-                    logger = this@EudiWallet.logger
-                    ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also {
-                    when (val document = documentManager.getDocumentById(documentId)) {
-                        is DeferredDocument -> it.issueDeferredDocument(document, executor, onResult)
-                        else -> (executor ?: context.mainExecutor()).execute {
-                            onResult(
-                                DeferredIssueResult.DocumentFailed(
-                                    documentId = documentId,
-                                    name = document?.name ?: "",
-                                    docType = document?.docType ?: "",
-                                    cause = IllegalStateException("Document is not deferred")
-                                )
-                            )
-                        }
-                    }
-
-                }
-            } ?: run {
-                (executor ?: context.mainExecutor()).execute {
+        try {
+            when (val document = documentManager.getDocumentById(documentId)) {
+                is DeferredDocument -> openId4VciManager.issueDeferredDocument(document, executor, onResult)
+                else -> (executor ?: context.mainExecutor()).execute {
                     onResult(
                         DeferredIssueResult.DocumentFailed(
                             documentId = documentId,
-                            name = "",
-                            docType = "",
-                            cause = IllegalStateException("OpenId4Vci config is not set in configuration")
+                            name = document?.name ?: "",
+                            docType = document?.docType ?: "",
+                            cause = IllegalStateException("Document is not deferred")
                         )
                     )
                 }
+            }
+        } catch (e: Throwable) {
+            (executor ?: context.mainExecutor()).execute {
+                onResult(
+                    DeferredIssueResult.DocumentFailed(
+                        documentId = documentId,
+                        name = "",
+                        docType = "",
+                        cause = e
+                    )
+                )
             }
         }
     }
@@ -394,56 +394,59 @@ object EudiWallet {
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      * @throws IllegalStateException if [EudiWalletConfig.openId4VciConfig] is not set
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.resolveDocumentOffer() instead")
     fun resolveDocumentOffer(
         offerUri: String,
         executor: Executor? = null,
         onResult: OpenId4VciManager.OnResolvedOffer,
     ) {
-        requireInit {
-            config.openId4VciConfig?.let { config ->
-                openId4VciManager = OpenId4VciManager(context) {
-                    documentManager(this@EudiWallet.documentManager)
-                    config(config)
-                    logger = this@EudiWallet.logger
-                    ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.resolveDocumentOffer(offerUri, executor, onResult) }
-            } ?: run {
-                (executor ?: context.mainExecutor()).execute {
-                    onResult(OfferResult.Failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
-                }
+        try {
+            openId4VciManager.resolveDocumentOffer(offerUri, executor, onResult)
+        } catch (e: Throwable) {
+            (executor ?: context.mainExecutor()).execute {
+                onResult(OfferResult.Failure(e))
             }
         }
     }
 
     /**
-     * Resumes the OpenId4VCI flow with the given [intent]
+     * Resumes the OpenId4VCI flow with the given [intent].
+     * Intent's data uri must contain the authorization code and the server state parameters
+     * to resume with the authorization
      * @param intent the intent that contains the authorization code
      * @throws [IllegalStateException] if no authorization request to resume
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.resumeWithAuthorization() instead")
     fun resumeOpenId4VciWithAuthorization(intent: Intent) {
-        openId4VciManager?.resumeWithAuthorization(intent)
-            ?: throw IllegalStateException("No OpenId4VciManager to resume")
+        intent.data?.let { uri ->
+            openId4VciManager.resumeWithAuthorization(uri)
+        } ?: throw IllegalStateException("Intent does not contain data")
     }
 
     /**
-     * Resumes the OpenId4VCI flow with the given [intent]
+     * Resumes the OpenId4VCI flow with the given [uri].
+     * [uri] must contain the authorization code and the server state parameters
+     * to resume with the authorization
      * @param uri the uri that contains the authorization code
      * @throws [IllegalStateException] if no authorization request to resume
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.resumeWithAuthorization() instead")
     fun resumeOpenId4VciWithAuthorization(uri: String) {
-        openId4VciManager?.resumeWithAuthorization(uri)
-            ?: throw IllegalStateException("No OpenId4VciManager to resume")
+        openId4VciManager.resumeWithAuthorization(uri)
     }
 
     /**
-     * Resumes the OpenId4VCI flow with the given [intent]
+     * Resumes the OpenId4VCI flow with the given [uri].
+     * [uri] must contain the authorization code and the server state parameters
+     * to resume with the authorization
      * @param uri the uri that contains the authorization code
      * @throws [IllegalStateException] if no authorization request to resume
      */
+    @Deprecated("Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the OpendId4VciManager.resumeWithAuthorization() instead")
     fun resumeOpenId4VciWithAuthorization(uri: Uri) {
-        openId4VciManager?.resumeWithAuthorization(uri)
-            ?: throw IllegalStateException("No OpenId4VciManager to resume")
+        openId4VciManager.resumeWithAuthorization(uri)
     }
+
 
     /**
      * Loads sample data into the wallet's document manager

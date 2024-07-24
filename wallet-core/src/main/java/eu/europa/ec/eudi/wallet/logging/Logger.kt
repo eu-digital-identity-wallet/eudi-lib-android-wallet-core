@@ -16,12 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.logging
 
-import android.util.Log
 import androidx.annotation.IntDef
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
-import eu.europa.ec.eudi.wallet.logging.Logger.Companion.LEVEL_DEBUG
-import eu.europa.ec.eudi.wallet.logging.Logger.Companion.LEVEL_ERROR
-import eu.europa.ec.eudi.wallet.logging.Logger.Companion.LEVEL_INFO
 import java.time.Instant
 
 
@@ -54,57 +50,4 @@ fun interface Logger {
     annotation class Level
 }
 
-class LoggerImpl(val config: EudiWalletConfig, private val maxLogSize: Int = 1000) : Logger {
-    override fun log(record: Logger.Record) {
-        val tag = record.sourceClassName ?: ""
-        splitMessage(record.message).forEachIndexed { i, m ->
-            when {
-                record.level == LEVEL_ERROR && config.logLevel >= LEVEL_ERROR && i == 0 && record.thrown != null ->
-                    Log.e(tag, m, record.thrown)
-
-                record.level == LEVEL_ERROR && config.logLevel >= LEVEL_ERROR -> Log.e(tag, m)
-                record.level == LEVEL_INFO && config.logLevel >= LEVEL_INFO -> Log.i(tag, m)
-                record.level == LEVEL_DEBUG && config.logLevel >= LEVEL_DEBUG -> Log.d(tag, m)
-            }
-        }
-    }
-
-    private fun splitMessage(message: String): List<String> {
-        val messages = mutableListOf<String>()
-        for (i in 0..message.length step maxLogSize) {
-            val end = if (i + maxLogSize < message.length) i + maxLogSize else message.length
-            messages.add(message.substring(i, end))
-        }
-        return messages
-    }
-}
-
-@JvmSynthetic
-internal fun Logger.d(tag: String, message: String) = log(
-    Logger.Record(
-        level = LEVEL_DEBUG,
-        sourceClassName = tag,
-        message = message
-    )
-)
-
-@JvmSynthetic
-internal fun Logger.i(tag: String, message: String) = log(
-    Logger.Record(
-        level = LEVEL_INFO,
-        sourceClassName = tag,
-        message = message
-    )
-)
-
-@JvmSynthetic
-internal fun Logger.e(tag: String, message: String, throwable: Throwable? = null) =
-    log(
-        Logger.Record(
-            level = LEVEL_ERROR,
-            sourceClassName = tag,
-            message = message,
-            thrown = throwable
-        )
-    )
 

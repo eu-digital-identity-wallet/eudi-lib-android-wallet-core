@@ -3,4 +3,5 @@
 # docType
 
 [androidJvm]\
+open override
 val [docType](doc-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

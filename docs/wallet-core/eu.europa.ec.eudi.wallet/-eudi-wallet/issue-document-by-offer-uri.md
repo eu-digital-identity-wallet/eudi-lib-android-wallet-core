@@ -3,11 +3,20 @@
 # issueDocumentByOfferUri
 
 [androidJvm]\
-fun [issueDocumentByOfferUri](issue-document-by-offer-uri.md)(
+fun [~~issueDocumentByOfferUri~~](issue-document-by-offer-uri.md)(
 offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
 txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null,
 executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null,
 onEvent: [OpenId4VciManager.OnIssueEvent](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-issue-event/index.md))
+
+---
+
+### Deprecated
+
+Use EudiWallet.createOpenId4VciManager() to create an instance of OpenId4VciManager and use the
+OpendId4VciManager.issueDocumentByOfferUri() instead
+
+---
 
 Issue a document using an offerUri and the OpenId4VCI protocol
 
@@ -32,6 +41,6 @@ androidJvm
 
 #### Throws
 
-| | |
-|---|---|
+|                                                                                                                  |                                                                                                  |
+|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
 | [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if [EudiWalletConfig.openId4VciConfig](../-eudi-wallet-config/open-id4-vci-config.md) is not set |

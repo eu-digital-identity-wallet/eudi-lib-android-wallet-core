@@ -157,6 +157,7 @@ import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.Logger
 import java.security.cert.X509Certificate
+
 val logger = Logger { record: Logger.Record ->
     // log the record
 }
@@ -450,7 +451,10 @@ the [Initialize the library](#initialize-the-library) section.
 
 #### Resolving Credential offer
 
-The library provides the `EudiWallet.resolveDocumentOffer` method that resolves the credential offer URI.
+First, you need an instance of the `OpenId4VciManager` class. You can create an instance of the class by calling
+the `EudiWallet.createOpenId4VciManager` method.
+
+The library provides the `OpenId4VciManager.resolveDocumentOffer` method that resolves the credential offer URI.
 The method returns the resolved [`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt)
 object that contains the offer's data. The offer's data can be displayed to the
 user.
@@ -459,7 +463,9 @@ The following example shows how to resolve a credential offer:
 
 ```kotlin
 val offerUri = "https://issuer.com/?credential_offer=..."
-EudiWallet.resolveDocumentOffer(offerUri) { result ->
+// Create an instance of OpenId4VciManager
+val openId4VciManager = EudiWallet.createOpenId4VciManager()
+openId4VciManager.resolveDocumentOffer(offerUri) { result ->
 
     when (result) {
         is OfferResult.Success -> {
@@ -478,26 +484,31 @@ EudiWallet.resolveDocumentOffer(offerUri) { result ->
 }
 ```
 
-There is also the availability for the `EudiWallet.resolveDocumentOffer` method to specify the executor in which the
+There is also the availability for the `OpenId4VciManager.resolveDocumentOffer` method to specify the executor in which
+the
 onResolvedOffer callback is executed, by assigning the `executor` parameter.
 If the `executor` parameter is null, the callback will be executed on the main thread.
 
 ```kotlin
 val executor = Executors.newSingleThreadExecutor()
-EudiWallet.resolveDocumentOffer(offerUri, executor) { result ->
+openId4VciManager.resolveDocumentOffer(offerUri, executor) { result ->
     // ...
 }
 ```
 
 #### Issuing a document
 
+First, you need an instance of the `OpenId4VciManager` class. You can create an instance of the class by calling
+the `EudiWallet.createOpenId4VciManager` method.
+
 There are two ways to issue a document using OpenID4VCI:
 
-1. Using the `EudiWallet.issueDocumentByDocType` method, when the document's docType is known.
-2. Using the `EudiWallet.issueDocumentByOffer` or `EudiWallet.issueDocumentByOfferUri` methods, when an OpenId4VCI offer
+1. Using the `OpenId4VciManager.issueDocumentByDocType` method, when the document's docType is known.
+2. Using the `OpenId4VciManager.issueDocumentByOffer` or `OpenId4VciManager.issueDocumentByOfferUri` methods, when an
+   OpenId4VCI offer
    is given.
 
-_Important Notes_:
+__Important note__:
 
 - Currently, only mso_mdoc format is supported
 - Currently, only the ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
@@ -567,23 +578,25 @@ val onIssueEvent = OnIssueEvent { event ->
         }
     }
 }
+// Create an instance of OpenId4VciManager
+val openId4VciManager = EudiWallet.createOpenId4VciManager()
 
-EudiWallet.issueDocumentByDocType(
+openId4VciManager.issueDocumentByDocType(
     docType = "eu.europa.ec.eudi.pid.1",
     txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
-    onEvent = onIssueEvent
+    onIssueEvent = onIssueEvent
 )
 // or
-EudiWallet.issueDocumentByOfferUri(
+openId4VciManager.issueDocumentByOfferUri(
     offerUri = "https://issuer.com/?credential_offer=...",
     txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
-    onEvent = onIssueEvent
+    onIssueEvent = onIssueEvent
 )
 // or given a resolved offer object
-EudiWallet.issueDocumentByOffer(
+openId4VciManager.issueDocumentByOffer(
     offer = offer,
     txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
-    onEvent = onIssueEvent
+    onIssueEvent = onIssueEvent
 )
 ```
 
@@ -592,8 +605,12 @@ specify the executor in which the onIssueEvent callback is executed, by assignin
 If the `executor` parameter is null, the callback will be executed on the main thread.
 
 ```kotlin
+
+// Create an instance of OpenId4VciManager
+val openId4VciManager = EudiWallet.createOpenId4VciManager()
+
 val executor = Executors.newSingleThreadExecutor()
-EudiWallet.issueDocumentByDocType(
+openId4VciManager.issueDocumentByDocType(
     docType = "eu.europa.ec.eudi.pid.1",
     executor = executor
 ) { event ->
@@ -605,8 +622,15 @@ EudiWallet.issueDocumentByDocType(
 
 For the authorization code flow to work, the application must handle the redirect URI. The redirect URI is the URI that
 the Issuer will redirect the user to after the user has authenticated and authorized. The redirect URI must be handled
-by the application and resume the issuance process by calling the `EudiWallet.resumeOpenId4VciWithAuthorization`.
+by the application and resume the issuance process by calling the `OpenId4VciManager.resumeWithAuthorization`.
 Also, the redirect uri declared in the OpenId4VCI configuration must be declared in the application's manifest file.
+
+__Important note__: The `resumeWithAuthorization` method must be called from the same OpenId4VciManager instance
+that was used to start the issuance process. You will need to keep the reference of the `OpenId4VciManager` instance
+that
+was used for calling the `issueDocumentByDocType`, `issueDocumentByOfferUri` or `issueDocumentByOffer` method and use
+this
+same instance to call the `resumeWithAuthorization` method.
 
 ```xml
 
@@ -644,15 +668,23 @@ EudiWalletConfig.Builder(applicationContext)
 ```
 
 ```kotlin 
+import javax.management.openmbean.OpenMBeanInfo
 
 class SomeActivity : AppCompatActivity() {
+
+    val openId4VciManager: OpenId4VciManager
+        get() {
+            // get the OpenId4VciManager instance that was created during the issuance process
+            // ...
+        }
+
     // ...
     override fun onResume() {
         super.onResume()
         // check if intent is from the redirect uri to resume the issuance process
         // ...
         // then call
-        EudiWallet.resumeOpenId4VciWithAuthorization(intent)
+        intent.data?.let { uri -> openId4VciManager.resumeWithAuthorization(uri) }
     }
     // ...
 }
@@ -680,12 +712,13 @@ passing the transaction code as in the `txCode` parameter.
 #### Deferred Issuance
 
 When the document issuance is deferred, the `IssueEvent.DocumentDeferred` event is triggered. The deferred document can
-be issued later by calling the `EudiWallet.issueDeferredDocument` method.
+be issued later by calling the `OpenId4VciManager.issueDeferredDocument` method.
 
 ```kotlin
 val documentId = "documentId"
+val openId4VciManager: OpenId4VciManager = EudiWallet.createOpenId4VciManager()
 
-EudiWallet.issueDeferredDocument(documentId) { result ->
+openId4VciManager.issueDeferredDocument(documentId) { result ->
     when (result) {
         is DeferredIssueResult.DocumentIssued -> {
             // document issued
@@ -696,6 +729,9 @@ EudiWallet.issueDeferredDocument(documentId) { result ->
         }
         is DeferredIssueResult.DocumentNotReady -> {
             // The document is not issued yet
+        }
+        is DeferredIssueResult.DocumentExpired -> {
+            // The document is expired and cannot be issued
         }
     }
 }
