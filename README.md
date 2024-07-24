@@ -33,12 +33,13 @@ The library provides the following functionality:
 - Document issuance
     - [x] Support for OpenId4VCI Draft 13 document issuance
         - [x] Authorization Code Flow
-        - [ ] Pre-authorization Code Flow
+        - [x] Pre-authorization Code Flow
         - [x] Support for mso_mdoc format
         - [ ] Support for sd-jwt-vc format
-      - [x] Support credential offer
-      - [x] Support for DPoP JWT in authorization
-      - [x] Support for JWT and CWT proof types
+        - [x] Support credential offer
+        - [x] Support for DPoP JWT in authorization
+        - [x] Support for JWT and CWT proof types
+      - [x] Support for deferred issuing
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -82,7 +83,7 @@ The released software is a initial development release version:
 
 ### Dependencies
 
-In order to use snapshot versions add the following to your project's settings.gradle file:
+To use snapshot versions add the following to your project's settings.gradle file:
 
 ```groovy
 
@@ -103,7 +104,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.9.4-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.10.2"
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
 }
 ```
@@ -115,7 +116,7 @@ dependencies {
 The library must be initialized before it can be used. The initialization must be done only once in
 the application.
 
-In order to initialize the library, you need to provide a configuration object. The configuration
+To initialize the library, you need to provide a configuration object. The configuration
 object is created using the `EudiWalletConfig.Builder` class. The builder allows you to configure
 the following options:
 
@@ -135,7 +136,7 @@ the following options:
 - `userAuthenticationRequired` method allows you to specify if the user authentication is required
   when using documents' keys. The default value is `false`.
 - `userAuthenticationTimeOut` method allows you to specify the user authentication timeout in
-  milliseconds. If the value is 0, the user authentication is required for every use of the key,
+  milliseconds. If the value is 0, the user authentication is required for every use of the key;
   otherwise it's required within the given amount of milliseconds. The default value is 30000.
 - `trustedReaderCertificates` method allows you to specify the list of trusted reader certificates.
   The default value is an empty list.
@@ -143,6 +144,10 @@ the following options:
   default value is null.
 - `openId4VciConfig` method allows you to specify the configuration for OpenID4VCI. The default
   value is null.
+- `logger` method allows you to specify the logger. If the logger is not provided, the default
+  logger will be used.
+- `logLevel` method allows you to specify the log level for the default logger. The default value
+  is `Logger.LEVEL_ERROR`.
 
 The following example shows how to initialize the library:
 
@@ -150,11 +155,25 @@ The following example shows how to initialize the library:
 
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
+import eu.europa.ec.eudi.wallet.Logger
 import java.security.cert.X509Certificate
-
+val logger = Logger { record: Logger.Record ->
+    // log the record
+}
 val storageDir = applicationContext.noBackupFilesDir
 val verifierApiUri = "https://verifier-api-uri"
 val config = EudiWalletConfig.Builder(applicationContext)
+    // set the log level for the default logger
+    .logLevel(Logger.LEVEL_DEBUG)
+    // or set a custom logger
+    .logger(logger)
+    .ktorHttpClientFactory {
+        // Provide your own Ktor HttpClient.
+        // This will be used for OpenId4VCI and OpenId4VP communication.
+        // If a httpClient is not provided, the library will create a default one.
+        // For every httpClientFactory, the result httpClient will be configured
+        // for logging (when logLevel is set to debug) and with json content negotiation 
+    }
     .bleTransferMode(
         EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE,
         EudiWalletConfig.BLE_CLIENT_CENTRAL_MODE
@@ -218,26 +237,22 @@ Library initialization is recommended to be done in the `Application.onCreate` m
 
 ### Manage documents
 
-Document is a data structure that contains the following information:
-
-- `id` document's unique identifier
-- `docType` document's docType (example: "eu.europa.ec.eudiw.pid.1")
-- `name` document's name. This is a human readable name.
-- `hardwareBacked` document's storage is hardware backed
-- `createdAt` document's creation date
-- `requiresUserAuth` flag that indicates if the document requires user authentication to be accessed
-- `nameSpacedData` retrieves the document's data, grouped by nameSpace. Values are in CBOR bytes
-
 The library provides a set of methods to work with documents.
 
 #### Listing documents
 
 The `EudiWallet.getDocuments` method that returns the list of documents stored in the library.
 
-The following example shows how to list documents:
+The following example shows how to list issued documents:
 
 ```kotlin
-val documents = EudiWallet.getDocuments()
+val documents: List<IssuedDocument> = EudiWallet.getDocuments()
+```
+
+To list all documents, including unsigned and deferred, use the following code:
+
+```kotlin
+val documents: List<Document> = EudiWallet.getAllDocuments()
 ```
 
 #### Retrieving a document
@@ -272,49 +287,78 @@ when (result) {
 
 #### Issuing/Adding a document
 
-Adding a document is a two-step process. First, you need to create an issuanceRequest using the
-method `EudiWallet.createIssuanceRequest`. The issuanceRequest holds the public certificate
-that will be used from the issuer to sign the document.
+Adding a document is a two-step process. First, you need to create an unsigned document using the
+method `EudiWallet.createDocument`. The unsigned document holds the public certificate
+that will be used by the issuer to sign the document.
 
 Later, when document's data is available, you can create the document using the
-method `EudiWallet.addDocument` to add the document to document storage.
+method `EudiWallet.storeIssuedDocument` to add the document to document storage.
 
 The following example shows how to add a document:
 
 ```kotlin
-val docType = "eu.europa.ec.eudiw.pid.1"
+val docType = "eu.europa.ec.eudi.pid.1"
 val hardwareBacked = false
 val attestationChallenge = byteArrayOf(
     // attestation challenge bytes
     // provided by the issuer
 )
-val requestResult =
-    EudiWallet.createIssuanceRequest(docType, hardwareBacked, attestationChallenge)
-when (requestResult) {
-    is CreateIssuanceRequestResult.Failure -> {
-        val error = requestResult.throwable
-        // handle error while creating issuance request
+val result = EudiWallet.createDocument(docType, hardwareBacked, attestationChallenge)
+when (result) {
+    is CreateDocumentResult.Failure -> {
+        val error = result.throwable
+        // handle error
     }
-    is CreateIssuanceRequestResult.Success -> {
-        val request = requestResult.issuanceRequest
-        val docType = request.docType
+
+    is CreateDocumentResult.Success -> {
+        val unsignedDocument = result.issuanceRequest
+        val docType = unsignedDocument.docType
         // the device certificate that will be used in the signing of the document
         // from the issuer while creating the MSO (Mobile Security Object)
-        val certificateNeedAuth = request.certificateNeedAuth
+        val certificateNeedAuth = unsignedDocument.certificateNeedAuth
+        // or
+        val publicKey = unsignedDocument.publicKey
 
-        // ... code that sends certificate to issuer and receives document's data
-
-        val issuerData: ByteArray = byteArrayOf() // CBOR bytes received from issuer
-
-        val addResult = EudiWallet.addDocument(request, issuerData)
-
-        when (addResult) {
-            is AddDocumentResult.Failure -> {
-                val error = addResult.throwable
-                // handle error while adding document
+        // if the issuer requires the user to prove possession of the private key corresponding to the certificateNeedAuth
+        // then user can use the method below to sign issuer's data and send the signature to the issuer
+        val signingInputFromIssuer = byteArrayOf(
+            // signing input bytes from the issuer
+            // provided by the issuer
+        )
+        val signatureResult = unsignedDocument.signWithAuthKey(signingInputFromIssuer)
+        when (signatureResult) {
+            is SignedWithAuthKeyResult.Success -> {
+                val signature = signatureResult.signature
+                // signature for the issuer
             }
-            is AddDocumentResult.Success -> {
-                val documentId = addResult.documentId
+            is SignedWithAuthKeyResult.Failure -> {
+                val error = signatureResult.throwable
+                // handle error while signing with auth key
+            }
+            is SignedWithAuthKeyResult.UserAuthRequired -> {
+                // user authentication is required to sign with auth key
+                val cryptoObject = signatureResult.cryptoObject
+                // use cryptoObject to authenticate the user
+                // after user authentication, the user can sign with auth key again
+            }
+        }
+
+        // ... code that sends docType and certificates to issuer and signature if required
+
+        // after receiving the MSO from the issuer, the user can start the issuance process
+        val issuerData: ByteArray = byteArrayOf(
+            // CBOR bytes of the document
+        )
+
+        val storeResult = EudiWallet.storeIssuedDocument(unsignedDocument, issuerData)
+
+        when (storeResult) {
+            is StoreDocumentResult.Failure -> {
+                val error = storeResult.throwable
+                // handle error while adding the document
+            }
+            is StoreDocumentResult.Success -> {
+                val documentId = storeResult.documentId
                 // the documentId of the newly added document
                 // use the documentId to retrieve the document
                 documentManager.getDocumentById(documentId)
@@ -423,6 +467,7 @@ EudiWallet.resolveDocumentOffer(offerUri) { result ->
             // display the offer's data to the user
             val issuerName = offer.issuerName
             val offeredDocuments: List<OfferedDocument> = offer.offeredDocuments
+            val txCodeSpec: Offer.TxCodeSpec? = offer.txCodeSpec // information about pre-authorized flow
             // ...
         }
         is OfferResult.Failure -> {
@@ -455,7 +500,7 @@ There are two ways to issue a document using OpenID4VCI:
 _Important Notes_:
 
 - Currently, only mso_mdoc format is supported
-- Currently, only ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
+- Currently, only the ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
   publicKey.
 
 The following example shows how to issue a document using OpenID4VCI:
@@ -512,14 +557,34 @@ val onIssueEvent = OnIssueEvent { event ->
             // or cancel the issuance process by calling
             event.cancel()
         }
+
+        is IssueEvent.DocumentDeferred -> {
+            // triggered when the document issuance is deferred
+            // and holds the documentId of the deferred document
+            val documentId: String = event.documentId
+            val documentName: String = event.name
+            val docType: String = event.docType
+        }
     }
 }
 
-EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", onIssueEvent)
+EudiWallet.issueDocumentByDocType(
+    docType = "eu.europa.ec.eudi.pid.1",
+    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    onEvent = onIssueEvent
+)
 // or
-EudiWallet.issueDocumentByOfferUri("https://issuer.com/?credential_offer=...", onIssueEvent)
+EudiWallet.issueDocumentByOfferUri(
+    offerUri = "https://issuer.com/?credential_offer=...",
+    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    onEvent = onIssueEvent
+)
 // or given a resolved offer object
-EudiWallet.issueDocumentByOffer(offer, onIssueEvent)
+EudiWallet.issueDocumentByOffer(
+    offer = offer,
+    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    onEvent = onIssueEvent
+)
 ```
 
 There's also available for `issueDocumentByDocType`, `issueDocumentByOfferUri` and `issueDocumentByOffer` methods to
@@ -528,12 +593,15 @@ If the `executor` parameter is null, the callback will be executed on the main t
 
 ```kotlin
 val executor = Executors.newSingleThreadExecutor()
-EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", executor) { event ->
+EudiWallet.issueDocumentByDocType(
+    docType = "eu.europa.ec.eudi.pid.1",
+    executor = executor
+) { event ->
     // ...
 }
 ```
 
-##### Authorization code flow
+#### Authorization code flow
 
 For the authorization code flow to work, the application must handle the redirect URI. The redirect URI is the URI that
 the Issuer will redirect the user to after the user has authenticated and authorized. The redirect URI must be handled
@@ -547,8 +615,8 @@ Also, the redirect uri declared in the OpenId4VCI configuration must be declared
     <application>
         <!-- rest of manifest -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+                android:name=".MainActivity"
+                android:exported="true">
             <!-- rest of activity -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
@@ -587,6 +655,49 @@ class SomeActivity : AppCompatActivity() {
         EudiWallet.resumeOpenId4VciWithAuthorization(intent)
     }
     // ...
+}
+```
+
+#### Pre-Authorization code flow
+
+When Issuer supports the pre-authorization code flow, the resolved offer will also contain the corresponding
+information. Specifically, the `txCodeSpec` field in the `Offer` object will contain:
+
+- The input mode, whether it is NUMERIC or TEXT
+- The expected length of the input
+- The description of the input
+
+From the user's perspective, the application must provide a way to input the transaction code.
+
+When the transaction code is provided, the issuance process can be resumed by calling any of the following methods:
+
+- `EudiWallet.issueDocumentByDocType`
+- `EudiWallet.issueDocumentByOfferUri`
+- `EudiWallet.issueDocumentByOffer`
+
+passing the transaction code as in the `txCode` parameter.
+
+#### Deferred Issuance
+
+When the document issuance is deferred, the `IssueEvent.DocumentDeferred` event is triggered. The deferred document can
+be issued later by calling the `EudiWallet.issueDeferredDocument` method.
+
+```kotlin
+val documentId = "documentId"
+
+EudiWallet.issueDeferredDocument(documentId) { result ->
+    when (result) {
+        is DeferredIssueResult.DocumentIssued -> {
+            // document issued
+        }
+        is DeferredIssueResult.DocumentFailed -> {
+            // error
+            val cause = result.throwable
+        }
+        is DeferredIssueResult.DocumentNotReady -> {
+            // The document is not issued yet
+        }
+    }
 }
 ```
 
@@ -651,7 +762,7 @@ val transferEventListener = TransferEvent.Listener { event ->
                     // handle the failure
                 }
                 is ResponseResult.Success -> {
-                    // response has been send successfully
+                    // response has been sent successfully
                 }
                 is ResponseResult.UserAuthRequired -> {
                     // user authentication is required. Get the crypto object from responseResult.cryptoObject
@@ -691,7 +802,7 @@ EudiWallet.addTransferEventListener(transferEventListener)
 
 1. BLE transfer using QR Engagement
 
-   Once the a transfer event listener is attached, use the `EudiWallet.startQrEngagement()`
+   Once a transfer event listener is attached, use the `EudiWallet.startQrEngagement()`
    method to start the QR code engagement.
 
     ```kotlin
@@ -713,7 +824,7 @@ EudiWallet.addTransferEventListener(transferEventListener)
     ```
 2. BLE transfer using NFC Engagement
 
-In order to use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's
+To use NFC for engagement, you must add the service `DefaultNfcEngagementService` to your application's
 manifest file, like shown below:
 
     ```xml
@@ -759,9 +870,9 @@ when the activity is paused.
     }
     ```
 
-3. RestAPI using app link
+1. RestAPI using app link
 
-   To enable 18013-7 REST API functionality, declare to your app's manifest file
+   To enable ISO 18013-7 REST API functionality, declare to your app's manifest file
    (AndroidManifest.xml) an Intent Filter for your MainActivity:
 
     ```xml
@@ -800,7 +911,7 @@ when the activity is paused.
     }
     ```
 
-4. OpenID4VP
+2. OpenID4VP
 
    To use the OpenID4VP functionality, the configuration that is used to initialize the library
    must contain the `openId4VpConfig`. See the [Initialize the library](#initialize-the-library) section.
@@ -849,7 +960,7 @@ when the activity is paused.
                           // handle the failure
                       }
                       is ResponseResult.Success -> {
-                          // response has been send successfully
+                          // response has been sent successfully
                       }
                       is ResponseResult.UserAuthRequired -> {
                           // user authentication is required. Get the crypto object from responseResult.cryptoObject
@@ -892,7 +1003,7 @@ when the activity is paused.
    }
    ```
 
-#### Receiving request and sending response
+#### Receiving a request and sending a response
 
 When a request is received, the `TransferEvent.RequestReceived` event is triggered. The parsed request can
 be retrieved from `event.requestedDocumentData`, while the initial request, as received by the verifier,

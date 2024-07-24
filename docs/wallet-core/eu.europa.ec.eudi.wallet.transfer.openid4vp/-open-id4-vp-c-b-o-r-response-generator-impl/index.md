@@ -2,7 +2,9 @@
 
 # OpenId4VpCBORResponseGeneratorImpl
 
-class [OpenId4VpCBORResponseGeneratorImpl](index.md)(documentsResolver: DocumentsResolver, storageEngine: StorageEngine, secureArea: AndroidKeystoreSecureArea) : ResponseGenerator&lt;[OpenId4VpRequest](../-open-id4-vp-request/index.md)&gt; 
+class [OpenId4VpCBORResponseGeneratorImpl](index.md)(documentsResolver: DocumentsResolver, storageEngine: StorageEngine,
+secureArea: AndroidKeystoreSecureArea, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? =
+null) : ResponseGenerator&lt;[OpenId4VpRequest](../-open-id4-vp-request/index.md)&gt;
 
 OpenId4VpCBORResponseGeneratorImpl class is used for parsing a request (Presentation Definition) and generating the DeviceResponse
 
@@ -18,9 +20,9 @@ androidJvm
 
 ## Constructors
 
-| | |
-|---|---|
-| [OpenId4VpCBORResponseGeneratorImpl](-open-id4-vp-c-b-o-r-response-generator-impl.md) | [androidJvm]<br>constructor(documentsResolver: DocumentsResolver, storageEngine: StorageEngine, secureArea: AndroidKeystoreSecureArea) |
+|                                                                                       |                                                                                                                                                                                                                           |
+|---------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [OpenId4VpCBORResponseGeneratorImpl](-open-id4-vp-c-b-o-r-response-generator-impl.md) | [androidJvm]<br>constructor(documentsResolver: DocumentsResolver, storageEngine: StorageEngine, secureArea: AndroidKeystoreSecureArea, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null) |
 
 ## Types
 

@@ -3,6 +3,15 @@
 # invoke
 
 [androidJvm]\
-operator fun [invoke](invoke.md)(block: [OpenId4VciManager.Config.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [OpenId4VciManager.Config](../index.md)
+operator fun [invoke](invoke.md)(block: [OpenId4VciManager.Config.Builder](../-builder/index.md).()
+-&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [OpenId4VciManager.Config](../index.md)
 
 Create an instance of [Config](../index.md)
+
+#### Parameters
+
+androidJvm
+
+|       |                                                            |
+|-------|------------------------------------------------------------|
+| block | the block to configure the [Builder](../-builder/index.md) |

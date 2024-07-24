@@ -3,4 +3,4 @@
 # cancel
 
 [androidJvm]\
-abstract fun [cancel](cancel.md)()
+val [cancel](cancel.md): () -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)

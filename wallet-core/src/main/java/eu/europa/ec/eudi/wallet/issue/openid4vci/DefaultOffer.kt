@@ -16,11 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
-import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
-import eu.europa.ec.eudi.openid4vci.CredentialOffer
-import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
-import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
+import eu.europa.ec.eudi.openid4vci.*
 
 /**
  * Default implementation of [Offer].
@@ -34,16 +30,50 @@ import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
  */
 internal data class DefaultOffer(
     @JvmSynthetic val credentialOffer: CredentialOffer,
-    @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.SdJwtOrMsoMdocFormatFilter
+    @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.MsoMdocFormatFilter,
 ) : Offer {
 
-    private val issuerMetadata: CredentialIssuerMetadata = credentialOffer.credentialIssuerMetadata
+    private val issuerMetadata: CredentialIssuerMetadata
+        get() = credentialOffer.credentialIssuerMetadata
 
-    override val issuerName: String = issuerMetadata.credentialIssuerIdentifier.value.value.host
-    override val offeredDocuments: List<Offer.OfferedDocument> = issuerMetadata.credentialConfigurationsSupported
-        .filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
-        .filterValues { credentialConfigurationFilter(it) }
-        .map { (id, conf) -> Offer.OfferedDocument(conf.name, conf.docType, id, conf) }
+    override val issuerName: String
+        get() = issuerMetadata.credentialIssuerIdentifier.value.value.host
+
+    override val offeredDocuments: List<Offer.OfferedDocument>
+        get() = issuerMetadata.credentialConfigurationsSupported
+            .filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
+            .filterValues { credentialConfigurationFilter(it) }
+            .map { (id, conf) -> DefaultOfferedDocument(id, conf) }
+
+    override val txCodeSpec: Offer.TxCodeSpec?
+        get() = credentialOffer.txCodeSpec
+
+    override fun toString(): String {
+        return "Offer(issuerName='$issuerName', offeredDocuments=$offeredDocuments, txCodeSpec=$txCodeSpec)"
+    }
+}
+
+/**
+ * Default implementation of [Offer.OfferedDocument].
+ * @property configurationIdentifier credential configuration identifier
+ * @property configuration credential configuration
+ * @constructor Creates a new [DefaultOfferedDocument] instance.
+ * @param configurationIdentifier [CredentialConfigurationIdentifier] instance
+ * @param configuration [CredentialConfiguration] instance
+ */
+internal data class DefaultOfferedDocument(
+    @JvmSynthetic internal val configurationIdentifier: CredentialConfigurationIdentifier,
+    @JvmSynthetic internal val configuration: CredentialConfiguration,
+) : Offer.OfferedDocument {
+    override val name: String = configuration.name
+    override val docType: String = configuration.docType
+
+    /**
+     *
+     */
+    override fun toString(): String {
+        return "OfferedDocument(name='$name', docType='$docType')"
+    }
 }
 
 /**
@@ -64,4 +94,18 @@ internal val CredentialConfiguration.docType: String
         is MsoMdocCredential -> docType
         is SdJwtVcCredential -> "eu.europa.ec.eudi.pid_jwt_vc_json"
         else -> "unknown"
+    }
+
+internal val CredentialOffer.txCodeSpec: Offer.TxCodeSpec?
+    @JvmSynthetic get() = grants?.preAuthorizedCode()?.txCode.let {
+        it?.let { txCode ->
+            Offer.TxCodeSpec(
+                inputMode = when (txCode.inputMode) {
+                    TxCodeInputMode.NUMERIC -> Offer.TxCodeSpec.InputMode.NUMERIC
+                    TxCodeInputMode.TEXT -> Offer.TxCodeSpec.InputMode.TEXT
+                },
+                length = txCode.length,
+                description = txCode.description
+            )
+        }
     }

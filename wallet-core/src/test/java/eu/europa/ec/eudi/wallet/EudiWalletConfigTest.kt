@@ -17,34 +17,31 @@
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
+import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.logging.LoggerImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.PreregisteredVerifier
-import org.junit.Assert.*
-import org.junit.Before
-import org.junit.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.io.File
 import java.security.cert.X509Certificate
 
 class EudiWalletConfigTest {
 
-    private lateinit var context: Context
-
-    @Before
-    fun setUp() {
-        context = mock(Context::class.java)
-        `when`(context.applicationContext).thenReturn(context)
-        `when`(context.noBackupFilesDir).thenReturn(mock(File::class.java))
+    private val context: Context = mockk(relaxed = true) {
+        every { applicationContext } returns this@mockk
+        every { noBackupFilesDir } returns mockk()
     }
 
     @Test
     fun testInvoke() {
         val storageDir = File("/tmp")
-        val readerCertificate1 = mock(X509Certificate::class.java)
-        val readerCertificate2 = mock(X509Certificate::class.java)
+        val readerCertificate1 = mockk<X509Certificate>()
+        val readerCertificate2 = mockk<X509Certificate>()
         val config = EudiWalletConfig(context) {
             documentsStorageDir(storageDir)
             userAuthenticationRequired(true)
@@ -115,38 +112,6 @@ class EudiWalletConfigTest {
     }
 
     @Test
-    fun testBuilder() {
-        val builder = EudiWalletConfig.Builder(context)
-
-        builder.encryptDocumentsInStorage(false)
-        builder.useHardwareToStoreKeys(false)
-        builder.bleTransferMode(
-            EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE,
-            EudiWalletConfig.BLE_CLIENT_CENTRAL_MODE
-        )
-        builder.bleClearCacheEnabled(true)
-        builder.userAuthenticationRequired(true)
-        builder.userAuthenticationTimeOut(30_000L)
-        builder.trustedReaderCertificates(listOf(mock(X509Certificate::class.java)))
-
-        val config = builder.build()
-
-        assertFalse(config.encryptDocumentsInStorage)
-        assertFalse(config.useHardwareToStoreKeys)
-        assertEquals(
-            EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE or EudiWalletConfig.BLE_CLIENT_CENTRAL_MODE,
-            config.bleTransferMode
-        )
-        assertTrue(config.bleCentralClientModeEnabled)
-        assertTrue(config.blePeripheralServerModeEnabled)
-        assertTrue(config.bleClearCacheEnabled)
-        assertTrue(config.userAuthenticationRequired)
-        assertEquals(30_000L, config.userAuthenticationTimeOut)
-        assertEquals(1, config.trustedReaderCertificates?.size)
-
-    }
-
-    @Test
     fun testDefaultValues() {
         val config = EudiWalletConfig(context) {}
         // assert default values here
@@ -160,5 +125,33 @@ class EudiWalletConfigTest {
         assertNull(config.trustedReaderCertificates)
         assertNull(config.openId4VPConfig)
         assertNull(config.openId4VciConfig)
+    }
+
+    @Test
+    fun testLoggerIsNullWhenLogLevelIsOff() {
+        val config = EudiWalletConfig(context) {
+            logLevel = Logger.OFF
+        }
+
+        assertNull(config.logger)
+    }
+
+    @Test
+    fun testLoggerIsDefaultImplementationWhenLogLevelIsNotOff() {
+        val config = EudiWalletConfig(context) {
+            logLevel = Logger.LEVEL_ERROR
+        }
+
+        assertTrue(config.logger is LoggerImpl)
+    }
+
+    @Test
+    fun testCustomLogger() {
+        val logger = Logger { record -> println(record) }
+        val config = EudiWalletConfig(context) {
+            this.logger = logger
+        }
+
+        assertTrue(config.logger == logger)
     }
 }

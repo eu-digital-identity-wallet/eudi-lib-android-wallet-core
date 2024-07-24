@@ -3,7 +3,11 @@
 # issueDocumentByOfferUri
 
 [androidJvm]\
-fun [issueDocumentByOfferUri](issue-document-by-offer-uri.md)(offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onEvent: [OpenId4VciManager.OnIssueEvent](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-issue-event/index.md))
+fun [issueDocumentByOfferUri](issue-document-by-offer-uri.md)(
+offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
+txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null,
+executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null,
+onEvent: [OpenId4VciManager.OnIssueEvent](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-issue-event/index.md))
 
 Issue a document using an offerUri and the OpenId4VCI protocol
 
@@ -11,19 +15,20 @@ Issue a document using an offerUri and the OpenId4VCI protocol
 
 androidJvm
 
-| | |
-|---|---|
-| offerUri | the offer uri |
+|          |                                                                                                                               |
+|----------|-------------------------------------------------------------------------------------------------------------------------------|
+| offerUri | the offer uri                                                                                                                 |
+| txCode   | the transaction code for pre-authorized issuing                                                                               |
 | executor | the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread |
-| onEvent | the callback to be called when the document is issued |
+| onEvent  | the callback to be called when the document is issued                                                                         |
 
 #### See also
 
-| |
-|---|
+|                                                                                                                                                   |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|
 | [OpenId4VciManager.issueDocumentByOfferUri](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/issue-document-by-offer-uri.md) |
-| [OpenId4VciManager.OnIssueEvent](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-issue-event/index.md) | on how to handle the result |
-| [IssueEvent.DocumentRequiresUserAuth](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-issue-event/-document-requires-user-auth/index.md) | on how to handle user authentication |
+| [OpenId4VciManager.OnIssueEvent](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-on-issue-event/index.md)                  | on how to handle the result |
+| [IssueEvent.DocumentRequiresUserAuth](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-issue-event/-document-requires-user-auth/index.md)         | on how to handle user authentication |
 
 #### Throws
 

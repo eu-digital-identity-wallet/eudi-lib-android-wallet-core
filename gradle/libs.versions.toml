@@ -4,13 +4,13 @@ biometricKtx = "1.1.0"
 bouncy-castle = "1.77"
 cbor = "0.9"
 coseJava = "1.1.0"
-dependency-license-report = "2.4"
+dependency-license-report = "2.8"
 dependencycheck = "9.0.9"
 espresso-contrib = "3.5.1"
 espresso-core = "3.5.1"
-eudi-document-manager = "0.3.0-SNAPSHOT"
-eudi-iso18013-data-transfer = "0.2.0-SNAPSHOT"
-eudi-lib-jvm-openid4vci-kt = "workingBranch-SNAPSHOT"
+eudi-document-manager = "0.4.1"
+eudi-iso18013-data-transfer = "0.2.0"
+eudi-lib-jvm-openid4vci-kt = "0.3.2"
 eudi-lib-jvm-siop-openid4vp-kt = "0.4.2"
 gradle-plugin = "7.4.0"
 identity-credential = "20231002"
@@ -31,6 +31,7 @@ test-core = "1.4.0"
 test-rules = "1.4.0"
 test-runner = "1.4.0"
 upokecenter-cbor = "4.5.2"
+kotlin-coroutines-test = "1.3.1"
 
 [libraries]
 android-identity-credential = { module = "com.android.identity:identity-credential-android", version.ref = "identity-credential-android" }
@@ -53,6 +54,7 @@ json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 mockito-android = { module = "org.mockito:mockito-android", version.ref = "mockito-android" }
 mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito-inline" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-inline" }
@@ -62,11 +64,13 @@ test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-coreKtx = { module = "androidx.test:core-ktx", version.ref = "test-core" }
 test-rules = { module = "androidx.test:rules", version.ref = "test-rules" }
 test-runner = { module = "androidx.test:runner", version.ref = "test-runner" }
+kotlin-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines-test" }
 upokecenter-cbor = { module = "com.upokecenter:cbor", version.ref = "upokecenter-cbor" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "gradle-plugin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "kotlin" }
 dependency-license-report = { id = "com.github.jk1.dependency-license-report", version.ref = "dependency-license-report" }
 dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependencycheck" }

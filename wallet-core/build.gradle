@@ -22,6 +22,7 @@ import com.github.jk1.license.render.InventoryMarkdownReportRenderer
 plugins {
     alias libs.plugins.android.library
     alias libs.plugins.kotlin.android
+    alias libs.plugins.kotlin.serialization
     id 'kotlin-kapt'
     id 'kotlin-parcelize'
     alias libs.plugins.dokka
@@ -148,6 +149,7 @@ dependencies {
 
     // Ktor Android Engine
     runtimeOnly libs.ktor.client.android
+    implementation libs.ktor.client.logging
 
     // Bouncy Castle
     implementation libs.bouncy.castle.prov
@@ -164,6 +166,7 @@ dependencies {
     testImplementation libs.mockito.kotlin
     testImplementation libs.identity.credential
     testImplementation libs.android.identity.credential
+    testImplementation libs.kotlin.coroutines.test
 
     androidTestImplementation libs.android.junit
     androidTestImplementation libs.mockito.android

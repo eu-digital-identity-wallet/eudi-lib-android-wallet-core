@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.10.2]
+
+__ 17 Jul 2024__
+
+- Release version 0.10.2
+
+## [0.10.2-SNAPSHOT]
+
+__15 Jul 2024__
+
+- Fix overriding KtorHttpClientFactory for OpenId4VCI and OpenId4VP
+- Fix Deferred Issuance for OpenId4VCI by not deleting the deferred document after issuance failure
+
+## [0.10.1-SNAPSHOT]
+
+__3 Jul 2024__
+
+- Bump eudi-lib-android-wallet-document-manager to v0.4.1-SNAPSHOT
+
+## [0.10.0-SNAPSHOT]
+
+__27 Jun 2024__
+
+- Bump eudi-lib-jvm-openid4vci-kt to v0.3.2
+- Bump eudi-lib-android-wallet-document-manager to v0.4.0-SNAPSHOT
+- Support for OpenId4VCI pre-authorization flow
+- Support for OpenId4VCI deferred issuance
+- Extensive logging for OpenId4VCI and OpenId4VP
+- Allow overriding ktor client for OpenId4VCI and OpenId4VP
+- Bug fixes in OpenId4VCI
+
+## [0.9.5-SNAPSHOT]
+
+__14 Jun 2024__
+
+- Bump eudi-lib-jvm-openid4vci-kt to v0.3.1
+- Configurable debug logging with level support for OpenId4VCI
+- Support for overriding ktor client for OpenId4VCI
+- Bug fixes in OpenId4VCI
+
 ## [0.9.4-SNAPSHOT]
 
 __10 Jun 2024__

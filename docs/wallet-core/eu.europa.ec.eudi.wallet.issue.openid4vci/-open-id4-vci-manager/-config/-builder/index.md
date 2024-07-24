@@ -9,8 +9,8 @@ Builder to create an instance of [Config](../index.md)
 
 ## Constructors
 
-| | |
-|---|---|
+|                        |                               |
+|------------------------|-------------------------------|
 | [Builder](-builder.md) | [androidJvm]<br>constructor() |
 
 ## Functions

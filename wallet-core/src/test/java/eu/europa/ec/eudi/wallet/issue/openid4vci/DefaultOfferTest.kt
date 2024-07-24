@@ -20,9 +20,9 @@ import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.openid4vci.*
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.Assert.assertEquals
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class DefaultOfferTest {
 
@@ -30,7 +30,7 @@ class DefaultOfferTest {
     private lateinit var mockCredentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>
     private lateinit var mockCredentialConfigurations: List<CredentialConfiguration>
 
-    @Before
+    @BeforeEach
     fun setup() {
         val msoMdocCredentialId = mockk<CredentialConfigurationIdentifier>(relaxed = true)
         val sdJwtVcCredentialId = mockk<CredentialConfigurationIdentifier>(relaxed = true)
@@ -75,13 +75,13 @@ class DefaultOfferTest {
 
         assertEquals(1, offer.offeredDocuments.size)
 
-        val expectedOfferedDocument = Offer.OfferedDocument(
-            "testName",
-            "testDocType",
+        val expectedOfferedDocument = DefaultOfferedDocument(
             mockCredentialConfigurationIdentifiers[0],
             mockCredentialConfigurations[0]
         )
 
         assertEquals(listOf(expectedOfferedDocument), offer.offeredDocuments)
+        assertEquals("testName", offer.offeredDocuments[0].name)
+        assertEquals("testDocType", offer.offeredDocuments[0].docType)
     }
 }

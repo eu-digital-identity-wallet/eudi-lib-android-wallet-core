@@ -18,4 +18,5 @@ package eu.europa.ec.eudi.wallet.transfer.openid4vp
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 
 typealias DeviceResponseBytes = ByteArray
-class OpenId4VpCBORResponse(val deviceResponseBytes: DeviceResponseBytes): Response
+
+class OpenId4VpCBORResponse(val deviceResponseBytes: DeviceResponseBytes) : Response

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2023 European Commission
+ *  Copyright (c) 2023-2024 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,33 +17,27 @@
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
 import android.content.Context
-import android.util.Log
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
-import eu.europa.ec.eudi.openid4vp.Consensus
-import eu.europa.ec.eudi.openid4vp.DispatchOutcome
-import eu.europa.ec.eudi.openid4vp.JarmConfiguration
-import eu.europa.ec.eudi.openid4vp.JwkSetSource
-import eu.europa.ec.eudi.openid4vp.PreregisteredClient
-import eu.europa.ec.eudi.openid4vp.Resolution
-import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
-import eu.europa.ec.eudi.openid4vp.ResponseMode
-import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
-import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
-import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
-import eu.europa.ec.eudi.openid4vp.VpToken
-import eu.europa.ec.eudi.openid4vp.asException
+import eu.europa.ec.eudi.openid4vp.*
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
 import eu.europa.ec.eudi.wallet.internal.Openid4VpUtils
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.logging.d
+import eu.europa.ec.eudi.wallet.logging.e
+import eu.europa.ec.eudi.wallet.logging.i
 import eu.europa.ec.eudi.wallet.util.CBOR
+import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
+import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
+import io.ktor.client.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,8 +46,7 @@ import org.bouncycastle.util.encoders.Hex
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.util.Base64
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.Executor
 
 /**
@@ -123,18 +116,24 @@ import java.util.concurrent.Executor
  * openId4vpManager.resolveRequestUri(requestURI)
  *
  * ```
+ * @property responseGenerator that parses the request and creates the response
+ * @property logger the logger
+ * @property ktorHttpClientFactory the factory to create the http client. By default, it uses the [DefaultHttpClientFactory]
+ * @constructor
  * @param context the application context
  * @param openId4VpConfig the configuration for OpenId4Vp
  * @param responseGenerator that parses the request and creates the response
  */
-
-private const val TAG = "OpenId4vpManager"
-
 class OpenId4vpManager(
     context: Context,
     openId4VpConfig: OpenId4VpConfig,
-    val responseGenerator: OpenId4VpCBORResponseGeneratorImpl
+    val responseGenerator: OpenId4VpCBORResponseGeneratorImpl,
 ) : TransferEvent.Listenable {
+
+    var logger: Logger? = null
+
+    var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
+        get() = field.wrappedWithLogging(logger).wrappedWithContentNegotiation()
 
     private val appContext = context.applicationContext
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
@@ -143,12 +142,11 @@ class OpenId4vpManager(
     private var transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
     private val onResultUnderExecutor = { result: TransferEvent ->
         (executor ?: appContext.mainExecutor()).execute {
-            Log.d(TAG, "onResultUnderExecutor $result")
+            logger?.d(TAG, "onResultUnderExecutor $result")
             transferEventListeners.onTransferEvent(result)
         }
     }
-
-    private val siopOpenId4Vp = SiopOpenId4Vp(openId4VpConfig.toSiopOpenId4VPConfig())
+    private val siopOpenId4Vp = SiopOpenId4Vp(openId4VpConfig.toSiopOpenId4VPConfig(), ktorHttpClientFactory)
     private var resolvedRequestObject: ResolvedRequestObject? = null
     private var mdocGeneratedNonce: String? = null
 
@@ -156,7 +154,7 @@ class OpenId4vpManager(
      * Setting the `executor` is optional and defines the executor that will be used to
      * execute the callback. If the `executor` is not defined, the callback will be executed on the
      * main thread.
-     * @param Executor the executor to use for callbacks. If null, the main executor will be used.
+     * @param executor the executor to use for callbacks. If null, the main executor will be used.
      */
     fun setExecutor(executor: Executor) {
         this.executor = executor
@@ -168,27 +166,32 @@ class OpenId4vpManager(
      * @param openid4VPURI
      */
     fun resolveRequestUri(openid4VPURI: String) {
-        Log.d(
+        logger?.d(
             TAG,
-            "Resolve request uri: ${URLDecoder.decode(openid4VPURI, StandardCharsets.UTF_8.name())}"
+            "Resolve request uri: ${
+                URLDecoder.decode(
+                    openid4VPURI,
+                    StandardCharsets.UTF_8.name()
+                )
+            }"
         )
         ioScope.launch {
             onResultUnderExecutor(TransferEvent.Connecting)
             runCatching { siopOpenId4Vp.resolveRequestUri(openid4VPURI) }.onSuccess { resolution ->
                 when (resolution) {
                     is Resolution.Invalid -> {
-                        Log.e(TAG, "Resolution.Invalid", resolution.error.asException())
+                        logger?.e(TAG, "Resolution.Invalid", resolution.error.asException())
                         onResultUnderExecutor(TransferEvent.Error(resolution.error.asException()))
                     }
 
                     is Resolution.Success -> {
-                        Log.d(TAG, "Resolution.Success")
+                        logger?.d(TAG, "Resolution.Success")
                         resolution.requestObject
                             .also { resolvedRequestObject = it }
                             .let { requestObject ->
                                 when (requestObject) {
                                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
-                                        Log.d(TAG, "OpenId4VPAuthorization Request received")
+                                        logger?.d(TAG, "OpenId4VPAuthorization Request received")
                                         val request = OpenId4VpRequest(
                                             requestObject,
                                             requestObject.toSessionTranscript()
@@ -202,17 +205,20 @@ class OpenId4vpManager(
                                     }
 
                                     is ResolvedRequestObject.SiopAuthentication -> {
-                                        Log.w(TAG, "SiopAuthentication Request received")
+                                        logger?.i(TAG, "SiopAuthentication Request received")
                                         onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
                                     }
 
                                     is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
-                                        Log.w(TAG, "SiopOpenId4VPAuthentication Request received")
+                                        logger?.i(
+                                            TAG,
+                                            "SiopOpenId4VPAuthentication Request received"
+                                        )
                                         onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
                                     }
 
                                     else -> {
-                                        Log.w(TAG, "Unknown request received")
+                                        logger?.e(TAG, "Unknown request received")
                                         onResultUnderExecutor("Unknown request received".err())
                                     }
                                 }
@@ -220,7 +226,7 @@ class OpenId4vpManager(
                     }
                 }
             }.onFailure {
-                Log.e(TAG, "An error occurred resolving request uri: $openid4VPURI", it)
+                logger?.e(TAG, "An error occurred resolving request uri: $openid4VPURI", it)
                 onResultUnderExecutor(TransferEvent.Error(it))
             }
         }
@@ -233,8 +239,8 @@ class OpenId4vpManager(
      */
     fun sendResponse(deviceResponse: ByteArray) {
 
-        Log.d(TAG, "Device Response to send (hex): ${Hex.toHexString(deviceResponse)}")
-        Log.d(TAG, "Device Response to send (cbor): ${CBOR.cborPrettyPrint(deviceResponse)}")
+        logger?.d(TAG, "Device Response to send (hex): ${Hex.toHexString(deviceResponse)}")
+        logger?.d(TAG, "Device Response to send (cbor): ${CBOR.cborPrettyPrint(deviceResponse)}")
 
         ioScope.launch {
             resolvedRequestObject?.let { resolvedRequestObject ->
@@ -242,8 +248,9 @@ class OpenId4vpManager(
                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
 
                         val vpToken =
-                            Base64.getUrlEncoder().withoutPadding().encodeToString(deviceResponse)
-                        Log.d(TAG, "VpToken: $vpToken")
+                            Base64.getUrlEncoder().withoutPadding()
+                                .encodeToString(deviceResponse)
+                        logger?.d(TAG, "VpToken: $vpToken")
 
                         val presentationDefinition =
                             (resolvedRequestObject).presentationDefinition
@@ -255,20 +262,24 @@ class OpenId4vpManager(
                             presentationSubmission = PresentationSubmission(
                                 id = Id(UUID.randomUUID().toString()),
                                 definitionId = presentationDefinition.id,
-                                    presentationDefinition.inputDescriptors.map {
-                                        inputDescriptor ->
-                                        DescriptorMap(
-                                            inputDescriptor.id,
-                                            "mso_mdoc",
-                                            path = JsonPath.jsonPath("$")!!
-                                        )
-                                    }
+                                presentationDefinition.inputDescriptors.map { inputDescriptor ->
+                                    DescriptorMap(
+                                        inputDescriptor.id,
+                                        "mso_mdoc",
+                                        path = JsonPath.jsonPath("$")!!
+                                    )
+                                }
                             )
                         )
-                        runCatching { siopOpenId4Vp.dispatch(resolvedRequestObject, consensus) }.onSuccess { dispatchOutcome ->
+                        runCatching {
+                            siopOpenId4Vp.dispatch(
+                                resolvedRequestObject,
+                                consensus
+                            )
+                        }.onSuccess { dispatchOutcome ->
                             when (dispatchOutcome) {
                                 is DispatchOutcome.VerifierResponse.Accepted -> {
-                                    Log.d(
+                                    logger?.d(
                                         TAG,
                                         "VerifierResponse Accepted with redirectUri: $dispatchOutcome.redirectURI"
                                     )
@@ -279,23 +290,24 @@ class OpenId4vpManager(
                                 }
 
                                 is DispatchOutcome.VerifierResponse.Rejected -> {
-                                    Log.d(TAG, "VerifierResponse Rejected")
+                                    logger?.d(TAG, "VerifierResponse Rejected")
                                     onResultUnderExecutor("DispatchOutcome: VerifierResponse Rejected".err())
                                 }
 
                                 is DispatchOutcome.RedirectURI -> {
-                                    Log.d(TAG, "VerifierResponse RedirectURI")
+                                    logger?.d(TAG, "VerifierResponse RedirectURI")
                                     onResultUnderExecutor(TransferEvent.ResponseSent)
                                 }
                             }
                             onResultUnderExecutor(TransferEvent.Disconnected)
                         }.onFailure {
-                            Log.e(TAG, "An error occurred in dispatching", it)
+                            logger?.e(TAG, "An error occurred in dispatching", it)
                             onResultUnderExecutor(TransferEvent.Error(it))
                         }
                     }
+
                     else -> {
-                        Log.e(TAG, "${resolvedRequestObject.javaClass} not supported yet.")
+                        logger?.e(TAG, "${resolvedRequestObject.javaClass} not supported yet.")
                         onResultUnderExecutor("${resolvedRequestObject.javaClass} not supported yet.".err())
                     }
                 }
@@ -304,10 +316,10 @@ class OpenId4vpManager(
     }
 
     /**
-    * Closes the OpenId4VpManager
-    */
+     * Closes the OpenId4VpManager
+     */
     fun close() {
-        Log.d(TAG, "close")
+        logger?.d(TAG, "close")
         resolvedRequestObject = null
         mdocGeneratedNonce = null
     }
@@ -362,7 +374,7 @@ class OpenId4vpManager(
             nonce,
             mdocGeneratedNonce
         )
-        Log.d(
+        logger?.d(
             TAG,
             "Session Transcript: ${
                 Hex.toHexString(sessionTranscriptBytes)
@@ -391,5 +403,9 @@ class OpenId4vpManager(
 
     override fun removeAllTransferEventListeners(): OpenId4vpManager = apply {
         transferEventListeners.clear()
+    }
+
+    companion object {
+        internal const val TAG = "OpenId4vpManager"
     }
 }

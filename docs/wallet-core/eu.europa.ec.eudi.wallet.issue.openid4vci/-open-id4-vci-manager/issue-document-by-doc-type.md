@@ -3,7 +3,11 @@
 # issueDocumentByDocType
 
 [androidJvm]\
-abstract fun [issueDocumentByDocType](issue-document-by-doc-type.md)(docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+abstract fun [issueDocumentByDocType](issue-document-by-doc-type.md)(
+docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
+txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null,
+executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null,
+onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
 
 Issue a document using a document type
 
@@ -11,15 +15,15 @@ Issue a document using a document type
 
 androidJvm
 
-| | |
-|---|---|
-| docType | the document type to issue |
-| executor | the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread |
-| onIssueEvent | the callback to be called when the document is issued |
+|              |                                                                                                                               |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------|
+| docType      | the document type to issue                                                                                                    |
+| txCode       | the transaction code to use for pre-authorized issuing                                                                        |
+| executor     | the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread |
+| onIssueEvent | the callback to be called when the document is issued                                                                         |
 
 #### See also
 
-| | |
-|---|---|
+|                                        |                             |
+|----------------------------------------|-----------------------------|
 | [IssueEvent](../-issue-event/index.md) | on how to handle the result |
-| [IssueEvent.DocumentRequiresUserAuth](../-issue-event/-document-requires-user-auth/index.md) | on how to handle user authentication |

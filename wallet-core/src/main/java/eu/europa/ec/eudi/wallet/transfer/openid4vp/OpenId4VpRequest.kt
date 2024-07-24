@@ -18,4 +18,8 @@ package eu.europa.ec.eudi.wallet.transfer.openid4vp
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
-class OpenId4VpRequest(val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization, val sessionTranscript: SessionTranscriptBytes): Request
+
+class OpenId4VpRequest(
+    val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization,
+    val sessionTranscript: SessionTranscriptBytes,
+) : Request

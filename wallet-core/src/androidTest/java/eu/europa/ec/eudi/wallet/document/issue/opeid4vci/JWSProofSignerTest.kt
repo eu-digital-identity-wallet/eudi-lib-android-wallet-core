@@ -27,11 +27,10 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.openid4vci.CNonce
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
-import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
+import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.JWSProofSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
-import eu.europa.ec.eudi.wallet.issue.openid4vci.UserAuthRequiredException
 import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -68,13 +67,13 @@ class JWSProofSignerTest {
             .build()
 
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
-        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+        val createDocumentResult = documentManager.createDocument("eu.europa.ec.eudi.pid.1", false)
+        assertTrue(createDocumentResult is CreateDocumentResult.Success)
 
-        val issuanceRequest =
-            (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
+        val unsignedDocument =
+            (createDocumentResult as CreateDocumentResult.Success).unsignedDocument
 
-        val proofSigner = JWSProofSigner(issuanceRequest, SupportedProofAlgorithm.Jws.ES256)
+        val proofSigner = JWSProofSigner(unsignedDocument, SupportedProofAlgorithm.Jws.ES256)
         val algorithm = proofSigner.popSigner.algorithm
 
         assertTrue(proofSigner.popSigner.bindingKey is JwtBindingKey.Jwk)
@@ -94,10 +93,10 @@ class JWSProofSignerTest {
         try {
             proofSigner.sign(header, claimsSet.toPayload().toBytes())
             Assert.fail("Expected UserAuthRequiredException")
-        } catch (e: UserAuthRequiredException) {
+        } catch (e: IllegalStateException) {
             assertTrue(proofSigner.userAuthStatus is ProofSigner.UserAuthStatus.Required)
         } finally {
-            documentManager.deleteDocumentById(issuanceRequest.documentId)
+            documentManager.deleteDocumentById(unsignedDocument.id)
         }
     }
 
@@ -107,13 +106,13 @@ class JWSProofSignerTest {
             .enableUserAuth(false)
             .build()
 
-        val issuanceRequestResult = documentManager.createIssuanceRequest("eu.europa.ec.eudiw.pid.1", false)
-        assertTrue(issuanceRequestResult is CreateIssuanceRequestResult.Success)
+        val createDocumentResult = documentManager.createDocument("eu.europa.ec.eudi.pid.1", false)
+        assertTrue(createDocumentResult is CreateDocumentResult.Success)
 
-        val issuanceRequest =
-            (issuanceRequestResult as CreateIssuanceRequestResult.Success).issuanceRequest
+        val unsignedDocument =
+            (createDocumentResult as CreateDocumentResult.Success).unsignedDocument
 
-        val proofSigner = JWSProofSigner(issuanceRequest, SupportedProofAlgorithm.Jws.ES256)
+        val proofSigner = JWSProofSigner(unsignedDocument, SupportedProofAlgorithm.Jws.ES256)
         val algorithm = proofSigner.popSigner.algorithm
 
         assertTrue(proofSigner.popSigner.bindingKey is JwtBindingKey.Jwk)
@@ -139,6 +138,6 @@ class JWSProofSignerTest {
 
         assertEquals(ProofSigner.UserAuthStatus.NotRequired, proofSigner.userAuthStatus)
 
-        documentManager.deleteDocumentById(issuanceRequest.documentId)
+        documentManager.deleteDocumentById(unsignedDocument.id)
     }
 }

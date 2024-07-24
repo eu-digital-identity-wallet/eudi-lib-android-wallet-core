@@ -3,4 +3,4 @@
 # resume
 
 [androidJvm]\
-abstract fun [resume](resume.md)()
+val [resume](resume.md): () -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)

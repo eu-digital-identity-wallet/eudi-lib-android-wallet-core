@@ -15,14 +15,14 @@
  */
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import androidx.biometric.BiometricPrompt
+import androidx.biometric.BiometricPrompt.CryptoObject
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 /**
  * Events related to document issuance.
  */
-sealed interface IssueEvent {
+sealed interface IssueEvent : OpenId4VciResult {
 
     /**
      * The issuance was started.
@@ -41,12 +41,34 @@ sealed interface IssueEvent {
      * The issuance failed.
      * @property cause the error that caused the failure
      */
-    data class Failure(val cause: Throwable) : IssueEvent
+    data class Failure(override val cause: Throwable) : IssueEvent, OpenId4VciResult.Erroneous
+
+    /**
+     * Document issued successfully.
+     * @property documentId the id of the issued document
+     * @property name the name of the document
+     * @property docType the document type
+     * @see[DocumentId] for the document id
+     */
+    data class DocumentIssued(val documentId: DocumentId, val name: String, val docType: String) : IssueEvent
+
+    /**
+     * Document issuance failed.
+     * @property name the name of the document
+     * @property docType the document type
+     * @property cause the error that caused the failure
+     */
+    data class DocumentFailed(val name: String, val docType: String, override val cause: Throwable) : IssueEvent,
+        OpenId4VciResult.Erroneous
 
     /**
      * The document issuance requires user authentication.
      *
+     * @property name the name of the document
+     * @property docType the document type
      * @property cryptoObject the crypto object to use for authentication
+     * @property resume the callback to resume the issuance
+     * @property cancel the callback to cancel the issuance
      *
      * Example usage:
      *
@@ -95,7 +117,7 @@ sealed interface IssueEvent {
      *   }
      *
      *   fun issueDocument() {
-     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudiw.pid.1", requireContext().mainExecutor) { event ->
+     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudi.pid.1", requireContext().mainExecutor) { event ->
      *          when (event) {
      *              is IssueEvent.DocumentRequiresUserAuth -> {
      *                  onIssuingResume = result::resume
@@ -114,54 +136,43 @@ sealed interface IssueEvent {
      *    }
      * }
      */
-    abstract class DocumentRequiresUserAuth(
+    data class DocumentRequiresUserAuth(
         val name: String,
         val docType: String,
-        val cryptoObject: BiometricPrompt.CryptoObject?
+        val cryptoObject: CryptoObject?,
+        val resume: () -> Unit,
+        val cancel: () -> Unit
     ) : IssueEvent {
         internal constructor(
-            issuanceRequest: IssuanceRequest,
-            cryptoObject: BiometricPrompt.CryptoObject?,
+            unsignedDocument: UnsignedDocument,
+            cryptoObject: CryptoObject?,
+            resume: () -> Unit,
+            cancel: () -> Unit
         ) : this(
-            issuanceRequest.name,
-            issuanceRequest.docType,
-            cryptoObject
-        )
-
-        abstract fun resume()
-        abstract fun cancel()
-    }
-
-    /**
-     * Document issued successfully.
-     * @property documentId the id of the issued document
-     * @property name the name of the document
-     * @property docType the document type
-     * @see[DocumentId] for the document id
-     */
-    data class DocumentIssued(val documentId: DocumentId, val name: String, val docType: String) : IssueEvent {
-        internal constructor(issuanceRequest: IssuanceRequest, documentId: DocumentId) : this(
-            documentId,
-            issuanceRequest.name,
-            issuanceRequest.docType
+            unsignedDocument.name,
+            unsignedDocument.docType,
+            cryptoObject,
+            resume,
+            cancel
         )
     }
 
     /**
-     * Document issuance failed.
+     * Document issuance deferred.
+     * @property documentId the id of the deferred document
      * @property name the name of the document
      * @property docType the document type
-     * @property cause the error that caused the failure
      */
-    data class DocumentFailed(val name: String, val docType: String, val cause: Throwable) : IssueEvent {
-        internal constructor(issuanceRequest: IssuanceRequest, cause: Throwable) : this(
-            issuanceRequest.name,
-            issuanceRequest.docType,
-            cause
-        )
-    }
+    data class DocumentDeferred(val documentId: DocumentId, val name: String, val docType: String) : IssueEvent
 
     companion object {
         internal fun failure(e: Throwable) = Failure(e)
+
+        internal fun documentFailed(unsignedDocument: UnsignedDocument, cause: Throwable) =
+            DocumentFailed(
+                unsignedDocument.name,
+                unsignedDocument.docType,
+                cause
+            )
     }
 }

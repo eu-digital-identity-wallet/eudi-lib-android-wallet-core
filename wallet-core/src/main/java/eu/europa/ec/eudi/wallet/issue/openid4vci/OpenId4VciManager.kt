@@ -18,7 +18,13 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import androidx.annotation.IntDef
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
+import eu.europa.ec.eudi.wallet.logging.Logger
+import io.ktor.client.*
 import java.util.concurrent.Executor
 import eu.europa.ec.eudi.openid4vci.ProofType as InternalProofType
 
@@ -32,13 +38,14 @@ interface OpenId4VciManager {
     /**
      * Issue a document using a document type
      * @param docType the document type to issue
+     * @param txCode the transaction code to use for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued
      * @see[IssueEvent] on how to handle the result
-     * @see[IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
     fun issueDocumentByDocType(
         docType: String,
+        txCode: String? = null,
         executor: Executor? = null,
         authorizationHandler: AuthorizationHandler,
         onIssueEvent: OnIssueEvent
@@ -47,14 +54,15 @@ interface OpenId4VciManager {
     /**
      * Issue a document using an offer
      * @param offer the offer to issue
+     * @param txCode the transaction code to use for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      *
      * @see[IssueEvent] on how to handle the result
-     * @see[IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
     fun issueDocumentByOffer(
         offer: Offer,
+        txCode: String? = null,
         executor: Executor? = null,
         authorizationHandler: AuthorizationHandler,
         onIssueEvent: OnIssueEvent
@@ -63,16 +71,30 @@ interface OpenId4VciManager {
     /**
      * Issue a document using an offer URI
      * @param offerUri the offer URI
+     * @param txCode the transaction code to use for pre-authorized issuing
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued. This callback may be called multiple times, each for every document in the offer
      * @see[IssueEvent] on how to handle the result
-     * @see[IssueEvent.DocumentRequiresUserAuth] on how to handle user authentication
      */
     fun issueDocumentByOfferUri(
         offerUri: String,
+        txCode: String? = null,
         executor: Executor? = null,
         authorizationHandler: AuthorizationHandler,
-        onIssueEvent: OnIssueEvent
+        onIssueEvent: OnIssueEvent,
+    )
+
+    /**
+     * Issue a deferred document
+     * @param deferredDocument the deferred document to issue
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onIssueResult the callback to be called when the document is issued
+     * @see[OnDeferredIssueResult] on how to handle the result
+     */
+    fun issueDeferredDocument(
+        deferredDocument: DeferredDocument,
+        executor: Executor?,
+        onIssueResult: OnDeferredIssueResult,
     )
 
     /**
@@ -101,14 +123,22 @@ interface OpenId4VciManager {
     fun interface OnResolvedOffer : OnResult<OfferResult>
 
     /**
+     * Callback to be called when a deferred document is issued
+     */
+    fun interface OnDeferredIssueResult : OnResult<DeferredIssueResult>
+
+    /**
      * Builder to create an instance of [OpenId4VciManager]
      * @param context the context
      * @property config the [Config] to use
      * @property documentManager the [DocumentManager] to use
+     * requires user authentication
      */
     class Builder(private val context: Context) {
         var config: Config? = null
         var documentManager: DocumentManager? = null
+        var logger: Logger? = null
+        var ktorHttpClientFactory: (() -> HttpClient)? = null
 
         /**
          * Set the [Config] to use
@@ -120,6 +150,18 @@ interface OpenId4VciManager {
          */
         fun documentManager(documentManager: DocumentManager) = apply { this.documentManager = documentManager }
 
+
+        fun logger(logger: Logger) = apply {
+            this.logger = logger
+        }
+
+        /**
+         * Override the Ktor HTTP client factory
+         */
+        fun ktorHttpClientFactory(factory: () -> HttpClient) = apply {
+            this.ktorHttpClientFactory = factory
+        }
+
         /**
          * Build the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
@@ -127,11 +169,16 @@ interface OpenId4VciManager {
         fun build(): OpenId4VciManager {
             checkNotNull(config) { "config is required" }
             checkNotNull(documentManager) { "documentManager is required" }
-            return DefaultOpenId4VciManager(context, documentManager!!, config!!)
+            return DefaultOpenId4VciManager(context, documentManager!!, config!!).apply {
+                this@Builder.logger?.let { this.logger = it }
+                this@Builder.ktorHttpClientFactory?.let { this.ktorHttpClientFactory = it }
+            }
         }
     }
 
     companion object {
+        internal const val TAG = "OpenId4VciManager"
+
         /**
          * Create an instance of [OpenId4VciManager]
          */
@@ -147,6 +194,8 @@ interface OpenId4VciManager {
      * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
      * @property parUsage if PAR should be used
      * @property proofTypes the proof types to use
+     * @property debugLogging flag to enable debug logging
+     * @property ktorHttpClientFactory the Ktor HTTP client factory
      */
     data class Config(
         val issuerUrl: String,
@@ -155,21 +204,18 @@ interface OpenId4VciManager {
         val useStrongBoxIfSupported: Boolean,
         val useDPoPIfSupported: Boolean,
         @ParUsage val parUsage: Int,
-        val proofTypes: List<ProofType>
+        val proofTypes: List<ProofType>,
     ) {
 
         /**
          * PAR usage for the OpenId4Vci issuer
+         * @property IF_SUPPORTED use PAR if supported
+         * @property REQUIRED use PAR always
+         * @property NEVER never use PAR
          */
         @Retention(AnnotationRetention.SOURCE)
-        @IntDef(value = [ParUsage.IF_SUPPORTED, ParUsage.REQUIRED, ParUsage.NEVER])
+        @IntDef(value = [IF_SUPPORTED, REQUIRED, NEVER])
         annotation class ParUsage {
-            /**
-             * If PAR is supported
-             * @property IF_SUPPORTED use PAR if supported
-             * @property REQUIRED use PAR always
-             * @property NEVER never use PAR
-             */
             companion object {
                 const val IF_SUPPORTED = 2
                 const val REQUIRED = 4
@@ -200,6 +246,8 @@ interface OpenId4VciManager {
          * @property useStrongBoxIfSupported use StrongBox for document keys if supported
          * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
          * @property parUsage if PAR should be used
+         * @property debugLogging flag to enable debug logging. Default is false
+         * @property ktorHttpClientFactory the Ktor HTTP client factory. If not set, the default factory will be used
          *
          */
         class Builder {
@@ -210,9 +258,10 @@ interface OpenId4VciManager {
             var useDPoPIfSupported: Boolean = false
 
             @ParUsage
-            var parUsage: Int = ParUsage.IF_SUPPORTED
+            var parUsage: Int = IF_SUPPORTED
 
             private var proofTypes: List<ProofType> = listOf(ProofType.JWT, ProofType.CWT)
+
 
             /**
              * Set the issuer url
@@ -282,7 +331,7 @@ interface OpenId4VciManager {
                     useStrongBoxIfSupported,
                     useDPoPIfSupported,
                     parUsage,
-                    proofTypes
+                    proofTypes,
                 )
             }
 
@@ -297,8 +346,15 @@ interface OpenId4VciManager {
         companion object {
             /**
              * Create an instance of [Config]
+             * @param block the block to configure the [Builder]
              */
-            operator fun invoke(block: Builder.() -> Unit) = Builder().apply(block).build()
+            operator fun invoke(block: Builder.() -> Unit) = make(block)
+
+            /**
+             * Create an instance of [Config]
+             * @param block the block to configure the [Builder]
+             */
+            fun make(block: Builder.() -> Unit) = Builder().apply(block).build()
         }
     }
 }

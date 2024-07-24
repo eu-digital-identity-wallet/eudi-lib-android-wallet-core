@@ -18,38 +18,45 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
-import eu.europa.ec.eudi.wallet.document.CreateIssuanceRequestResult
+import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
+import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.IssuanceRequest
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.logging.d
+import eu.europa.ec.eudi.wallet.logging.e
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
 import java.io.StringWriter
 import java.security.PublicKey
+import java.time.Instant
+import java.util.concurrent.Executor
 
 /**
- * Converts the [CreateIssuanceRequestResult] to a [Result].
- * @receiver the [CreateIssuanceRequestResult]
+ * Converts the [CreateDocumentResult] to a [Result].
+ * @receiver the [CreateDocumentResult]
  * @return the [Result]
  */
-internal val CreateIssuanceRequestResult.result: Result<IssuanceRequest>
+internal val CreateDocumentResult.result: Result<UnsignedDocument>
     @JvmSynthetic get() = when (this) {
-        is CreateIssuanceRequestResult.Success -> Result.success(issuanceRequest)
-        is CreateIssuanceRequestResult.Failure -> Result.failure(throwable)
+        is CreateDocumentResult.Success -> Result.success(unsignedDocument)
+        is CreateDocumentResult.Failure -> Result.failure(throwable)
     }
 
 /**
  * Creates an issuance request for the given document type.
  * @receiver the [DocumentManager]
- * @param docType the document type
- * @param hardwareBacked whether the key should be hardware backed
+ * @param offerOfferedDocument the offered document
+ * @param useStrongBox whether the key should be hardware backed
  * @return the [Result] with the issuance request
  */
 @JvmSynthetic
-internal fun DocumentManager.createIssuanceRequest(
+internal fun DocumentManager.createDocument(
     offerOfferedDocument: Offer.OfferedDocument,
-    hardwareBacked: Boolean = true
-): Result<IssuanceRequest> =
-    createIssuanceRequest(offerOfferedDocument.docType, hardwareBacked)
+    useStrongBox: Boolean = true,
+): Result<UnsignedDocument> =
+    createDocument(offerOfferedDocument.docType, useStrongBox)
         .result
         .map { it.apply { name = offerOfferedDocument.name } }
 
@@ -98,5 +105,48 @@ internal fun ByteArray.derToJose(algorithm: JWSAlgorithm = JWSAlgorithm.ES256): 
     val len = ECDSA.getSignatureByteArrayLength(algorithm)
     return derToConcat(len)
 }
+
+/**
+ * Wraps the given [OpenId4VciManager.OnResult] with the given [Executor].
+ * @param executor The executor.
+ * @receiver The [OpenId4VciManager.OnResult].
+ * @return The wrapped [OpenId4VciManager.OnResult].
+ */
+@JvmSynthetic
+internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>.runOn(executor: Executor): OpenId4VciManager.OnResult<V> {
+    return OpenId4VciManager.OnResult { result: V ->
+        executor.execute {
+            this@runOn.onResult(result)
+        }
+    }
+}
+
+/**
+ * Wraps the given [OpenId4VciManager.OnResult] with debug logging.
+ */
+@JvmSynthetic
+internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>.wrapWithLogging(logger: Logger?): OpenId4VciManager.OnResult<V> {
+    return when (logger) {
+        null -> this
+        else -> OpenId4VciManager.OnResult { result: V ->
+            when (result) {
+                is OpenId4VciResult.Erroneous -> logger.e(TAG, "$result", result.cause)
+                else -> logger.d(TAG, "$result")
+            }
+            this.onResult(result)
+        }
+    }
+}
+
+@get:JvmSynthetic
+internal val DeferredIssuanceContext.hasExpired: Boolean
+    get() = with(authorizedTransaction.authorizedRequest) {
+        when (val rt = refreshToken) {
+            null -> accessToken.isExpired(timestamp, Instant.now())
+            else -> if (accessToken.isExpired(timestamp, Instant.now())) {
+                rt.isExpired(timestamp, Instant.now())
+            } else false
+        }
+    }
 
 

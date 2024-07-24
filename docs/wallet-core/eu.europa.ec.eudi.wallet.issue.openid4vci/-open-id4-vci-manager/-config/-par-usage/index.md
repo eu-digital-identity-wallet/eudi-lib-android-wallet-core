@@ -9,6 +9,6 @@ PAR usage for the OpenId4Vci issuer
 
 ## Types
 
-| Name                             | Summary                                                                        |
-|----------------------------------|--------------------------------------------------------------------------------|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md)<br>If PAR is supported |
+| Name                             | Summary                                                 |
+|----------------------------------|---------------------------------------------------------|
+| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |

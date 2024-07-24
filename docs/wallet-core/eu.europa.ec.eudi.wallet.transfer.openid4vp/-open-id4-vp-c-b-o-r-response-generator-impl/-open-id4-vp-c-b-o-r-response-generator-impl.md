@@ -3,7 +3,8 @@
 # OpenId4VpCBORResponseGeneratorImpl
 
 [androidJvm]\
-constructor(documentsResolver: DocumentsResolver, storageEngine: StorageEngine, secureArea: AndroidKeystoreSecureArea)
+constructor(documentsResolver: DocumentsResolver, storageEngine: StorageEngine, secureArea: AndroidKeystoreSecureArea,
+logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)
 
 #### Parameters
 
