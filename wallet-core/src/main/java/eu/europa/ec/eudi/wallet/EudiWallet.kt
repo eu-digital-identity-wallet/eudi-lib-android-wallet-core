@@ -252,7 +252,7 @@ object EudiWallet {
         authorizationHandler: AuthorizationHandler,
         onEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        issueDocumentByDocType(docType, executor, authorizationHandler, onEvent)
+        issueDocumentByDocType(docType, "txCode", executor, authorizationHandler, onEvent)
     }
 
     /**
@@ -280,7 +280,7 @@ object EudiWallet {
                     config(config)
                     logger = this@EudiWallet.logger
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByDocType(docType, txCode, executor, onEvent) }
+                }.also { it.issueDocumentByDocType(docType, txCode, executor, authorizationHandler, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -316,7 +316,7 @@ object EudiWallet {
                     config(config)
                     logger = this@EudiWallet.logger
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByOffer(offer, txCode, executor, onEvent) }
+                }.also { it.issueDocumentByOffer(offer, txCode, executor, authorizationHandler, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -351,7 +351,7 @@ object EudiWallet {
                     config(config)
                     logger = this@EudiWallet.logger
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByOfferUri(offerUri, txCode, executor, onEvent) }
+                }.also { it.issueDocumentByOfferUri(offerUri, txCode, executor, authorizationHandler, onEvent) }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))

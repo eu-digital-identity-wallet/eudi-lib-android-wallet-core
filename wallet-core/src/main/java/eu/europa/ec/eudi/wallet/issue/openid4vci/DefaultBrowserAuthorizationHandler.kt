@@ -4,12 +4,15 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class DefaultBrowserAuthorizationHandler(
     private val context: Context
 ) : AuthorizationHandler {
-    private var suspendedAuthorization: SuspendedAuthorization? = null
+    private var cancellableContinuation: CancellableContinuation<Result<AuthorizationResponse>>? =
+        null
 
     /**
      * Resume the authorization flow after the user has been redirected back to the app
@@ -18,8 +21,8 @@ class DefaultBrowserAuthorizationHandler(
      *
      */
     fun resumeWithAuthorization(intent: Intent) {
-        suspendedAuthorization?.use { it.resumeFromIntent(intent) }
-            ?: throw IllegalStateException("No authorization request to resume")
+        intent.data?.let { handleUri(it) }
+            ?: throw IllegalStateException("No authorization uri found")
     }
 
     /**
@@ -29,8 +32,7 @@ class DefaultBrowserAuthorizationHandler(
      *
      */
     fun resumeWithAuthorization(uri: String) {
-        suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: throw IllegalStateException("No authorization request to resume")
+        handleUri(Uri.parse(uri))
     }
 
     /**
@@ -40,20 +42,35 @@ class DefaultBrowserAuthorizationHandler(
      *
      */
     fun resumeWithAuthorization(uri: Uri) {
-        suspendedAuthorization?.use { it.resumeFromUri(uri) }
-            ?: throw IllegalStateException("No authorization request to resume")
+        handleUri(uri)
+    }
+
+    private fun handleUri(uri: Uri) {
+        val code = uri.getQueryParameter("code")
+            ?: throw IllegalStateException("No authorization code found")
+        val state =
+            uri.getQueryParameter("state") ?: throw IllegalStateException("No server state found")
+
+        cancellableContinuation?.resume(
+            Result.success(
+                AuthorizationResponse(
+                    code,
+                    state,
+                    "dpopNonce"
+                )
+            )
+        )
     }
 
     override suspend fun doAuthorization(
         authorizationCodeRequest: AuthorizationRequestPrepared
     ): Result<AuthorizationResponse> {
-        return suspendCancellableCoroutine { continuation ->
-            suspendedAuthorization = SuspendedAuthorization(continuation)
-            continuation.invokeOnCancellation {
-                suspendedAuthorization = null
-            }
+        cancellableContinuation?.cancel()
 
-            val authorizationCodeUri = Uri.parse(authorizationCodeRequest.authorizationCodeURL.value.toString())
+        return suspendCancellableCoroutine { continuation ->
+            cancellableContinuation = continuation
+            val authorizationCodeUri =
+                Uri.parse(authorizationCodeRequest.authorizationCodeURL.value.toString())
 
             context.startActivity(Intent(Intent.ACTION_VIEW, authorizationCodeUri).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -62,6 +79,6 @@ class DefaultBrowserAuthorizationHandler(
     }
 
     override fun cancelAuthorization() {
-        suspendedAuthorization?.close()
+        cancellableContinuation?.cancel()
     }
 }

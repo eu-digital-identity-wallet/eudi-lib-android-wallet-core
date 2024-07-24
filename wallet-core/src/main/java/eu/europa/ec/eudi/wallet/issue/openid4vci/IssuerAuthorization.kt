@@ -51,7 +51,11 @@ internal class IssuerAuthorization(
      * @param issuer The issuer to authorize.
      * @param txCode The pre-authorization code.
      */
-    suspend fun authorize(issuer: Issuer, txCode: String?): AuthorizedRequest {
+    suspend fun authorize(
+        issuer: Issuer,
+        txCode: String?,
+        authorizationHandler: AuthorizationHandler,
+    ): AuthorizedRequest {
         close() // close any previous suspensions
         return with(issuer) {
             when {
@@ -59,12 +63,12 @@ internal class IssuerAuthorization(
 
                 else -> {
                     val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
-                    val authResponse = openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
+                    val authResponse = authorizationHandler.doAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
                     prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
                         AuthorizationCode(authResponse.authorizationCode),
-                        authResponse.serverState
+                        authResponse.serverState,
+                        authResponse.dpopNonce
                     )
-
                 }
             }.getOrThrow()
         }

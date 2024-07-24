@@ -17,8 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.wallet.document.*
@@ -35,9 +33,6 @@ import java.util.concurrent.Executor
 
 /**
  * Default implementation of [OpenId4VciManager].
- * @property config the configuration
- * @property userAuthenticationCallback the user authorization callback
- *
  * @constructor Creates a default OpenId4VCI manager.
  * @param context The context.
  * @param documentManager The document manager.
@@ -78,7 +73,7 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val offer = offerCreator.createOffer(docType)
-                doIssue(offer, txCode, listener)
+                doIssue(offer, txCode, listener, authorizationHandler)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByDocType failed", e)
@@ -95,14 +90,13 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                doIssue(offer, txCode, listener)
+                doIssue(offer, txCode, listener, authorizationHandler)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
             }
         }
     }
-
 
     override fun issueDocumentByOfferUri(
         offerUri: String,
@@ -114,7 +108,7 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
-                doIssue(offer, txCode, listener)
+                doIssue(offer, txCode, listener, authorizationHandler)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -185,15 +179,6 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
-    override fun resumeWithAuthorization(intent: Intent) = intent.data?.let { uri ->
-        resumeWithAuthorization(uri)
-    } ?: throw IllegalStateException("No uri to resume from Intent")
-
-    override fun resumeWithAuthorization(uri: String) = resumeWithAuthorization(Uri.parse(uri))
-
-    override fun resumeWithAuthorization(uri: Uri) = issuerAuthorization.resumeFromUri(uri)
-
-
     /**
      * Launches a coroutine.
      * @param onResult The result listener.
@@ -215,10 +200,11 @@ internal class DefaultOpenId4VciManager(
         offer: Offer,
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
-    ) {
+        authorizationHandler: AuthorizationHandler,
+        ) {
         offer as DefaultOffer
         val issuer = issuerCreator.createIssuer(offer)
-        var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
+        var authorizedRequest = issuerAuthorization.authorize(issuer, txCode, authorizationHandler)
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
         val requestMap = offer.offeredDocuments.associateBy { offeredDocument ->
