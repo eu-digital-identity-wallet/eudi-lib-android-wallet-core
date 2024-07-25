@@ -62,7 +62,7 @@ internal class SubmitRequest(
                             offeredDocument.configuration,
                             proofTypes
                         ).getOrThrow()
-                        rq.requestSingle(payload, proofSigner!!.popSigner)
+                        rq.requestSingle(payload, proofSigner!!.popSigner, rq.dpopNonce)
                             .getOrThrow()
                             .also { it.updateCNonce() }
                     }
