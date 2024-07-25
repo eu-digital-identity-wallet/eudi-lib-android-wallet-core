@@ -715,10 +715,12 @@ When the document issuance is deferred, the `IssueEvent.DocumentDeferred` event 
 be issued later by calling the `OpenId4VciManager.issueDeferredDocument` method.
 
 ```kotlin
-val documentId = "documentId"
+// given a deferred document, for example: 
+val deferredDocument = EudiWallet.getDocumentById(deferredDocumentId) as DeferredDocument
+
 val openId4VciManager: OpenId4VciManager = EudiWallet.createOpenId4VciManager()
 
-openId4VciManager.issueDeferredDocument(documentId) { result ->
+openId4VciManager.issueDeferredDocument(deferredDocument) { result ->
     when (result) {
         is DeferredIssueResult.DocumentIssued -> {
             // document issued
