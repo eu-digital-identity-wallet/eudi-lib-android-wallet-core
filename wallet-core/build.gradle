@@ -127,23 +127,23 @@ dependencies {
 
     // OpenID4VCI
     api libs.eudi.lib.jvm.openid4vci.kt
-    implementation libs.nimbus.oauth2.oidc.sdk
+    api libs.nimbus.oauth2.oidc.sdk
 
     // Siop-Openid4VP library
-    implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
+    api(libs.eudi.lib.jvm.siop.openid4vp.kt) {
         exclude group: "org.bouncycastle"
     }
 
     // Google library
-    implementation(libs.identity.credential) {
+    api(libs.identity.credential) {
         exclude group: "org.bouncycastle"
     }
-    implementation(libs.android.identity.credential) {
+    api(libs.android.identity.credential) {
         exclude group: "org.bouncycastle"
     }
 
     // CBOR
-    implementation libs.cbor
+    api libs.cbor
 
     implementation libs.biometric.ktx
 
@@ -152,11 +152,11 @@ dependencies {
     implementation libs.ktor.client.logging
 
     // Bouncy Castle
-    implementation libs.bouncy.castle.prov
-    implementation libs.bouncy.castle.pkix
+    api libs.bouncy.castle.prov
+    api libs.bouncy.castle.pkix
 
-    implementation libs.upokecenter.cbor
-    implementation libs.cose.java
+    api libs.upokecenter.cbor
+    api libs.cose.java
 
     testImplementation libs.junit
     testImplementation libs.junit.jupiter.params
