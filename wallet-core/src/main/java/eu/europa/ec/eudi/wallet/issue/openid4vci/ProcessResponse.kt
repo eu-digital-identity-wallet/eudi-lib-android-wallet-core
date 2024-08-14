@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentFa
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.logging.d
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.util.parseCertificateFromSdJwt
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -112,6 +113,7 @@ internal class ProcessResponse(
                                 unsignedDocument.id,
                                 credential.credential
                             )
+                            documentManager.deleteDocumentById(unsignedDocument.id)
                             listener.invoke(
                                 IssueEvent.DocumentIssued(
                                     unsignedDocument.id,
