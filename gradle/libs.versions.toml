@@ -12,6 +12,7 @@ eudi-document-manager = "0.4.1"
 eudi-iso18013-data-transfer = "0.2.0"
 eudi-lib-jvm-openid4vci-kt = "dpopNonce-SNAPSHOT"
 eudi-lib-jvm-siop-openid4vp-kt = "0.4.2"
+eudiLibJvmSdjwtKt = "0.5.1"
 gradle-plugin = "7.4.0"
 identity-credential = "20231002"
 identity-credential-android = "20231002"
@@ -26,6 +27,7 @@ mockito-android = "4.0.0"
 mockito-inline = "4.0.0"
 mockk = "1.13.5"
 nimbus-sdk = "11.8"
+securityCrypto = "1.1.0-alpha06"
 sonarqube = "4.4.1.3373"
 test-core = "1.4.0"
 test-rules = "1.4.0"
@@ -48,6 +50,7 @@ espresso-intents = { module = "androidx.test.espresso:espresso-intents", version
 eudi-document-manager = { module = "eu.europa.ec.eudi:eudi-lib-android-wallet-document-manager", version.ref = "eudi-document-manager" }
 eudi-iso18013-data-transfer = { module = "eu.europa.ec.eudi:eudi-lib-android-iso18013-data-transfer", version.ref = "eudi-iso18013-data-transfer" }
 eudi-lib-jvm-openid4vci-kt = { module = "com.github.TICESoftware:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
+eudi-lib-jvm-sdjwt-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudiLibJvmSdjwtKt" }
 eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
 identity-credential = { module = "com.android.identity:identity-credential", version.ref = "identity-credential" }
 json = { module = "org.json:json", version.ref = "json" }
@@ -60,6 +63,7 @@ mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-inline" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
+security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-coreKtx = { module = "androidx.test:core-ktx", version.ref = "test-core" }
 test-rules = { module = "androidx.test:rules", version.ref = "test-rules" }

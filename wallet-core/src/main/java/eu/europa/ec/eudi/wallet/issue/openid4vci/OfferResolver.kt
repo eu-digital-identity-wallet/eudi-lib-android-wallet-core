@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.SdJwtOrMsoMdocFormatFilter
 import io.ktor.client.*
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -31,7 +32,7 @@ internal class OfferResolver(
         CredentialOfferRequestResolver(ktorHttpClientFactory)
     }
     val credentialConfigurationFilter by lazy {
-        Compose(MsoMdocFormatFilter, ProofTypeFilter(proofTypes))
+        Compose(SdJwtOrMsoMdocFormatFilter, ProofTypeFilter(proofTypes))
     }
 
     @VisibleForTesting

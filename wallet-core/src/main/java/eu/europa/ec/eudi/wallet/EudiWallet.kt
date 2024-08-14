@@ -35,9 +35,11 @@ import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.issue.openid4vci.*
+import eu.europa.ec.eudi.wallet.keystore.KeyGenerator
+import eu.europa.ec.eudi.wallet.keystore.KeyGeneratorImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponseGeneratorImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.responseGenerator.OpenId4VpResponseGeneratorDelegator
 import eu.europa.ec.eudi.wallet.util.DefaultNfcEngagementService
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
@@ -68,7 +70,7 @@ import java.util.concurrent.Executor
  *
  */
 @SuppressLint("StaticFieldLeak")
-object EudiWallet {
+object EudiWallet : KeyGenerator by KeyGeneratorImpl {
 
     @Volatile
     private lateinit var context: Context
@@ -88,6 +90,7 @@ object EudiWallet {
     fun init(context: Context, config: EudiWalletConfig) {
         this.context = context.applicationContext
         this._config = config
+        DocumentManagerSdJwt.init(context, config.userAuthenticationRequired)
     }
 
     /**
@@ -197,7 +200,9 @@ object EudiWallet {
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
     fun deleteDocumentById(documentId: DocumentId): DeleteDocumentResult =
-        documentManager.deleteDocumentById(documentId)
+        documentManager.deleteDocumentById(documentId).apply {
+            if (this is DeleteDocumentResult.Success) DocumentManagerSdJwt.deleteDocument(documentId)
+        }
 
     /**
      * Create an [UnsignedDocument] for the given [docType]
@@ -224,7 +229,10 @@ object EudiWallet {
      * @return [StoreDocumentResult]
      * @throws IllegalStateException if [EudiWallet] is not firstly initialized via the [init] method
      */
-    fun storeIssuedDocument(unsignedDocument: UnsignedDocument, data: ByteArray): StoreDocumentResult =
+    fun storeIssuedDocument(
+        unsignedDocument: UnsignedDocument,
+        data: ByteArray
+    ): StoreDocumentResult =
         documentManager.storeIssuedDocument(unsignedDocument, data)
 
     private var openId4VciManager: OpenId4VciManager? = null
@@ -280,7 +288,15 @@ object EudiWallet {
                     config(config)
                     logger = this@EudiWallet.logger
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByDocType(docType, txCode, executor, authorizationHandler, onEvent) }
+                }.also {
+                    it.issueDocumentByDocType(
+                        docType,
+                        txCode,
+                        executor,
+                        authorizationHandler,
+                        onEvent
+                    )
+                }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -316,7 +332,15 @@ object EudiWallet {
                     config(config)
                     logger = this@EudiWallet.logger
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByOffer(offer, txCode, executor, authorizationHandler, onEvent) }
+                }.also {
+                    it.issueDocumentByOffer(
+                        offer,
+                        txCode,
+                        executor,
+                        authorizationHandler,
+                        onEvent
+                    )
+                }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -351,7 +375,15 @@ object EudiWallet {
                     config(config)
                     logger = this@EudiWallet.logger
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
-                }.also { it.issueDocumentByOfferUri(offerUri, txCode, executor, authorizationHandler, onEvent) }
+                }.also {
+                    it.issueDocumentByOfferUri(
+                        offerUri,
+                        txCode,
+                        executor,
+                        authorizationHandler,
+                        onEvent
+                    )
+                }
             } ?: run {
                 (executor ?: context.mainExecutor()).execute {
                     onEvent(IssueEvent.failure(IllegalStateException("OpenId4Vci config is not set in configuration")))
@@ -383,7 +415,12 @@ object EudiWallet {
                     ktorHttpClientFactory = _config.ktorHttpClientFactory
                 }.also {
                     when (val document = documentManager.getDocumentById(documentId)) {
-                        is DeferredDocument -> it.issueDeferredDocument(document, executor, onResult)
+                        is DeferredDocument -> it.issueDeferredDocument(
+                            document,
+                            executor,
+                            onResult
+                        )
+
                         else -> (executor ?: context.mainExecutor()).execute {
                             onResult(
                                 DeferredIssueResult.DocumentFailed(
@@ -474,8 +511,16 @@ object EudiWallet {
      * @return [EudiWallet]
      */
     fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) = apply {
-        deviceResponseGenerator.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
-        openId4VpCBORResponseGenerator.setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+        deviceResponseGenerator.setReaderTrustStore(
+            ReaderTrustStore.getDefault(
+                trustedReaderCertificates
+            )
+        )
+        openId4VpCBORResponseGenerator.setReaderTrustStore(
+            ReaderTrustStore.getDefault(
+                trustedReaderCertificates
+            )
+        )
     }
 
     /**
@@ -630,9 +675,10 @@ object EudiWallet {
         // create response
         val responseResult = when (transferMode) {
             TransferMode.OPENID4VP ->
-                openId4vpManager?.responseGenerator?.createResponse(disclosedDocuments) ?: ResponseResult.Failure(
-                    Throwable("Openid4vpManager has not been initialized properly")
-                )
+                openId4vpManager?.responseGenerator?.createResponse(disclosedDocuments)
+                    ?: ResponseResult.Failure(
+                        Throwable("Openid4vpManager has not been initialized properly")
+                    )
 
             TransferMode.ISO_18013_5, TransferMode.REST_API ->
                 transferManager.responseGenerator.createResponse(disclosedDocuments)
@@ -645,7 +691,12 @@ object EudiWallet {
             is ResponseResult.Success -> {
                 when (transferMode) {
                     TransferMode.OPENID4VP ->
-                        openId4vpManager?.sendResponse((responseResult.response as OpenId4VpCBORResponse).deviceResponseBytes)
+                        openId4vpManager?.sendResponse(
+                            when(val result = responseResult.response){
+                                is OpenId4VpCBORResponse -> result.deviceResponseBytes
+                                is DeviceResponse -> result.deviceResponseBytes
+                                else -> throw Exception()
+                            })
 
                     TransferMode.ISO_18013_5, TransferMode.REST_API ->
                         transferManager.sendResponse((responseResult.response as DeviceResponse).deviceResponseBytes)
@@ -695,9 +746,23 @@ object EudiWallet {
 
     private val transferManagerDocumentsResolver: DocumentsResolver
         get() = DocumentsResolver { req ->
-            documentManager.getDocuments(Document.State.ISSUED)
+
+            DocumentManagerSdJwt
+                .getAllDocuments()
+//                .filter { doc -> doc.vct == req.docType }
+                .map { doc ->
+                    RequestDocument(
+                        documentId = doc.id,
+                        docType = doc.vct,
+                        docName = doc.docName,
+                        userAuthentication = doc.requiresUserAuth,
+                        docRequest = req
+                    )
+                }.takeIf { it.isNotEmpty() }?.let { return@DocumentsResolver it }
+
+            return@DocumentsResolver documentManager.getDocuments(Document.State.ISSUED)
                 .filterIsInstance<IssuedDocument>()
-                .filter { doc -> doc.docType == req.docType }
+//                .filter { doc -> doc.docType == req.docType }
                 .map { doc ->
                     RequestDocument(
                         documentId = doc.id,
@@ -721,9 +786,9 @@ object EudiWallet {
         }
     }
 
-    private val openId4VpCBORResponseGenerator: OpenId4VpCBORResponseGeneratorImpl by lazy {
+    private val openId4VpCBORResponseGenerator: OpenId4VpResponseGeneratorDelegator by lazy {
         requireInit {
-            OpenId4VpCBORResponseGeneratorImpl.Builder(context)
+            OpenId4VpResponseGeneratorDelegator.Builder(context)
                 .apply {
                     _config.trustedReaderCertificates?.let {
                         readerTrustStore = ReaderTrustStore.getDefault(it)

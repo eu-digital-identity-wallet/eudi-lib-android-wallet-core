@@ -23,7 +23,20 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
-import eu.europa.ec.eudi.openid4vp.*
+import eu.europa.ec.eudi.openid4vp.Consensus
+import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
+import eu.europa.ec.eudi.openid4vp.DispatchOutcome
+import eu.europa.ec.eudi.openid4vp.JarmConfiguration
+import eu.europa.ec.eudi.openid4vp.JwkSetSource
+import eu.europa.ec.eudi.openid4vp.PreregisteredClient
+import eu.europa.ec.eudi.openid4vp.Resolution
+import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.ResponseMode
+import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
+import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
+import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
+import eu.europa.ec.eudi.openid4vp.VpToken
+import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
@@ -34,10 +47,11 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.logging.d
 import eu.europa.ec.eudi.wallet.logging.e
 import eu.europa.ec.eudi.wallet.logging.i
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.responseGenerator.OpenId4VpResponseGeneratorDelegator
 import eu.europa.ec.eudi.wallet.util.CBOR
 import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,7 +60,8 @@ import org.bouncycastle.util.encoders.Hex
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Base64
+import java.util.UUID
 import java.util.concurrent.Executor
 
 /**
@@ -127,7 +142,7 @@ import java.util.concurrent.Executor
 class OpenId4vpManager(
     context: Context,
     openId4VpConfig: OpenId4VpConfig,
-    val responseGenerator: OpenId4VpCBORResponseGeneratorImpl,
+    val responseGenerator: OpenId4VpResponseGeneratorDelegator,
 ) : TransferEvent.Listenable {
 
     var logger: Logger? = null
@@ -146,7 +161,8 @@ class OpenId4vpManager(
             transferEventListeners.onTransferEvent(result)
         }
     }
-    private val siopOpenId4Vp = SiopOpenId4Vp(openId4VpConfig.toSiopOpenId4VPConfig(), ktorHttpClientFactory)
+    private val siopOpenId4Vp =
+        SiopOpenId4Vp(openId4VpConfig.toSiopOpenId4VPConfig(), ktorHttpClientFactory)
     private var resolvedRequestObject: ResolvedRequestObject? = null
     private var mdocGeneratedNonce: String? = null
 
@@ -192,10 +208,26 @@ class OpenId4vpManager(
                                 when (requestObject) {
                                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
                                         logger?.d(TAG, "OpenId4VPAuthorization Request received")
-                                        val request = OpenId4VpRequest(
-                                            requestObject,
-                                            requestObject.toSessionTranscript()
-                                        )
+
+                                        val format =
+                                            requestObject.presentationDefinition.inputDescriptors.first().format?.jsonObject()?.keys?.first() //TODO Format Type nutzen
+                                        val request = when (format) {
+                                            "mso_mdoc" -> {
+                                                OpenId4VpRequest(
+                                                    requestObject,
+                                                    requestObject.toSessionTranscript()
+                                                )
+                                            }
+
+                                            "vc_sd_jwt" -> {
+                                                OpenId4VpSdJwtRequest(requestObject)
+                                            }
+
+                                            else -> {
+                                                throw NotImplementedError(message = "Not supported: ${format}")
+                                            }
+                                        }
+
                                         onResultUnderExecutor(
                                             TransferEvent.RequestReceived(
                                                 responseGenerator.parseRequest(request),
@@ -239,42 +271,28 @@ class OpenId4vpManager(
      */
     fun sendResponse(deviceResponse: ByteArray) {
 
-        logger?.d(TAG, "Device Response to send (hex): ${Hex.toHexString(deviceResponse)}")
-        logger?.d(TAG, "Device Response to send (cbor): ${CBOR.cborPrettyPrint(deviceResponse)}")
+//        logger?.d(TAG, "Device Response to send (hex): ${Hex.toHexString(deviceResponse)}")
+//        logger?.d(TAG, "Device Response to send (cbor): ${CBOR.cborPrettyPrint(deviceResponse)}")
 
         ioScope.launch {
             resolvedRequestObject?.let { resolvedRequestObject ->
                 when (resolvedRequestObject) {
                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
 
-                        val vpToken =
-                            Base64.getUrlEncoder().withoutPadding()
-                                .encodeToString(deviceResponse)
-                        logger?.d(TAG, "VpToken: $vpToken")
+                        val vpTokenConsensus = when (responseGenerator.formatState) {
+                            OpenId4VpResponseGeneratorDelegator.FormatState.Cbor -> {
+                                mDocVPTokenConsensus(deviceResponse, resolvedRequestObject)
+                            }
 
-                        val presentationDefinition =
-                            (resolvedRequestObject).presentationDefinition
-                        val consensus = Consensus.PositiveConsensus.VPTokenConsensus(
-                            VpToken.MsoMdoc(
-                                vpToken,
-                                Base64URL.encode(mdocGeneratedNonce),
-                            ),
-                            presentationSubmission = PresentationSubmission(
-                                id = Id(UUID.randomUUID().toString()),
-                                definitionId = presentationDefinition.id,
-                                presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    DescriptorMap(
-                                        inputDescriptor.id,
-                                        "mso_mdoc",
-                                        path = JsonPath.jsonPath("$")!!
-                                    )
-                                }
-                            )
-                        )
+                            OpenId4VpResponseGeneratorDelegator.FormatState.SdJwt -> {
+                                sdJwtVPTokenConsensus(deviceResponse, resolvedRequestObject)
+                            }
+                        }
+
                         runCatching {
                             siopOpenId4Vp.dispatch(
                                 resolvedRequestObject,
-                                consensus
+                                vpTokenConsensus
                             )
                         }.onSuccess { dispatchOutcome ->
                             when (dispatchOutcome) {
@@ -313,6 +331,63 @@ class OpenId4vpManager(
                 }
             }
         }
+    }
+
+    private fun mDocVPTokenConsensus(
+        deviceResponse: ByteArray,
+        resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization
+    ): Consensus.PositiveConsensus.VPTokenConsensus {
+        val vpToken =
+            Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(deviceResponse)
+        logger?.d(TAG, "VpToken: $vpToken")
+
+        val presentationDefinition = resolvedRequestObject.presentationDefinition
+        return Consensus.PositiveConsensus.VPTokenConsensus(
+            VpToken.MsoMdoc(
+                vpToken,
+                Base64URL.encode(mdocGeneratedNonce),
+            ),
+            presentationSubmission = PresentationSubmission(
+                id = Id(UUID.randomUUID().toString()),
+                definitionId = presentationDefinition.id,
+                presentationDefinition.inputDescriptors.map { inputDescriptor ->
+                    DescriptorMap(
+                        inputDescriptor.id,
+                        "mso_mdoc",
+                        path = JsonPath.jsonPath("$")!!
+                    )
+                }
+            )
+        )
+    }
+
+    private fun sdJwtVPTokenConsensus(
+        deviceResponse: ByteArray,
+        resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization
+    ): Consensus.PositiveConsensus.VPTokenConsensus {
+        val vpToken =
+            Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(deviceResponse)
+        logger?.d(TAG, "VpToken: $vpToken")
+
+        val presentationDefinition = resolvedRequestObject.presentationDefinition
+        return Consensus.PositiveConsensus.VPTokenConsensus(
+            VpToken.Generic(
+                vpToken,
+            ),
+            presentationSubmission = PresentationSubmission(
+                id = Id(UUID.randomUUID().toString()),
+                definitionId = presentationDefinition.id,
+                presentationDefinition.inputDescriptors.map { inputDescriptor ->
+                    DescriptorMap(
+                        inputDescriptor.id,
+                        "vc_sd_jwt",
+                        path = JsonPath.jsonPath("$")!!
+                    )
+                }
+            )
+        )
     }
 
     /**
@@ -363,7 +438,7 @@ class OpenId4vpManager(
         val responseUri =
             (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
                 ?: ""
-        val nonce = this.nonce
+        val nonce = this.nonce //TODO MAYBE THIS NONCE
         val mdocGeneratedNonce = Openid4VpUtils.generateMdocGeneratedNonce().also {
             mdocGeneratedNonce = it
         }

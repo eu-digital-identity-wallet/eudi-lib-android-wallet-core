@@ -23,3 +23,9 @@ class OpenId4VpRequest(
     val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization,
     val sessionTranscript: SessionTranscriptBytes,
 ) : Request
+
+
+class OpenId4VpSdJwtRequest(
+    val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization
+) : Request
+

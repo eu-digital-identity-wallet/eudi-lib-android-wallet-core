@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transfer.openid4vp
+package eu.europa.ec.eudi.wallet.transfer.openid4vp.responseGenerator
 
 import android.content.Context
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
@@ -40,6 +40,8 @@ import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.logging.e
 import eu.europa.ec.eudi.wallet.logging.i
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
+import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpRequest
 
 private const val TAG = "OpenId4VpCBORResponseGe"
 
@@ -73,20 +75,7 @@ class OpenId4VpCBORResponseGeneratorImpl(
         this.readerTrustStore = readerTrustStore
     }
 
-    /**
-     * Set a trust store so that reader authentication can be performed.
-     *
-     * If it is not provided, reader authentication will not be performed.
-     *
-     * @param readerTrustStore a trust store for reader authentication, e.g. DefaultReaderTrustStore
-     */
-    fun readerTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-        openid4VpX509CertificateTrust.setReaderTrustStore(readerTrustStore)
-        this.readerTrustStore = readerTrustStore
-    }
-
     internal fun getOpenid4VpX509CertificateTrust() = openid4VpX509CertificateTrust
-
 
     private val secureAreaRepository: SecureAreaRepository by lazy {
         SecureAreaRepository().apply {

@@ -21,8 +21,8 @@ import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.SdJwtOrMsoMdocFormatFilter
 import io.ktor.client.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,20 +40,20 @@ internal class OfferCreator(
                     Issuer.metaData(client, credentialIssuerId)
                 }
             val credentialConfigurationFilter = Compose(
-                MsoMdocFormatFilter,
+                SdJwtOrMsoMdocFormatFilter,
                 DocTypeFilter(docType),
                 ProofTypeFilter(config.proofTypes)
             )
-            val credentialConfigurationId =
-                credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
-                    credentialConfigurationFilter(conf)
-                }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
+//            val credentialConfigurationId =
+//                credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
+//                    credentialConfigurationFilter(conf)
+//                }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
 
             val credentialOffer = CredentialOffer(
                 credentialIssuerIdentifier = credentialIssuerId,
                 credentialIssuerMetadata = credentialIssuerMetadata,
                 authorizationServerMetadata = authorizationServerMetadata.first(),
-                credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
+                credentialConfigurationIdentifiers = credentialIssuerMetadata.credentialConfigurationsSupported.keys.toList()
             )
             DefaultOffer(credentialOffer, credentialConfigurationFilter)
         }

@@ -30,7 +30,7 @@ import eu.europa.ec.eudi.openid4vci.*
  */
 internal data class DefaultOffer(
     @JvmSynthetic val credentialOffer: CredentialOffer,
-    @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.MsoMdocFormatFilter,
+    @JvmSynthetic val credentialConfigurationFilter: CredentialConfigurationFilter = CredentialConfigurationFilter.SdJwtOrMsoMdocFormatFilter,
 ) : Offer {
 
     private val issuerMetadata: CredentialIssuerMetadata
@@ -41,8 +41,8 @@ internal data class DefaultOffer(
 
     override val offeredDocuments: List<Offer.OfferedDocument>
         get() = issuerMetadata.credentialConfigurationsSupported
-            .filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
-            .filterValues { credentialConfigurationFilter(it) }
+            //.filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
+            //.filterValues { credentialConfigurationFilter(it) }
             .map { (id, conf) -> DefaultOfferedDocument(id, conf) }
 
     override val txCodeSpec: Offer.TxCodeSpec?
@@ -92,7 +92,7 @@ internal val CredentialConfiguration.name: String
 internal val CredentialConfiguration.docType: String
     @JvmSynthetic get() = when (this) {
         is MsoMdocCredential -> docType
-        is SdJwtVcCredential -> "eu.europa.ec.eudi.pid_jwt_vc_json"
+        is SdJwtVcCredential -> "eu.europa.ec.eudi.pid.1"
         else -> "unknown"
     }
 
