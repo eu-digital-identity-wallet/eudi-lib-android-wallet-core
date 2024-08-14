@@ -97,20 +97,7 @@ internal class ProcessResponse(
             is SubmissionOutcome.Success -> when (val credential = outcome.credentials[0]) {
                 is IssuedCredential.Issued -> try {
                     if (isSdJwt(credential.credential)) {
-                        val headerString = credential.credential.split(".").first()
-                        val headerJson =
-                            JSONObject(String(Base64.getUrlDecoder().decode(headerString)))
-                        val keyString =
-                            headerJson.getJSONArray("x5c").getString(0).replace("\n", "")
-
-                        val pemKey = "-----BEGIN CERTIFICATE-----\n" +
-                                "${keyString}\n" +
-                                "-----END CERTIFICATE-----"
-
-                        val certificateFactory: CertificateFactory =
-                            CertificateFactory.getInstance("X.509")
-                        val certificate =
-                            certificateFactory.generateCertificate(ByteArrayInputStream(pemKey.toByteArray())) as X509Certificate
+                        val certificate = parseCertificateFromSdJwt(credential.credential)
 
                         val ecKey = ECKey.parse(certificate)
                         val jwtSignatureVerifier = ECDSAVerifier(ecKey).asJwtVerifier()
