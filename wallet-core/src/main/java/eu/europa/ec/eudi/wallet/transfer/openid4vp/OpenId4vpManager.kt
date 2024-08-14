@@ -435,10 +435,13 @@ class OpenId4vpManager(
 
     private fun ResolvedRequestObject.OpenId4VPAuthorization.toSessionTranscript(): SessionTranscriptBytes {
         val clientId = this.client.id
-        val responseUri =
-            (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
-                ?: ""
-        val nonce = this.nonce //TODO MAYBE THIS NONCE
+        val responseUri = when (this.responseMode) {
+            is ResponseMode.DirectPost -> (this.responseMode as ResponseMode.DirectPost?)?.responseURI?.toString() ?: ""
+            is ResponseMode.DirectPostJwt -> (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString() ?: ""
+            else -> ""
+        }
+
+        val nonce = this.nonce
         val mdocGeneratedNonce = Openid4VpUtils.generateMdocGeneratedNonce().also {
             mdocGeneratedNonce = it
         }
