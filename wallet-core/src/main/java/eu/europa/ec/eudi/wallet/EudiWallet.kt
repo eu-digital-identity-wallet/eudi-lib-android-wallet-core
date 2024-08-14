@@ -692,11 +692,12 @@ object EudiWallet : KeyGenerator by KeyGeneratorImpl {
                 when (transferMode) {
                     TransferMode.OPENID4VP ->
                         openId4vpManager?.sendResponse(
-                            when(val result = responseResult.response){
+                            when (val result = responseResult.response) {
                                 is OpenId4VpCBORResponse -> result.deviceResponseBytes
                                 is DeviceResponse -> result.deviceResponseBytes
                                 else -> throw Exception()
-                            })
+                            }
+                        )
 
                     TransferMode.ISO_18013_5, TransferMode.REST_API ->
                         transferManager.sendResponse((responseResult.response as DeviceResponse).deviceResponseBytes)
@@ -747,31 +748,35 @@ object EudiWallet : KeyGenerator by KeyGeneratorImpl {
     private val transferManagerDocumentsResolver: DocumentsResolver
         get() = DocumentsResolver { req ->
 
-            DocumentManagerSdJwt
-                .getAllDocuments()
-//                .filter { doc -> doc.vct == req.docType }
-                .map { doc ->
-                    RequestDocument(
-                        documentId = doc.id,
-                        docType = doc.vct,
-                        docName = doc.docName,
-                        userAuthentication = doc.requiresUserAuth,
-                        docRequest = req
-                    )
-                }.takeIf { it.isNotEmpty() }?.let { return@DocumentsResolver it }
-
-            return@DocumentsResolver documentManager.getDocuments(Document.State.ISSUED)
-                .filterIsInstance<IssuedDocument>()
-//                .filter { doc -> doc.docType == req.docType }
-                .map { doc ->
-                    RequestDocument(
-                        documentId = doc.id,
-                        docType = doc.docType,
-                        docName = doc.name,
-                        userAuthentication = doc.requiresUserAuth,
-                        docRequest = req
-                    )
+            return@DocumentsResolver when (OpenId4VpResponseGeneratorDelegator.formatState) {
+                is OpenId4VpResponseGeneratorDelegator.FormatState.SdJwt -> {
+                    DocumentManagerSdJwt
+                        .getAllDocuments()
+                        .map { doc ->
+                            RequestDocument(
+                                documentId = doc.id,
+                                docType = doc.vct,
+                                docName = doc.docName,
+                                userAuthentication = doc.requiresUserAuth,
+                                docRequest = req
+                            )
+                        }
                 }
+
+                is OpenId4VpResponseGeneratorDelegator.FormatState.Cbor -> {
+                    documentManager.getDocuments(Document.State.ISSUED)
+                        .filterIsInstance<IssuedDocument>()
+                        .map { doc ->
+                            RequestDocument(
+                                documentId = doc.id,
+                                docType = doc.docType,
+                                docName = doc.name,
+                                userAuthentication = doc.requiresUserAuth,
+                                docRequest = req
+                            )
+                        }
+                }
+            }
         }
 
     private val deviceResponseGenerator: ResponseGenerator<DeviceRequest> by lazy {

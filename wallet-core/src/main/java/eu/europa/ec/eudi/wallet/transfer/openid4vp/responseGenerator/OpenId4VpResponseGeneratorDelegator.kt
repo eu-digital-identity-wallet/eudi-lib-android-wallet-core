@@ -14,22 +14,25 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpSdJwtRequest
 
+
 class OpenId4VpResponseGeneratorDelegator(
     private val mDocGenerator: OpenId4VpCBORResponseGeneratorImpl,
     private val sdJwtGenerator: OpenId4VpSdJwtResponseGeneratorImpl
 ) {
-    enum class FormatState {
-        Cbor,
-        SdJwt
+    sealed class FormatState(open val isZkp: Boolean) {
+        data class Cbor(override val isZkp: Boolean) : FormatState(isZkp)
+        data class SdJwt(override val isZkp: Boolean) : FormatState(isZkp)
     }
 
-    var formatState: FormatState = FormatState.Cbor
-        private set
+    companion object {
+        public var formatState: FormatState = FormatState.Cbor(false)
+            private set
+    }
 
     fun createResponse(disclosedDocuments: DisclosedDocuments): ResponseResult {
         return when (formatState) {
-            FormatState.Cbor -> mDocGenerator.createResponse(disclosedDocuments)
-            FormatState.SdJwt -> sdJwtGenerator.createResponse(disclosedDocuments)
+            is FormatState.Cbor -> mDocGenerator.createResponse(disclosedDocuments)
+            is FormatState.SdJwt -> sdJwtGenerator.createResponse(disclosedDocuments)
         }
     }
 
@@ -39,20 +42,19 @@ class OpenId4VpResponseGeneratorDelegator(
     }
 
     internal fun getOpenid4VpX509CertificateTrust() = when (formatState) {
-        FormatState.Cbor -> mDocGenerator.getOpenid4VpX509CertificateTrust()
-        FormatState.SdJwt -> sdJwtGenerator.getOpenid4VpX509CertificateTrust()
+        is FormatState.Cbor -> mDocGenerator.getOpenid4VpX509CertificateTrust()
+        is FormatState.SdJwt -> sdJwtGenerator.getOpenid4VpX509CertificateTrust()
     }
-
 
     fun parseRequest(request: Request): RequestedDocumentData {
         return when (request) {
             is OpenId4VpRequest -> {
-                formatState = FormatState.Cbor
+                formatState = FormatState.Cbor(request.requestId != null)
                 mDocGenerator.parseRequest(request)
             }
 
             is OpenId4VpSdJwtRequest -> {
-                formatState = FormatState.SdJwt
+                formatState = FormatState.SdJwt(request.requestId != null)
                 sdJwtGenerator.parseRequest(request)
             }
 

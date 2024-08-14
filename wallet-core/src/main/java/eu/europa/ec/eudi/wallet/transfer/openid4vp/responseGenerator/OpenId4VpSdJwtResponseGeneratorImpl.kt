@@ -36,11 +36,17 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.DocumentManagerSdJwt
 import eu.europa.ec.eudi.wallet.keystore.KeyGenerator
 import eu.europa.ec.eudi.wallet.keystore.KeyGeneratorImpl
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpSdJwtRequest
+import eu.europa.ec.eudi.wallet.util.ZKP_ISSUER_CERT
+import eu.europa.ec.eudi.wallet.util.getECPublicKeyFromCert
 import eu.europa.ec.eudi.wallet.util.parseCertificateFromSdJwt
+import eu.europa.ec.eudi.wallet.zkp.network.ZKPClient
 import kotlinx.coroutines.runBlocking
+import software.tice.ZKPGenerator
+import software.tice.ZKPProverSdJwt
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.util.Base64
 
 class OpenId4VpSdJwtResponseGeneratorImpl(
     private val documentsResolver: DocumentsResolver,
@@ -49,6 +55,8 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
     private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
 
     private val sdJwtNamespace = "eu.europa.ec.eudi.pid.1"
+
+    private var zkpRequestId: String? = null
 
     override fun createResponse(disclosedDocuments: DisclosedDocuments) = runBlocking {
         val disclosedDocument = disclosedDocuments.documents.first()
@@ -80,7 +88,7 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
             certificateFactory.generateCertificate(ByteArrayInputStream(key.certificate.encoded)) as X509Certificate
         val ecKey = ECKey.parse(certificate)
 
-        val string = presentationSdJwt!!.serializeWithKeyBinding(
+        val jwt = presentationSdJwt!!.serializeWithKeyBinding(
             jwtSerializer = { it.first },
             hashAlgorithm = HashAlgorithm.SHA_256,
             keyBindingSigner = object : KeyBindingSigner {
@@ -95,7 +103,20 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
             claimSetBuilderAction = { }
         )
 
-        return@runBlocking ResponseResult.Success(DeviceResponse(string.toByteArray()))
+        val jwtByteArray = if (zkpRequestId == null) {
+            jwt.toByteArray()
+        } else {
+            val zkpKey = getECPublicKeyFromCert(ZKP_ISSUER_CERT)
+            val prover = ZKPProverSdJwt(ZKPGenerator(zkpKey))
+            val challenge = ZKPClient().getChallenges(
+                zkpRequestId!!,
+                listOf(sdJwtNamespace to prover.createChallengeRequest(jwt)),
+            ).first().second
+            val zkpJwt = prover.answerChallenge(challenge, jwt)
+            zkpJwt.toByteArray()
+        }
+
+        return@runBlocking ResponseResult.Success(DeviceResponse(jwtByteArray))
     }
 
     override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
@@ -106,10 +127,11 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
     internal fun getOpenid4VpX509CertificateTrust() = openid4VpX509CertificateTrust
 
     override fun parseRequest(request: OpenId4VpSdJwtRequest): RequestedDocumentData {
+        zkpRequestId = request.requestId
         val inputDescriptors =
             request.openId4VPAuthorization.presentationDefinition.inputDescriptors
                 .filter { inputDescriptor ->
-                    inputDescriptor.format?.json?.contains("vc_sd_jwt") == true
+                    inputDescriptor.format?.json?.contains("vc+sd-jwt") == true
                 }
 
         if (inputDescriptors.isEmpty()) {

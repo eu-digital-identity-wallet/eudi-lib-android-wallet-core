@@ -30,7 +30,6 @@ object DocumentManagerSdJwt {
     fun deleteAllDocuments() {
         dataStore.deleteAll()
     }
-
 }
 
 data class SdJwtDocument(

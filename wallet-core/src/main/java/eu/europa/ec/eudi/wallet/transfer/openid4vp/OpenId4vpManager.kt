@@ -17,6 +17,8 @@
 package eu.europa.ec.eudi.wallet.transfer.openid4vp
 
 import android.content.Context
+import android.net.Uri
+import androidx.core.net.toUri
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
@@ -48,7 +50,6 @@ import eu.europa.ec.eudi.wallet.logging.d
 import eu.europa.ec.eudi.wallet.logging.e
 import eu.europa.ec.eudi.wallet.logging.i
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.responseGenerator.OpenId4VpResponseGeneratorDelegator
-import eu.europa.ec.eudi.wallet.util.CBOR
 import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
 import io.ktor.client.HttpClient
@@ -194,72 +195,97 @@ class OpenId4vpManager(
         ioScope.launch {
             onResultUnderExecutor(TransferEvent.Connecting)
             runCatching { siopOpenId4Vp.resolveRequestUri(openid4VPURI) }.onSuccess { resolution ->
-                when (resolution) {
-                    is Resolution.Invalid -> {
-                        logger?.e(TAG, "Resolution.Invalid", resolution.error.asException())
-                        onResultUnderExecutor(TransferEvent.Error(resolution.error.asException()))
-                    }
+                try {
+                    when (resolution) {
+                        is Resolution.Invalid -> {
+                            logger?.e(TAG, "Resolution.Invalid", resolution.error.asException())
+                            onResultUnderExecutor(TransferEvent.Error(resolution.error.asException()))
+                        }
 
-                    is Resolution.Success -> {
-                        logger?.d(TAG, "Resolution.Success")
-                        resolution.requestObject
-                            .also { resolvedRequestObject = it }
-                            .let { requestObject ->
-                                when (requestObject) {
-                                    is ResolvedRequestObject.OpenId4VPAuthorization -> {
-                                        logger?.d(TAG, "OpenId4VPAuthorization Request received")
-
-                                        val format =
-                                            requestObject.presentationDefinition.inputDescriptors.first().format?.jsonObject()?.keys?.first() //TODO Format Type nutzen
-                                        val request = when (format) {
-                                            "mso_mdoc" -> {
-                                                OpenId4VpRequest(
-                                                    requestObject,
-                                                    requestObject.toSessionTranscript()
-                                                )
-                                            }
-
-                                            "vc_sd_jwt" -> {
-                                                OpenId4VpSdJwtRequest(requestObject)
-                                            }
-
-                                            else -> {
-                                                throw NotImplementedError(message = "Not supported: ${format}")
-                                            }
-                                        }
-
-                                        onResultUnderExecutor(
-                                            TransferEvent.RequestReceived(
-                                                responseGenerator.parseRequest(request),
-                                                request
-                                            )
-                                        )
-                                    }
-
-                                    is ResolvedRequestObject.SiopAuthentication -> {
-                                        logger?.i(TAG, "SiopAuthentication Request received")
-                                        onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
-                                    }
-
-                                    is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
-                                        logger?.i(
-                                            TAG,
-                                            "SiopOpenId4VPAuthentication Request received"
-                                        )
-                                        onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
-                                    }
-
-                                    else -> {
-                                        logger?.e(TAG, "Unknown request received")
-                                        onResultUnderExecutor("Unknown request received".err())
-                                    }
-                                }
+                        is Resolution.Success -> {
+                            logger?.d(TAG, "Resolution.Success")
+                            val requestId = Uri.parse(openid4VPURI).run {
+                                getQueryParameter(queryParameterNames.elementAt(1))?.toUri()?.pathSegments?.get(
+                                    2
+                                )
                             }
+
+                            resolution.requestObject
+                                .also { resolvedRequestObject = it }
+                                .let { handleRequestObject(it, requestId) }
+                        }
                     }
+                } catch (e: Exception) {
+                    logger?.e(TAG, "An error occurred resolving request uri: $openid4VPURI", e)
+                    onResultUnderExecutor(TransferEvent.Error(e))
                 }
             }.onFailure {
                 logger?.e(TAG, "An error occurred resolving request uri: $openid4VPURI", it)
                 onResultUnderExecutor(TransferEvent.Error(it))
+            }
+        }
+    }
+
+    private fun handleRequestObject(requestObject: ResolvedRequestObject, requestId: String?) {
+        when (requestObject) {
+            is ResolvedRequestObject.OpenId4VPAuthorization -> {
+                logger?.d(TAG, "OpenId4VPAuthorization Request received")
+
+                val format =
+                    requestObject.presentationDefinition.inputDescriptors.first().format?.jsonObject()?.keys?.first()
+                val request = when (format) {
+                    "mso_mdoc" -> {
+                        OpenId4VpRequest(
+                            requestObject,
+                            requestObject.toSessionTranscript()
+                        )
+                    }
+
+                    "mso_mdoc+zkp" -> {
+                        OpenId4VpRequest(
+                            requestObject,
+                            requestObject.toSessionTranscript(),
+                            requestId,
+                        )
+                    }
+
+                    "vc+sd-jwt" -> {
+                        OpenId4VpSdJwtRequest(requestObject)
+                    }
+
+                    "vc+sd-jwt+zkp" -> {
+                        OpenId4VpSdJwtRequest(requestObject, requestId)
+                    }
+
+                    else -> {
+                        throw NotImplementedError(message = "Not supported: ${format}")
+                    }
+                }
+
+                onResultUnderExecutor(
+                    TransferEvent.RequestReceived(
+                        responseGenerator.parseRequest(request),
+                        request
+                    )
+                )
+            }
+
+            is ResolvedRequestObject.SiopAuthentication -> {
+                logger?.i(TAG, "SiopAuthentication Request received")
+                onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
+            }
+
+            is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
+                logger?.i(
+                    TAG,
+                    "SiopOpenId4VPAuthentication Request received"
+                )
+                onResultUnderExecutor("SiopAuthentication request received, not supported yet.".err())
+            }
+
+            else -> {
+                logger?.e(TAG, "Unknown request received")
+                onResultUnderExecutor("Unknown request received".err())
             }
         }
     }
@@ -270,24 +296,21 @@ class OpenId4vpManager(
      * @param deviceResponse
      */
     fun sendResponse(deviceResponse: ByteArray) {
-
-//        logger?.d(TAG, "Device Response to send (hex): ${Hex.toHexString(deviceResponse)}")
-//        logger?.d(TAG, "Device Response to send (cbor): ${CBOR.cborPrettyPrint(deviceResponse)}")
-
         ioScope.launch {
             resolvedRequestObject?.let { resolvedRequestObject ->
                 when (resolvedRequestObject) {
                     is ResolvedRequestObject.OpenId4VPAuthorization -> {
 
-                        val vpTokenConsensus = when (responseGenerator.formatState) {
-                            OpenId4VpResponseGeneratorDelegator.FormatState.Cbor -> {
-                                mDocVPTokenConsensus(deviceResponse, resolvedRequestObject)
-                            }
+                        val vpTokenConsensus =
+                            when (OpenId4VpResponseGeneratorDelegator.formatState) {
+                                is OpenId4VpResponseGeneratorDelegator.FormatState.Cbor -> {
+                                    mDocVPTokenConsensus(deviceResponse, resolvedRequestObject)
+                                }
 
-                            OpenId4VpResponseGeneratorDelegator.FormatState.SdJwt -> {
-                                sdJwtVPTokenConsensus(deviceResponse, resolvedRequestObject)
+                                is OpenId4VpResponseGeneratorDelegator.FormatState.SdJwt -> {
+                                    sdJwtVPTokenConsensus(deviceResponse, resolvedRequestObject)
+                                }
                             }
-                        }
 
                         runCatching {
                             siopOpenId4Vp.dispatch(
@@ -301,10 +324,10 @@ class OpenId4vpManager(
                                         TAG,
                                         "VerifierResponse Accepted with redirectUri: $dispatchOutcome.redirectURI"
                                     )
-                                    onResultUnderExecutor(TransferEvent.ResponseSent)
                                     dispatchOutcome.redirectURI?.let {
                                         onResultUnderExecutor(TransferEvent.Redirect(it))
                                     }
+                                    onResultUnderExecutor(TransferEvent.ResponseSent)
                                 }
 
                                 is DispatchOutcome.VerifierResponse.Rejected -> {
@@ -343,6 +366,7 @@ class OpenId4vpManager(
         logger?.d(TAG, "VpToken: $vpToken")
 
         val presentationDefinition = resolvedRequestObject.presentationDefinition
+        val isZkp = OpenId4VpResponseGeneratorDelegator.formatState.isZkp
         return Consensus.PositiveConsensus.VPTokenConsensus(
             VpToken.MsoMdoc(
                 vpToken,
@@ -354,7 +378,7 @@ class OpenId4vpManager(
                 presentationDefinition.inputDescriptors.map { inputDescriptor ->
                     DescriptorMap(
                         inputDescriptor.id,
-                        "mso_mdoc",
+                        if (isZkp) "mso_mdoc+zkp" else "mso_mdoc",
                         path = JsonPath.jsonPath("$")!!
                     )
                 }
@@ -366,12 +390,11 @@ class OpenId4vpManager(
         deviceResponse: ByteArray,
         resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization
     ): Consensus.PositiveConsensus.VPTokenConsensus {
-        val vpToken =
-            Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(deviceResponse)
+        val vpToken = String(deviceResponse)
         logger?.d(TAG, "VpToken: $vpToken")
 
         val presentationDefinition = resolvedRequestObject.presentationDefinition
+        val isZkp = OpenId4VpResponseGeneratorDelegator.formatState.isZkp
         return Consensus.PositiveConsensus.VPTokenConsensus(
             VpToken.Generic(
                 vpToken,
@@ -382,7 +405,7 @@ class OpenId4vpManager(
                 presentationDefinition.inputDescriptors.map { inputDescriptor ->
                     DescriptorMap(
                         inputDescriptor.id,
-                        "vc_sd_jwt",
+                        if (isZkp) "vc+sd-jwt+zkp" else "vc+sd-jwt",
                         path = JsonPath.jsonPath("$")!!
                     )
                 }
@@ -436,8 +459,12 @@ class OpenId4vpManager(
     private fun ResolvedRequestObject.OpenId4VPAuthorization.toSessionTranscript(): SessionTranscriptBytes {
         val clientId = this.client.id
         val responseUri = when (this.responseMode) {
-            is ResponseMode.DirectPost -> (this.responseMode as ResponseMode.DirectPost?)?.responseURI?.toString() ?: ""
-            is ResponseMode.DirectPostJwt -> (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString() ?: ""
+            is ResponseMode.DirectPost -> (this.responseMode as ResponseMode.DirectPost?)?.responseURI?.toString()
+                ?: ""
+
+            is ResponseMode.DirectPostJwt -> (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
+                ?: ""
+
             else -> ""
         }
 

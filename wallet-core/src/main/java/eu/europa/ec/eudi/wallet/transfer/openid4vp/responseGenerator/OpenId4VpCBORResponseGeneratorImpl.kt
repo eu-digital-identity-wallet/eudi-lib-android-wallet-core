@@ -31,7 +31,15 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
 import com.android.identity.util.Timestamp
-import eu.europa.ec.eudi.iso18013.transfer.*
+import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocument
+import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
+import eu.europa.ec.eudi.iso18013.transfer.DocItem
+import eu.europa.ec.eudi.iso18013.transfer.DocRequest
+import eu.europa.ec.eudi.iso18013.transfer.DocumentsResolver
+import eu.europa.ec.eudi.iso18013.transfer.ReaderAuth
+import eu.europa.ec.eudi.iso18013.transfer.RequestDocument
+import eu.europa.ec.eudi.iso18013.transfer.RequestedDocumentData
+import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
@@ -42,6 +50,13 @@ import eu.europa.ec.eudi.wallet.logging.e
 import eu.europa.ec.eudi.wallet.logging.i
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpCBORResponse
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpRequest
+import eu.europa.ec.eudi.wallet.util.ZKP_ISSUER_CERT
+import eu.europa.ec.eudi.wallet.util.getECPublicKeyFromCert
+import eu.europa.ec.eudi.wallet.zkp.network.ZKPClient
+import kotlinx.coroutines.runBlocking
+import software.tice.ZKPGenerator
+import software.tice.ZKPProverMdoc
+import java.util.Base64
 
 private const val TAG = "OpenId4VpCBORResponseGe"
 
@@ -62,6 +77,8 @@ class OpenId4VpCBORResponseGeneratorImpl(
     private var readerTrustStore: ReaderTrustStore? = null
     private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
     private var sessionTranscript: SessionTranscriptBytes? = null
+
+    private var zkpRequestId: String? = null
 
     /**
      * Set a trust store so that reader authentication can be performed.
@@ -88,12 +105,14 @@ class OpenId4VpCBORResponseGeneratorImpl(
      * @return [RequestedDocumentData]
      */
     override fun parseRequest(request: OpenId4VpRequest): RequestedDocumentData {
+        zkpRequestId = request.requestId
         sessionTranscript = request.sessionTranscript
+
         return createRequestedDocumentData(
             request.openId4VPAuthorization.presentationDefinition.inputDescriptors
                 .mapNotNull { inputDescriptor ->
                     inputDescriptor.format?.jsonObject()
-                        ?.takeIf { it.containsKey("mso_mdoc") } // ignore formats other than "mso_mdoc"
+                        ?.takeIf { it.containsKey("mso_mdoc") ||  it.containsKey("mso_mdoc+zkp")} // ignore formats other than "mso_mdoc"
                         ?.run {
                             inputDescriptor.id.value.trim() to inputDescriptor.constraints.fields()
                                 .mapNotNull { fieldConstraint ->
@@ -139,36 +158,76 @@ class OpenId4VpCBORResponseGeneratorImpl(
      */
     override fun createResponse(
         disclosedDocuments: DisclosedDocuments,
-    ): ResponseResult {
+    ) = runBlocking {
         try {
             val deviceResponse = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+            val documentDocTypeToByteArrays = mutableListOf<Pair<String, ByteArray>>()
+
             disclosedDocuments.documents.forEach { responseDocument ->
                 if (responseDocument.docType == "org.iso.18013.5.1.mDL" && responseDocument.selectedDocItems.filter { docItem ->
                         docItem.elementIdentifier.startsWith("age_over_")
                                 && docItem.namespace == "org.iso.18013.5.1"
                     }.size > 2) {
-                    return ResponseResult.Failure(Exception("Device Response is not allowed to have more than to age_over_NN elements"))
+                    return@runBlocking ResponseResult.Failure(Exception("Device Response is not allowed to have more than to age_over_NN elements"))
                 }
-                val addResult =
-                    addDocumentToResponse(deviceResponse, responseDocument, sessionTranscript!!)
-                if (addResult is AddDocumentToResponse.UserAuthRequired)
-                    return ResponseResult.UserAuthRequired(
-                        addResult.keyUnlockData.getCryptoObjectForSigning(SecureArea.ALGORITHM_ES256)
-                    )
+
+                getDocumentByteArray(responseDocument, sessionTranscript!!).let {
+                    when (it) {
+                        is DocumentByteArrayResponse.UserAuthRequired -> {
+                            return@runBlocking ResponseResult.UserAuthRequired(
+                                it.keyUnlockData.getCryptoObjectForSigning(
+                                    SecureArea.ALGORITHM_ES256
+                                )
+                            )
+                        }
+
+                        is DocumentByteArrayResponse.Success -> documentDocTypeToByteArrays.add(
+                            responseDocument.docType to it.byteArray
+                        )
+                    }
+                }
             }
+
+            if (zkpRequestId == null) {
+                documentDocTypeToByteArrays.forEach {
+                    deviceResponse.addDocument(it.second)
+                }
+            } else {
+                val zkpKey = getECPublicKeyFromCert(ZKP_ISSUER_CERT)
+                val prover = ZKPProverMdoc(ZKPGenerator(zkpKey))
+                val requestData = documentDocTypeToByteArrays.map {
+                    it.first to prover.createChallengeRequest(
+                        Base64.getEncoder().encodeToString(it.second)
+                    )
+                }
+                val challenges = ZKPClient().getChallenges(
+                    zkpRequestId!!,
+                    requestData,
+                )
+                challenges?.forEach {
+                    deviceResponse.addDocument(
+                        Base64.getDecoder().decode(prover.answerChallenge(it.second, it.first))
+                    )
+                }
+            }
+
             sessionTranscript = null
-            return ResponseResult.Success(OpenId4VpCBORResponse(deviceResponse.generate()))
+
+            return@runBlocking ResponseResult.Success(OpenId4VpCBORResponse(deviceResponse.generate()))
         } catch (e: Exception) {
-            return ResponseResult.Failure(e)
+            return@runBlocking ResponseResult.Failure(e)
         }
     }
 
-    @Throws(IllegalStateException::class)
-    private fun addDocumentToResponse(
-        responseGenerator: DeviceResponseGenerator,
+
+    @Throws(
+        IllegalStateException::class,
+        SecureArea.KeyLockedException::class
+    )
+    private fun getDocumentByteArray(
         disclosedDocument: DisclosedDocument,
         transcript: ByteArray,
-    ): AddDocumentToResponse {
+    ): DocumentByteArrayResponse {
         val dataElements = disclosedDocument.selectedDocItems.map {
             CredentialRequest.DataElement(it.namespace, it.elementIdentifier, false)
         }
@@ -194,13 +253,12 @@ class OpenId4VpCBORResponseGeneratorImpl(
                 keyUnlockData,
                 SecureArea.ALGORITHM_ES256
             )
-            val data = generator.generate()
-            responseGenerator.addDocument(data)
+
+            return DocumentByteArrayResponse.Success(generator.generate())
         } catch (lockedException: SecureArea.KeyLockedException) {
             logger?.e(TAG, "error", lockedException)
-            return AddDocumentToResponse.UserAuthRequired(keyUnlockData)
+            return DocumentByteArrayResponse.UserAuthRequired(keyUnlockData)
         }
-        return AddDocumentToResponse.Success
     }
 
     private fun createRequestedDocumentData(
@@ -266,9 +324,25 @@ class OpenId4VpCBORResponseGeneratorImpl(
             get() = AndroidKeystoreSecureArea(_context, storageEngine)
     }
 
-    private sealed interface AddDocumentToResponse {
-        object Success : AddDocumentToResponse
+    private sealed interface DocumentByteArrayResponse {
+        data class Success(
+            val byteArray: ByteArray,
+        ) : DocumentByteArrayResponse {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as Success
+
+                return byteArray.contentEquals(other.byteArray)
+            }
+
+            override fun hashCode(): Int {
+                return byteArray.contentHashCode()
+            }
+        }
+
         data class UserAuthRequired(val keyUnlockData: AndroidKeystoreSecureArea.KeyUnlockData) :
-            AddDocumentToResponse
+            DocumentByteArrayResponse
     }
 }

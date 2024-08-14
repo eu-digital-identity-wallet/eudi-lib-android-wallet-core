@@ -22,10 +22,23 @@ import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 class OpenId4VpRequest(
     val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization,
     val sessionTranscript: SessionTranscriptBytes,
+    val requestId: String? = null,
 ) : Request
+
+//class OpenId4VpZkpRequest(
+//    val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization,
+//    val sessionTranscript: SessionTranscriptBytes,
+//    val requestId: String,
+//) : Request
 
 
 class OpenId4VpSdJwtRequest(
-    val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization
+    val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization,
+    val requestId: String? = null,
 ) : Request
+
+//class OpenId4VpSdJwtZkpRequest(
+//    val openId4VPAuthorization: ResolvedRequestObject.OpenId4VPAuthorization,
+//    val requestId: String,
+//) : Request
 
