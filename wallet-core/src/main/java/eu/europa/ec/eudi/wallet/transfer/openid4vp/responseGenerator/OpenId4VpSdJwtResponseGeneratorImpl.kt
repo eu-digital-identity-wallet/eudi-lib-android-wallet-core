@@ -46,7 +46,6 @@ import software.tice.ZKPProverSdJwt
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.util.Base64
 
 class OpenId4VpSdJwtResponseGeneratorImpl(
     private val documentsResolver: DocumentsResolver,
@@ -65,6 +64,7 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
             ?: throw IllegalArgumentException()
 
         val sdJwt = getSdJwtFromCredentials(credentials)
+        sdJwt.jwt
 
         val jsonPointer = disclosedDocument.docRequest.requestItems.mapNotNull { item ->
             JsonPointer.parse(item.elementIdentifier)
@@ -88,8 +88,21 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
             certificateFactory.generateCertificate(ByteArrayInputStream(key.certificate.encoded)) as X509Certificate
         val ecKey = ECKey.parse(certificate)
 
-        val jwt = presentationSdJwt!!.serializeWithKeyBinding(
-            jwtSerializer = { it.first },
+        val presentationJwt = presentationSdJwt!!.serializeWithKeyBinding(
+            jwtSerializer = {
+                if (zkpRequestId == null) it.first else {
+                    runBlocking {
+                        val zkpKey = getECPublicKeyFromCert(ZKP_ISSUER_CERT)
+                        val prover = ZKPProverSdJwt(ZKPGenerator(zkpKey))
+                        val challenge = ZKPClient().getChallenges(
+                            zkpRequestId!!,
+                            listOf(sdJwtNamespace to prover.createChallengeRequest(it.first)),
+                        ).first().second
+                        val zkpJwt = prover.answerChallenge(challenge, it.first)
+                        zkpJwt
+                    }
+                }
+            },
             hashAlgorithm = HashAlgorithm.SHA_256,
             keyBindingSigner = object : KeyBindingSigner {
                 override val signAlgorithm: JWSAlgorithm = JWSAlgorithm.ES256
@@ -103,20 +116,7 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
             claimSetBuilderAction = { }
         )
 
-        val jwtByteArray = if (zkpRequestId == null) {
-            jwt.toByteArray()
-        } else {
-            val zkpKey = getECPublicKeyFromCert(ZKP_ISSUER_CERT)
-            val prover = ZKPProverSdJwt(ZKPGenerator(zkpKey))
-            val challenge = ZKPClient().getChallenges(
-                zkpRequestId!!,
-                listOf(sdJwtNamespace to prover.createChallengeRequest(jwt)),
-            ).first().second
-            val zkpJwt = prover.answerChallenge(challenge, jwt)
-            zkpJwt.toByteArray()
-        }
-
-        return@runBlocking ResponseResult.Success(DeviceResponse(jwtByteArray))
+        return@runBlocking ResponseResult.Success(DeviceResponse(presentationJwt.toByteArray()))
     }
 
     override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
