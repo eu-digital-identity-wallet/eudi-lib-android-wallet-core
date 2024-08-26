@@ -41,6 +41,7 @@ internal data class DefaultOffer(
 
     override val offeredDocuments: List<Offer.OfferedDocument>
         get() = issuerMetadata.credentialConfigurationsSupported
+            // TODO temporarily removed to make it work
             //.filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
             //.filterValues { credentialConfigurationFilter(it) }
             .map { (id, conf) -> DefaultOfferedDocument(id, conf) }

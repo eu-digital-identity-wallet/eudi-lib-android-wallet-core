@@ -112,7 +112,7 @@ class OpenId4VpCBORResponseGeneratorImpl(
             request.openId4VPAuthorization.presentationDefinition.inputDescriptors
                 .mapNotNull { inputDescriptor ->
                     inputDescriptor.format?.jsonObject()
-                        ?.takeIf { it.containsKey("mso_mdoc") ||  it.containsKey("mso_mdoc+zkp")} // ignore formats other than "mso_mdoc"
+                        ?.takeIf { it.containsKey("mso_mdoc") || it.containsKey("mso_mdoc+zkp") } // ignore formats other than "mso_mdoc"
                         ?.run {
                             inputDescriptor.id.value.trim() to inputDescriptor.constraints.fields()
                                 .mapNotNull { fieldConstraint ->
@@ -204,9 +204,9 @@ class OpenId4VpCBORResponseGeneratorImpl(
                     zkpRequestId!!,
                     requestData,
                 )
-                challenges?.forEach {
+                challenges.forEach {
                     deviceResponse.addDocument(
-                        Base64.getDecoder().decode(prover.answerChallenge(it.second, it.first))
+                        prover.answerChallenge(it.second, it.first).toByteArray()
                     )
                 }
             }

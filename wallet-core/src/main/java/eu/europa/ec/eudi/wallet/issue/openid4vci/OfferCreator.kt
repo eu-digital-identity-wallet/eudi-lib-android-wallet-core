@@ -44,6 +44,7 @@ internal class OfferCreator(
                 DocTypeFilter(docType),
                 ProofTypeFilter(config.proofTypes)
             )
+            // TODO temporarily removed to make it work
 //            val credentialConfigurationId =
 //                credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
 //                    credentialConfigurationFilter(conf)

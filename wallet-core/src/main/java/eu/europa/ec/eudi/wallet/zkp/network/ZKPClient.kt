@@ -72,31 +72,13 @@ data class ZkpRequest(
     val r: String,
     @Field("proof_type") val proofType: String,
 )
-// [
-//  {
-//    "id": "eu.europa.ec.eudiw.pid.1",
-//    "digest": "_4KGX6aVS8B0T6Hewpr1H9h9-gjkjOyu8A6fb85GE2w=",
-//    "r": "C7U9q9o7dkDEhcOYXO9yfckQYoRxYs8z6POaac6EBjM=",
-//    "proof_type": "secp256r1-sha256"
-//  }
-//]
 
 @Serializable
 data class ZkpResponse(
-    val id: String, // WIP unused
+    val id: String,
     val kid: String,
-    val kty: String, // WIP unused
+    val kty: String, 
     val crv: String,
     val x: String,
     val y: String,
 )
-// [
-//  {
-//    "id": "eu.europa.ec.eudiw.pid.1",
-//    "kid": "eu.europa.ec.eudiw.pid.1",
-//    "kty": "EC",
-//    "crv": "P-256",
-//    "x": "jjR25_Day4VGHGGSn0uW_dzS7dVO0at8xh8gZ8z992A",
-//    "y": "16LSQqNZzvs5BEIqsdnkWw127L0j3ThNbiMAN0BIQQY"
-//  }
-//]

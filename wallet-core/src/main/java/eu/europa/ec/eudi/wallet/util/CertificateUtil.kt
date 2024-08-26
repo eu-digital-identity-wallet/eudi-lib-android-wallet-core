@@ -26,7 +26,6 @@ fun parseCertificateFromSdJwt(credential: String): X509Certificate {
     return x509Certificate(pemKey)
 }
 
-
 @Throws(com.nimbusds.jose.JOSEException::class)
 fun getECPublicKeyFromCert(certString: String): ECPublicKey {
     val certificate = x509Certificate(certString)

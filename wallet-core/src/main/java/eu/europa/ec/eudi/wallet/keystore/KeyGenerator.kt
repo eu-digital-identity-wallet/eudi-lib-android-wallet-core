@@ -62,12 +62,8 @@ internal object KeyGeneratorImpl : KeyGenerator {
             }.toBase64String()
     } catch (exception: NoSuchAlgorithmException) {
         throw SignatureException(exception)
-//        throw SigningException("Signing failed.", exception)
     } catch (exception: InvalidKeyException) {
         throw SignatureException(exception)
-//        throw SigningException("Signing failed.", exception)
-//    } catch (exception: SignatureException) {
-//        throw SigningException("Signing failed.", exception)
     }
 
     private fun ByteArray.toBase64String() = String(Base64.encode(this, Base64.DEFAULT))
