@@ -31,6 +31,7 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
 import com.android.identity.util.Timestamp
+import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocument
 import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.DocItem
@@ -206,7 +207,7 @@ class OpenId4VpCBORResponseGeneratorImpl(
                 )
                 challenges.forEach {
                     deviceResponse.addDocument(
-                        prover.answerChallenge(it.second, it.first).toByteArray()
+                        Base64.getDecoder().decode(prover.answerChallenge(it.second, Base64.getEncoder().encodeToString(documentDocTypeToByteArrays.first().second)))
                     )
                 }
             }
