@@ -22,6 +22,7 @@ import java.security.cert.CertificateException
 
 private const val ANDROID_KEY_STORE = "AndroidKeyStore"
 public const val DEV_KEY_ALIAS = "eudi_wallet_dev_key"
+private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
 
 interface KeyGenerator {
     @RequiresApi(Build.VERSION_CODES.R)
@@ -45,8 +46,6 @@ internal object KeyGeneratorImpl : KeyGenerator {
         if (entry !is KeyStore.PrivateKeyEntry) throw KeyStoreException("Entry not an instance of a PrivateKeyEntry.")
         return entry
     }
-
-    private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
 
     @Throws(SignatureException::class)
    override fun sign(

@@ -149,7 +149,6 @@ dependencies {
 
     // Ktor Android Engine
     runtimeOnly libs.ktor.client.android
-//    implementation libs.ktor.client.serialization
     implementation libs.ktor.client.logging
 
     // Bouncy Castle

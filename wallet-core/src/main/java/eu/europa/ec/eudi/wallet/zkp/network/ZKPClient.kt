@@ -77,7 +77,7 @@ data class ZkpRequest(
 data class ZkpResponse(
     val id: String,
     val kid: String,
-    val kty: String, 
+    val kty: String,
     val crv: String,
     val x: String,
     val y: String,

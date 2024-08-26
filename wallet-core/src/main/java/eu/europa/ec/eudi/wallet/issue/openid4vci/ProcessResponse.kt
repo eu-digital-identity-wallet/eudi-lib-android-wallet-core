@@ -122,7 +122,6 @@ internal class ProcessResponse(
                     } else {
                         val cborBytes = Base64.getUrlDecoder().decode(credential.credential)
 
-                        logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(cborBytes)}")
                         documentManager.storeIssuedDocument(
                             unsignedDocument,
                             cborBytes

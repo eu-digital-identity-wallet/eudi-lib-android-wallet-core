@@ -53,14 +53,6 @@ internal fun interface CredentialConfigurationFilter {
         internal val MsoMdocFormatFilter: CredentialConfigurationFilter =
             FormatFilter(MsoMdocCredential::class)
 
-        /**
-         * Filter for [CredentialConfiguration] instances for sd-jwt format
-         */
-        @JvmSynthetic
-        internal val SdJwtFormatFilter: CredentialConfigurationFilter =
-            FormatFilter(SdJwtVcCredential::class)
-
-
         internal val SdJwtOrMsoMdocFormatFilter: CredentialConfigurationFilter =
             CredentialConfigurationFilter {
                 it.instanceOf(SdJwtVcCredential::class) || it.instanceOf(MsoMdocCredential::class)
@@ -73,7 +65,9 @@ internal fun interface CredentialConfigurationFilter {
          */
         @JvmSynthetic
         internal fun DocTypeFilter(docType: String): CredentialConfigurationFilter =
-            Compose(SdJwtOrMsoMdocFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
+            Compose(
+                SdJwtOrMsoMdocFormatFilter,
+                CredentialConfigurationFilter { conf -> conf.docType == docType })
 
         /**
          * Filter for [CredentialConfiguration] instances based on the proof type.
