@@ -207,7 +207,7 @@ class OpenId4VpCBORResponseGeneratorImpl(
                 )
                 challenges.forEach {
                     deviceResponse.addDocument(
-                        Base64.getDecoder().decode(prover.answerChallenge(it.second, Base64.getEncoder().encodeToString(documentDocTypeToByteArrays.first().second)))
+                        Base64URL.from(prover.answerChallenge(it.second, Base64.getEncoder().encodeToString(documentDocTypeToByteArrays.first().second))).decode()
                     )
                 }
             }
