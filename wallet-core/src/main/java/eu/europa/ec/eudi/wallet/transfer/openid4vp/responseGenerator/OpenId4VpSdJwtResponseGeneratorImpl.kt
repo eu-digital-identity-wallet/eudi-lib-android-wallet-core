@@ -21,12 +21,15 @@ import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
+import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.JsonPointer
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
 import eu.europa.ec.eudi.sdjwt.KeyBindingSigner
 import eu.europa.ec.eudi.sdjwt.SdJwt
+import eu.europa.ec.eudi.sdjwt.SdJwtDigest
+import eu.europa.ec.eudi.sdjwt.SdJwtFactory
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier
 import eu.europa.ec.eudi.sdjwt.asJwtVerifier
 import eu.europa.ec.eudi.sdjwt.present
@@ -46,6 +49,7 @@ import software.tice.ZKPProverSdJwt
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.util.Date
 
 class OpenId4VpSdJwtResponseGeneratorImpl(
     private val documentsResolver: DocumentsResolver,
@@ -56,6 +60,13 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
     private val sdJwtNamespace = "eu.europa.ec.eudi.pid.1"
 
     private var zkpRequestId: String? = null
+
+    private val CLAIM_NONCE = "nonce"
+    private val CLAIM_IAT = "iat"
+    private val CLAIM_AUD = "aud"
+
+    private var requestNonce: String? = null
+    private var audience: String? = null
 
     override fun createResponse(disclosedDocuments: DisclosedDocuments) = runBlocking {
         val disclosedDocument = disclosedDocuments.documents.first()
@@ -113,7 +124,11 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
                 override fun sign(p0: JWSHeader?, p1: ByteArray?): Base64URL =
                     Base64URL(KeyGeneratorImpl.sign(key.privateKey, p1 ?: ByteArray(0)))
             },
-            claimSetBuilderAction = { }
+            claimSetBuilderAction = {
+                claim(CLAIM_NONCE, requestNonce)
+                claim(CLAIM_IAT, Date().time)
+                claim(CLAIM_AUD, audience)
+            }
         )
 
         return@runBlocking ResponseResult.Success(DeviceResponse(presentationJwt.toByteArray()))
@@ -127,6 +142,9 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
     internal fun getOpenid4VpX509CertificateTrust() = openid4VpX509CertificateTrust
 
     override fun parseRequest(request: OpenId4VpSdJwtRequest): RequestedDocumentData {
+        requestNonce = request.openId4VPAuthorization.nonce
+        audience = request.openId4VPAuthorization.client.id
+
         zkpRequestId = request.requestId
         val inputDescriptors =
             request.openId4VPAuthorization.presentationDefinition.inputDescriptors
