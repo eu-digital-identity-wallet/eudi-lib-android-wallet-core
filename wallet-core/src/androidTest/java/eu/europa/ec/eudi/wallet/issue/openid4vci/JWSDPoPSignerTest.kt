@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.document.issue.opeid4vci
+package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.nimbusds.jose.JOSEException
@@ -23,7 +23,6 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
-import eu.europa.ec.eudi.wallet.issue.openid4vci.JWSDPoPSigner
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith

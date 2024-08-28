@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.document.issue.opeid4vci
+package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.app.KeyguardManager
 import android.content.Context
@@ -24,8 +24,6 @@ import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.openid4vci.*
 import eu.europa.ec.eudi.wallet.document.CreateDocumentResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CWTProofSigner
-import eu.europa.ec.eudi.wallet.issue.openid4vci.ProofSigner
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Assert.assertEquals

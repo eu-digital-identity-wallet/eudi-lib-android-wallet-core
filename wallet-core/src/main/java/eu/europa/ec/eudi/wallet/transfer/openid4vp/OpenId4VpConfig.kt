@@ -144,18 +144,10 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         }
 
 
-        var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
-            private set
-
         /**
-         * Sets the HttpClient factory for the OpenId4Vp.
-         * By default, the [DefaultHttpClientFactory] is used
-         * @param ktorHttpClientFactory the HttpClient factory
+         * Builds the [OpenId4VpConfig].
+         * @return the [OpenId4VpConfig]
          */
-        fun withHttpClientFactory(ktorHttpClientFactory: () -> HttpClient) = apply {
-            this.ktorHttpClientFactory = ktorHttpClientFactory
-        }
-
         fun build(): OpenId4VpConfig {
 
             require(this::clientIdSchemes.isInitialized && clientIdSchemes.isNotEmpty()) { "OpenId4VpConfig: clientIdSchemes must be initialized with a not empty list" }
