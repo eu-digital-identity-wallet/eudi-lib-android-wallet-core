@@ -23,7 +23,20 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
-import eu.europa.ec.eudi.openid4vp.*
+import eu.europa.ec.eudi.openid4vp.Consensus
+import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
+import eu.europa.ec.eudi.openid4vp.DispatchOutcome
+import eu.europa.ec.eudi.openid4vp.JarmConfiguration
+import eu.europa.ec.eudi.openid4vp.JwkSetSource
+import eu.europa.ec.eudi.openid4vp.PreregisteredClient
+import eu.europa.ec.eudi.openid4vp.Resolution
+import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.ResponseMode
+import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
+import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
+import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
+import eu.europa.ec.eudi.openid4vp.VpToken
+import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
@@ -37,7 +50,7 @@ import eu.europa.ec.eudi.wallet.logging.i
 import eu.europa.ec.eudi.wallet.util.CBOR
 import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,7 +59,8 @@ import org.bouncycastle.util.encoders.Hex
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Base64
+import java.util.UUID
 import java.util.concurrent.Executor
 
 /**
@@ -146,7 +160,12 @@ class OpenId4vpManager(
             transferEventListeners.onTransferEvent(result)
         }
     }
-    private val siopOpenId4Vp = SiopOpenId4Vp(openId4VpConfig.toSiopOpenId4VPConfig(), ktorHttpClientFactory)
+    private val siopOpenId4Vp by lazy {
+        SiopOpenId4Vp(
+            openId4VpConfig.toSiopOpenId4VPConfig(),
+            ktorHttpClientFactory
+        )
+    }
     private var resolvedRequestObject: ResolvedRequestObject? = null
     private var mdocGeneratedNonce: String? = null
 
