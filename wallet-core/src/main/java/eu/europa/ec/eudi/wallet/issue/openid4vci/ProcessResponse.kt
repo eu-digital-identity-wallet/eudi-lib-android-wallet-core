@@ -28,8 +28,6 @@ import eu.europa.ec.eudi.wallet.document.StoreDocumentResult
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentFailed
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.logging.d
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4vpManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.util.parseCertificateFromSdJwt
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +36,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
-import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
 import java.io.Closeable
 import java.util.Base64
@@ -64,7 +61,7 @@ internal class ProcessResponse(
         }
     }
 
-    suspend fun process(
+    private suspend fun process(
         unsignedDocument: UnsignedDocument,
         outcomeResult: Result<SubmissionOutcome>
     ) {
@@ -90,61 +87,15 @@ internal class ProcessResponse(
         continuations.values.forEach { it.cancel() }
     }
 
-    fun processSubmittedRequest(unsignedDocument: UnsignedDocument, outcome: SubmissionOutcome) {
+    private fun processSubmittedRequest(
+        unsignedDocument: UnsignedDocument,
+        outcome: SubmissionOutcome
+    ) {
         when (outcome) {
-            is SubmissionOutcome.Success -> when (val credential = outcome.credentials[0]) {
-                is IssuedCredential.Issued -> try {
-                    if (isSdJwt(credential.credential)) {
-                        val certificate = parseCertificateFromSdJwt(credential.credential)
-
-                        val ecKey = ECKey.parse(certificate)
-                        val jwtSignatureVerifier = ECDSAVerifier(ecKey).asJwtVerifier()
-
-                        CoroutineScope(Dispatchers.IO).launch {
-                            SdJwtVerifier.verifyIssuance(
-                                jwtSignatureVerifier,
-                                credential.credential
-                            ).getOrThrow()
-
-                            DocumentManagerSdJwt.storeDocument(
-                                unsignedDocument.id,
-                                credential.credential
-                            )
-                            documentManager.deleteDocumentById(unsignedDocument.id)
-                            listener.invoke(
-                                IssueEvent.DocumentIssued(
-                                    unsignedDocument.id,
-                                    unsignedDocument.name,
-                                    unsignedDocument.docType
-                                )
-                            )
-                        }
-                    } else {
-                        val cborBytes = Base64.getUrlDecoder().decode(credential.credential)
-
-                        documentManager.storeIssuedDocument(
-                            unsignedDocument,
-                            cborBytes
-                        ).notifyListener(unsignedDocument)
-                    }
-                } catch (e: Throwable) {
-                    if (isSdJwt(credential.credential)) {
-                        documentManager.deleteDocumentById(unsignedDocument.id)
-                    } else {
-                        DocumentManagerSdJwt.deleteDocument(unsignedDocument.id)
-                    }
-                    listener(documentFailed(unsignedDocument, e))
-                }
-
-                is IssuedCredential.Deferred -> {
-                    val contextToStore = deferredContextCreator.create(credential)
-                    documentManager.storeDeferredDocument(
-                        unsignedDocument,
-                        contextToStore.toByteArray()
-                    )
-                        .notifyListener(unsignedDocument, isDeferred = true)
-                }
-            }
+            is SubmissionOutcome.Success -> processSubmittedRequestSuccess(
+                outcome,
+                unsignedDocument
+            )
 
             is SubmissionOutcome.InvalidProof -> {
                 documentManager.deleteDocumentById(unsignedDocument.id)
@@ -163,14 +114,87 @@ internal class ProcessResponse(
         }
     }
 
+    private fun processSubmittedRequestSuccess(
+        outcome: SubmissionOutcome.Success,
+        unsignedDocument: UnsignedDocument
+    ) {
+        when (val credential = outcome.credentials[0]) {
+            is IssuedCredential.Issued -> try {
+                if (isSdJwt(credential.credential)) {
+                    processIssuedSdjwt(credential, unsignedDocument)
+                } else {
+                    processIssuedMdoc(credential, unsignedDocument)
+                }
+            } catch (e: Throwable) {
+                if (isSdJwt(credential.credential)) {
+                    documentManager.deleteDocumentById(unsignedDocument.id)
+                } else {
+                    DocumentManagerSdJwt.deleteDocument(unsignedDocument.id)
+                }
+                listener(documentFailed(unsignedDocument, e))
+            }
+
+            is IssuedCredential.Deferred -> {
+                val contextToStore = deferredContextCreator.create(credential)
+                documentManager.storeDeferredDocument(
+                    unsignedDocument,
+                    contextToStore.toByteArray()
+                ).notifyListener(unsignedDocument, isDeferred = true)
+            }
+        }
+    }
+
     private fun isSdJwt(credential: String): Boolean {
         return try {
             val headerString = credential.split(".").first()
-            val headerJson = JSONObject(String(Base64.getUrlDecoder().decode(headerString)))
+            // try to parse to header json
+            JSONObject(String(Base64.getUrlDecoder().decode(headerString)))
             true
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun processIssuedSdjwt(
+        credential: IssuedCredential.Issued,
+        unsignedDocument: UnsignedDocument
+    ) {
+        val certificate = parseCertificateFromSdJwt(credential.credential)
+
+        val ecKey = ECKey.parse(certificate)
+        val jwtSignatureVerifier = ECDSAVerifier(ecKey).asJwtVerifier()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            SdJwtVerifier.verifyIssuance(
+                jwtSignatureVerifier,
+                credential.credential
+            ).getOrThrow()
+
+            DocumentManagerSdJwt.storeDocument(
+                unsignedDocument.id,
+                credential.credential
+            )
+            documentManager.deleteDocumentById(unsignedDocument.id)
+            listener.invoke(
+                IssueEvent.DocumentIssued(
+                    unsignedDocument.id,
+                    unsignedDocument.name,
+                    unsignedDocument.docType
+                )
+            )
+        }
+    }
+
+    private fun processIssuedMdoc(
+        credential: IssuedCredential.Issued,
+        unsignedDocument: UnsignedDocument
+    ) {
+        val cborBytes = Base64.getUrlDecoder().decode(credential.credential)
+
+        documentManager.storeIssuedDocument(
+            unsignedDocument,
+            cborBytes
+        ).notifyListener(unsignedDocument)
     }
 
     private fun UserAuthRequiredException.toIssueEvent(

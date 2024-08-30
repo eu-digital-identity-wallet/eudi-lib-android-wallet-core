@@ -45,6 +45,8 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
 import eu.europa.ec.eudi.iso18013.transfer.response.SessionTranscriptBytes
 import eu.europa.ec.eudi.openid4vp.legalName
+import eu.europa.ec.eudi.wallet.document.Constants.MDOC_FORMAT
+import eu.europa.ec.eudi.wallet.document.Constants.MDOC_FORMAT_ZKP
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.logging.e
@@ -62,7 +64,7 @@ import java.util.Base64
 private const val TAG = "OpenId4VpCBORResponseGe"
 
 /**
- * OpenId4VpCBORResponseGeneratorImpl class is used for parsing a request (Presentation Definition) and generating the DeviceResponse
+ * OpenId4VpCBORResponseGeneratorImpl class is used for parsing an mdoc request (Presentation Definition) and generating the DeviceResponse
  *
  * @param documentsResolver document manager instance
  * @param storageEngine storage engine used to store documents
@@ -108,12 +110,11 @@ class OpenId4VpCBORResponseGeneratorImpl(
     override fun parseRequest(request: OpenId4VpRequest): RequestedDocumentData {
         zkpRequestId = request.requestId
         sessionTranscript = request.sessionTranscript
-
         return createRequestedDocumentData(
             request.openId4VPAuthorization.presentationDefinition.inputDescriptors
                 .mapNotNull { inputDescriptor ->
                     inputDescriptor.format?.jsonObject()
-                        ?.takeIf { it.containsKey("mso_mdoc") || it.containsKey("mso_mdoc+zkp") } // ignore formats other than "mso_mdoc"
+                        ?.takeIf { it.containsKey(MDOC_FORMAT) || it.containsKey(MDOC_FORMAT_ZKP) } // ignore formats other than "mso_mdoc"
                         ?.run {
                             inputDescriptor.id.value.trim() to inputDescriptor.constraints.fields()
                                 .mapNotNull { fieldConstraint ->

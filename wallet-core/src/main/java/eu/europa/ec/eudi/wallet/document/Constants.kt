@@ -31,4 +31,12 @@ object Constants {
     // mDL
     const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
     const val MDL_NAMESPACE = "org.iso.18013.5.1"
+
+    // mdoc
+    const val MDOC_FORMAT = "mso_mdoc"
+    const val MDOC_FORMAT_ZKP = "mso_mdoc+zkp"
+
+    // sdjwt
+    const val SDJWT_FORMAT = "vc+sd-jwt"
+    const val SDJWT_FORMAT_ZKP = "vc+sd-jwt+zkp"
 }

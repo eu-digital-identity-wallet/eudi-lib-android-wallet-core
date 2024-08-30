@@ -21,19 +21,18 @@ import eu.europa.ec.eudi.iso18013.transfer.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseGenerator
-import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.sdjwt.HashAlgorithm
 import eu.europa.ec.eudi.sdjwt.JsonPointer
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
 import eu.europa.ec.eudi.sdjwt.KeyBindingSigner
 import eu.europa.ec.eudi.sdjwt.SdJwt
-import eu.europa.ec.eudi.sdjwt.SdJwtDigest
-import eu.europa.ec.eudi.sdjwt.SdJwtFactory
 import eu.europa.ec.eudi.sdjwt.SdJwtVerifier
 import eu.europa.ec.eudi.sdjwt.asJwtVerifier
 import eu.europa.ec.eudi.sdjwt.present
 import eu.europa.ec.eudi.sdjwt.serializeWithKeyBinding
+import eu.europa.ec.eudi.wallet.document.Constants.EU_PID_NAMESPACE
+import eu.europa.ec.eudi.wallet.document.Constants.SDJWT_FORMAT
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DocumentManagerSdJwt
 import eu.europa.ec.eudi.wallet.keystore.KeyGenerator
@@ -47,24 +46,23 @@ import kotlinx.coroutines.runBlocking
 import software.tice.ZKPGenerator
 import software.tice.ZKPProverSdJwt
 import java.io.ByteArrayInputStream
+import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.Date
 
+/**
+ * OpenId4VpSdJwtResponseGeneratorImpl class is used for parsing a sdjwt request (Presentation Definition) and generating the DeviceResponse
+ *
+ * @param documentsResolver document manager instance
+ */
 class OpenId4VpSdJwtResponseGeneratorImpl(
     private val documentsResolver: DocumentsResolver,
 ) : ResponseGenerator<OpenId4VpSdJwtRequest>() {
     private var readerTrustStore: ReaderTrustStore? = null
     private val openid4VpX509CertificateTrust = Openid4VpX509CertificateTrust(readerTrustStore)
 
-    private val sdJwtNamespace = "eu.europa.ec.eudi.pid.1"
-
     private var zkpRequestId: String? = null
-
-    private val CLAIM_NONCE = "nonce"
-    private val CLAIM_IAT = "iat"
-    private val CLAIM_AUD = "aud"
-
     private var requestNonce: String? = null
     private var audience: String? = null
 
@@ -84,20 +82,36 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
         val presentationSdJwt = sdJwt.present(jsonPointer)
 
         val key = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            KeyGeneratorImpl.getSigningKey(
-                KeyGenerator.SigningKeyConfig(
-                    KeyProperties.AUTH_DEVICE_CREDENTIAL,
-                    60
+            try {
+                KeyGeneratorImpl.getSigningKey(
+                    KeyGenerator.SigningKeyConfig(
+                        KeyProperties.AUTH_DEVICE_CREDENTIAL,
+                        60
+                    )
                 )
-            )
+            } catch (exception: java.security.KeyStoreException) {
+                return@runBlocking ResponseResult.Failure(exception)
+            }
         } else {
             return@runBlocking ResponseResult.Failure(AndroidException("Build version to low."))
         }
 
-        val certificateFactory: CertificateFactory = CertificateFactory.getInstance("X.509")
+        val certificateFactory: CertificateFactory = try {
+            CertificateFactory.getInstance("X.509")
+        } catch (exception: CertificateException) {
+            return@runBlocking ResponseResult.Failure(exception)
+        }
         val certificate =
-            certificateFactory.generateCertificate(ByteArrayInputStream(key.certificate.encoded)) as X509Certificate
-        val ecKey = ECKey.parse(certificate)
+            try {
+                certificateFactory.generateCertificate(ByteArrayInputStream(key.certificate.encoded)) as X509Certificate
+            } catch (exception: CertificateException) {
+                return@runBlocking ResponseResult.Failure(exception)
+            }
+        val ecKey = try {
+            ECKey.parse(certificate)
+        } catch (exception: com.nimbusds.jose.JOSEException) {
+            return@runBlocking ResponseResult.Failure(exception)
+        }
 
         val presentationJwt = presentationSdJwt!!.serializeWithKeyBinding(
             jwtSerializer = {
@@ -107,7 +121,7 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
                         val prover = ZKPProverSdJwt(ZKPGenerator(zkpKey))
                         val challenge = ZKPClient().getChallenges(
                             zkpRequestId!!,
-                            listOf(sdJwtNamespace to prover.createChallengeRequest(it.first)),
+                            listOf(EU_PID_NAMESPACE to prover.createChallengeRequest(it.first)),
                         ).first().second
                         val zkpJwt = prover.answerChallenge(challenge, it.first)
                         zkpJwt
@@ -149,7 +163,7 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
         val inputDescriptors =
             request.openId4VPAuthorization.presentationDefinition.inputDescriptors
                 .filter { inputDescriptor ->
-                    inputDescriptor.format?.json?.contains("vc+sd-jwt") == true
+                    inputDescriptor.format?.json?.contains(SDJWT_FORMAT) == true
                 }
 
         if (inputDescriptors.isEmpty()) {
@@ -163,7 +177,7 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
                         .replace(".", "/")
                         .drop(1)
 
-                    sdJwtNamespace to elementIdentifier
+                    EU_PID_NAMESPACE to elementIdentifier
                 }.groupBy({ it.first }, { it.second })
                 .mapValues { (_, values) -> values.toList() }
                 .toMap()
@@ -220,5 +234,11 @@ class OpenId4VpSdJwtResponseGeneratorImpl(
             jwtSignatureVerifier,
             credentials
         ).getOrThrow()
+    }
+
+    private companion object {
+        const val CLAIM_NONCE = "nonce"
+        const val CLAIM_IAT = "iat"
+        const val CLAIM_AUD = "aud"
     }
 }

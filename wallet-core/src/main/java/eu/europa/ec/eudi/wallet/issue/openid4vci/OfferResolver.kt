@@ -18,10 +18,9 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.SdJwtOrMsoMdocFormatFilter
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import org.jetbrains.annotations.VisibleForTesting
 
 internal class OfferResolver(

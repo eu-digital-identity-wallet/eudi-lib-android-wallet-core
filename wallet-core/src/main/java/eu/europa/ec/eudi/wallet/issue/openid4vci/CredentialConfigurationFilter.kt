@@ -31,7 +31,7 @@ internal fun interface CredentialConfigurationFilter {
 
     /**
      * Companion object for [CredentialConfigurationFilter] instances.
-     * @property MsoMdocFormatFilter filter for [CredentialConfiguration] instances for mso_mdoc format
+     * @property SdJwtOrMsoMdocFormatFilter filter for [CredentialConfiguration] instances for mso_mdoc or sdjwt format
      */
     companion object {
 
@@ -47,12 +47,8 @@ internal fun interface CredentialConfigurationFilter {
             }
 
         /**
-         * Filter for [CredentialConfiguration] instances for mso_mdoc format
+         * Filter for [CredentialConfiguration] instances for mso_mdoc format and sdjwt
          */
-        @JvmSynthetic
-        internal val MsoMdocFormatFilter: CredentialConfigurationFilter =
-            FormatFilter(MsoMdocCredential::class)
-
         internal val SdJwtOrMsoMdocFormatFilter: CredentialConfigurationFilter =
             CredentialConfigurationFilter {
                 it.instanceOf(SdJwtVcCredential::class) || it.instanceOf(MsoMdocCredential::class)

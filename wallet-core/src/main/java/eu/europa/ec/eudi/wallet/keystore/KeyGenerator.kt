@@ -21,7 +21,7 @@ import java.security.UnrecoverableEntryException
 import java.security.cert.CertificateException
 
 private const val ANDROID_KEY_STORE = "AndroidKeyStore"
-public const val DEV_KEY_ALIAS = "eudi_wallet_dev_key"
+private const val DEV_KEY_ALIAS = "eudi_wallet_dev_key"
 private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
 
 interface KeyGenerator {
@@ -92,7 +92,7 @@ internal object KeyGeneratorImpl : KeyGenerator {
     }
 
     @Throws(KeyStoreException::class)
-    public fun getKeyStore(): KeyStore = try {
+    fun getKeyStore(): KeyStore = try {
         KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
     } catch (exception: KeyStoreException) {
         throw KeyStoreException("Get KeyStore instance failed.", exception)

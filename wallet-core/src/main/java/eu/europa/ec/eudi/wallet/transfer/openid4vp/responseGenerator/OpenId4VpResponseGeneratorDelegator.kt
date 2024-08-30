@@ -14,7 +14,9 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openid4vp.OpenId4VpSdJwtRequest
 
-
+/**
+ * OpenId4VpResponseGeneratorDelegator class is used for delegating an mdoc or sdjwt request
+ */
 class OpenId4VpResponseGeneratorDelegator(
     private val mDocGenerator: OpenId4VpCBORResponseGeneratorImpl,
     private val sdJwtGenerator: OpenId4VpSdJwtResponseGeneratorImpl
@@ -25,7 +27,7 @@ class OpenId4VpResponseGeneratorDelegator(
     }
 
     companion object {
-        public var formatState: FormatState = FormatState.Cbor(false)
+        var formatState: FormatState = FormatState.Cbor(false)
             private set
     }
 

@@ -78,7 +78,6 @@ private fun String.toDocument(
 
     val vct = payloadJson.getString("vct")
     val docName = "Personalausweis"
-    val data = payloadJson.toString()
 
     SdJwtDocument(
         id = id,

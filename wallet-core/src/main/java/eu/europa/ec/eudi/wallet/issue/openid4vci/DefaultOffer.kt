@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.*
+import eu.europa.ec.eudi.wallet.document.Constants.EU_PID_DOCTYPE
 
 /**
  * Default implementation of [Offer].
@@ -41,9 +42,6 @@ internal data class DefaultOffer(
 
     override val offeredDocuments: List<Offer.OfferedDocument>
         get() = issuerMetadata.credentialConfigurationsSupported
-            // TODO temporarily removed to make it work
-            //.filterKeys { it in credentialOffer.credentialConfigurationIdentifiers }
-            //.filterValues { credentialConfigurationFilter(it) }
             .map { (id, conf) -> DefaultOfferedDocument(id, conf) }
 
     override val txCodeSpec: Offer.TxCodeSpec?
@@ -93,7 +91,7 @@ internal val CredentialConfiguration.name: String
 internal val CredentialConfiguration.docType: String
     @JvmSynthetic get() = when (this) {
         is MsoMdocCredential -> docType
-        is SdJwtVcCredential -> "eu.europa.ec.eudi.pid.1"
+        is SdJwtVcCredential -> EU_PID_DOCTYPE
         else -> "unknown"
     }
 

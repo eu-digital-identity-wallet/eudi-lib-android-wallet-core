@@ -43,6 +43,10 @@ import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
+import eu.europa.ec.eudi.wallet.document.Constants.MDOC_FORMAT
+import eu.europa.ec.eudi.wallet.document.Constants.MDOC_FORMAT_ZKP
+import eu.europa.ec.eudi.wallet.document.Constants.SDJWT_FORMAT
+import eu.europa.ec.eudi.wallet.document.Constants.SDJWT_FORMAT_ZKP
 import eu.europa.ec.eudi.wallet.internal.Openid4VpUtils
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -234,14 +238,14 @@ class OpenId4vpManager(
                 val format =
                     requestObject.presentationDefinition.inputDescriptors.first().format?.jsonObject()?.keys?.first()
                 val request = when (format) {
-                    "mso_mdoc" -> {
+                    MDOC_FORMAT -> {
                         OpenId4VpRequest(
                             requestObject,
                             requestObject.toSessionTranscript()
                         )
                     }
 
-                    "mso_mdoc+zkp" -> {
+                    MDOC_FORMAT_ZKP -> {
                         OpenId4VpRequest(
                             requestObject,
                             requestObject.toSessionTranscript(),
@@ -249,11 +253,11 @@ class OpenId4vpManager(
                         )
                     }
 
-                    "vc+sd-jwt" -> {
+                    SDJWT_FORMAT -> {
                         OpenId4VpSdJwtRequest(requestObject)
                     }
 
-                    "vc+sd-jwt+zkp" -> {
+                    SDJWT_FORMAT_ZKP -> {
                         OpenId4VpSdJwtRequest(requestObject, requestId)
                     }
 
@@ -378,7 +382,7 @@ class OpenId4vpManager(
                 presentationDefinition.inputDescriptors.map { inputDescriptor ->
                     DescriptorMap(
                         inputDescriptor.id,
-                        if (isZkp) "mso_mdoc+zkp" else "mso_mdoc",
+                        if (isZkp) MDOC_FORMAT_ZKP else MDOC_FORMAT,
                         path = JsonPath.jsonPath("$")!!
                     )
                 }
@@ -405,7 +409,7 @@ class OpenId4vpManager(
                 presentationDefinition.inputDescriptors.map { inputDescriptor ->
                     DescriptorMap(
                         inputDescriptor.id,
-                        if (isZkp) "vc+sd-jwt+zkp" else "vc+sd-jwt",
+                        if (isZkp) SDJWT_FORMAT_ZKP else SDJWT_FORMAT,
                         path = JsonPath.jsonPath("$")!!
                     )
                 }

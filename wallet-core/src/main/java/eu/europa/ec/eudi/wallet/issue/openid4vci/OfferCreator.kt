@@ -44,12 +44,6 @@ internal class OfferCreator(
                 DocTypeFilter(docType),
                 ProofTypeFilter(config.proofTypes)
             )
-            // TODO temporarily removed to make it work
-//            val credentialConfigurationId =
-//                credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
-//                    credentialConfigurationFilter(conf)
-//                }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
-
             val credentialOffer = CredentialOffer(
                 credentialIssuerIdentifier = credentialIssuerId,
                 credentialIssuerMetadata = credentialIssuerMetadata,

@@ -7,8 +7,9 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
  * @constructor Creates a new [AuthorizationResponse] instance.
  * @param authorizationCode the authorization code
  * @param serverState the server state
+ * @param dpopNonce the dpopNonce
  */
-public data class AuthorizationResponse(
+data class AuthorizationResponse(
     val authorizationCode: String,
     val serverState: String,
     val dpopNonce: String
