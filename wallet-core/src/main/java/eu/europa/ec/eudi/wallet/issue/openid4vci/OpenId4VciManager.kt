@@ -19,11 +19,13 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.IntDef
+import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
+import eu.europa.ec.eudi.wallet.issue.openidvci.PARResponse
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.*
 import java.util.concurrent.Executor
@@ -377,4 +379,6 @@ interface OpenId4VciManager {
             fun make(block: Builder.() -> Unit) = Builder().apply(block).build()
         }
     }
+
+    suspend fun performPushAuthorizationRequest(docType: String): PARResponse
 }

@@ -21,6 +21,8 @@ import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.wallet.document.*
+import eu.europa.ec.eudi.wallet.issue.openidvci.PARResponse
+import eu.europa.ec.eudi.wallet.issue.openidvci.PKCEVerifier
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -187,6 +189,17 @@ internal class DefaultOpenId4VciManager(
         resumeWithAuthorization(Uri.parse(uri))
     }
 
+    override suspend fun performPushAuthorizationRequest(docType: String): PARResponse {
+        val offer = offerCreator.createOffer(docType)
+        val issuer = issuerCreator.createIssuer(offer)
+        val parResponse = issuerAuthorization.performPushAuthorizationRequest(issuer)
+        return PARResponse(
+            authorizationCodeURL = parResponse.authorizationCodeURL.value,
+            pkceVerifier = PKCEVerifier(codeVerifier = parResponse.pkceVerifier.codeVerifier, codeVerifierMethod = parResponse.pkceVerifier.codeVerifierMethod),
+            state = parResponse.state
+        )
+    }
+
     /**
      * Issues the given [Offer].
      */
@@ -195,7 +208,6 @@ internal class DefaultOpenId4VciManager(
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
-        offer as DefaultOffer
         val issuer = issuerCreator.createIssuer(offer)
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))

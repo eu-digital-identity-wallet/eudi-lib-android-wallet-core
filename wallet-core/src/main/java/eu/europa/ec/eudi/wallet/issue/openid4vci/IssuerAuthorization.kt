@@ -44,6 +44,10 @@ internal class IssuerAuthorization(
 
     var continuation: CancellableContinuation<Result<Response>>? = null
 
+    suspend fun performPushAuthorizationRequest(issuer: Issuer): AuthorizationRequestPrepared {
+        return issuer.prepareAuthorizationRequest().getOrThrow()
+    }
+
     /**
      * Authorizes the given [Issuer] and returns the authorized request.
      * If txCode is provided, it will be used to authorize the issuer,
