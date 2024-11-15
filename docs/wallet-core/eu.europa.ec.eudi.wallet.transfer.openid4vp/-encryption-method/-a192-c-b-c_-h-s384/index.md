@@ -1,9 +1,9 @@
-//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../../index.md)/[EncryptionMethod](../index.md)/[A192CBC_HS384](index.md)
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../../index.md)/[EncryptionMethod](../index.md)/[A192CBC_HS384](index.md)
 
 # A192CBC_HS384
 
 [androidJvm]\
-object [A192CBC_HS384](index.md) : [EncryptionMethod](../index.md)
+data object [A192CBC_HS384](index.md) : [EncryptionMethod](../index.md)
 
 ## Properties
 

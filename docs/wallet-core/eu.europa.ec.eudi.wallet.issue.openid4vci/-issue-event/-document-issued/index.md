@@ -2,9 +2,8 @@
 
 # DocumentIssued
 
-data class [DocumentIssued](index.md)(val documentId: DocumentId, val
-name: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), val
-docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) : [IssueEvent](../index.md)
+data class [DocumentIssued](index.md)(val document: IssuedDocument) : [IssueEvent](../index.md),
+DocumentDetails
 
 Document issued successfully.
 
@@ -16,14 +15,15 @@ Document issued successfully.
 
 ## Constructors
 
-|                                       |                                                                                                                                                                                                                                        |
-|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [DocumentIssued](-document-issued.md) | [androidJvm]<br>constructor(documentId: DocumentId, name: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) |
+|                                       |                                                       |
+|---------------------------------------|-------------------------------------------------------|
+| [DocumentIssued](-document-issued.md) | [androidJvm]<br>constructor(document: IssuedDocument) |
 
 ## Properties
 
-| Name                         | Summary                                                                                                                                           |
-|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| [docType](doc-type.md)       | [androidJvm]<br>val [docType](doc-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the document type |
-| [documentId](document-id.md) | [androidJvm]<br>val [documentId](document-id.md): DocumentId<br>the id of the issued document                                                     |
-| [name](name.md)              | [androidJvm]<br>val [name](name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the name of the document |
+| Name                                                                              | Summary                                                                                                                                                                                             |
+|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [docType](../-document-deferred/index.md#-1539120442%2FProperties%2F1615067946)   | [androidJvm]<br>open override val [docType](../-document-deferred/index.md#-1539120442%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [document](document.md)                                                           | [androidJvm]<br>val [document](document.md): IssuedDocument<br>the issued document                                                                                                                  |
+| [documentId](../-document-deferred/index.md#-811584596%2FProperties%2F1615067946) | [androidJvm]<br>open override val [documentId](../-document-deferred/index.md#-811584596%2FProperties%2F1615067946): DocumentId                                                                     |
+| [name](../-document-deferred/index.md#686046743%2FProperties%2F1615067946)        | [androidJvm]<br>open override val [name](../-document-deferred/index.md#686046743%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)      |

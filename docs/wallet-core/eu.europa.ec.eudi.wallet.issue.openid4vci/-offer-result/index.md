@@ -2,7 +2,7 @@
 
 # OfferResult
 
-interface [OfferResult](index.md) : [OpenId4VciResult](../-open-id4-vci-result/index.md)
+sealed interface [OfferResult](index.md) : [OpenId4VciResult](../-open-id4-vci-result/index.md)
 
 The result of an offer operation.
 

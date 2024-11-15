@@ -3,18 +3,4 @@
 # authFlowRedirectionURI
 
 [androidJvm]\
-fun [authFlowRedirectionURI](auth-flow-redirection-u-r-i.md)(
-authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)): [OpenId4VciManager.Config.Builder](index.md)
-
-Set the redirection URI for the authorization flow
-
-#### Parameters
-
-androidJvm
-
-|                        |                                                |
-|------------------------|------------------------------------------------|
-| authFlowRedirectionURI | the redirection URI for the authorization flow |
-
-[androidJvm]\
 var [authFlowRedirectionURI](auth-flow-redirection-u-r-i.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?

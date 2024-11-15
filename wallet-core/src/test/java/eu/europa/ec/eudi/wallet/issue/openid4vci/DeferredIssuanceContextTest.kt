@@ -21,9 +21,9 @@ import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.openid4vci.RefreshToken
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
 import java.time.Instant
 
 class DeferredIssuanceContextTest {
@@ -31,7 +31,8 @@ class DeferredIssuanceContextTest {
     @Test
     fun `when accessToken has no expiration time DeferredIssuanceContextTest_hasExpired property is false`() {
         val deferredIssuanceContext: DeferredIssuanceContext = mockk {
-            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now().minusSeconds(3600)
+            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
+                .minusSeconds(3600)
             every { authorizedTransaction.authorizedRequest.accessToken } returns AccessToken(
                 accessToken = "accessToken",
                 expiresInSec = null,
@@ -46,7 +47,8 @@ class DeferredIssuanceContextTest {
     @Test
     fun `when accessToken has expired DeferredIssuanceContextTest_hasExpired property is true`() {
         val deferredIssuanceContext: DeferredIssuanceContext = mockk {
-            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now().minusSeconds(3600)
+            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
+                .minusSeconds(3600)
             every { authorizedTransaction.authorizedRequest.accessToken } returns AccessToken(
                 accessToken = "accessToken",
                 expiresInSec = 60L,
@@ -61,7 +63,8 @@ class DeferredIssuanceContextTest {
     @Test
     fun `when accessToken has not expired and there is no refreshToken DeferredIssuanceContextTest_hasExpired property is false`() {
         val deferredIssuanceContext: DeferredIssuanceContext = mockk {
-            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now().minusSeconds(3600)
+            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
+                .minusSeconds(3600)
             every { authorizedTransaction.authorizedRequest.accessToken } returns AccessToken(
                 accessToken = "accessToken",
                 expiresInSec = 6000L,
@@ -76,7 +79,8 @@ class DeferredIssuanceContextTest {
     @Test
     fun `when accessToken has expired and there is refreshToken which has not expired DeferredIssuanceContextTest_hasExpired property is false`() {
         val deferredIssuanceContext: DeferredIssuanceContext = mockk {
-            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now().minusSeconds(3600)
+            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
+                .minusSeconds(3600)
             every { authorizedTransaction.authorizedRequest.accessToken } returns AccessToken(
                 accessToken = "accessToken",
                 expiresInSec = 10L,
@@ -94,7 +98,8 @@ class DeferredIssuanceContextTest {
     @Test
     fun `when accessToken has expired and there is refreshToken which has expired DeferredIssuanceContextTest_hasExpired property is true`() {
         val deferredIssuanceContext: DeferredIssuanceContext = mockk {
-            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now().minusSeconds(3600)
+            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
+                .minusSeconds(3600)
             every { authorizedTransaction.authorizedRequest.accessToken } returns AccessToken(
                 accessToken = "accessToken",
                 expiresInSec = 10L,

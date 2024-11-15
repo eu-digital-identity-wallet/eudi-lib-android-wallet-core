@@ -1,17 +1,17 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
@@ -27,7 +27,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsa
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.*
 import java.util.concurrent.Executor
-import eu.europa.ec.eudi.openid4vci.ProofType as InternalProofType
 
 /**
  * OpenId4VciManager is the main entry point to issue documents using the OpenId4Vci protocol
@@ -91,7 +90,7 @@ interface OpenId4VciManager {
      */
     fun issueDeferredDocument(
         deferredDocument: DeferredDocument,
-        executor: Executor?,
+        executor: Executor? = null,
         onIssueResult: OnDeferredIssueResult,
     )
 
@@ -103,7 +102,11 @@ interface OpenId4VciManager {
      * @param onResolvedOffer the callback to be called when the offer is resolved
      *
      */
-    fun resolveDocumentOffer(offerUri: String, executor: Executor? = null, onResolvedOffer: OnResolvedOffer)
+    fun resolveDocumentOffer(
+        offerUri: String,
+        executor: Executor? = null,
+        onResolvedOffer: OnResolvedOffer,
+    )
 
 
     /**
@@ -152,6 +155,8 @@ interface OpenId4VciManager {
      * @param context the context
      * @property config the [Config] to use
      * @property documentManager the [DocumentManager] to use
+     * @property logger the logger to use
+     * @property ktorHttpClientFactory the factory to create the Ktor HTTP client
      * requires user authentication
      */
     class Builder(private val context: Context) {
@@ -162,21 +167,33 @@ interface OpenId4VciManager {
 
         /**
          * Set the [Config] to use
+         * @param config the config
+         * @return this builder
          */
         fun config(config: Config) = apply { this.config = config }
 
         /**
          * Set the [DocumentManager] to use
+         * @param documentManager the document manager
+         * @return this builder
          */
-        fun documentManager(documentManager: DocumentManager) = apply { this.documentManager = documentManager }
+        fun documentManager(documentManager: DocumentManager) =
+            apply { this.documentManager = documentManager }
 
 
+        /**
+         * Set the logger to use
+         * @param logger the logger
+         * @return this builder
+         */
         fun logger(logger: Logger) = apply {
             this.logger = logger
         }
 
         /**
          * Override the Ktor HTTP client factory
+         * @param factory the factory to use
+         * @return this builder
          */
         fun ktorHttpClientFactory(factory: () -> HttpClient) = apply {
             this.ktorHttpClientFactory = factory
@@ -184,15 +201,19 @@ interface OpenId4VciManager {
 
         /**
          * Build the [OpenId4VciManager]
+         * @return the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
          */
         fun build(): OpenId4VciManager {
             checkNotNull(config) { "config is required" }
             checkNotNull(documentManager) { "documentManager is required" }
-            return DefaultOpenId4VciManager(context, documentManager!!, config!!).apply {
-                this@Builder.logger?.let { this.logger = it }
-                this@Builder.ktorHttpClientFactory?.let { this.ktorHttpClientFactory = it }
-            }
+            return DefaultOpenId4VciManager(
+                context = context,
+                config = config!!,
+                documentManager = documentManager!!,
+                logger = logger,
+                ktorHttpClientFactory = ktorHttpClientFactory
+            )
         }
     }
 
@@ -202,7 +223,8 @@ interface OpenId4VciManager {
         /**
          * Create an instance of [OpenId4VciManager]
          */
-        operator fun invoke(context: Context, block: Builder.() -> Unit) = Builder(context).apply(block).build()
+        operator fun invoke(context: Context, block: Builder.() -> Unit) =
+            Builder(context).apply(block).build()
     }
 
     /**
@@ -210,23 +232,16 @@ interface OpenId4VciManager {
      * @property issuerUrl the issuer url
      * @property clientId the client id
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
-     * @property useStrongBoxIfSupported use StrongBox for document keys if supported
      * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
      * @property parUsage if PAR should be used
-     * @property proofTypes the proof types to use
-     * @property debugLogging flag to enable debug logging
-     * @property ktorHttpClientFactory the Ktor HTTP client factory
      */
-    data class Config(
+    data class Config @JvmOverloads constructor(
         val issuerUrl: String,
         val clientId: String,
         val authFlowRedirectionURI: String,
-        val useStrongBoxIfSupported: Boolean,
-        val useDPoPIfSupported: Boolean,
-        @ParUsage val parUsage: Int,
-        val proofTypes: List<ProofType>,
+        val useDPoPIfSupported: Boolean = true,
+        @ParUsage val parUsage: Int = IF_SUPPORTED,
     ) {
-
         /**
          * PAR usage for the OpenId4Vci issuer
          * @property IF_SUPPORTED use PAR if supported
@@ -243,138 +258,89 @@ interface OpenId4VciManager {
             }
         }
 
-        /**
-         * Proof type for the OpenId4Vci issuer
-         */
-        enum class ProofType(@JvmSynthetic internal val type: InternalProofType) {
+        companion object {
             /**
-             * JWT proof type
+             * Create a [Config] instance
+             * @param block the builder block
+             * @return the [Config]
              */
-            JWT(InternalProofType.JWT),
-
-            /**
-             * CWT proof type
-             */
-            CWT(InternalProofType.CWT)
+            operator fun invoke(block: Builder.() -> Unit) = Builder().apply(block).build()
         }
 
         /**
-         * Builder to create an instance of [Config]
+         * Builder for [Config]
+         *
          * @property issuerUrl the issuer url
          * @property clientId the client id
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
-         * @property useStrongBoxIfSupported use StrongBox for document keys if supported
          * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
          * @property parUsage if PAR should be used
-         * @property debugLogging flag to enable debug logging. Default is false
-         * @property ktorHttpClientFactory the Ktor HTTP client factory. If not set, the default factory will be used
-         *
          */
         class Builder {
             var issuerUrl: String? = null
             var clientId: String? = null
             var authFlowRedirectionURI: String? = null
-            var useStrongBoxIfSupported: Boolean = false
-            var useDPoPIfSupported: Boolean = false
+            var useDPoPIfSupported: Boolean = true
 
             @ParUsage
             var parUsage: Int = IF_SUPPORTED
 
-            private var proofTypes: List<ProofType> = listOf(ProofType.JWT, ProofType.CWT)
-
-
             /**
              * Set the issuer url
              * @param issuerUrl the issuer url
+             * @return this builder
              */
-            fun issuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
+            fun withIssuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
 
             /**
              * Set the client id
              * @param clientId the client id
+             * @return this builder
              */
-            fun clientId(clientId: String) = apply { this.clientId = clientId }
+            fun withClientId(clientId: String) = apply { this.clientId = clientId }
 
             /**
              * Set the redirection URI for the authorization flow
-             * @param authFlowRedirectionURI the redirection URI for the authorization flow
+             * @param authFlowRedirectionURI the redirection URI
+             * @return this builder
              */
-            fun authFlowRedirectionURI(authFlowRedirectionURI: String) =
+            fun withAuthFlowRedirectionURI(authFlowRedirectionURI: String) =
                 apply { this.authFlowRedirectionURI = authFlowRedirectionURI }
 
             /**
-             * Set the flag that if set will enable the use of StrongBox for document keys if supported
-             * @param useStrongBoxIfSupported the flag that if set will enable the use of StrongBox for document keys if supported
+             * Set the flag to enable the use of DPoP JWT
+             * @param useDPoPIfSupported the flag
+             * @return this builder
              */
-            fun useStrongBoxIfSupported(useStrongBoxIfSupported: Boolean) =
-                apply { this.useStrongBoxIfSupported = useStrongBoxIfSupported }
-
-            /**
-             * Set the flag that if set will enable the use of DPoP JWT
-             * @param useDPoP the flag that if set will enable the use of DPoP JWT
-             */
-            fun useDPoP(useDPoP: Boolean) = apply { this.useDPoPIfSupported = useDPoP }
+            fun withUseDPoPIfSupported(useDPoPIfSupported: Boolean) = apply {
+                this.useDPoPIfSupported = useDPoPIfSupported
+            }
 
             /**
              * Set the PAR usage
              * @param parUsage the PAR usage
+             * @return this builder
              */
-            fun parUsage(@ParUsage parUsage: Int) = apply { this.parUsage = parUsage }
-
-            /**
-             * Set the proof types. The supported proof types are [ProofType].
-             * The order of the proof types is the order in which they will be used.
-             * @param proofType the proof types
-             * @throws [IllegalArgumentException] if a proof type is provided more than once
-             */
-            fun proofTypes(vararg proofType: ProofType) = apply {
-                val distinctList = proofType.toList().distinct()
-                require(distinctList.size <= ProofType.values().size) {
-                    "Only 2 proof types are supported. You provided ${proofType.toList().size}"
-                }
-                this.proofTypes = distinctList
+            fun withParUsage(@ParUsage parUsage: Int) = apply {
+                this.parUsage = parUsage
             }
 
             /**
              * Build the [Config]
-             * @throws [IllegalStateException] if issuerUrl, clientId or authFlowRedirectionURI is not set
+             * @return the [Config]
              */
             fun build(): Config {
                 checkNotNull(issuerUrl) { "issuerUrl is required" }
                 checkNotNull(clientId) { "clientId is required" }
                 checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
-
                 return Config(
-                    issuerUrl!!,
-                    clientId!!,
-                    authFlowRedirectionURI!!,
-                    useStrongBoxIfSupported,
-                    useDPoPIfSupported,
-                    parUsage,
-                    proofTypes,
+                    issuerUrl = issuerUrl!!,
+                    clientId = clientId!!,
+                    authFlowRedirectionURI = authFlowRedirectionURI!!,
+                    useDPoPIfSupported = useDPoPIfSupported,
+                    parUsage = parUsage
                 )
             }
-
-            fun withIssuerUrl(issuerUrl: String) = issuerUrl(issuerUrl)
-
-            fun withClientId(clientId: String) = clientId(clientId)
-
-            fun withAuthFlowRedirectionURI(authFlowRedirectionURI: String) =
-                authFlowRedirectionURI(authFlowRedirectionURI)
-        }
-
-        companion object {
-            /**
-             * Create an instance of [Config]
-             * @param block the block to configure the [Builder]
-             */
-            operator fun invoke(block: Builder.() -> Unit) = make(block)
-
-            /**
-             * Create an instance of [Config]
-             * @param block the block to configure the [Builder]
-             */
-            fun make(block: Builder.() -> Unit) = Builder().apply(block).build()
         }
     }
 }

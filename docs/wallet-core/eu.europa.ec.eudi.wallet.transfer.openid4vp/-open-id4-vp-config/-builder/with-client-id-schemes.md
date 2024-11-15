@@ -1,4 +1,4 @@
-//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../../index.md)/[OpenId4VpConfig](../index.md)/[Builder](index.md)/[withClientIdSchemes](with-client-id-schemes.md)
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../../index.md)/[OpenId4VpConfig](../index.md)/[Builder](index.md)/[withClientIdSchemes](with-client-id-schemes.md)
 
 # withClientIdSchemes
 
@@ -14,3 +14,7 @@ androidJvm
 | | |
 |---|---|
 | issuerUrl | the issuer url |
+
+[androidJvm]\
+fun [withClientIdSchemes](with-client-id-schemes.md)(vararg
+clientIdSchemes: [ClientIdScheme](../../-client-id-scheme/index.md)): [OpenId4VpConfig.Builder](index.md)

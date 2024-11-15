@@ -1,33 +1,34 @@
 /*
- *  Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.logging.LoggerImpl
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.ClientIdScheme
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionAlgorithm
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.EncryptionMethod
-import eu.europa.ec.eudi.wallet.transfer.openid4vp.PreregisteredVerifier
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
-import java.io.File
+import junit.framework.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
 import java.security.cert.X509Certificate
 
 class EudiWalletConfigTest {
@@ -39,15 +40,19 @@ class EudiWalletConfigTest {
 
     @Test
     fun testInvoke() {
-        val storageDir = File("/tmp")
         val readerCertificate1 = mockk<X509Certificate>()
         val readerCertificate2 = mockk<X509Certificate>()
-        val config = EudiWalletConfig(context) {
-            documentsStorageDir(storageDir)
-            userAuthenticationRequired(true)
-            userAuthenticationTimeOut(10_000L)
-            trustedReaderCertificates(readerCertificate1, readerCertificate2)
-            openId4VpConfig {
+        val config = EudiWalletConfig() {
+            configureReaderTrustStore(readerCertificate1, readerCertificate2)
+            configureLogging(Logger.LEVEL_ERROR)
+            configureDocumentManager(context.noBackupFilesDir)
+            configureOpenId4Vci {
+                withIssuerUrl("https://example.com")
+                withClientId("client-id")
+                withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+            }
+            configureOpenId4Vp {
+
                 withClientIdSchemes(
                     listOf(
                         ClientIdScheme.Preregistered(
@@ -62,7 +67,7 @@ class EudiWalletConfigTest {
                         ClientIdScheme.X509SanDns
                     )
                 )
-                withScheme(
+                withSchemes(
                     listOf(
                         "eudi-openid4vp",
                         "mdoc-openid4vp"
@@ -71,40 +76,32 @@ class EudiWalletConfigTest {
                 withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
                 withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
             }
-            openId4VciConfig {
-                issuerUrl("https://example.com")
-                clientId("client-id")
-                authFlowRedirectionURI("eudi-openid4ci://authorize")
-            }
         }
-        assertEquals(storageDir, config.documentsStorageDir)
-        assertTrue(config.userAuthenticationRequired)
-        assertEquals(10_000L, config.userAuthenticationTimeOut)
-        assertEquals(2, config.trustedReaderCertificates?.size)
-        assertEquals(readerCertificate1, config.trustedReaderCertificates?.get(0))
-        assertEquals(readerCertificate2, config.trustedReaderCertificates?.get(1))
+        assertEquals(2, config.readerTrustedCertificates?.size)
+        assertEquals(readerCertificate1, config.readerTrustedCertificates?.get(0))
+        assertEquals(readerCertificate2, config.readerTrustedCertificates?.get(1))
         assertEquals(
             "https://example.com",
-            (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].verifierApi
+            (config.openId4VpConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].verifierApi
         )
         assertEquals(
             "VerifierClientId",
-            (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].clientId
+            (config.openId4VpConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].clientId
         )
         assertEquals(
             "VerifierLegalName",
-            (config.openId4VPConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].legalName
+            (config.openId4VpConfig?.clientIdSchemes?.get(0) as ClientIdScheme.Preregistered).preregisteredVerifiers[0].legalName
         )
-        assertEquals(ClientIdScheme.X509SanDns, config.openId4VPConfig?.clientIdSchemes?.get(1))
-        assertEquals("eudi-openid4vp", config.openId4VPConfig?.schemes?.get(0))
-        assertEquals("mdoc-openid4vp", config.openId4VPConfig?.schemes?.get(1))
+        assertEquals(ClientIdScheme.X509SanDns, config.openId4VpConfig?.clientIdSchemes?.get(1))
+        assertEquals("eudi-openid4vp", config.openId4VpConfig?.schemes?.get(0))
+        assertEquals("mdoc-openid4vp", config.openId4VpConfig?.schemes?.get(1))
         assertEquals(
             EncryptionAlgorithm.ECDH_ES,
-            config.openId4VPConfig?.encryptionAlgorithms?.get(0)
+            config.openId4VpConfig?.encryptionAlgorithms?.get(0)
         )
         assertEquals(
             EncryptionMethod.A128CBC_HS256,
-            config.openId4VPConfig?.encryptionMethods?.get(0)
+            config.openId4VpConfig?.encryptionMethods?.get(0)
         )
         assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
         assertEquals("client-id", config.openId4VciConfig?.clientId)
@@ -113,45 +110,23 @@ class EudiWalletConfigTest {
 
     @Test
     fun testDefaultValues() {
-        val config = EudiWalletConfig(context) {}
+        val config = EudiWalletConfig()
         // assert default values here
-        assertEquals(config.documentsStorageDir, context.noBackupFilesDir)
-        assertTrue(config.encryptDocumentsInStorage)
-        assertTrue(config.useHardwareToStoreKeys)
-        assertEquals(config.bleTransferMode, EudiWalletConfig.BLE_SERVER_PERIPHERAL_MODE)
-        assertFalse(config.bleClearCacheEnabled)
-        assertFalse(config.userAuthenticationRequired)
-        assertEquals(30_000L, config.userAuthenticationTimeOut)
-        assertNull(config.trustedReaderCertificates)
-        assertNull(config.openId4VPConfig)
+        assertTrue(config.enableBlePeripheralMode)
+        assertFalse(config.enableBleCentralMode)
+        assertTrue(config.clearBleCache)
+        assertNull(config.readerTrustedCertificates)
+        assertNull(config.openId4VpConfig)
         assertNull(config.openId4VciConfig)
     }
 
     @Test
-    fun testLoggerIsNullWhenLogLevelIsOff() {
-        val config = EudiWalletConfig(context) {
-            logLevel = Logger.OFF
+    fun testConfigureLogging() {
+        val config = EudiWalletConfig {
+            configureLogging(Logger.OFF, 10)
         }
 
-        assertNull(config.logger)
-    }
-
-    @Test
-    fun testLoggerIsDefaultImplementationWhenLogLevelIsNotOff() {
-        val config = EudiWalletConfig(context) {
-            logLevel = Logger.LEVEL_ERROR
-        }
-
-        assertTrue(config.logger is LoggerImpl)
-    }
-
-    @Test
-    fun testCustomLogger() {
-        val logger = Logger { record -> println(record) }
-        val config = EudiWalletConfig(context) {
-            this.logger = logger
-        }
-
-        assertTrue(config.logger == logger)
+        assertEquals(Logger.OFF, config.logLevel)
+        assertEquals(10, config.logSizeLimit)
     }
 }

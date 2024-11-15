@@ -1,4 +1,4 @@
-//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../../index.md)/[EncryptionAlgorithm](../index.md)/[ECDH_ES](index.md)/[name](name.md)
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../../index.md)/[EncryptionAlgorithm](../index.md)/[ECDH_ES](index.md)/[name](name.md)
 
 # name
 

@@ -4,6 +4,6 @@
 
 ## Types
 
-| Name                       | Summary                                                  |
-|----------------------------|----------------------------------------------------------|
-| [Logger](-logger/index.md) | [androidJvm]<br>fun interface [Logger](-logger/index.md) |
+| Name                       | Summary                                                                                         |
+|----------------------------|-------------------------------------------------------------------------------------------------|
+| [Logger](-logger/index.md) | [androidJvm]<br>fun interface [Logger](-logger/index.md)<br>Logger interface for the EudiWallet |

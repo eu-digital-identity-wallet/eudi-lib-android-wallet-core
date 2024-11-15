@@ -3,7 +3,8 @@
 # OnDeferredIssueResult
 
 [androidJvm]\
-fun interface [OnDeferredIssueResult](index.md) : [OpenId4VciManager.OnResult](../-on-result/index.md)
+fun
+interface [OnDeferredIssueResult](index.md) : [OpenId4VciManager.OnResult](../-on-result/index.md)
 &lt;[DeferredIssueResult](../../-deferred-issue-result/index.md)&gt;
 
 Callback to be called when a deferred document is issued

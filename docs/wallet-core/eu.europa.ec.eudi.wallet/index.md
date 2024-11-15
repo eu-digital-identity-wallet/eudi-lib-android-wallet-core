@@ -4,7 +4,8 @@
 
 ## Types
 
-| Name | Summary |
-|---|---|
-| [EudiWallet](-eudi-wallet/index.md) | [androidJvm]<br>object [EudiWallet](-eudi-wallet/index.md)<br>Eudi wallet sdk object to access the sdk functionalities. This object must be initialized before using the sdk. The initialization can be done in the application class. The sdk can be initialized with a [EudiWalletConfig](-eudi-wallet-config/index.md) object. |
-| [EudiWalletConfig](-eudi-wallet-config/index.md) | [androidJvm]<br>class [EudiWalletConfig](-eudi-wallet-config/index.md)<br>Eudi wallet config. |
+| Name                                             | Summary                                                                                                                                                                                                                                                                                                   |
+|--------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [EudiWallet](-eudi-wallet/index.md)              | [androidJvm]<br>interface [EudiWallet](-eudi-wallet/index.md) : SampleDocumentManager, [PresentationManager](../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md)<br>The main entry point for interacting with the wallet                                                             |
+| [EudiWalletConfig](-eudi-wallet-config/index.md) | [androidJvm]<br>class [EudiWalletConfig](-eudi-wallet-config/index.md)<br>Eudi wallet config. This config is used to configure the default settings of the Eudi wallet.                                                                                                                                   |
+| [EudiWalletImpl](-eudi-wallet-impl/index.md)     | [androidJvm]<br>class [EudiWalletImpl](-eudi-wallet-impl/index.md) : [EudiWallet](-eudi-wallet/index.md), DocumentManager, [PresentationManager](../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md), SampleDocumentManager<br>Implementation of [EudiWallet](-eudi-wallet/index.md) |

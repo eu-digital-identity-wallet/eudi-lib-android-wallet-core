@@ -1,22 +1,21 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.TxCodeSpec.InputMode.NUMERIC
-import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.TxCodeSpec.InputMode.TEXT
 
 /**
  * An offer of credentials to be issued.
@@ -43,6 +42,16 @@ interface Offer {
          * Converts this item to a pair of name and document type.
          */
         fun asPair() = Pair(name, docType)
+
+        /**
+         * Destructures this item into a pair of name and document type.
+         */
+        operator fun component1() = name
+
+        /**
+         * Destructures this item into a pair of name and document type.
+         */
+        operator fun component2() = docType
 
     }
 

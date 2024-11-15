@@ -1,35 +1,38 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import eu.europa.ec.eudi.openid4vci.IssuedCredential
+import com.android.identity.securearea.KeyUnlockData
+import eu.europa.ec.eudi.openid4vci.Credential
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
+import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.StoreDocumentResult
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
-import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.documentFailed
+import eu.europa.ec.eudi.wallet.internal.d
+import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.logging.d
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.serialization.json.Json
 import org.bouncycastle.util.encoders.Hex
 import java.io.Closeable
 import java.util.*
@@ -42,11 +45,7 @@ internal class ProcessResponse(
     val issuedDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
 ) : Closeable {
-    private val continuations = mutableMapOf<DocumentId, CancellableContinuation<Boolean>>()
-    private val json = Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-    }
+    private val continuations = mutableMapOf<DocumentId, CancellableContinuation<KeyUnlockData>>()
 
     suspend fun process(response: SubmitRequest.Response) {
         response.forEach { (unsignedDocument, result) ->
@@ -54,18 +53,26 @@ internal class ProcessResponse(
         }
     }
 
-    suspend fun process(unsignedDocument: UnsignedDocument, outcomeResult: Result<SubmissionOutcome>) {
+    suspend fun process(
+        unsignedDocument: UnsignedDocument,
+        outcomeResult: Result<SubmissionOutcome>,
+    ) {
         try {
             processSubmittedRequest(unsignedDocument, outcomeResult.getOrThrow())
         } catch (e: Throwable) {
             when (e) {
                 is UserAuthRequiredException -> {
-                    listener(e.toIssueEvent(unsignedDocument))
-                    val authenticationResult = suspendCancellableCoroutine {
+                    listener(
+                        e.toIssueEvent(
+                            unsignedDocument = unsignedDocument,
+                            signingAlgorithm = e.signingAlgorithm
+                        )
+                    )
+                    val keyUnlockData = suspendCancellableCoroutine {
                         it.invokeOnCancellation { listener(IssueEvent.Failure(e)) }
                         continuations[unsignedDocument.id] = it
                     }
-                    processSubmittedRequest(unsignedDocument, e.resume(authenticationResult))
+                    processSubmittedRequest(unsignedDocument, e.resume(keyUnlockData))
                 }
 
                 else -> listener(IssueEvent.Failure(e))
@@ -79,66 +86,81 @@ internal class ProcessResponse(
 
     fun processSubmittedRequest(unsignedDocument: UnsignedDocument, outcome: SubmissionOutcome) {
         when (outcome) {
-            is SubmissionOutcome.Success -> when (val credential = outcome.credentials[0]) {
-                is IssuedCredential.Issued -> try {
-                    val cborBytes = Base64.getUrlDecoder().decode(credential.credential)
+            is SubmissionOutcome.Success -> when (val credential =
+                outcome.credentials.first().credential) {
+                is Credential.Json -> TODO("Not supported yet")
+                is Credential.Str -> try {
+                    val cborBytes = Base64.getUrlDecoder().decode(credential.value)
                     logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(cborBytes)}")
                     documentManager.storeIssuedDocument(unsignedDocument, cborBytes)
                         .notifyListener(unsignedDocument)
+                    issuedDocumentIds.add(unsignedDocument.id)
                 } catch (e: Throwable) {
                     documentManager.deleteDocumentById(unsignedDocument.id)
-                    listener(documentFailed(unsignedDocument, e))
+                    listener(failure(e, unsignedDocument))
                 }
-
-                is IssuedCredential.Deferred -> {
-                    val contextToStore = deferredContextCreator.create(credential)
-                    documentManager.storeDeferredDocument(unsignedDocument, contextToStore.toByteArray())
-                        .notifyListener(unsignedDocument, isDeferred = true)
-                }
-            }
-
-            is SubmissionOutcome.InvalidProof -> {
-                documentManager.deleteDocumentById(unsignedDocument.id)
-                listener(
-                    documentFailed(
-                        unsignedDocument,
-                        IllegalStateException(outcome.errorDescription)
-                    )
-                )
             }
 
             is SubmissionOutcome.Failed -> {
                 documentManager.deleteDocumentById(unsignedDocument.id)
-                listener(documentFailed(unsignedDocument, outcome.error))
+                listener(
+                    failure(
+                        outcome.error.cause ?: IllegalStateException("CredentialIssuanceError"),
+                        unsignedDocument
+                    )
+                )
+            }
+
+            is SubmissionOutcome.Deferred -> {
+                val contextToStore = deferredContextCreator.create(outcome)
+                documentManager.storeDeferredDocument(
+                    unsignedDocument = unsignedDocument,
+                    relatedData = contextToStore.toByteArray()
+                ).notifyListener(unsignedDocument)
+                issuedDocumentIds.add(unsignedDocument.id)
             }
         }
     }
 
     private fun UserAuthRequiredException.toIssueEvent(
         unsignedDocument: UnsignedDocument,
+        signingAlgorithm: com.android.identity.crypto.Algorithm,
     ): IssueEvent.DocumentRequiresUserAuth {
         return IssueEvent.DocumentRequiresUserAuth(
-            unsignedDocument,
-            cryptoObject = cryptoObject,
-            resume = { runBlocking { continuations[unsignedDocument.id]!!.resume(true) } },
-            cancel = { runBlocking { continuations[unsignedDocument.id]!!.resume(false) } }
+            document = unsignedDocument,
+            signingAlgorithm = signingAlgorithm,
+            resume = { keyUnlockData ->
+                runBlocking {
+                    continuations[unsignedDocument.id]!!.resume(
+                        keyUnlockData
+                    )
+                }
+            },
+            cancel = {
+                runBlocking {
+                    continuations[unsignedDocument.id]!!.cancel(
+                        IllegalStateException("Canceled")
+                    )
+                }
+            }
         )
     }
 
-    private fun StoreDocumentResult.notifyListener(unsignedDocument: UnsignedDocument, isDeferred: Boolean = false) =
-        when (this) {
-            is StoreDocumentResult.Success -> {
-                issuedDocumentIds.add(documentId)
-                if (isDeferred) {
-                    listener(IssueEvent.DocumentDeferred(documentId, unsignedDocument.name, unsignedDocument.docType))
-                } else {
-                    listener(IssueEvent.DocumentIssued(documentId, unsignedDocument.name, unsignedDocument.docType))
-                }
-            }
+    private fun Outcome<Document>.notifyListener(unsignedDocument: UnsignedDocument) =
 
-            is StoreDocumentResult.Failure -> {
-                documentManager.deleteDocumentById(unsignedDocument.id)
-                listener(documentFailed(unsignedDocument, throwable))
+        this.kotlinResult.onSuccess { document ->
+            when (document) {
+                is DeferredDocument -> listener(IssueEvent.DocumentDeferred(document))
+                is IssuedDocument -> listener(IssueEvent.DocumentIssued(document))
+                else -> listener(
+                    IssueEvent.DocumentFailed(
+                        unsignedDocument,
+                        IllegalStateException("Unexpected document state")
+                    )
+                )
             }
+        }.onFailure { throwable ->
+            documentManager.deleteDocumentById(unsignedDocument.id)
+            listener(failure(throwable, unsignedDocument))
         }
 }

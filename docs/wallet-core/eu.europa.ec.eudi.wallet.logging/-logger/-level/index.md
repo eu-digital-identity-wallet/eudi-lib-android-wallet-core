@@ -5,4 +5,5 @@
 [androidJvm]\
 annotation class [Level](index.md)
 
-Log level for the OpenId4Vci issuer
+Log level annotation for configuring logging
+with [EudiWalletConfig.configureLogging](../../../eu.europa.ec.eudi.wallet/-eudi-wallet-config/configure-logging.md)

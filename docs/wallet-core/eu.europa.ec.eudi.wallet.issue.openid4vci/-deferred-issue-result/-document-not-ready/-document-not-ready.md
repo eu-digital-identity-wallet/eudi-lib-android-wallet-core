@@ -3,6 +3,4 @@
 # DocumentNotReady
 
 [androidJvm]\
-constructor(documentId: DocumentId,
-name: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+constructor(document: DeferredDocument)

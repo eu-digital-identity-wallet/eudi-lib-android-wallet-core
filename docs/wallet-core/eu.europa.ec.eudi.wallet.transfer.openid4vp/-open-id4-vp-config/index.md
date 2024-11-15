@@ -1,4 +1,4 @@
-//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../index.md)/[OpenId4VpConfig](index.md)
+//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../index.md)/[OpenId4VpConfig](index.md)
 
 # OpenId4VpConfig
 
@@ -38,9 +38,9 @@ val config = OpenId4VpConfig.Builder()
 
 ## Types
 
-| Name | Summary |
-|---|---|
-| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for [OpenId4VciConfig](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/index.md). |
+| Name                         | Summary                                                                             |
+|------------------------------|-------------------------------------------------------------------------------------|
+| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for OpenId4VciConfig. |
 
 ## Properties
 

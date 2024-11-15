@@ -1,17 +1,17 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
@@ -20,48 +20,47 @@ import android.content.Context
 import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
+import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.*
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
+import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
+import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.util.wrappedWithContentNegotiation
-import eu.europa.ec.eudi.wallet.util.wrappedWithLogging
-import io.ktor.client.*
-import io.ktor.client.plugins.logging.*
 import kotlinx.coroutines.*
-import java.util.*
 import java.util.concurrent.Executor
 
 /**
  * Default implementation of [OpenId4VciManager].
  * @property config the configuration
- * @property userAuthenticationCallback the user authorization callback
  *
  * @constructor Creates a default OpenId4VCI manager.
  * @param context The context.
  * @param documentManager The document manager.
  * @param config The configuration.
- * @param userAuthenticationCallback The user authorization callback.
  * @see OpenId4VciManager
  */
 internal class DefaultOpenId4VciManager(
     private val context: Context,
     private val documentManager: DocumentManager,
     var config: OpenId4VciManager.Config,
+    var logger: Logger? = null,
+    var ktorHttpClientFactory: KtorHttpClientFactory? = null,
 ) : OpenId4VciManager {
 
-    var logger: Logger? = null
-    var ktorHttpClientFactory: () -> HttpClient = DefaultHttpClientFactory
-        get() = field.wrappedWithLogging(logger).wrappedWithContentNegotiation()
+    internal val httpClientFactory
+        get() = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
+            .wrappedWithLogging(logger)
+            .wrappedWithContentNegotiation()
 
     private val offerCreator: OfferCreator by lazy {
-        OfferCreator(config, ktorHttpClientFactory)
+        OfferCreator(config, httpClientFactory)
     }
     private val offerResolver: OfferResolver by lazy {
-        OfferResolver(config.proofTypes, ktorHttpClientFactory)
+        OfferResolver(httpClientFactory)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(config, ktorHttpClientFactory)
+        IssuerCreator(config, httpClientFactory)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         IssuerAuthorization(context, logger)
@@ -128,17 +127,13 @@ internal class DefaultOpenId4VciManager(
                 val deferredContext = deferredDocument.relatedData.toDeferredIssuanceContext()
                 when {
                     deferredContext.hasExpired -> callback(
-                        DeferredIssueResult.DocumentExpired(
-                            documentId = deferredDocument.id,
-                            name = deferredDocument.name,
-                            docType = deferredDocument.docType
-                        )
+                        DeferredIssueResult.DocumentExpired(deferredDocument)
                     )
 
                     else -> {
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
                             deferredContext,
-                            ktorHttpClientFactory
+                            httpClientFactory
                         )
                             .getOrThrow()
                         ProcessDeferredOutcome(
@@ -150,14 +145,7 @@ internal class DefaultOpenId4VciManager(
                     }
                 }
             } catch (e: Throwable) {
-                callback(
-                    DeferredIssueResult.DocumentFailed(
-                        documentId = deferredDocument.id,
-                        name = deferredDocument.name,
-                        docType = deferredDocument.docType,
-                        cause = e
-                    )
-                )
+                callback(DeferredIssueResult.DocumentFailed(deferredDocument, e))
                 coroutineScope.cancel("issueDeferredDocument failed", e)
             }
         }
@@ -200,14 +188,16 @@ internal class DefaultOpenId4VciManager(
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
-        val requestMap = offer.offeredDocuments.associateBy { offeredDocument ->
-            documentManager.createDocument(offeredDocument, config.useStrongBoxIfSupported)
-                .getOrThrow()
-        }
+        val documentCreator = DocumentCreator(
+            documentManager = documentManager,
+            listener = listener,
+            logger = logger
+        )
+        val requestMap = documentCreator.createDocuments(offer)
 
-        val request = SubmitRequest(config, issuer, authorizedRequest)
-        val response = request.request(requestMap).also {
-            authorizedRequest = request.authorizedRequest
+        val submit = SubmitRequest(config, issuer, authorizedRequest)
+        val response = submit.request(requestMap).also {
+            authorizedRequest = submit.authorizedRequest
         }
         ProcessResponse(
             documentManager = documentManager,
@@ -234,7 +224,7 @@ internal class DefaultOpenId4VciManager(
             block(
                 scope, onResult
                     .runOn(executor ?: context.mainExecutor())
-                    .wrapWithLogging(logger)
+                    .wrapLogging(logger)
             )
         }
     }

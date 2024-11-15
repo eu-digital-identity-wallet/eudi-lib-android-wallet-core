@@ -1,8 +1,8 @@
-//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../index.md)/[EncryptionMethod](index.md)
+//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../index.md)/[EncryptionMethod](index.md)
 
 # EncryptionMethod
 
-interface [EncryptionMethod](index.md)
+sealed interface [EncryptionMethod](index.md)
 
 #### Inheritors
 
@@ -17,14 +17,14 @@ interface [EncryptionMethod](index.md)
 
 ## Types
 
-| Name | Summary |
-|---|---|
-| [A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) | [androidJvm]<br>object [A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) : [EncryptionMethod](index.md) |
-| [A128GCM](-a128-g-c-m/index.md) | [androidJvm]<br>object [A128GCM](-a128-g-c-m/index.md) : [EncryptionMethod](index.md) |
-| [A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) | [androidJvm]<br>object [A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) : [EncryptionMethod](index.md) |
-| [A192GCM](-a192-g-c-m/index.md) | [androidJvm]<br>object [A192GCM](-a192-g-c-m/index.md) : [EncryptionMethod](index.md) |
-| [A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) | [androidJvm]<br>object [A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) : [EncryptionMethod](index.md) |
-| [A256GCM](-a256-g-c-m/index.md) | [androidJvm]<br>object [A256GCM](-a256-g-c-m/index.md) : [EncryptionMethod](index.md) |
+| Name                                          | Summary                                                                                                  |
+|-----------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| [A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) | [androidJvm]<br>data object [A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) : [EncryptionMethod](index.md) |
+| [A128GCM](-a128-g-c-m/index.md)               | [androidJvm]<br>data object [A128GCM](-a128-g-c-m/index.md) : [EncryptionMethod](index.md)               |
+| [A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) | [androidJvm]<br>data object [A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) : [EncryptionMethod](index.md) |
+| [A192GCM](-a192-g-c-m/index.md)               | [androidJvm]<br>data object [A192GCM](-a192-g-c-m/index.md) : [EncryptionMethod](index.md)               |
+| [A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) | [androidJvm]<br>data object [A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) : [EncryptionMethod](index.md) |
+| [A256GCM](-a256-g-c-m/index.md)               | [androidJvm]<br>data object [A256GCM](-a256-g-c-m/index.md) : [EncryptionMethod](index.md)               |
 
 ## Properties
 
