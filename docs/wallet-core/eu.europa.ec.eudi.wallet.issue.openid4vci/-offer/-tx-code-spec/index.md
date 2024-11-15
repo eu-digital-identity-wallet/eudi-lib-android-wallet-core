@@ -3,9 +3,11 @@
 # TxCodeSpec
 
 [androidJvm]\
-data class [TxCodeSpec](index.md)(val inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = NUMERIC, val
+data class [TxCodeSpec](index.md)(val
+inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = NUMERIC, val
 length: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)?, val
-description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null)
+description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? =
+null)
 
 Specification for a transaction code.
 

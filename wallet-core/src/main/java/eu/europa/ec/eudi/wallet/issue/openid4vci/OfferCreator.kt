@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
 import io.ktor.client.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,11 +38,9 @@ internal class OfferCreator(
                 .use { client ->
                     Issuer.metaData(client, credentialIssuerId)
                 }
-            val credentialConfigurationFilter = Compose(
-                MsoMdocFormatFilter,
-                DocTypeFilter(docType),
-                ProofTypeFilter(config.proofTypes)
-            )
+
+            val credentialConfigurationFilter = DocTypeFilter(docType)
+
             val credentialConfigurationId =
                 credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
                     credentialConfigurationFilter(conf)

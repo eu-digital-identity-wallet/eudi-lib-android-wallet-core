@@ -16,7 +16,10 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
+import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
 
 /**
  * Result of a deferred document issuance.
@@ -26,6 +29,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
  */
 sealed interface DeferredIssueResult : OpenId4VciResult {
 
+    val document: Document
     val documentId: DocumentId
     val name: String
     val docType: String
@@ -38,10 +42,8 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @see[DocumentId] for the document id
      */
     data class DocumentIssued(
-        override val documentId: DocumentId,
-        override val name: String,
-        override val docType: String,
-    ) : DeferredIssueResult
+        override val document: IssuedDocument,
+    ) : DeferredIssueResult, DocumentDetails by DocumentDetails(document)
 
     /**
      * Document issuance failed.
@@ -51,11 +53,10 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property cause the error that caused the failure
      */
     data class DocumentFailed(
-        override val documentId: DocumentId,
-        override val name: String,
-        override val docType: String,
+        override val document: Document,
         override val cause: Throwable,
     ) : DeferredIssueResult,
+        DocumentDetails by DocumentDetails(document),
         OpenId4VciResult.Erroneous
 
     /**
@@ -65,10 +66,8 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property docType the document type
      */
     data class DocumentNotReady(
-        override val documentId: DocumentId,
-        override val name: String,
-        override val docType: String,
-    ) : DeferredIssueResult
+        override val document: DeferredDocument,
+    ) : DeferredIssueResult, DocumentDetails by DocumentDetails(document)
 
     /**
      * Document issuance expired.
@@ -77,8 +76,6 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property docType the document type
      */
     data class DocumentExpired(
-        override val documentId: DocumentId,
-        override val name: String,
-        override val docType: String,
-    ) : DeferredIssueResult
+        override val document: DeferredDocument,
+    ) : DeferredIssueResult, DocumentDetails by DocumentDetails(document)
 }

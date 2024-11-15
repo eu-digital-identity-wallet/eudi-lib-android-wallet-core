@@ -1,9 +1,9 @@
-//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../../index.md)/[EncryptionAlgorithm](../index.md)/[ECDH_1PU](index.md)
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../../index.md)/[EncryptionAlgorithm](../index.md)/[ECDH_1PU](index.md)
 
 # ECDH_1PU
 
 [androidJvm]\
-object [ECDH_1PU](index.md) : [EncryptionAlgorithm](../index.md)
+data object [ECDH_1PU](index.md) : [EncryptionAlgorithm](../index.md)
 
 ## Properties
 

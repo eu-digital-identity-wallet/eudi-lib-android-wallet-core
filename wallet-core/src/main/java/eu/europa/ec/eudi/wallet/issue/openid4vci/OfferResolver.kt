@@ -17,21 +17,15 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.Compose
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.MsoMdocFormatFilter
-import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.ProofTypeFilter
 import io.ktor.client.*
 import org.jetbrains.annotations.VisibleForTesting
 
 internal class OfferResolver(
-    private val proofTypes: List<OpenId4VciManager.Config.ProofType>,
     private val ktorHttpClientFactory: () -> HttpClient,
 ) {
     val resolver by lazy {
         CredentialOfferRequestResolver(ktorHttpClientFactory)
-    }
-    val credentialConfigurationFilter by lazy {
-        Compose(MsoMdocFormatFilter, ProofTypeFilter(proofTypes))
     }
 
     @VisibleForTesting
@@ -45,7 +39,7 @@ internal class OfferResolver(
 
     private suspend fun resolveAndCache(offerUri: String): Result<Offer> {
         return resolver.resolve(offerUri).map {
-            DefaultOffer(it, credentialConfigurationFilter)
+            DefaultOffer(it, MsoMdocFormatFilter)
         }.also { result ->
             result
                 .onSuccess { cache[offerUri] = it }

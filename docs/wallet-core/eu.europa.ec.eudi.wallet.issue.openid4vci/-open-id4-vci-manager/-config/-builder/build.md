@@ -7,8 +7,6 @@ fun [build](build.md)(): [OpenId4VciManager.Config](../index.md)
 
 Build the [Config](../index.md)
 
-#### Throws
+#### Return
 
-|                                                                                                                  |                                                             |
-|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if issuerUrl, clientId or authFlowRedirectionURI is not set |
+the [Config](../index.md)

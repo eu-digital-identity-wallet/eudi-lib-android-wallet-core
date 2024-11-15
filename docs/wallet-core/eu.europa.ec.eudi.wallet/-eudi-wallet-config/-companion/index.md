@@ -5,15 +5,14 @@
 [androidJvm]\
 object [Companion](index.md)
 
-## Functions
-
-| Name | Summary |
-|---|---|
-| [invoke](invoke.md) | [androidJvm]<br>operator fun [invoke](invoke.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), block: [EudiWalletConfig.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)<br>Eudi wallet config DSL |
-
 ## Properties
 
-| Name | Summary |
-|---|---|
-| [BLE_CLIENT_CENTRAL_MODE](-b-l-e_-c-l-i-e-n-t_-c-e-n-t-r-a-l_-m-o-d-e.md) | [androidJvm]<br>const val [BLE_CLIENT_CENTRAL_MODE](-b-l-e_-c-l-i-e-n-t_-c-e-n-t-r-a-l_-m-o-d-e.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)<br>Ble Client Central Mode |
-| [BLE_SERVER_PERIPHERAL_MODE](-b-l-e_-s-e-r-v-e-r_-p-e-r-i-p-h-e-r-a-l_-m-o-d-e.md) | [androidJvm]<br>const val [BLE_SERVER_PERIPHERAL_MODE](-b-l-e_-s-e-r-v-e-r_-p-e-r-i-p-h-e-r-a-l_-m-o-d-e.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)<br>Ble Server Peripheral Mode |
+| Name                                                                                                          | Summary                                                                                                                                                                                                                   |
+|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [DEFAULT_DOCUMENT_MANAGER_IDENTIFIER](-d-e-f-a-u-l-t_-d-o-c-u-m-e-n-t_-m-a-n-a-g-e-r_-i-d-e-n-t-i-f-i-e-r.md) | [androidJvm]<br>const val [DEFAULT_DOCUMENT_MANAGER_IDENTIFIER](-d-e-f-a-u-l-t_-d-o-c-u-m-e-n-t_-m-a-n-a-g-e-r_-i-d-e-n-t-i-f-i-e-r.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+
+## Functions
+
+| Name                | Summary                                                                                                                                                                                                                                                        |
+|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [invoke](invoke.md) | [androidJvm]<br>operator fun [invoke](invoke.md)(configure: [EudiWalletConfig](../index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)<br>Create a new EudiWalletConfig instance. |

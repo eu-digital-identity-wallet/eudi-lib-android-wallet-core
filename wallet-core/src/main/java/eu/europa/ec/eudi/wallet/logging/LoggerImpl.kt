@@ -17,19 +17,29 @@
 package eu.europa.ec.eudi.wallet.logging
 
 import android.util.Log
-import eu.europa.ec.eudi.wallet.EudiWalletConfig
 
-internal class LoggerImpl(val config: EudiWalletConfig, private val maxLogSize: Int = 1000) : Logger {
+internal class LoggerImpl(@Logger.Level val logLevel: Int, private val maxLogSize: Int = 1000) :
+    Logger {
     override fun log(record: Logger.Record) {
+
+        if (logLevel == Logger.OFF) return
+
         val tag = record.sourceClassName ?: ""
         splitMessage(record.message).forEachIndexed { i, m ->
             when {
-                record.level == Logger.LEVEL_ERROR && config.logLevel >= Logger.LEVEL_ERROR && i == 0 && record.thrown != null ->
+                record.level == Logger.LEVEL_ERROR && logLevel >= Logger.LEVEL_ERROR && i == 0 && record.thrown != null ->
                     Log.e(tag, m, record.thrown)
 
-                record.level == Logger.LEVEL_ERROR && config.logLevel >= Logger.LEVEL_ERROR -> Log.e(tag, m)
-                record.level == Logger.LEVEL_INFO && config.logLevel >= Logger.LEVEL_INFO -> Log.i(tag, m)
-                record.level == Logger.LEVEL_DEBUG && config.logLevel >= Logger.LEVEL_DEBUG -> Log.d(tag, m)
+                record.level == Logger.LEVEL_ERROR && logLevel >= Logger.LEVEL_ERROR -> Log.e(
+                    tag,
+                    m
+                )
+
+                record.level == Logger.LEVEL_INFO && logLevel >= Logger.LEVEL_INFO -> Log.i(tag, m)
+                record.level == Logger.LEVEL_DEBUG && logLevel >= Logger.LEVEL_DEBUG -> Log.d(
+                    tag,
+                    m
+                )
             }
         }
     }

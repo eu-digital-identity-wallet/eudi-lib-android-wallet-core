@@ -3,6 +3,5 @@
 # DocumentFailed
 
 [androidJvm]\
-constructor(name: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
+constructor(document: UnsignedDocument,
 cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html))

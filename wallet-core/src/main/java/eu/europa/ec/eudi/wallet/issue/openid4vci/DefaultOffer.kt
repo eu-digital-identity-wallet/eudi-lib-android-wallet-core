@@ -17,6 +17,8 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.*
+import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 
 /**
  * Default implementation of [Offer].
@@ -61,12 +63,18 @@ internal data class DefaultOffer(
  * @param configurationIdentifier [CredentialConfigurationIdentifier] instance
  * @param configuration [CredentialConfiguration] instance
  */
-internal data class DefaultOfferedDocument(
+internal class DefaultOfferedDocument(
     @JvmSynthetic internal val configurationIdentifier: CredentialConfigurationIdentifier,
     @JvmSynthetic internal val configuration: CredentialConfiguration,
 ) : Offer.OfferedDocument {
     override val name: String = configuration.name
     override val docType: String = configuration.docType
+    val documentFormat: DocumentFormat?
+        get() = when (configuration) {
+            is MsoMdocCredential -> MsoMdocFormat(docType = configuration.docType)
+            is SdJwtVcCredential -> null
+            else -> null
+        }
 
     /**
      *

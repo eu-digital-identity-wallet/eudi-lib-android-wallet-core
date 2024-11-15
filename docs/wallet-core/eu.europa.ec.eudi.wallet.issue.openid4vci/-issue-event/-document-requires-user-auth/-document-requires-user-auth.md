@@ -3,8 +3,7 @@
 # DocumentRequiresUserAuth
 
 [androidJvm]\
-constructor(name: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-cryptoObject: [BiometricPrompt.CryptoObject](https://developer.android.com/reference/kotlin/androidx/biometric/BiometricPrompt.CryptoObject.html)?,
-resume: () -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html), cancel: ()
+constructor(document: UnsignedDocument, signingAlgorithm: Algorithm, resume: (keyUnlockData:
+KeyUnlockData) -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html),
+cancel: (reason: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?)
 -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html))

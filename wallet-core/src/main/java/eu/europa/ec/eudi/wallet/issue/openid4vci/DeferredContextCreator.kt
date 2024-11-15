@@ -14,22 +14,29 @@
  *  limitations under the License.
  */
 @file:JvmMultifileClass
+@file:OptIn(InternalSerializationApi::class)
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.openid4vci.*
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId.Companion.invoke
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import java.net.URL
+import java.net.URI
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import kotlin.time.toKotlinDuration
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -40,56 +47,57 @@ internal data class DeferredContextCreator(
     val issuer: Issuer,
     val authorizedRequest: AuthorizedRequest,
 ) {
-    fun create(credential: IssuedCredential.Deferred): DeferredIssuanceContext {
+    fun create(outcome: SubmissionOutcome.Deferred): DeferredIssuanceContext {
         return with(issuer) {
-            authorizedRequest.deferredContext(credential)
+            authorizedRequest.deferredContext(outcome)
         }
     }
 }
 
 internal fun DeferredIssuanceContext.toByteArray(): ByteArray =
-    json.encodeToString(DeferredIssuanceStoredContextTO.from(this, null)).toByteArray()
+    json.encodeToString(DeferredIssuanceStoredContextTO.from(this, null, null)).toByteArray()
 
 internal fun ByteArray.toDeferredIssuanceContext(): DeferredIssuanceContext {
     return json.decodeFromString(DeferredIssuanceStoredContextTO.serializer(), String(this))
-        .toDeferredIssuanceStoredContext(Clock.systemUTC(), null)
+        .toDeferredIssuanceStoredContext(Clock.systemUTC(), null, null)
 }
+
 //
 // Serialization
 //
 
 @Serializable
-private data class RefreshTokenTO(
+data class RefreshTokenTO(
     @Required @SerialName("refresh_token") val refreshToken: String,
     @SerialName("expires_in") val expiresIn: Long? = null,
 ) {
 
     fun toRefreshToken(): RefreshToken {
-        val exp = expiresIn?.let { Duration.ofMillis(it) }
+        val exp = expiresIn?.let { Duration.ofSeconds(it) }
         return RefreshToken(refreshToken, exp)
     }
 
     companion object {
 
         fun from(refreshToken: RefreshToken): RefreshTokenTO =
-            RefreshTokenTO(refreshToken.refreshToken, refreshToken.expiresIn?.toMillis())
+            RefreshTokenTO(refreshToken.refreshToken, refreshToken.expiresIn?.seconds)
     }
 }
 
 @Serializable
-private enum class AccessTokenTypeTO {
+enum class AccessTokenTypeTO {
     DPoP, Bearer
 }
 
 @Serializable
-private data class AccessTokenTO(
+data class AccessTokenTO(
     @Required @SerialName("type") val type: AccessTokenTypeTO,
     @Required @SerialName("access_token") val accessToken: String,
     @SerialName("expires_in") val expiresIn: Long? = null,
 ) {
 
     fun toAccessToken(): AccessToken {
-        val exp = expiresIn?.let { Duration.ofMillis(it) }
+        val exp = expiresIn?.let { Duration.ofSeconds(it) }
         return when (type) {
             AccessTokenTypeTO.DPoP -> AccessToken.DPoP(accessToken, exp)
             AccessTokenTypeTO.Bearer -> AccessToken.Bearer(accessToken, exp)
@@ -105,16 +113,23 @@ private data class AccessTokenTO(
                     is AccessToken.Bearer -> AccessTokenTypeTO.Bearer
                 },
                 accessToken = accessToken.accessToken,
-                expiresIn = accessToken.expiresIn?.toMillis(),
+                expiresIn = accessToken.expiresIn?.seconds,
             )
         }
     }
 }
 
 @Serializable
-private data class DeferredIssuanceStoredContextTO(
+data class DeferredIssuanceStoredContextTO(
+    @Required @SerialName("credential_issuer") val credentialIssuerId: String,
     @Required @SerialName("client_id") val clientId: String,
+    @SerialName("client_attestation_jwt") val clientAttestationJwt: String? = null,
+    @SerialName("client_attestation_pop_duration") val clientAttestationPopDuration: Long? = null,
+    @SerialName("client_attestation_pop_alg") val clientAttestationPopAlgorithm: String? = null,
+    @SerialName("client_attestation_pop_typ") val clientAttestationPopType: String? = null,
+    @SerialName("client_attestation_pop_key_id") val clientAttestationPopKeyId: String? = null,
     @Required @SerialName("deferred_endpoint") val deferredEndpoint: String,
+    @Required @SerialName("auth_server_id") val authServerId: String,
     @Required @SerialName("token_endpoint") val tokenEndpoint: String,
     @SerialName("dpop_key_id") val dPoPSignerKid: String? = null,
     @SerialName("credential_response_encryption_spec") val responseEncryptionSpec: JsonObject? = null,
@@ -127,13 +142,39 @@ private data class DeferredIssuanceStoredContextTO(
     fun toDeferredIssuanceStoredContext(
         clock: Clock,
         recreatePopSigner: ((String) -> PopSigner.Jwt)?,
+        recreateClientAttestationPodSigner: ((String) -> JWSSigner)?,
     ): DeferredIssuanceContext {
         return DeferredIssuanceContext(
             config = DeferredIssuerConfig(
+                credentialIssuerId = CredentialIssuerId(credentialIssuerId).getOrThrow(),
                 clock = clock,
-                clientId = clientId,
-                deferredEndpoint = URL(deferredEndpoint),
-                tokenEndpoint = URL(tokenEndpoint),
+                client =
+                if (clientAttestationJwt == null) Client.Public(clientId)
+                else {
+                    val jwt = runCatching {
+                        ClientAttestationJWT(SignedJWT.parse(clientAttestationJwt))
+                    }.getOrNull() ?: error("Invalid client attestation JWT")
+                    val poPJWTSpec = ClientAttestationPoPJWTSpec(
+                        signingAlgorithm = JWSAlgorithm.parse(
+                            checkNotNull(
+                                clientAttestationPopAlgorithm
+                            )
+                        ),
+                        duration = Duration.ofSeconds(checkNotNull(clientAttestationPopDuration))
+                            .toKotlinDuration(),
+                        typ = checkNotNull(clientAttestationPopType),
+                        jwsSigner = checkNotNull(recreateClientAttestationPodSigner).invoke(
+                            checkNotNull(
+                                clientAttestationPopKeyId,
+                            ),
+                        ),
+                    )
+
+                    Client.Attested(jwt, poPJWTSpec)
+                },
+                deferredEndpoint = URI(deferredEndpoint).toURL(),
+                authServerId = URI(authServerId).toURL(),
+                tokenEndpoint = URI(tokenEndpoint).toURL(),
                 dPoPSigner = dPoPSignerKid?.let { requireNotNull(recreatePopSigner).invoke(it) },
                 responseEncryptionSpec = responseEncryptionSpec?.let { responseEncryption(it) },
             ),
@@ -143,6 +184,8 @@ private data class DeferredIssuanceStoredContextTO(
                     refreshToken = refreshToken?.toRefreshToken(),
                     credentialIdentifiers = emptyMap(),
                     timestamp = Instant.ofEpochSecond(authorizationTimestamp),
+//                    authorizationServerDpopNonce = null,
+//                    resourceServerDpopNonce = null,
                 ),
                 transactionId = TransactionId(transactionId),
             ),
@@ -151,20 +194,47 @@ private data class DeferredIssuanceStoredContextTO(
     }
 
     companion object {
+
+        fun <A> Client.ifAttested(getter: Client.Attested.() -> A?): A? =
+            when (this) {
+                is Client.Attested -> getter()
+                is Client.Public -> null
+            }
+
         fun from(
             dCtx: DeferredIssuanceContext,
             dPoPSignerKid: String?,
+            clientAttestationPopKeyId: String?,
         ): DeferredIssuanceStoredContextTO {
             val authorizedTransaction = dCtx.authorizedTransaction
             return DeferredIssuanceStoredContextTO(
-                clientId = dCtx.config.clientId,
+                credentialIssuerId = dCtx.config.credentialIssuerId.toString(),
+                clientId = dCtx.config.client.id,
+                clientAttestationJwt = dCtx.config.client.ifAttested { attestationJWT.jwt.serialize() },
+                clientAttestationPopType = dCtx.config.client.ifAttested { popJwtSpec.typ.toString() },
+                clientAttestationPopDuration = dCtx.config.client.ifAttested { popJwtSpec.duration.inWholeSeconds },
+                clientAttestationPopAlgorithm = dCtx.config.client.ifAttested { popJwtSpec.signingAlgorithm.toJSONString() },
+                clientAttestationPopKeyId = dCtx.config.client.ifAttested {
+                    checkNotNull(
+                        clientAttestationPopKeyId
+                    )
+                },
                 deferredEndpoint = dCtx.config.deferredEndpoint.toString(),
+                authServerId = dCtx.config.authServerId.toString(),
                 tokenEndpoint = dCtx.config.tokenEndpoint.toString(),
                 dPoPSignerKid = dPoPSignerKid,
-                responseEncryptionSpec = dCtx.config.responseEncryptionSpec?.let { responseEncryptionSpecTO(it) },
+                responseEncryptionSpec = dCtx.config.responseEncryptionSpec?.let {
+                    responseEncryptionSpecTO(
+                        it
+                    )
+                },
                 transactionId = authorizedTransaction.transactionId.value,
                 accessToken = AccessTokenTO.from(authorizedTransaction.authorizedRequest.accessToken),
-                refreshToken = authorizedTransaction.authorizedRequest.refreshToken?.let { RefreshTokenTO.from(it) },
+                refreshToken = authorizedTransaction.authorizedRequest.refreshToken?.let {
+                    RefreshTokenTO.from(
+                        it
+                    )
+                },
                 authorizationTimestamp = authorizedTransaction.authorizedRequest.timestamp.epochSecond,
             )
         }

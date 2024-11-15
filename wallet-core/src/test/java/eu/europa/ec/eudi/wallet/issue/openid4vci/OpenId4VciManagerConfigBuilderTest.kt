@@ -16,8 +16,13 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
+import io.mockk.mockk
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
+import org.junit.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -40,8 +45,8 @@ class OpenId4VciManagerConfigBuilderTest {
     @Test
     fun `ConfigBuilder throws exception when issuerUrl is not set`() {
         val builder = OpenId4VciManager.Config.Builder()
-            .clientId("testClientId")
-            .authFlowRedirectionURI("app://redirect")
+            .withClientId("testClientId")
+            .withAuthFlowRedirectionURI("app://redirect")
 
         assertThrows(IllegalStateException::class.java) {
             builder.build()
@@ -51,8 +56,8 @@ class OpenId4VciManagerConfigBuilderTest {
     @Test
     fun `ConfigBuilder throws exception when clientId is not set`() {
         val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .authFlowRedirectionURI("app://redirect")
+            .withIssuerUrl("https://issuer.example.com")
+            .withAuthFlowRedirectionURI("app://redirect")
 
         assertThrows(IllegalStateException::class.java) {
             builder.build()
@@ -62,8 +67,8 @@ class OpenId4VciManagerConfigBuilderTest {
     @Test
     fun `ConfigBuilder throws exception when authFlowRedirectionURI is not set`() {
         val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .clientId("testClientId")
+            .withIssuerUrl("https://issuer.example.com")
+            .withClientId("testClientId")
 
         assertThrows(IllegalStateException::class.java) {
             builder.build()
@@ -73,39 +78,25 @@ class OpenId4VciManagerConfigBuilderTest {
     @Test
     fun `ConfigBuilder sets issuerUrl correctly`() {
         val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .clientId("testClientId")
-            .authFlowRedirectionURI("app://redirect")
+            .withIssuerUrl("https://issuer.example.com")
+            .withClientId("testClientId")
+            .withAuthFlowRedirectionURI("app://redirect")
 
         val config = builder.build()
 
         assertEquals("https://issuer.example.com", config.issuerUrl)
         assertEquals("testClientId", config.clientId)
         assertEquals("app://redirect", config.authFlowRedirectionURI)
-        assertFalse(config.useStrongBoxIfSupported)
-        assertFalse(config.useDPoPIfSupported)
-    }
-
-    @Test
-    fun `ConfigBuilder sets useStrongBoxIfSupported correctly`() {
-        val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .clientId("testClientId")
-            .authFlowRedirectionURI("app://redirect")
-            .useStrongBoxIfSupported(true)
-
-        val config = builder.build()
-
-        assertTrue(config.useStrongBoxIfSupported)
+        assertTrue(config.useDPoPIfSupported)
     }
 
     @Test
     fun `ConfigBuilder sets useDPoPIfSupported correctly`() {
         val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .clientId("testClientId")
-            .authFlowRedirectionURI("app://redirect")
-            .useDPoP(true)
+            .withIssuerUrl("https://issuer.example.com")
+            .withClientId("testClientId")
+            .withAuthFlowRedirectionURI("app://redirect")
+            .withUseDPoPIfSupported(true)
 
         val config = builder.build()
 
@@ -116,29 +107,14 @@ class OpenId4VciManagerConfigBuilderTest {
     @MethodSource("parUsageArgs")
     fun `ConfigBuilder set the parUsage property correctly`(parUsage: Int) {
         val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .clientId("testClientId")
-            .authFlowRedirectionURI("app://redirect")
-            .parUsage(parUsage)
+            .withIssuerUrl("https://issuer.example.com")
+            .withClientId("testClientId")
+            .withAuthFlowRedirectionURI("app://redirect")
+            .withParUsage(parUsage)
 
         val config = builder.build()
 
         assertEquals(parUsage, config.parUsage)
-    }
-
-    @ParameterizedTest(name = "proofTypes: {0}")
-    @MethodSource("proofTypesArgs")
-    fun `ConfigBuilder sets the proofTypes property correctly with same order as they given`(proofTypes: List<OpenId4VciManager.Config.ProofType>) {
-        val builder = OpenId4VciManager.Config.Builder()
-            .issuerUrl("https://issuer.example.com")
-            .clientId("testClientId")
-            .authFlowRedirectionURI("app://redirect")
-            .proofTypes(*proofTypes.toTypedArray())
-
-        val config = builder.build()
-
-        assertEquals(proofTypes, config.proofTypes)
-
     }
 
     companion object {
@@ -148,14 +124,6 @@ class OpenId4VciManagerConfigBuilderTest {
             OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
             OpenId4VciManager.Config.ParUsage.REQUIRED,
             OpenId4VciManager.Config.ParUsage.NEVER
-        ).map { Arguments.of(it) }
-
-        @JvmStatic
-        fun proofTypesArgs() = listOf(
-            listOf(OpenId4VciManager.Config.ProofType.JWT),
-            listOf(OpenId4VciManager.Config.ProofType.CWT),
-            listOf(OpenId4VciManager.Config.ProofType.JWT, OpenId4VciManager.Config.ProofType.CWT),
-            listOf(OpenId4VciManager.Config.ProofType.CWT, OpenId4VciManager.Config.ProofType.JWT)
         ).map { Arguments.of(it) }
     }
 }

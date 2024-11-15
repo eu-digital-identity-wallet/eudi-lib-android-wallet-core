@@ -5,4 +5,5 @@
 [androidJvm]\
 constructor(inputMode: [Offer.TxCodeSpec.InputMode](-input-mode/index.md) = NUMERIC,
 length: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)?,
-description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null)
+description: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? =
+null)

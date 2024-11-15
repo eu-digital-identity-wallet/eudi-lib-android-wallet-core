@@ -15,8 +15,12 @@
  */
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import androidx.biometric.BiometricPrompt.CryptoObject
+import com.android.identity.crypto.Algorithm
+import com.android.identity.securearea.KeyUnlockData
+import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 
 /**
@@ -45,12 +49,15 @@ sealed interface IssueEvent : OpenId4VciResult {
 
     /**
      * Document issued successfully.
+     * @property document the issued document
      * @property documentId the id of the issued document
      * @property name the name of the document
      * @property docType the document type
      * @see[DocumentId] for the document id
      */
-    data class DocumentIssued(val documentId: DocumentId, val name: String, val docType: String) : IssueEvent
+    data class DocumentIssued(val document: IssuedDocument) :
+        IssueEvent,
+        DocumentDetails by DocumentDetails(document)
 
     /**
      * Document issuance failed.
@@ -58,121 +65,64 @@ sealed interface IssueEvent : OpenId4VciResult {
      * @property docType the document type
      * @property cause the error that caused the failure
      */
-    data class DocumentFailed(val name: String, val docType: String, override val cause: Throwable) : IssueEvent,
+    data class DocumentFailed(
+        private val document: UnsignedDocument,
+        override val cause: Throwable,
+    ) : IssueEvent,
+        DocumentDetails by DocumentDetails(document),
         OpenId4VciResult.Erroneous
 
     /**
-     * The document issuance requires user authentication.
-     *
+     * Issuing requires [CreateDocumentSettings] to create the document that will be issued
+     * for the [offeredDocument].
+     * @property offeredDocument the offered document
+     * @property resume the callback to resume the issuance with the [CreateDocumentSettings]
+     *  that will be used to create the document
+     * @property cancel the callback to cancel the issuance with an optional reason
+     */
+    data class DocumentRequiresCreateSettings(
+        val offeredDocument: Offer.OfferedDocument,
+        val resume: (createDocumentSettings: CreateDocumentSettings) -> Unit,
+        val cancel: (reason: String?) -> Unit,
+    ) : IssueEvent
+
+    /**
+     * Document requires user authentication to unlock the key for signing the proof of possession.
+     * @property document the document that requires user authentication
+     * @property resume the callback to resume the issuance with the [KeyUnlockData] that will be
+     *  used to unlock the key
+     * @property cancel the callback to cancel the issuance with an optional reason
+     * @property documentId the id of the document
      * @property name the name of the document
      * @property docType the document type
-     * @property cryptoObject the crypto object to use for authentication
-     * @property resume the callback to resume the issuance
-     * @property cancel the callback to cancel the issuance
-     *
-     * Example usage:
-     *
-     * ```
-     * class SomeFragment : Fragment() {
-     *
-     *    private lateinit var onIssuingResume: () -> Unit
-     *    private lateinit var onIssuingCancel: () -> Unit
-     *
-     *    private lateinit var prompt: BiometricPrompt
-     *    private val promptInfo: BiometricPrompt.PromptInfo by lazy {
-     *      BiometricPrompt.PromptInfo.Builder()
-     *          .setTitle("Title")
-     *          .setSubtitle("Subtitle")
-     *          .setDescription("Description")
-     *          .setNegativeButtonText("Cancel")
-     *          .build()
-     *    }
-     *    private val promptCallback by lazy {
-     *      object : BiometricPrompt.AuthenticationCallback() {
-     *          override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-     *              super.onAuthenticationError(errorCode, errString)
-     *                  if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-     *                  onIssuingCancel.invoke()
-     *              } else {
-     *                  log("User authentication failed $errorCode - $errString")
-     *              }
-     *          }
-     *
-     *          override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-     *              super.onAuthenticationSucceeded(result)
-     *              log("User authentication succeeded")
-     *              onIssuingResume.invoke()
-     *          }
-     *
-     *          override fun onAuthenticationFailed() {
-     *              super.onAuthenticationFailed()
-     *              log("User authentication failed")
-     *          }
-     *       }
-     *    }
-     *
-     *   fun onResume() {
-     *      super.onResume()
-     *      prompt = BiometricPrompt(this, ContextCompat.getMainExecutor(requireContext()), promptCallback)
-     *   }
-     *
-     *   fun issueDocument() {
-     *      EudiWallet.issueDocumentByDocType("eu.europa.ec.eudi.pid.1", requireContext().mainExecutor) { event ->
-     *          when (event) {
-     *              is IssueEvent.DocumentRequiresUserAuth -> {
-     *                  onIssuingResume = result::resume
-     *                  onIssuingCancel = result::cancel
-     *                  if (result.cryptoObject != null) {
-     *                      prompt.authenticate(promptInfo, result.cryptoObject)
-     *                  } else {
-     *                      prompt.authenticate(promptInfo)
-     *                  }
-     *              }
-     *              else -> {
-     *                  // handle other events
-     *              }
-     *          }
-     *       }
-     *    }
-     * }
      */
     data class DocumentRequiresUserAuth(
-        val name: String,
-        val docType: String,
-        val cryptoObject: CryptoObject?,
-        val resume: () -> Unit,
-        val cancel: () -> Unit
-    ) : IssueEvent {
-        internal constructor(
-            unsignedDocument: UnsignedDocument,
-            cryptoObject: CryptoObject?,
-            resume: () -> Unit,
-            cancel: () -> Unit
-        ) : this(
-            unsignedDocument.name,
-            unsignedDocument.docType,
-            cryptoObject,
-            resume,
-            cancel
-        )
-    }
+        val document: UnsignedDocument,
+        val signingAlgorithm: Algorithm,
+        val resume: (keyUnlockData: KeyUnlockData) -> Unit,
+        val cancel: (reason: String?) -> Unit,
+    ) : IssueEvent,
+        DocumentDetails by DocumentDetails(document)
 
     /**
      * Document issuance deferred.
+     * @property document the deferred document
      * @property documentId the id of the deferred document
      * @property name the name of the document
      * @property docType the document type
      */
-    data class DocumentDeferred(val documentId: DocumentId, val name: String, val docType: String) : IssueEvent
+    data class DocumentDeferred(val document: DeferredDocument) :
+        IssueEvent,
+        DocumentDetails by DocumentDetails(document)
 
     companion object {
-        internal fun failure(e: Throwable) = Failure(e)
-
-        internal fun documentFailed(unsignedDocument: UnsignedDocument, cause: Throwable) =
-            DocumentFailed(
-                unsignedDocument.name,
-                unsignedDocument.docType,
-                cause
-            )
+        internal fun failure(
+            cause: Throwable,
+            unsignedDocument: UnsignedDocument? = null,
+        ): IssueEvent =
+            when (unsignedDocument) {
+                null -> Failure(cause)
+                else -> DocumentFailed(unsignedDocument, cause)
+            }
     }
 }

@@ -1,6 +1,6 @@
-//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../index.md)/[PreregisteredVerifier](index.md)/[clientId](client-id.md)
+//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../index.md)/[PreregisteredVerifier](index.md)/[clientId](client-id.md)
 
 # clientId
 
 [androidJvm]\
-var [clientId](client-id.md): [ClientId](../index.md#-875823108%2FClasslikes%2F1615067946)
+var [clientId](client-id.md): [ClientId](../-client-id/index.md)

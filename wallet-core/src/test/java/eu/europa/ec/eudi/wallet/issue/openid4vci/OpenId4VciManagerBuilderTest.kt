@@ -19,10 +19,8 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import io.mockk.mockk
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Test
-
+import org.junit.Assert.*
+import org.junit.Test
 
 class OpenId4VciManagerBuilderTest {
 
@@ -32,10 +30,8 @@ class OpenId4VciManagerBuilderTest {
         issuerUrl = "https://issuer.example.com",
         clientId = "testClientId",
         authFlowRedirectionURI = "app://redirect",
-        useStrongBoxIfSupported = true,
         useDPoPIfSupported = true,
         parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
-        proofTypes = listOf(OpenId4VciManager.Config.ProofType.JWT),
     )
 
     @Test

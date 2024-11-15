@@ -17,18 +17,20 @@
 package eu.europa.ec.eudi.wallet.internal
 
 import org.bouncycastle.util.encoders.Hex
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 
 /**
-*    Examples has been taken from:
-*    https://github.com/awoie/annex-b-examples/pull/2
-*    https://github.com/awoie/annex-b-examples/blob/main/examples/annex-b-examples.txt
-*/
+ *    Examples has been taken from:
+ *    https://github.com/awoie/annex-b-examples/pull/2
+ *    https://github.com/awoie/annex-b-examples/blob/main/examples/annex-b-examples.txt
+ */
 
-const val ANNEX_B_OPENID4VP_HANDOVER = "835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
-const val ANNEX_B_SESSION_TRANSCRIPT = "83F6F6835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
+const val ANNEX_B_OPENID4VP_HANDOVER =
+    "835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
+const val ANNEX_B_SESSION_TRANSCRIPT =
+    "83F6F6835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
 
 const val clientId = "example.com"
 const val responseUri = "https://example.com/12345/response"
@@ -38,16 +40,18 @@ const val mdocGeneratedNonce = "1234567890abcdefgh"
 class Openid4VpUtilsTest {
     @Test
     fun testGenerateOpenId4VpHandover() {
-        val openid4VpHandover = Openid4VpUtils.generateOpenId4VpHandover(clientId,
+        val openid4VpHandover = OpenId4VpUtils.generateOpenId4VpHandover(
+            clientId,
             responseUri,
             nonce,
-            mdocGeneratedNonce).EncodeToBytes()
+            mdocGeneratedNonce
+        ).EncodeToBytes()
         assertEquals(ANNEX_B_OPENID4VP_HANDOVER, Hex.toHexString(openid4VpHandover).uppercase())
     }
 
     @Test
     fun testGenerateSessionTranscript() {
-        val sessionTranscript = Openid4VpUtils.generateSessionTranscript(
+        val sessionTranscript = OpenId4VpUtils.generateSessionTranscript(
             clientId,
             responseUri,
             nonce,

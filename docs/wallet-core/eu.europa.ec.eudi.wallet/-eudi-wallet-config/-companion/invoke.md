@@ -3,19 +3,19 @@
 # invoke
 
 [androidJvm]\
-operator fun [invoke](invoke.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), block: [EudiWalletConfig.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)
+operator fun [invoke](invoke.md)(configure: [EudiWalletConfig](../index.md).()
+-&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)
 
-Eudi wallet config DSL
+Create a new EudiWalletConfig instance.
 
 #### Return
 
-[EudiWalletConfig](../index.md)
+the EudiWalletConfig instance
 
 #### Parameters
 
 androidJvm
 
-| |
-|---|
-| context |
-| block |
+|           |                          |
+|-----------|--------------------------|
+| configure | the configuration lambda |

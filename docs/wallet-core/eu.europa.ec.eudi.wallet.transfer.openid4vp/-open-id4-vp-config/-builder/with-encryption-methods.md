@@ -1,4 +1,4 @@
-//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openid4vp](../../index.md)/[OpenId4VpConfig](../index.md)/[Builder](index.md)/[withEncryptionMethods](with-encryption-methods.md)
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.transfer.openId4vp](../../index.md)/[OpenId4VpConfig](../index.md)/[Builder](index.md)/[withEncryptionMethods](with-encryption-methods.md)
 
 # withEncryptionMethods
 
@@ -14,3 +14,7 @@ androidJvm
 | | |
 |---|---|
 | issuerUrl | the issuer url |
+
+[androidJvm]\
+fun [withEncryptionMethods](with-encryption-methods.md)(vararg
+encryptionMethods: [EncryptionMethod](../../-encryption-method/index.md)): [OpenId4VpConfig.Builder](index.md)

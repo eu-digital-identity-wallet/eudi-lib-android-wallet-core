@@ -61,31 +61,6 @@ internal fun interface CredentialConfigurationFilter {
             Compose(MsoMdocFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
 
         /**
-         * Filter for [CredentialConfiguration] instances based on the proof type.
-         * @param supportedProofTypes supported proof types
-         * @return [CredentialConfigurationFilter] instance
-         */
-        @JvmSynthetic
-        internal fun ProofTypeFilter(vararg supportedProofTypes: OpenId4VciManager.Config.ProofType): CredentialConfigurationFilter =
-            ProofTypeFilter(supportedProofTypes.toList())
-
-        /**
-         * Filter for [CredentialConfiguration] instances based on the proof type.
-         * @param supportedProofTypes supported proof types
-         * @return [CredentialConfigurationFilter] instance
-         */
-        @JvmSynthetic
-        internal fun ProofTypeFilter(supportedProofTypes: List<OpenId4VciManager.Config.ProofType>): CredentialConfigurationFilter =
-            CredentialConfigurationFilter { conf ->
-                try {
-                    SupportedProofType.withPriority(supportedProofTypes).select(conf)
-                    true
-                } catch (e: Throwable) {
-                    false
-                }
-            }
-
-        /**
          * Compose multiple [CredentialConfigurationFilter] instances.
          * @param filters [CredentialConfigurationFilter] instances
          * @return [CredentialConfigurationFilter] instance

@@ -7,5 +7,17 @@ fun [documentManager](document-manager.md)(documentManager: DocumentManager): [O
 
 Set the DocumentManager to use
 
+#### Return
+
+this builder
+
+#### Parameters
+
+androidJvm
+
+|                 |                      |
+|-----------------|----------------------|
+| documentManager | the document manager |
+
 [androidJvm]\
 var [documentManager](document-manager.md): DocumentManager?

@@ -3,6 +3,4 @@
 # logLevel
 
 [androidJvm]\
-val [logLevel](log-level.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
-
-Debug logging level
+var [logLevel](log-level.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)

@@ -17,23 +17,15 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import androidx.biometric.BiometricPrompt.CryptoObject
+import com.android.identity.crypto.Algorithm
+import com.android.identity.securearea.KeyUnlockData
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 
 /**
  * Exception thrown when user authentication is required.
  */
 internal class UserAuthRequiredException(
-    val cryptoObject: CryptoObject?,
-    val resume: suspend (Boolean) -> SubmissionOutcome,
+    val signingAlgorithm: Algorithm,
+    val resume: suspend (KeyUnlockData) -> SubmissionOutcome,
+    override val cause: Throwable? = null,
 ) : Throwable()
-
-/**
- * Exception thrown when the proof type is not supported.
- * @constructor Creates a new [UnsupportedProofTypeException] instance.
- * @param supportedProofTypes supported proof types
- */
-class UnsupportedProofTypeException internal constructor(supportedProofTypes: Collection<SupportedProofType>? = null) :
-    Throwable(
-        message = "Supported proof types are: " + supportedProofTypes?.joinToString(", ") { it.name }
-    )

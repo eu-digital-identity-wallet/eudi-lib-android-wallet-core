@@ -16,6 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import com.android.identity.crypto.Algorithm
+import com.android.identity.securearea.KeyUnlockData
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
@@ -25,11 +27,12 @@ import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 internal class SubmitRequest(
     val config: OpenId4VciManager.Config,
     val issuer: Issuer,
-    var authorizedRequest: AuthorizedRequest,
+    authorizedRequest: AuthorizedRequest,
+    val algorithm: Algorithm = Algorithm.ES256,
 ) {
+    var authorizedRequest: AuthorizedRequest = authorizedRequest
+        private set
 
-    val proofTypes: List<OpenId4VciManager.Config.ProofType>
-        get() = config.proofTypes
 
     suspend fun request(offeredDocuments: Map<UnsignedDocument, Offer.OfferedDocument>): Response {
         return Response(offeredDocuments.mapValues { (unsignedDocument, offeredDocument) ->
@@ -44,81 +47,41 @@ internal class SubmitRequest(
     private suspend fun submitRequest(
         unsignedDocument: UnsignedDocument,
         offeredDocument: Offer.OfferedDocument,
+        keyUnlockData: KeyUnlockData? = null,
     ): SubmissionOutcome {
         offeredDocument as DefaultOfferedDocument
-        var proofSigner: ProofSigner? = null
-        val claimSet = null
-        val payload = IssuanceRequestPayload.ConfigurationBased(offeredDocument.configurationIdentifier, claimSet)
+        var proofSigner: JWSKeyPoPSigner? = null
         return try {
-            with(issuer) {
-                when (val rq = authorizedRequest) {
-                    is AuthorizedRequest.NoProofRequired -> rq.requestSingle(payload)
-                        .getOrThrow()
-                        .retryIfProofRequired { submitRequest(unsignedDocument, offeredDocument) }
+            val claimSet = null
+            val payload = IssuanceRequestPayload.ConfigurationBased(
+                offeredDocument.configurationIdentifier,
+                claimSet
+            )
+            proofSigner = JWSKeyPoPSigner(
+                document = unsignedDocument,
+                algorithm = algorithm,
+                keyUnlockData = keyUnlockData
+            )
+            val (updatedAuthorizedRequest, outcome) = with(issuer) {
+                authorizedRequest.request(payload, listOf(proofSigner.popSigner))
+            }.getOrThrow()
 
-                    is AuthorizedRequest.ProofRequired -> {
-                        proofSigner = ProofSigner(
-                            unsignedDocument,
-                            offeredDocument.configuration,
-                            proofTypes
-                        ).getOrThrow()
-                        rq.requestSingle(payload, proofSigner!!.popSigner)
-                            .getOrThrow()
-                            .also { it.updateCNonce() }
-                    }
-                }
-            }
+            this.authorizedRequest = updatedAuthorizedRequest
+            outcome
         } catch (e: Throwable) {
-            when (val userAuthStatus = proofSigner?.userAuthStatus) {
-                is ProofSigner.UserAuthStatus.Required -> throw UserAuthRequiredException(
-                    cryptoObject = userAuthStatus.cryptoObject,
-                    resume = { status ->
-                        if (status) {
-                            submitRequest(unsignedDocument, offeredDocument)
-                        } else {
-                            throw IllegalStateException("User authentication failed")
-                        }
-                    }
+            if (null !== proofSigner && null != proofSigner.keyLockedException) {
+                throw UserAuthRequiredException(
+                    signingAlgorithm = algorithm,
+                    resume = { keyUnlockData ->
+                        submitRequest(
+                            unsignedDocument,
+                            offeredDocument,
+                            keyUnlockData
+                        )
+                    },
+                    cause = e
                 )
-
-                else -> throw e
-            }
-        }
-    }
-
-    suspend fun SubmissionOutcome.updateCNonce() {
-        authorizedRequest = authorizedRequest.withUpdatedCNonce(this)
-    }
-
-    fun AuthorizedRequest.withUpdatedCNonce(outcome: SubmissionOutcome): AuthorizedRequest {
-        return when {
-            this is AuthorizedRequest.NoProofRequired &&
-                    outcome is SubmissionOutcome.InvalidProof -> withCNonce(outcome.cNonce)
-
-            this is AuthorizedRequest.ProofRequired &&
-                    outcome is SubmissionOutcome.Success -> {
-                outcome.cNonce?.let {
-                    copy(cNonce = it)
-                } ?: this
-            }
-
-            this is AuthorizedRequest.ProofRequired &&
-                    outcome is SubmissionOutcome.InvalidProof -> {
-                copy(cNonce = outcome.cNonce)
-            }
-
-            else -> this
-        }
-    }
-
-    suspend fun SubmissionOutcome.retryIfProofRequired(block: suspend () -> SubmissionOutcome): SubmissionOutcome {
-        return when {
-            this is SubmissionOutcome.InvalidProof && authorizedRequest is AuthorizedRequest.NoProofRequired -> {
-                updateCNonce()
-                block()
-            }
-
-            else -> this
+            } else throw e
         }
     }
 

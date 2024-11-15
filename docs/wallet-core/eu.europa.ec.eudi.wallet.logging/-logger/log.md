@@ -4,3 +4,19 @@
 
 [androidJvm]\
 abstract fun [log](log.md)(record: [Logger.Record](-record/index.md))
+
+Log a record
+
+#### Parameters
+
+androidJvm
+
+|        |                   |
+|--------|-------------------|
+| record | the record to log |
+
+#### See also
+
+|                                   |
+|-----------------------------------|
+| [Logger.Record](-record/index.md) |

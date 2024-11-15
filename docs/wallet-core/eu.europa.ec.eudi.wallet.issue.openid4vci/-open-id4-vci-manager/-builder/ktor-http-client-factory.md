@@ -8,5 +8,17 @@ HttpClient): [OpenId4VciManager.Builder](index.md)
 
 Override the Ktor HTTP client factory
 
+#### Return
+
+this builder
+
+#### Parameters
+
+androidJvm
+
+|         |                    |
+|---------|--------------------|
+| factory | the factory to use |
+
 [androidJvm]\
 var [ktorHttpClientFactory](ktor-http-client-factory.md): () -&gt; HttpClient?

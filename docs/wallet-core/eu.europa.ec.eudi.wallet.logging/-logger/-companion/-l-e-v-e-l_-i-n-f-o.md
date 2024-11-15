@@ -4,4 +4,5 @@
 
 [androidJvm]\
 const
-val [LEVEL_INFO](-l-e-v-e-l_-i-n-f-o.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) = 2
+val [LEVEL_INFO](-l-e-v-e-l_-i-n-f-o.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) =
+2

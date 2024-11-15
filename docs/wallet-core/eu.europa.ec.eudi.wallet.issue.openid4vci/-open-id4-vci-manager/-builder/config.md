@@ -7,5 +7,17 @@ fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md))
 
 Set the [Config](../-config/index.md) to use
 
+#### Return
+
+this builder
+
+#### Parameters
+
+androidJvm
+
+|        |            |
+|--------|------------|
+| config | the config |
+
 [androidJvm]\
 var [config](config.md): [OpenId4VciManager.Config](../-config/index.md)?
