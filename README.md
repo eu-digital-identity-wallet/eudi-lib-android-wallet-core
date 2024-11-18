@@ -20,8 +20,11 @@ graph TD
     C[eudi-lib-android-iso18013-data-transfer] -->|TransferManager| A
     D[eudi-lib-jvm-openid4vci-kt] -->|OpenId4VciManager| A
     E[eudi-lib-jvm-siop-openid4vp-kt] -->|OpenId4VpManager| A
-    F[com.android.identity:identity-credential-android] -->|SecureArea,StorageEngine| B
+    F[com.android.identity] -->|SecureArea,StorageEngine| B
     H[eudi-lib-jvm-presentation-exchange] --> E 
+    G[identity-credential-android] --> A
+    B -->|DocumentManager| C
+    F -->|SecureArea,StorageEngine| A
 ```
 
 The library provides the following functionality:
@@ -1012,48 +1015,63 @@ algorithm (`Algorithm.ES256`). The generated response is then sent using the `wa
 method.
 
 ```kotlin
-
 val transferEventListener = TransferEvent.Listener { event ->
     when (event) {
 
-        // get the processed request
+        is TransferEvent.RequestReceived -> try {
+            // get the processed request
             val processedRequest = event.processedRequest.getOrThrow()
-        // the request has been received and processed
+            // the request has been received and processed
 
-        // the request processing was successful
-        // requested documents can be shown in the application
+            // the request processing was successful
+            // requested documents can be shown in the application
             val requestedDocuments = processedRequest.requestedDocuments
-        // ...
-        // application must create the DisclosedDocuments object
+            // ...
+            // application must create the DisclosedDocuments object
+            // Here for simplicity we assume that the first document is the only requested document
+            // and we disclose only the first name
+
+            // get the first document by id
+            val firstDocumentId = requestedDocuments.first().documentId
+
+            val firstDocument = wallet.getDocumentById(firstDocumentId) as IssuedDocument
+            // We also assume that it requires user authentication
+            // so we create the keyUnlockData to unlock the key
+            val keyUnlockData = firstDocument.DefaultKeyUnlockData
+            val cryptoObject = keyUnlockData.getCryptoObjectForSigning(Algorithm.ES256)
+            // authenticate the user using the cryptoObject
+            // ...
+
             val disclosedDocuments = DisclosedDocuments(
-            DisclosedDocument(
-                documentId = "document-id",
-                disclosedItems = listOf(
-                    DocItem(
-                        namespace = "eu.europa.ec.eudi.pid.1",
-                        elementIdentifier = "first_name"
+                DisclosedDocument(
+                    documentId = firstDocumentId,
+                    disclosedItems = listOf(
+                        DocItem(
+                            namespace = "eu.europa.ec.eudi.pid.1",
+                            elementIdentifier = "first_name"
+                        ),
                     ),
+                    // keyUnlockData is required if needed to unlock the key
+                    // in order to sign the response
+                    keyUnlockData = keyUnlockData
                 ),
-                // keyUnlockData is required if needed to unlock the key
-                // in order to sign the response
-                keyUnlockData = wallet.getDefaultKeyUnlockData("document-id")
-            ),
-            // ... rest of the disclosed documents
-        )
-        // generate the response
+                // ... rest of the disclosed documents
+            )
+            // generate the response
             val response = processedRequest.generateResponse(
-            disclosedDocuments = disclosedDocuments,
-            signatureAlgorithm = Algorithm.ES256
-        ).getOrThrow()
+                disclosedDocuments = disclosedDocuments,
+                signatureAlgorithm = Algorithm.ES256
+            ).getOrThrow()
 
-        wallet.sendResponse(response)
+            wallet.sendResponse(response)
 
-    } catch (e: Throwable) {
-    // An error occurred
-    // handle the error
-}
-    // handle other events
-    else -> {}
+        } catch (e: Throwable) {
+            // An error occurred
+            // handle the error
+        }
+        // handle other events
+        else -> {}
+    }
 }
 ```
 
