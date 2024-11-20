@@ -47,7 +47,7 @@ import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SE
  */
 interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware {
 
-    val nfcEngagementServiceClass: Class<NfcEngagementService>?
+    val nfcEngagementServiceClass: Class<out NfcEngagementService>?
 
     /**
      * Starts the proximity presentation.
