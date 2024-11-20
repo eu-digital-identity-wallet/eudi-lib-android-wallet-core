@@ -8,7 +8,7 @@ constructor(transferManager: TransferManager,
 openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? =
 null, val
 nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)
-&lt;NfcEngagementService&gt;? = null) : [PresentationManager](../-presentation-manager/index.md)
+&lt;out NfcEngagementService&gt;? = null) : [PresentationManager](../-presentation-manager/index.md)
 
 Implementation of the [PresentationManager](../-presentation-manager/index.md) interface based on
 the TransferManager
@@ -17,9 +17,9 @@ implementations.
 
 ## Constructors
 
-|                                                          |                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-|----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [PresentationManagerImpl](-presentation-manager-impl.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>constructor(transferManager: TransferManager, openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? = null, nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;NfcEngagementService&gt;? = null) |
+|                                                          |                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [PresentationManagerImpl](-presentation-manager-impl.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>constructor(transferManager: TransferManager, openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? = null, nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? = null) |
 
 ## Types
 
@@ -29,10 +29,10 @@ implementations.
 
 ## Properties
 
-| Name                                                         | Summary                                                                                                                                                                                                                                              |
-|--------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [nfcEngagementServiceClass](nfc-engagement-service-class.md) | [androidJvm]<br>open override val [nfcEngagementServiceClass](nfc-engagement-service-class.md): [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;NfcEngagementService&gt;? = null<br>the NFC engagement service class |
-| [readerTrustStore](reader-trust-store.md)                    | [androidJvm]<br>open override var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?<br>the reader trust store                                                                                                                             |
+| Name                                                         | Summary                                                                                                                                                                                                                                                  |
+|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [nfcEngagementServiceClass](nfc-engagement-service-class.md) | [androidJvm]<br>open override val [nfcEngagementServiceClass](nfc-engagement-service-class.md): [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? = null<br>the NFC engagement service class |
+| [readerTrustStore](reader-trust-store.md)                    | [androidJvm]<br>open override var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?<br>the reader trust store                                                                                                                                 |
 
 ## Functions
 

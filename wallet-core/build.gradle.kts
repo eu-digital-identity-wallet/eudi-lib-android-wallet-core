@@ -133,7 +133,6 @@ dependencies {
     // CBOR
     implementation(libs.cbor)
 
-    implementation(libs.biometric.ktx)
     testImplementation(libs.testng)
 
     // Ktor Android Engine
@@ -147,13 +146,12 @@ dependencies {
     implementation(libs.upokecenter.cbor)
     implementation(libs.cose.java)
 
-    testImplementation(libs.junit)
-    testImplementation(libs.junit.jupiter.params)
-    testImplementation(libs.json)
+    testImplementation(kotlin("test"))
     testImplementation(libs.mockk)
-    testImplementation(libs.mockito.inline)
-    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.json)
+    testImplementation(libs.junit.jupiter.params)
     testImplementation(libs.kotlin.coroutines.test)
+    testImplementation(libs.biometric.ktx)
 
     androidTestImplementation(libs.android.junit)
     androidTestImplementation(libs.mockito.android)

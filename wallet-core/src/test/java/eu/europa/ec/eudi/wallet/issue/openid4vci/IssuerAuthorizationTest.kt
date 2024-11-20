@@ -26,10 +26,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
-import org.junit.Before
 import org.junit.BeforeClass
-import org.junit.Test
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 
 
@@ -58,7 +60,7 @@ class IssuerAuthorizationTest {
     lateinit var preparedAuthorizationRequest: AuthorizationRequestPrepared
     lateinit var authorizedRequest: AuthorizedRequest
 
-    @Before
+    @BeforeTest
     fun setupTest() {
         preparedAuthorizationRequest = mockk(relaxed = true)
         every {

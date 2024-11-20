@@ -36,10 +36,10 @@ calling [disableNFCEngagement](disable-n-f-c-engagement.md) method.
 
 ## Properties
 
-| Name                                                              | Summary                                                                                                                                                                                              |
-|-------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [nfcEngagementServiceClass](nfc-engagement-service-class.md)      | [androidJvm]<br>abstract val [nfcEngagementServiceClass](nfc-engagement-service-class.md): [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;NfcEngagementService&gt;? |
-| [readerTrustStore](index.md#1164183302%2FProperties%2F1615067946) | [androidJvm]<br>abstract var [readerTrustStore](index.md#1164183302%2FProperties%2F1615067946): ReaderTrustStore?                                                                                    |
+| Name                                                              | Summary                                                                                                                                                                                                  |
+|-------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [nfcEngagementServiceClass](nfc-engagement-service-class.md)      | [androidJvm]<br>abstract val [nfcEngagementServiceClass](nfc-engagement-service-class.md): [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? |
+| [readerTrustStore](index.md#1164183302%2FProperties%2F1615067946) | [androidJvm]<br>abstract var [readerTrustStore](index.md#1164183302%2FProperties%2F1615067946): ReaderTrustStore?                                                                                        |
 
 ## Functions
 

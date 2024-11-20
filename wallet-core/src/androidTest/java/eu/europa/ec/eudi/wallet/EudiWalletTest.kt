@@ -20,8 +20,7 @@ import android.content.Context
 import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.android.identity.securearea.software.SoftwareCreateKeySettings
-import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -45,9 +44,7 @@ class EudiWalletTest {
     private lateinit var walletConfig: EudiWalletConfig
 
     private val wallet: EudiWallet
-        get() = EudiWallet.apply {
-            init(context, walletConfig)
-        }
+        get() = EudiWallet(context, walletConfig)
 
     private val sampleData: ByteArray
         get() = context.resources.openRawResource(eu.europa.ec.eudi.wallet.test.R.raw.sample_data)
@@ -56,13 +53,14 @@ class EudiWalletTest {
     @Test
     fun testLoadSampleDocuments() {
         walletConfig = EudiWalletConfig()
+            .configureDocumentKeyCreation(
+                userAuthenticationRequired = false,
+                useStrongBoxForKeys = false,
+            )
 
         val result = wallet.loadMdocSampleDocuments(
             sampleData = sampleData,
-            createSettings = CreateDocumentSettings(
-                secureAreaIdentifier = wallet.enumerateSecureAreas().first(),
-                createKeySettings = SoftwareCreateKeySettings.Builder().build()
-            )
+            createSettings = wallet.getDefaultCreateDocumentSettings()
         )
 
         Assert.assertTrue(result.isSuccess)

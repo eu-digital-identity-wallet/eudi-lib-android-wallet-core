@@ -14,7 +14,7 @@ false,
 clearBleCache: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) =
 true,
 nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)
-&lt;NfcEngagementService&gt;? = null): [EudiWalletConfig](index.md)
+&lt;out NfcEngagementService&gt;? = null): [EudiWalletConfig](index.md)
 
 Configure the proximity presentation. This allows to configure the BLE peripheral mode, the BLE
 central mode and whether to clear the BLE cache. Also, it allows to set the NFC engagement service

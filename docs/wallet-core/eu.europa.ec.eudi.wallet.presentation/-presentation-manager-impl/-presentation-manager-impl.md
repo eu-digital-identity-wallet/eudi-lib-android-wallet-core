@@ -10,4 +10,4 @@ constructor(transferManager: TransferManager,
 openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? =
 null,
 nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)
-&lt;NfcEngagementService&gt;? = null)
+&lt;out NfcEngagementService&gt;? = null)
