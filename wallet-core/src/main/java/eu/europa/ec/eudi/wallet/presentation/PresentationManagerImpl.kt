@@ -41,7 +41,7 @@ import org.jetbrains.annotations.VisibleForTesting
 class PresentationManagerImpl @JvmOverloads constructor(
     @VisibleForTesting internal val transferManager: TransferManager,
     @VisibleForTesting internal val openId4vpManager: OpenId4VpManager? = null,
-    override val nfcEngagementServiceClass: Class<NfcEngagementService>? = null,
+    override val nfcEngagementServiceClass: Class<out NfcEngagementService>? = null,
 ) : PresentationManager {
 
     private var _readerTrustStore: ReaderTrustStore? = null

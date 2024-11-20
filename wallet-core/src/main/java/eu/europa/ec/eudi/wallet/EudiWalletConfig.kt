@@ -20,6 +20,7 @@ package eu.europa.ec.eudi.wallet
 import android.content.Context
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -285,8 +286,9 @@ class EudiWalletConfig {
     }
 
     /**
-     * Configure the built-in [ReaderTrustStore]. This allows to set the reader trusted
-     * certificates for the reader trust store. The certificates are loaded from the raw resources.
+     * Configure the built-in [ReaderTrustStore].
+     * This allows to set the reader trusted certificates for the reader trust store.
+     * The certificates are loaded from the raw resources.
      *
      * @param context the context
      * @param certificateRes the reader trusted certificates raw resources
