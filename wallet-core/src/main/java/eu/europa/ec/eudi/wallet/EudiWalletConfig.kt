@@ -319,18 +319,22 @@ class EudiWalletConfig {
      * - useStrongBoxForKeys: true
      *
      * @param userAuthenticationRequired whether user authentication is required
-     * @param userAuthenticationTimeout the user authentication timeout
+     * @param userAuthenticationTimeout the user authentication timeout. If user authentication
+     * is required, this value must be greater than 0
      * @param useStrongBoxForKeys whether to use the strong box for keys
      */
     fun configureDocumentKeyCreation(
-        userAuthenticationRequired: Boolean,
-        userAuthenticationTimeout: Long,
-        useStrongBoxForKeys: Boolean,
+        userAuthenticationRequired: Boolean = false,
+        userAuthenticationTimeout: Long = 0L,
+        useStrongBoxForKeys: Boolean = true,
     ) = apply {
-        require(userAuthenticationTimeout > 0) { "User authentication timeout must be greater than 0" }
         this.userAuthenticationRequired = userAuthenticationRequired
         this.userAuthenticationTimeout = userAuthenticationTimeout
         this.useStrongBoxForKeys = useStrongBoxForKeys
+
+        if (this.userAuthenticationRequired) {
+            require(this.userAuthenticationTimeout > 0) { "User authentication timeout must be greater than 0" }
+        }
     }
 
 

@@ -1,23 +1,23 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.nimbusds.jose.JOSEException
+import com.android.identity.crypto.Algorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -37,7 +37,7 @@ class JWSDPoPSignerTest {
     }
 
     @Test
-    fun signerSupportedJWSAlgorithmsIsES256() {
+    fun signerDefaultSupportedJWSAlgorithmsIsES256() {
         val signer = JWSDPoPSigner().getOrThrow()
         Assert.assertEquals(JWSAlgorithm.ES256, signer.algorithm)
         Assert.assertEquals(1, signer.jwsSigner.supportedJWSAlgorithms().size)
@@ -45,17 +45,23 @@ class JWSDPoPSignerTest {
     }
 
     @Test
+    fun signerSupportedJWSAlgorithmsIsSameWithConstructorParam() {
+        val signer = JWSDPoPSigner(Algorithm.ES384).getOrThrow()
+        Assert.assertEquals(JWSAlgorithm.ES384, signer.algorithm)
+        Assert.assertEquals(1, signer.jwsSigner.supportedJWSAlgorithms().size)
+        Assert.assertEquals(JWSAlgorithm.ES384, signer.jwsSigner.supportedJWSAlgorithms().first())
+    }
+
+    @Test
+    fun throwsIfUnsupportedAlgorithmIsSet() {
+        val signerResult = JWSDPoPSigner(Algorithm.SHA256)
+        Assert.assertTrue(signerResult.isFailure)
+    }
+
+    @Test
     fun bindingKeyIsJwtBindingKey_Jwk() {
         val signer = JWSDPoPSigner().getOrThrow()
         Assert.assertTrue(signer.bindingKey is JwtBindingKey.Jwk)
-    }
-
-    @Test(expected = JOSEException::class)
-    fun signThrowsWhenUnsupportedAlgorithmInHeader() {
-        val signer = JWSDPoPSigner().getOrThrow()
-        val header = JWSHeader(JWSAlgorithm.ES384)
-        val signingInput = "test".toByteArray()
-        signer.jwsSigner.sign(header, signingInput)
     }
 
     @Test

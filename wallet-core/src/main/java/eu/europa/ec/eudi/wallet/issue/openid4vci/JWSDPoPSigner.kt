@@ -32,13 +32,17 @@ import eu.europa.ec.eudi.openid4vci.PopSigner
 
 /**
  * A [JWSSigner] implementation for DPoP.
+ *
+ * @property algorithm the algorithm used for signing
  * @property popSigner the DPoP signer [PopSigner.Jwt]
  * @property jcaContext the JCA context
+ *
  * @constructor Creates a DPoP signer.
+ * @param algorithm the algorithm used for signing
  * @throws Exception If an error occurs during key generation.
  * @see JWSSigner
  */
-internal class JWSDPoPSigner private constructor() : JWSSigner {
+internal class JWSDPoPSigner private constructor(val algorithm: Algorithm) : JWSSigner {
 
     private val privateKey: EcPrivateKey by lazy {
         Crypto.createEcPrivateKey(EcCurve.P256)
@@ -51,8 +55,7 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
     private val jwk: JWK
         get() = JWK.parseFromPEMEncodedObjects(privateKey.publicKey.toPem())
 
-    private val jwsAlgorithm: JWSAlgorithm
-        get() = JWSAlgorithm.parse(Algorithm.ES256.jwseAlgorithmIdentifier)
+    private val jwsAlgorithm: JWSAlgorithm = JWSAlgorithm.parse(algorithm.jwseAlgorithmIdentifier)
 
     val popSigner: PopSigner.Jwt
         get() = PopSigner.Jwt(
@@ -62,20 +65,11 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
         )
 
     override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-        val signature = Crypto.sign(privateKey, Algorithm.ES256, signingInput)
+        val signature = Crypto.sign(privateKey, algorithm, signingInput)
         return Base64URL.encode(signature.toCoseEncoded())
     }
 
-    override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = Algorithm.entries
-        .mapNotNull {
-            try {
-                it.jwseAlgorithmIdentifier
-            } catch (_: Throwable) {
-                null
-            }
-        }
-        .map { JWSAlgorithm.parse(it) }
-        .toSet()
+    override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(jwsAlgorithm)
 
     /**
      * Companion object for the JWSDPoPSigner class.
@@ -86,9 +80,9 @@ internal class JWSDPoPSigner private constructor() : JWSSigner {
          * @return [Result<PopSigner.Jwt>] The result of the operation. If successful, the result contains the [PopSigner.Jwt] instance.
          * If unsuccessful, the result contains the exception that occurred.
          */
-        operator fun invoke(): Result<PopSigner.Jwt> {
+        operator fun invoke(algorithm: Algorithm = Algorithm.ES256): Result<PopSigner.Jwt> {
             return try {
-                Result.success(JWSDPoPSigner().popSigner)
+                Result.success(JWSDPoPSigner(algorithm).popSigner)
             } catch (e: Exception) {
                 Result.failure(e)
             }

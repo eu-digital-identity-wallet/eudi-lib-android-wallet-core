@@ -4,9 +4,12 @@
 
 [androidJvm]\
 fun [configureDocumentKeyCreation](configure-document-key-creation.md)(
-userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html),
-userAuthenticationTimeout: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html),
-useStrongBoxForKeys: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [EudiWalletConfig](index.md)
+userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) =
+false,
+userAuthenticationTimeout: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html) =
+0,
+useStrongBoxForKeys: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) =
+true): [EudiWalletConfig](index.md)
 
 Configure the document key creation. This allows to configure if user authentication is required to
 unlock key usage, the user authentication timeout and whether to use the strong box for keys. These
@@ -27,8 +30,8 @@ useStrongBoxForKeys: true
 
 androidJvm
 
-|                            |                                         |
-|----------------------------|-----------------------------------------|
-| userAuthenticationRequired | whether user authentication is required |
-| userAuthenticationTimeout  | the user authentication timeout         |
-| useStrongBoxForKeys        | whether to use the strong box for keys  |
+|                            |                                                                                                        |
+|----------------------------|--------------------------------------------------------------------------------------------------------|
+| userAuthenticationRequired | whether user authentication is required                                                                |
+| userAuthenticationTimeout  | the user authentication timeout. If user authentication is required, this value must be greater than 0 |
+| useStrongBoxForKeys        | whether to use the strong box for keys                                                                 |
