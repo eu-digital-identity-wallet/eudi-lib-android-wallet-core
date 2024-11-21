@@ -17,6 +17,13 @@ values are used to create the eu.europa.ec.eudi.wallet.document.CreateDocumentSe
 using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings](../../eu.europa.ec.eudi.wallet.document/-document-extensions/get-default-create-document-settings.md)
 method.
 
+If user authentication is required, the user authentication timeout must be greater than 0.
+
+**Note**: when setting userAuthenticationRequired to true, device must be secured with a PIN,
+pattern or password.
+
+**Note**: when setting useStrongBoxForKeys to true, the device must support the StrongBox.
+
 The default values are:
 
 -
@@ -24,7 +31,7 @@ userAuthenticationRequired: false
 -
 userAuthenticationTimeout: 0
 -
-useStrongBoxForKeys: true
+useStrongBoxForKeys: true if supported by the device
 
 #### Parameters
 

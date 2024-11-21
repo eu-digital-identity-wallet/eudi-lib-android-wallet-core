@@ -54,8 +54,9 @@ class EudiWalletTest {
     fun testLoadSampleDocuments() {
         walletConfig = EudiWalletConfig()
             .configureDocumentKeyCreation(
-                userAuthenticationRequired = false,
-                useStrongBoxForKeys = false,
+                userAuthenticationRequired = true,
+                userAuthenticationTimeout = 30_000L,
+                useStrongBoxForKeys = true,
             )
 
         val result = wallet.loadMdocSampleDocuments(

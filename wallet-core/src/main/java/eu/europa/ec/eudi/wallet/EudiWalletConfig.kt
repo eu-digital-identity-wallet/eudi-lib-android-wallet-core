@@ -299,11 +299,11 @@ class EudiWalletConfig {
     }
 
     var userAuthenticationRequired: Boolean = false
-        private set
+        internal set // internal for setting the default value from the builder
     var userAuthenticationTimeout: Long = 0L
         private set
     var useStrongBoxForKeys: Boolean = true
-        private set
+        internal set // internal for setting the default value from the builder
 
     /**
      * Configure the document key creation. This allows to configure if user authentication is
@@ -313,10 +313,17 @@ class EudiWalletConfig {
      * using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings]
      * method.
      *
+     * If user authentication is required, the user authentication timeout must be greater than 0.
+     *
+     * **Note**: when setting userAuthenticationRequired to true, device must be secured with a PIN, pattern
+     * or password.
+     *
+     * **Note**: when setting useStrongBoxForKeys to true, the device must support the StrongBox.
+     *
      * The default values are:
      * - userAuthenticationRequired: false
      * - userAuthenticationTimeout: 0
-     * - useStrongBoxForKeys: true
+     * - useStrongBoxForKeys: true if supported by the device
      *
      * @param userAuthenticationRequired whether user authentication is required
      * @param userAuthenticationTimeout the user authentication timeout. If user authentication

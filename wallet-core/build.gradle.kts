@@ -106,50 +106,40 @@ android {
 
 dependencies {
 
-    implementation(libs.appcompat)
-
     // EUDI libs
     api(libs.eudi.document.manager)
     api(libs.eudi.iso18013.data.transfer)
-
-    // OpenID4VCI
-    implementation(libs.eudi.lib.jvm.openid4vci.kt)
-    implementation(libs.nimbus.oauth2.oidc.sdk)
-
-    // Siop-Openid4VP library
-    implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
-        exclude(group = "org.bouncycastle")
-    }
-
     // Identity android library
     api(libs.google.identity.android) {
         exclude(group = "org.bouncycastle")
     }
 
+    implementation(libs.appcompat)
+    // OpenID4VCI
+    implementation(libs.eudi.lib.jvm.openid4vci.kt)
+    implementation(libs.nimbus.oauth2.oidc.sdk)
+    // Siop-Openid4VP library
+    implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
+        exclude(group = "org.bouncycastle")
+    }
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
-
     // CBOR
     implementation(libs.cbor)
-
-    testImplementation(libs.testng)
-
+    implementation(libs.upokecenter.cbor)
+    implementation(libs.cose.java)
     // Ktor Android Engine
-    runtimeOnly(libs.ktor.client.android)
     implementation(libs.ktor.client.logging)
-
     // Bouncy Castle
     implementation(libs.bouncy.castle.prov)
     implementation(libs.bouncy.castle.pkix)
 
-    implementation(libs.upokecenter.cbor)
-    implementation(libs.cose.java)
+    runtimeOnly(libs.ktor.client.android)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.mockk)
     testImplementation(libs.json)
-    testImplementation(libs.junit.jupiter.params)
     testImplementation(libs.kotlin.coroutines.test)
     testImplementation(libs.biometric.ktx)
 
