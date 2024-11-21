@@ -24,11 +24,13 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
+import eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.document.*
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
+import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
@@ -107,6 +109,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
     fun createOpenId4VciManager(): OpenId4VciManager
 
     companion object {
+
+        private const val TAG = "EudiWallet"
 
         /**
          * Create an instance of [EudiWallet] with the given configuration and additional configuration
@@ -235,16 +239,31 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
         /**
          * Build the [EudiWallet] instance
          *
-         * @throws IllegalStateException if [setConfig] is not set
-         * @throws IllegalStateException if [EudiWalletConfig.documentsStorageDir] is not set and
-         * and the default [DocumentManager] is going to be used
+         * The [EudiWallet] instance will be created based on the configuration provided in the [Builder] class.
+         *
+         * The [EudiWallet] instance will be created with the following default implementations if not set:
+         * - [AndroidStorageEngine] for storing/retrieving documents
+         * - [AndroidKeystoreSecureArea] for managing documents' keys
+         * - [DocumentManagerImpl] for managing documents
+         * - [PresentationManagerImpl] for both proximity and remote presentation
+         * - [OpenId4VpManager] for remote presentation
+         * - [TransferManagerImpl] for proximity presentation
+         *
+         * **Note**: The [EudiWalletConfig.documentsStorageDir] is not set, the default storage directory
+         * will be used which is the application's no backup files directory.
+         *
+         * **Note**: The [EudiWalletConfig.userAuthenticationRequired] is set to true and the device is not secured with a PIN,
+         * pattern, or password, the configuration will be updated to set the user authentication required to false.
+         *
+         * **Note**: The [EudiWalletConfig.useStrongBoxForKeys] is set to true and the device does not support StrongBox,
+         * the configuration will be updated to set the use StrongBox for keys to false.
+         *
          * @return [EudiWallet]
          */
         fun build(): EudiWallet {
 
-            val loggerToUse = (logger ?: Logger(config)).also {
-                IdentityLogger.setLogPrinter(LogPrinterImpl(it))
-            }
+            ensureStrongBoxIsSupported()
+            ensureUserAuthIsSupported()
 
             val documentManagerToUse =
                 documentManager ?: getDefaultDocumentManager(storageEngine, secureAreas)
@@ -253,31 +272,18 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
 
             val transferManager = getTransferManager(documentManagerToUse, readerTrustStoreToUse)
 
-            val presentationManagerToUse = presentationManager ?: run {
-                val openId4vpManager = config.openId4VpConfig?.let { openId4VpConfig ->
-                    OpenId4VpManager(
-                        config = openId4VpConfig,
-                        requestProcessor = OpenId4VpRequestProcessor(
-                            documentManagerToUse,
-                            readerTrustStoreToUse
-                        ),
-                        logger = loggerToUse,
-                        ktorHttpClientFactory = ktorHttpClientFactory
-                    )
-                }
-                PresentationManagerImpl(
-                    transferManager = transferManager,
-                    openId4vpManager = openId4vpManager,
-                    nfcEngagementServiceClass = config.nfcEngagementServiceClass,
-                )
-            }
+            val presentationManagerToUse = presentationManager ?: getDefaultPresentationManager(
+                documentManager = documentManagerToUse,
+                transferManager = transferManager,
+                readerTrustStore = readerTrustStoreToUse
+            )
 
             val openId4vpManagerFactory = {
                 config.openId4VciConfig?.let { openId4VciConfig ->
                     OpenId4VciManager(context) {
                         documentManager(documentManagerToUse)
                         config(openId4VciConfig)
-                        logger(loggerToUse)
+                        logger(loggerObj)
                         ktorHttpClientFactory?.let { ktorHttpClientFactory(it) }
                     }
                 } ?: throw IllegalStateException("OpenId4Vp configuration is missing")
@@ -289,10 +295,45 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 documentManager = documentManagerToUse,
                 presentationManager = presentationManagerToUse,
                 transferManager = transferManager,
-                logger = loggerToUse,
+                logger = loggerObj,
                 readerTrustStoreConsumer = { presentationManagerToUse.readerTrustStore = it },
                 openId4VciManagerFactory = openId4vpManagerFactory,
             )
+        }
+
+        /**
+         * Get the default [PresentationManagerImpl] instance based on the [DocumentManager] and [TransferManager] implementations
+         * @param documentManager the document manager
+         * @param transferManager the transfer manager
+         * @param readerTrustStore the reader trust store
+         * @return the default [PresentationManagerImpl] instance
+         */
+        @JvmSynthetic
+        internal fun getDefaultPresentationManager(
+            documentManager: DocumentManager,
+            transferManager: TransferManager,
+            readerTrustStore: ReaderTrustStore?,
+        ): PresentationManagerImpl {
+            val openId4vpManager = config.openId4VpConfig?.let { openId4VpConfig ->
+                OpenId4VpManager(
+                    config = openId4VpConfig,
+                    requestProcessor = OpenId4VpRequestProcessor(documentManager, readerTrustStore),
+                    logger = loggerObj,
+                    ktorHttpClientFactory = ktorHttpClientFactory
+                )
+            }
+            return PresentationManagerImpl(
+                transferManager = transferManager,
+                openId4vpManager = openId4vpManager,
+                nfcEngagementServiceClass = config.nfcEngagementServiceClass,
+            )
+        }
+
+        @get:JvmSynthetic
+        internal val loggerObj: Logger by lazy {
+            (logger ?: Logger(config)).also {
+                IdentityLogger.setLogPrinter(LogPrinterImpl(it))
+            }
         }
 
         @get:JvmSynthetic
@@ -336,9 +377,9 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 return AndroidStorageEngine.Builder(
                     context = context,
                     storageFile = documentsStorageDirToUse
-                ).apply {
-                    setUseEncryption(config.encryptDocumentsInStorage)
-                }.build()
+                )
+                    .setUseEncryption(config.encryptDocumentsInStorage)
+                    .build()
             }
 
         /**
@@ -400,5 +441,44 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 )
             )
         )
+
+        /**
+         * Returns the capabilities of the Android Keystore Secure Area
+         */
+        @get:JvmSynthetic
+        internal val capabilities: AndroidKeystoreSecureArea.Capabilities by lazy {
+            AndroidKeystoreSecureArea.Capabilities(context)
+        }
+
+        /**
+         * Check if user authentication is required and update the configuration
+         * if the device is not secure and the configuration is set to require user authentication
+         */
+        @JvmSynthetic
+        internal fun ensureUserAuthIsSupported() {
+            if (capabilities.secureLockScreenSetup.not() && config.userAuthenticationRequired) {
+                loggerObj.i(
+                    TAG,
+                    """User authentication is required but the device is not secured with a PIN, pattern, or password.
+                    | Setting EudiWalletConfig.userAuthenticationRequired to false.""".trimMargin()
+                )
+                config.userAuthenticationRequired = false
+            }
+        }
+
+        /**
+         * Check if StrongBox is supported on the device and update the configuration
+         * if it is not supported and the configuration is set to use StrongBox
+         */
+        @JvmSynthetic
+        internal fun ensureStrongBoxIsSupported() {
+            if (capabilities.strongBoxSupported.not() && config.useStrongBoxForKeys) {
+                loggerObj.i(
+                    TAG, """StrongBox is not supported on this device.
+                    | Setting EudiWalletConfig.useStrongBoxForKeys to false.""".trimMargin()
+                )
+                config.useStrongBoxForKeys = false
+            }
+        }
     }
 }

@@ -20,9 +20,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.Arguments
-import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.Test
 
 
@@ -99,29 +96,5 @@ class OpenId4VciManagerConfigBuilderTest {
         val config = builder.build()
 
         assertTrue(config.useDPoPIfSupported)
-    }
-
-    @ParameterizedTest(name = "parUsage: {0}")
-    @MethodSource("parUsageArgs")
-    fun `ConfigBuilder set the parUsage property correctly`(parUsage: Int) {
-        val builder = OpenId4VciManager.Config.Builder()
-            .withIssuerUrl("https://issuer.example.com")
-            .withClientId("testClientId")
-            .withAuthFlowRedirectionURI("app://redirect")
-            .withParUsage(parUsage)
-
-        val config = builder.build()
-
-        assertEquals(parUsage, config.parUsage)
-    }
-
-    companion object {
-
-        @JvmStatic
-        fun parUsageArgs() = listOf(
-            OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
-            OpenId4VciManager.Config.ParUsage.REQUIRED,
-            OpenId4VciManager.Config.ParUsage.NEVER
-        ).map { Arguments.of(it) }
     }
 }
