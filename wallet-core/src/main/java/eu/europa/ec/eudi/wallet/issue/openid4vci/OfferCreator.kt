@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Issuer
@@ -39,15 +40,21 @@ internal class OfferCreator(
 
             val credentialConfigurationFilter = DocTypeFilter(docType)
 
-            val credentialConfigurationId =
+            val (credentialConfigurationId, credentialConfiguration) =
                 credentialIssuerMetadata.credentialConfigurationsSupported.filterValues { conf ->
                     credentialConfigurationFilter(conf)
-                }.keys.firstOrNull() ?: throw IllegalStateException("No suitable configuration found")
+                }.entries.firstOrNull() ?: throw IllegalStateException("No suitable credential configuration found")
+
+            val authorizationServer = authorizationServerMetadata
+                    .filter { it.scopes.contains(credentialConfiguration.scope) }
+                    .firstOrNull()
+                    ?: authorizationServerMetadata.first()
+                    throw IllegalStateException("No suitable authorization server found")
 
             val credentialOffer = CredentialOffer(
                 credentialIssuerIdentifier = credentialIssuerId,
                 credentialIssuerMetadata = credentialIssuerMetadata,
-                authorizationServerMetadata = authorizationServerMetadata.first(),
+                authorizationServerMetadata = authorizationServer,
                 credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
             )
             DefaultOffer(credentialOffer, credentialConfigurationFilter)
