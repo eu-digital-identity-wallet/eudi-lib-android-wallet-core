@@ -18,9 +18,12 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
+import eu.europa.ec.eudi.openid4vp.JwkSetSource
 import io.ktor.client.*
 import io.ktor.client.plugins.logging.*
+import java.net.URI
 
 /**
  * Configuration for the OpenId4Vp transfer.
@@ -186,6 +189,8 @@ data class PreregisteredVerifier(
     var clientId: ClientId,
     var legalName: LegalName,
     var verifierApi: VerifierApi,
+    var jwsAlgorithm: JWSAlgorithm = JWSAlgorithm.RS256,
+    var jwkSetSource: JwkSetSource = JwkSetSource.ByReference(URI("$verifierApi/wallet/public-keys.json"))
 )
 
 typealias ClientId = String
