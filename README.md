@@ -21,7 +21,7 @@ graph TD
     D[eudi-lib-jvm-openid4vci-kt] -->|OpenId4VciManager| A
     E[eudi-lib-jvm-siop-openid4vp-kt] -->|OpenId4VpManager| A
     F[com.android.identity] -->|SecureArea,StorageEngine| B
-    H[eudi-lib-jvm-presentation-exchange] --> E 
+    H[eudi-lib-jvm-presentation-exchange] --> E
     G[identity-credential-android] --> A
     B -->|DocumentManager| C
     F -->|SecureArea,StorageEngine| A
@@ -217,6 +217,9 @@ val wallet = EudiWallet(context, config) {
     withLogger(myLogger)
 }
 ```
+
+See the [CustomizeSecureArea.md](CustomizeSecureArea.md) for more information on how to use the
+wallet-core library with custom SecureArea implementations.
 
 ### Manage documents
 
@@ -470,6 +473,10 @@ __Important note__:
 - Currently, only mso_mdoc format is supported
 - Currently, only the ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
   publicKey.
+- See
+  the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-management-with-openid4vci)
+  for more information on how to use the wallet-core library and OpenId4VCI with custom SecureArea
+  implementations.
 
 The following example shows how to issue a document using OpenID4VCI:
 
@@ -1074,6 +1081,11 @@ val transferEventListener = TransferEvent.Listener { event ->
     }
 }
 ```
+
+See also,
+the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-management-with-presentation)
+for more information on how to use the wallet-core library for presentation with custom SecureArea
+implementations.
 
 ## How to contribute
 
