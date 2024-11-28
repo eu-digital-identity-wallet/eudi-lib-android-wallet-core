@@ -132,6 +132,10 @@ val onIssueEvent = OnIssueEvent { event ->
             val signingAlgorithm = event.signingAlgorithm
             val document = event.document
 
+            //
+            // --> show prompt if needed to unlock the key <--
+            //
+
             // create the keyUnlockData to unlock the key.
             val keyUnlockData = MyKeyUnlockData(
                 // set the extra information for the key unlock data
