@@ -58,7 +58,7 @@ The library provides the following functionality:
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
 
-## :heavy_exclamation_mark: Disclaimer
+## Disclaimer
 
 The released software is a initial development release version:
 
