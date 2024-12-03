@@ -17,7 +17,14 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.nimbusds.jose.JWSAlgorithm
-import eu.europa.ec.eudi.openid4vci.*
+import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
+import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
+import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
+import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
+import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.BeforeTest
@@ -65,6 +72,7 @@ class DefaultOfferTest {
     @Test
     fun `issuerName returns host of credentialIssuerIdentifier`() {
         val offer: Offer = DefaultOffer(mockCredentialOffer)
+
         assertEquals("test.host", offer.issuerName)
     }
 

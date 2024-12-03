@@ -64,6 +64,7 @@ internal fun DocumentManager.createDocument(
     return createDocument(
         format = documentFormat,
         createSettings = createDocumentSettings,
+        documentMetaData = offerOfferedDocument.metaData
     ).kotlinResult.map { it.apply { name = offerOfferedDocument.name } }
 }
 
