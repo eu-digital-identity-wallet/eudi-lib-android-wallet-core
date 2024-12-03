@@ -150,9 +150,7 @@ internal object OpenId4VpUtils {
                             verifier.clientId to PreregisteredClient(
                                 verifier.clientId,
                                 verifier.legalName,
-                                JWSAlgorithm.RS256 to ByReference(
-                                    URI("${verifier.verifierApi}/wallet/public-keys.json")
-                                )
+                                verifier.jwsAlgorithm to verifier.jwkSetSource
                             )
                         }
                     )
