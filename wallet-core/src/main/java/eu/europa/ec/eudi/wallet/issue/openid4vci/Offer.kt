@@ -15,7 +15,9 @@
  */
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.TxCodeSpec.InputMode.NUMERIC
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.TxCodeSpec.InputMode.TEXT
 
 /**
  * An offer of credentials to be issued.
@@ -52,6 +54,11 @@ interface Offer {
          * Destructures this item into a pair of name and document type.
          */
         operator fun component2() = docType
+
+        /**
+         * The document metadata
+         */
+        val metaData: DocumentMetaData?
 
     }
 
