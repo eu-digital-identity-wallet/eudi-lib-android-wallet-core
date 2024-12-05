@@ -18,16 +18,24 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import android.net.Uri
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
-import eu.europa.ec.eudi.wallet.document.*
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
+import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.logging.Logger
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 
 /**
@@ -64,6 +72,12 @@ internal class DefaultOpenId4VciManager(
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         IssuerAuthorization(context, logger)
+    }
+
+    override suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata> {
+        return CredentialIssuerId(config.issuerUrl).mapCatching {
+            CredentialIssuerMetadataResolver(httpClientFactory).resolve(it).getOrThrow()
+        }
     }
 
     override fun issueDocumentByDocType(
