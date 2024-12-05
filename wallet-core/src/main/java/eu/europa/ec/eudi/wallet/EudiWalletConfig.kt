@@ -21,6 +21,7 @@ import android.content.Context
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -313,8 +314,6 @@ class EudiWalletConfig {
      * using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings]
      * method.
      *
-     * If user authentication is required, the user authentication timeout must be greater than 0.
-     *
      * **Note**: when setting userAuthenticationRequired to true, device must be secured with a PIN, pattern
      * or password.
      *
@@ -326,8 +325,8 @@ class EudiWalletConfig {
      * - useStrongBoxForKeys: true if supported by the device
      *
      * @param userAuthenticationRequired whether user authentication is required
-     * @param userAuthenticationTimeout the user authentication timeout. If user authentication
-     * is required, this value must be greater than 0
+     * @param userAuthenticationTimeout  If 0, user authentication is required for every use of the
+     * key, otherwise it's required within the given amount of milliseconds
      * @param useStrongBoxForKeys whether to use the strong box for keys
      */
     fun configureDocumentKeyCreation(
@@ -340,7 +339,7 @@ class EudiWalletConfig {
         this.useStrongBoxForKeys = useStrongBoxForKeys
 
         if (this.userAuthenticationRequired) {
-            require(this.userAuthenticationTimeout > 0) { "User authentication timeout must be greater than 0" }
+            require(this.userAuthenticationTimeout >= 0) { "User authentication timeout must be equal or greater than 0" }
         }
     }
 
