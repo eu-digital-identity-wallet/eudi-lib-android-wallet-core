@@ -71,11 +71,12 @@ class TestDocumentMetaDataTransformations {
                     textColor = "#000000"
                 )
             ),
-            claims = mapOf(
-                DocumentMetaData.MsoMdocClaimName(
-                    name = "claim1",
-                    nameSpace = "namespace1"
-                ) to DocumentMetaData.Claim(
+            claims = listOf(
+                DocumentMetaData.Claim(
+                    name = DocumentMetaData.Claim.Name.MsoMdoc(
+                        name = "claim1",
+                        nameSpace = "namespace1"
+                    ),
                     mandatory = true,
                     valueType = "string",
                     display = listOf(
@@ -92,7 +93,7 @@ class TestDocumentMetaDataTransformations {
         val actualMetaData = inputCredential.extractDocumentMetaData()
 
         // Then
-        assertEquals(expected = expectedMetaData, actual = actualMetaData)
+        assertEquals(expectedMetaData, actualMetaData)
     }
 
     @Test
@@ -138,10 +139,11 @@ class TestDocumentMetaDataTransformations {
                     textColor = "#111111"
                 )
             ),
-            claims = mapOf(
-                DocumentMetaData.SdJwtVcsClaimName(
-                    name = "claim2"
-                ) to DocumentMetaData.Claim(
+            claims = listOf(
+                DocumentMetaData.Claim(
+                    name = DocumentMetaData.Claim.Name.SdJwtVc(
+                        name = "claim2"
+                    ),
                     mandatory = false,
                     valueType = "integer",
                     display = listOf(
@@ -161,4 +163,29 @@ class TestDocumentMetaDataTransformations {
         assertEquals(expectedMetaData, actualMetaData)
     }
 
+
+    @Test
+    fun `extractDocumentMetaData handles null or empty claims`() {
+        // Given
+        val credentialWithNoClaims = SdJwtVcCredential(
+            scope = "exampleScope",
+            cryptographicBindingMethodsSupported = listOf(),
+            credentialSigningAlgorithmsSupported = listOf("RS256"),
+            proofTypesSupported = ProofTypesSupported.Empty,
+            display = emptyList(),
+            type = "exampleType",
+            claims = null
+        )
+
+        val expectedMetaData = DocumentMetaData(
+            display = emptyList(),
+            claims = null
+        )
+
+        // When
+        val actualMetaData = credentialWithNoClaims.extractDocumentMetaData()
+
+        // Then
+        assertEquals(expectedMetaData, actualMetaData)
+    }
 }
