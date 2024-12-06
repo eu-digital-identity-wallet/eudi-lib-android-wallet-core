@@ -20,7 +20,6 @@ import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.logging.Logger
-import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.CancellationException
@@ -32,40 +31,34 @@ internal class DocumentCreator(
     val logger: Logger? = null,
 ) {
 
-    val continuations =
-        mutableMapOf<Offer.OfferedDocument, CancellableContinuation<CreateDocumentSettings>>()
-
     suspend fun createDocuments(offer: Offer): Map<UnsignedDocument, Offer.OfferedDocument> =
         offer.offeredDocuments.associateBy { createDocument(it) }
 
     suspend fun createDocument(offeredDocument: Offer.OfferedDocument): UnsignedDocument {
-        listener.onResult(IssueEvent.DocumentRequiresCreateSettings(
-            offeredDocument = offeredDocument,
-            resume = { createSettings ->
-                runBlocking {
-                    continuations[offeredDocument]!!.resume(createSettings)
-                }
-            },
-            cancel = { reason ->
-                runBlocking {
-                    continuations[offeredDocument]!!.cancel(reason?.let {
-                        CancellationException(it)
-                    })
-                }
-            }
-        ))
-        val createDocumentSettings = suspendCancellableCoroutine<CreateDocumentSettings> {
-
-            it.invokeOnCancellation {
-                listener(
-                    IssueEvent.Failure(
-                        RuntimeException("Document creation was cancelled")
+        val createDocumentSettings =
+            suspendCancellableCoroutine<CreateDocumentSettings> { continuation ->
+                continuation.invokeOnCancellation {
+                    listener(
+                        IssueEvent.Failure(
+                            RuntimeException("Document creation was cancelled")
+                        )
                     )
-                )
-            }
-            continuations[offeredDocument] = it
+                }
 
-        }
+                listener.onResult(IssueEvent.DocumentRequiresCreateSettings(
+                    offeredDocument = offeredDocument,
+                    resume = { createSettings ->
+                        runBlocking {
+                            continuation.resume(createSettings)
+                        }
+                    },
+                    cancel = { reason ->
+                        runBlocking {
+                            continuation.cancel(reason?.let { CancellationException(it) })
+                        }
+                    }
+                ))
+            }
         return documentManager.createDocument(offeredDocument, createDocumentSettings).getOrThrow()
     }
 }
