@@ -17,8 +17,6 @@ values are used to create the eu.europa.ec.eudi.wallet.document.CreateDocumentSe
 using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings](../../eu.europa.ec.eudi.wallet.document/-document-extensions/get-default-create-document-settings.md)
 method.
 
-If user authentication is required, the user authentication timeout must be greater than 0.
-
 **Note**: when setting userAuthenticationRequired to true, device must be secured with a PIN,
 pattern or password.
 
@@ -37,8 +35,8 @@ useStrongBoxForKeys: true if supported by the device
 
 androidJvm
 
-|                            |                                                                                                        |
-|----------------------------|--------------------------------------------------------------------------------------------------------|
-| userAuthenticationRequired | whether user authentication is required                                                                |
-| userAuthenticationTimeout  | the user authentication timeout. If user authentication is required, this value must be greater than 0 |
-| useStrongBoxForKeys        | whether to use the strong box for keys                                                                 |
+|                            |                                                                                                                                 |
+|----------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| userAuthenticationRequired | whether user authentication is required                                                                                         |
+| userAuthenticationTimeout  | If 0, user authentication is required for every use of the key, otherwise it's required within the given amount of milliseconds |
+| useStrongBoxForKeys        | whether to use the strong box for keys                                                                                          |
