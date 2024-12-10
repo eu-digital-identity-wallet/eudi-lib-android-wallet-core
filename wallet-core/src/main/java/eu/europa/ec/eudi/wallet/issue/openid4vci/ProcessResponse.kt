@@ -45,7 +45,6 @@ internal class ProcessResponse(
     val issuedDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
 ) : Closeable {
-    private val continuations = mutableMapOf<DocumentId, CancellableContinuation<KeyUnlockData>>()
 
     suspend fun process(response: SubmitRequest.Response) {
         response.forEach { (unsignedDocument, result) ->
@@ -62,15 +61,16 @@ internal class ProcessResponse(
         } catch (e: Throwable) {
             when (e) {
                 is UserAuthRequiredException -> {
-                    listener(
-                        e.toIssueEvent(
-                            unsignedDocument = unsignedDocument,
-                            signingAlgorithm = e.signingAlgorithm
+
+                    val keyUnlockData = suspendCancellableCoroutine { cont ->
+                        cont.invokeOnCancellation { listener(IssueEvent.Failure(e)) }
+                        listener(
+                            e.toIssueEvent(
+                                unsignedDocument = unsignedDocument,
+                                signingAlgorithm = e.signingAlgorithm,
+                                continuation = cont
+                            )
                         )
-                    )
-                    val keyUnlockData = suspendCancellableCoroutine {
-                        it.invokeOnCancellation { listener(IssueEvent.Failure(e)) }
-                        continuations[unsignedDocument.id] = it
                     }
                     processSubmittedRequest(unsignedDocument, e.resume(keyUnlockData))
                 }
@@ -81,7 +81,6 @@ internal class ProcessResponse(
     }
 
     override fun close() {
-        continuations.values.forEach { it.cancel() }
     }
 
     fun processSubmittedRequest(unsignedDocument: UnsignedDocument, outcome: SubmissionOutcome) {
@@ -123,6 +122,7 @@ internal class ProcessResponse(
     }
 
     private fun UserAuthRequiredException.toIssueEvent(
+        continuation: CancellableContinuation<KeyUnlockData>,
         unsignedDocument: UnsignedDocument,
         signingAlgorithm: com.android.identity.crypto.Algorithm,
     ): IssueEvent.DocumentRequiresUserAuth {
@@ -131,14 +131,14 @@ internal class ProcessResponse(
             signingAlgorithm = signingAlgorithm,
             resume = { keyUnlockData ->
                 runBlocking {
-                    continuations[unsignedDocument.id]!!.resume(
+                    continuation.resume(
                         keyUnlockData
                     )
                 }
             },
             cancel = {
                 runBlocking {
-                    continuations[unsignedDocument.id]!!.cancel(
+                    continuation.cancel(
                         IllegalStateException("Canceled")
                     )
                 }
