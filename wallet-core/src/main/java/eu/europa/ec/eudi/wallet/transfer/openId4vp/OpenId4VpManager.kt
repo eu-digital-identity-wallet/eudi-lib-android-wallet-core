@@ -37,6 +37,7 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.util.CBOR.cborPrettyPrint
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -70,6 +71,10 @@ class OpenId4VpManager(
         )
     }
 
+    private val exceptionHandler = CoroutineExceptionHandler { _, e ->
+        transferEventListeners.onTransferEvent(TransferEvent.Error(e))
+    }
+
     private val transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
 
     override fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
@@ -85,7 +90,7 @@ class OpenId4VpManager(
     }
 
     fun resolveRequestUri(uri: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch(exceptionHandler) {
             try {
                 require(config.schemes.contains(Uri.parse(uri).scheme)) {
                     "Not supported scheme for OpenId4Vp"
@@ -154,7 +159,7 @@ class OpenId4VpManager(
                 }
             }
 
-            CoroutineScope(Dispatchers.IO).launch {
+            CoroutineScope(Dispatchers.IO).launch(exceptionHandler) {
                 when (val outcome = siopOpenId4Vp.dispatch(
                     request = response.resolvedRequestObject,
                     consensus = response.consensus,
@@ -166,10 +171,12 @@ class OpenId4VpManager(
 
                     is DispatchOutcome.VerifierResponse.Accepted -> {
                         logger?.d(TAG, "Verifier accepted the response")
-                        transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
-                        outcome.redirectURI?.let { uri ->
-                            logger?.d(TAG, "Redirecting to: $uri")
-                            transferEventListeners.onTransferEvent(TransferEvent.Redirect(uri))
+                        when (val uri = outcome.redirectURI) {
+                            null -> transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
+                            else -> {
+                                logger?.d(TAG, "Redirecting to: $uri")
+                                transferEventListeners.onTransferEvent(TransferEvent.Redirect(uri))
+                            }
                         }
                     }
 
