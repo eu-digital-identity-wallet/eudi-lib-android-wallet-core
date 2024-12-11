@@ -42,7 +42,7 @@ class OpenId4VpRequestProcessor(
     }
 
     internal val openid4VpX509CertificateTrustStore: Openid4VpX509CertificateTrust
-        get() = Openid4VpX509CertificateTrust(readerTrustStore)
+            by lazy { Openid4VpX509CertificateTrust(readerTrustStore) }
 
     override fun process(request: Request): RequestProcessor.ProcessedRequest {
         require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
