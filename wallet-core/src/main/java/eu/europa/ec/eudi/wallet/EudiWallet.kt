@@ -278,7 +278,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 readerTrustStore = readerTrustStoreToUse
             )
 
-            val openId4vpManagerFactory = {
+            val openId4VciManagerFactory = {
                 config.openId4VciConfig?.let { openId4VciConfig ->
                     OpenId4VciManager(context) {
                         documentManager(documentManagerToUse)
@@ -297,7 +297,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 transferManager = transferManager,
                 logger = loggerObj,
                 readerTrustStoreConsumer = { presentationManagerToUse.readerTrustStore = it },
-                openId4VciManagerFactory = openId4vpManagerFactory,
+                openId4VciManagerFactory = openId4VciManagerFactory,
             )
         }
 

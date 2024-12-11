@@ -822,6 +822,9 @@ wallet.addTransferEventListener { event ->
 
         is TransferEvent.Redirect -> {
             // A redirect is needed. Used mainly for the OpenId4VP implementation
+            // This is triggered when Relaying Party (RP) has accepted the response and
+            // the RP is redirecting the user to the given redirect URI
+            // If this event is triggered, then the TransferEvent.ResponseSent event will not be triggered
             val redirectUri = event.redirectUri // the redirect URI
         }
 
