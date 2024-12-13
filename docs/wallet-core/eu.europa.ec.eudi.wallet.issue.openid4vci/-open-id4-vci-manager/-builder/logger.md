@@ -3,8 +3,7 @@
 # logger
 
 [androidJvm]\
-fun [logger](logger.md)(
-logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): [OpenId4VciManager.Builder](index.md)
+fun [logger](logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): [OpenId4VciManager.Builder](index.md)
 
 Set the logger to use
 
@@ -16,8 +15,8 @@ this builder
 
 androidJvm
 
-|        |            |
-|--------|------------|
+| | |
+|---|---|
 | logger | the logger |
 
 [androidJvm]\

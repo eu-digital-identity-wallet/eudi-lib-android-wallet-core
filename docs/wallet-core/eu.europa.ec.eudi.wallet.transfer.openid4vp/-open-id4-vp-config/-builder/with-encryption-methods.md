@@ -16,5 +16,4 @@ androidJvm
 | issuerUrl | the issuer url |
 
 [androidJvm]\
-fun [withEncryptionMethods](with-encryption-methods.md)(vararg
-encryptionMethods: [EncryptionMethod](../../-encryption-method/index.md)): [OpenId4VpConfig.Builder](index.md)
+fun [withEncryptionMethods](with-encryption-methods.md)(vararg encryptionMethods: [EncryptionMethod](../../-encryption-method/index.md)): [OpenId4VpConfig.Builder](index.md)

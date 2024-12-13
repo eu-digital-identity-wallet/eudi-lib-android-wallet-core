@@ -7,6 +7,6 @@ object [Companion](index.md)
 
 ## Functions
 
-| Name                | Summary                                                                                                                                                                                                                                                                                     |
-|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [invoke](invoke.md) | [androidJvm]<br>operator fun [invoke](invoke.md)(block: [OpenId4VciManager.Config.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [OpenId4VciManager.Config](../index.md)<br>Create a [Config](../index.md) instance |

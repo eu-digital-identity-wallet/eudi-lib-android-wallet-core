@@ -30,6 +30,9 @@ import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.Preregistered
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.X509SanDns
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.X509SanUri
+import eu.europa.ec.eudi.openid4vp.VPConfiguration
+import eu.europa.ec.eudi.openid4vp.VpFormat
+import eu.europa.ec.eudi.openid4vp.VpFormats
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import java.net.URI
@@ -135,6 +138,7 @@ internal object OpenId4VpUtils {
     @JvmStatic
     internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509CertificateTrust): SiopOpenId4VPConfig {
         return SiopOpenId4VPConfig(
+            vpConfiguration = VPConfiguration(vpFormats = VpFormats(VpFormat.MsoMdoc)),
             jarmConfiguration = JarmConfiguration.Encryption(
                 supportedAlgorithms = encryptionAlgorithms.map {
                     JWEAlgorithm.parse(it.name)

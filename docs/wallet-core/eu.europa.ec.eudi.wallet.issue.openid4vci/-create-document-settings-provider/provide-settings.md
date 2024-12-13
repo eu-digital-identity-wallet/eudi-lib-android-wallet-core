@@ -3,6 +3,4 @@
 # provideSettings
 
 [androidJvm]\
-abstract fun [provideSettings](provide-settings.md)(
-offeredDocument: [Offer.OfferedDocument](../-offer/-offered-document/index.md)):
-CreateDocumentSettings
+abstract fun [provideSettings](provide-settings.md)(offeredDocument: [Offer.OfferedDocument](../-offer/-offered-document/index.md)): CreateDocumentSettings

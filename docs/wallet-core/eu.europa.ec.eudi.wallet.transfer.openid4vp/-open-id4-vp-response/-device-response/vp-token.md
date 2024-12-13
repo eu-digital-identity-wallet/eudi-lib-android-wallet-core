@@ -3,4 +3,4 @@
 # vpToken
 
 [androidJvm]\
-val [vpToken](vp-token.md): VpToken.MsoMdoc
+val [vpToken](vp-token.md): VpToken

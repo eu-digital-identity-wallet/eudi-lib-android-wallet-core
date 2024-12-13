@@ -3,5 +3,4 @@
 # issuerName
 
 [androidJvm]\
-abstract
-val [issuerName](issuer-name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+abstract val [issuerName](issuer-name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

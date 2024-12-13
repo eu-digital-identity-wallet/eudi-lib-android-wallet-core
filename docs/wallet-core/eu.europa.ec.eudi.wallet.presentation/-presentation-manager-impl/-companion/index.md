@@ -7,6 +7,6 @@ object [Companion](index.md)
 
 ## Properties
 
-| Name                                    | Summary                                                                                                                                             |
-|-----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [MDOC_SCHEME](-m-d-o-c_-s-c-h-e-m-e.md) | [androidJvm]<br>const val [MDOC_SCHEME](-m-d-o-c_-s-c-h-e-m-e.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |

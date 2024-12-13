@@ -3,6 +3,4 @@
 # DeviceResponse
 
 [androidJvm]\
-constructor(resolvedRequestObject: ResolvedRequestObject, consensus: Consensus.PositiveConsensus,
-vpToken: VpToken.MsoMdoc, responseBytes: DeviceResponseBytes,
-msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+constructor(resolvedRequestObject: ResolvedRequestObject, consensus: Consensus.PositiveConsensus, vpToken: VpToken, responseBytes: DeviceResponseBytes, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))

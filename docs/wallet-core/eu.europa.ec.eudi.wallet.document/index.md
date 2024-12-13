@@ -4,6 +4,6 @@
 
 ## Types
 
-| Name                                                | Summary                                                                    |
-|-----------------------------------------------------|----------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [DocumentExtensions](-document-extensions/index.md) | [androidJvm]<br>object [DocumentExtensions](-document-extensions/index.md) |

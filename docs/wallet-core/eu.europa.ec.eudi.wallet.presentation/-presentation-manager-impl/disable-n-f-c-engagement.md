@@ -3,12 +3,9 @@
 # disableNFCEngagement
 
 [androidJvm]\
-open override fun [disableNFCEngagement](disable-n-f-c-engagement.md)(
-activity: [ComponentActivity](https://developer.android.com/reference/kotlin/androidx/activity/ComponentActivity.html)): [PresentationManagerImpl](index.md)
+open override fun [disableNFCEngagement](disable-n-f-c-engagement.md)(activity: [ComponentActivity](https://developer.android.com/reference/kotlin/androidx/activity/ComponentActivity.html)): [PresentationManagerImpl](index.md)
 
-Disable the NFC device engagement for the wallet. This method should be called in the
-activity's [ComponentActivity.onPause](https://developer.android.com/reference/kotlin/androidx/activity/ComponentActivity.html#onpause)
-method.
+Disable the NFC device engagement for the wallet. This method should be called in the activity's [ComponentActivity.onPause](https://developer.android.com/reference/kotlin/androidx/activity/ComponentActivity.html#onpause) method.
 
 #### Return
 
@@ -18,6 +15,6 @@ this EudiWallet instance
 
 androidJvm
 
-|          |              |
-|----------|--------------|
+| | |
+|---|---|
 | activity | the activity |

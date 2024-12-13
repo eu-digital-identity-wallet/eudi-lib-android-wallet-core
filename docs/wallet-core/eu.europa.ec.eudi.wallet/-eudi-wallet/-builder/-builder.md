@@ -3,15 +3,13 @@
 # Builder
 
 [androidJvm]\
-constructor(
-context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html),
-config: [EudiWalletConfig](../../-eudi-wallet-config/index.md))
+constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), config: [EudiWalletConfig](../../-eudi-wallet-config/index.md))
 
 #### Parameters
 
 androidJvm
 
-|         |                          |
-|---------|--------------------------|
-| context | application context      |
-| config  | the configuration object |
+| | |
+|---|---|
+| context | application context |
+| config | the configuration object |

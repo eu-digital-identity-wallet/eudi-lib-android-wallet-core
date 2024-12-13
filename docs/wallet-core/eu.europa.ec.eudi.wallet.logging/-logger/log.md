@@ -11,12 +11,12 @@ Log a record
 
 androidJvm
 
-|        |                   |
-|--------|-------------------|
+| | |
+|---|---|
 | record | the record to log |
 
 #### See also
 
-|                                   |
-|-----------------------------------|
+| |
+|---|
 | [Logger.Record](-record/index.md) |

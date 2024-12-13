@@ -3,13 +3,9 @@
 # withReaderTrustStore
 
 [androidJvm]\
-fun [withReaderTrustStore](with-reader-trust-store.md)(readerTrustStore:
-ReaderTrustStore): [EudiWallet.Builder](index.md)
+fun [withReaderTrustStore](with-reader-trust-store.md)(readerTrustStore: ReaderTrustStore): [EudiWallet.Builder](index.md)
 
-Configure with the given ReaderTrustStore to use for performing reader authentication. If not set,
-the default reader trust store will be used which is initialized with the certificates provided in
-the [EudiWalletConfig.configureReaderTrustStore](../../-eudi-wallet-config/configure-reader-trust-store.md)
-methods.
+Configure with the given ReaderTrustStore to use for performing reader authentication. If not set, the default reader trust store will be used which is initialized with the certificates provided in the [EudiWalletConfig.configureReaderTrustStore](../../-eudi-wallet-config/configure-reader-trust-store.md) methods.
 
 #### Return
 
@@ -19,6 +15,6 @@ this [Builder](index.md) instance
 
 androidJvm
 
-|                  |                        |
-|------------------|------------------------|
+| | |
+|---|---|
 | readerTrustStore | the reader trust store |

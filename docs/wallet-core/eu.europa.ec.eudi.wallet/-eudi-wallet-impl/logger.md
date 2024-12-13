@@ -3,5 +3,4 @@
 # logger
 
 [androidJvm]\
-open override
-val [logger](logger.md): [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)
+open override val [logger](logger.md): [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)

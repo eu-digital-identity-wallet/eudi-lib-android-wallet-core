@@ -3,6 +3,4 @@
 # AccessTokenTO
 
 [androidJvm]\
-constructor(type: [AccessTokenTypeTO](../-access-token-type-t-o/index.md),
-accessToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-expiresIn: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)? = null)
+constructor(type: [AccessTokenTypeTO](../-access-token-type-t-o/index.md), accessToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), expiresIn: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)? = null)

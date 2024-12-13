@@ -15,8 +15,8 @@ this builder
 
 androidJvm
 
-|        |            |
-|--------|------------|
+| | |
+|---|---|
 | config | the config |
 
 [androidJvm]\

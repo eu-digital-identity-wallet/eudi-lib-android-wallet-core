@@ -3,8 +3,7 @@
 # withParUsage
 
 [androidJvm]\
-fun [withParUsage](with-par-usage.md)(
-parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)): [OpenId4VciManager.Config.Builder](index.md)
+fun [withParUsage](with-par-usage.md)(parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)): [OpenId4VciManager.Config.Builder](index.md)
 
 Set the PAR usage
 
@@ -16,6 +15,6 @@ this builder
 
 androidJvm
 
-|          |               |
-|----------|---------------|
+| | |
+|---|---|
 | parUsage | the PAR usage |

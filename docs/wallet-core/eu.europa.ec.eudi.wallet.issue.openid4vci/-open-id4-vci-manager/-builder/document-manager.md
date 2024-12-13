@@ -15,8 +15,8 @@ this builder
 
 androidJvm
 
-|                 |                      |
-|-----------------|----------------------|
+| | |
+|---|---|
 | documentManager | the document manager |
 
 [androidJvm]\

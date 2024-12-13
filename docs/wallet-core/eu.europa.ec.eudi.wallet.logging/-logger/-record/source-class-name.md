@@ -3,5 +3,4 @@
 # sourceClassName
 
 [androidJvm]\
-val [sourceClassName](source-class-name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? =
-null
+val [sourceClassName](source-class-name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null

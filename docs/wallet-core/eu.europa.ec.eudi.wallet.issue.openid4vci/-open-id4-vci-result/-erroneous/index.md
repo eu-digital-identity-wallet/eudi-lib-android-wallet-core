@@ -6,15 +6,15 @@ interface [Erroneous](index.md)
 
 #### Inheritors
 
-|                                                                          |
-|--------------------------------------------------------------------------|
+| |
+|---|
 | [DocumentFailed](../../-deferred-issue-result/-document-failed/index.md) |
-| [Failure](../../-issue-event/-failure/index.md)                          |
-| [DocumentFailed](../../-issue-event/-document-failed/index.md)           |
-| [Failure](../../-offer-result/-failure/index.md)                         |
+| [Failure](../../-issue-event/-failure/index.md) |
+| [DocumentFailed](../../-issue-event/-document-failed/index.md) |
+| [Failure](../../-offer-result/-failure/index.md) |
 
 ## Properties
 
-| Name              | Summary                                                                                                                                |
-|-------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [cause](cause.md) | [androidJvm]<br>abstract val [cause](cause.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html) |

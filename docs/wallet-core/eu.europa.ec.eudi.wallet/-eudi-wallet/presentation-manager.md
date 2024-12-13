@@ -3,5 +3,4 @@
 # presentationManager
 
 [androidJvm]\
-abstract
-val [presentationManager](presentation-manager.md): [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md)
+abstract val [presentationManager](presentation-manager.md): [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md)

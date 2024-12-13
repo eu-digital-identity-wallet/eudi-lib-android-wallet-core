@@ -7,12 +7,12 @@ data class [OpenId4VpRequest](index.md)(val resolvedRequestObject: ResolvedReque
 
 ## Constructors
 
-|                                             |                                                                           |
-|---------------------------------------------|---------------------------------------------------------------------------|
+| | |
+|---|---|
 | [OpenId4VpRequest](-open-id4-vp-request.md) | [androidJvm]<br>constructor(resolvedRequestObject: ResolvedRequestObject) |
 
 ## Properties
 
-| Name                                                | Summary                                                                                        |
-|-----------------------------------------------------|------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [resolvedRequestObject](resolved-request-object.md) | [androidJvm]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject |

@@ -3,5 +3,4 @@
 # nfcEngagementServiceClass
 
 [androidJvm]\
-var [nfcEngagementServiceClass](nfc-engagement-service-class.md): [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)
-&lt;out NfcEngagementService&gt;?
+var [nfcEngagementServiceClass](nfc-engagement-service-class.md): [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;?

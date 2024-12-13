@@ -49,9 +49,9 @@ class ProcessedOpenId4VpRequest(
                 signatureAlgorithm
             ).getOrThrow() as DeviceResponse
             val vpToken = VpToken.MsoMdoc(
-                value = Base64.getUrlEncoder().withoutPadding()
-                    .encodeToString(deviceResponse.deviceResponseBytes),
-                apu = Base64URL.encode(msoMdocNonce)
+                Base64URL.encode(msoMdocNonce),
+                Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(deviceResponse.deviceResponseBytes)
             )
 
             val presentationDefinition = resolvedRequestObject.presentationDefinition

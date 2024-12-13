@@ -7,6 +7,6 @@ object [Companion](index.md)
 
 ## Functions
 
-| Name            | Summary                                                                                     |
-|-----------------|---------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [from](from.md) | [androidJvm]<br>fun [from](from.md)(accessToken: AccessToken): [AccessTokenTO](../index.md) |

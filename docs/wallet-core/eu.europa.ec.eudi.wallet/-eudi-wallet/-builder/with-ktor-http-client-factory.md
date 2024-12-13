@@ -3,14 +3,9 @@
 # withKtorHttpClientFactory
 
 [androidJvm]\
-fun [withKtorHttpClientFactory](with-ktor-http-client-factory.md)(ktorHttpClientFactory: () -&gt;
-HttpClient): [EudiWallet.Builder](index.md)
+fun [withKtorHttpClientFactory](with-ktor-http-client-factory.md)(ktorHttpClientFactory: () -&gt; HttpClient): [EudiWallet.Builder](index.md)
 
-Configure with the given Ktor HTTP client factory to use for making HTTP requests. Ktor HTTP client
-is used by
-the [OpenId4VpManager](../../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)
-and [OpenId4VciManager](../../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/index.md)
-for making HTTP requests.
+Configure with the given Ktor HTTP client factory to use for making HTTP requests. Ktor HTTP client is used by the [OpenId4VpManager](../../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md) and [OpenId4VciManager](../../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/index.md) for making HTTP requests.
 
 If not set, the default Ktor HTTP client factory will be used which is initialized with the default
 
@@ -22,6 +17,6 @@ this [Builder](index.md) instance
 
 androidJvm
 
-|                       |                              |
-|-----------------------|------------------------------|
+| | |
+|---|---|
 | ktorHttpClientFactory | the Ktor HTTP client factory |
