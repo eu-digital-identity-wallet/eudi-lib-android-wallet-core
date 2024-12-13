@@ -24,8 +24,9 @@ import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
@@ -89,11 +90,22 @@ internal class ProcessResponse(
                 outcome.credentials.first().credential) {
                 is Credential.Json -> TODO("Not supported yet")
                 is Credential.Str -> try {
-                    val cborBytes = Base64.getUrlDecoder().decode(credential.value)
-                    logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(cborBytes)}")
-                    documentManager.storeIssuedDocument(unsignedDocument, cborBytes)
+                    val issuerData = when (unsignedDocument.format) {
+                        is MsoMdocFormat -> Base64.getUrlDecoder().decode(credential.value)
+                            .also {
+                                logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(it)}")
+                            }
+
+                        is SdJwtVcFormat -> credential.value.also {
+                            logger?.d(TAG, "SD-JWT-VC: $it")
+                        }.toByteArray(charset = Charsets.US_ASCII)
+                    }
+
+                    documentManager.storeIssuedDocument(unsignedDocument, issuerData)
+                        .kotlinResult
+                        .onSuccess { issuedDocumentIds.add(unsignedDocument.id) }
                         .notifyListener(unsignedDocument)
-                    issuedDocumentIds.add(unsignedDocument.id)
+
                 } catch (e: Throwable) {
                     documentManager.deleteDocumentById(unsignedDocument.id)
                     listener(failure(e, unsignedDocument))
@@ -115,8 +127,11 @@ internal class ProcessResponse(
                 documentManager.storeDeferredDocument(
                     unsignedDocument = unsignedDocument,
                     relatedData = contextToStore.toByteArray()
-                ).notifyListener(unsignedDocument)
-                issuedDocumentIds.add(unsignedDocument.id)
+                )
+                    .kotlinResult
+                    .onSuccess { issuedDocumentIds.add(unsignedDocument.id) }
+                    .notifyListener(unsignedDocument)
+
             }
         }
     }
@@ -146,9 +161,9 @@ internal class ProcessResponse(
         )
     }
 
-    private fun Outcome<Document>.notifyListener(unsignedDocument: UnsignedDocument) =
+    private fun Result<Document>.notifyListener(unsignedDocument: UnsignedDocument) =
 
-        this.kotlinResult.onSuccess { document ->
+        onSuccess { document ->
             when (document) {
                 is DeferredDocument -> listener(IssueEvent.DocumentDeferred(document))
                 is IssuedDocument -> listener(IssueEvent.DocumentIssued(document))

@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
@@ -58,13 +57,15 @@ internal fun EcSignature.toJoseEncoded(jwsAlgorithm: JWSAlgorithm): ByteArray {
 internal fun DocumentManager.createDocument(
     offerOfferedDocument: Offer.OfferedDocument,
     createDocumentSettings: CreateDocumentSettings,
-): Result<UnsignedDocument> =
-    createDocument(
-        format = MsoMdocFormat(
-            docType = offerOfferedDocument.docType
-        ),
+): Result<UnsignedDocument> {
+    val documentFormat = (offerOfferedDocument as DefaultOfferedDocument).documentFormat
+        ?: return Result.failure(IllegalArgumentException("Unsupported document format"))
+
+    return createDocument(
+        format = documentFormat,
         createSettings = createDocumentSettings,
     ).kotlinResult.map { it.apply { name = offerOfferedDocument.name } }
+}
 
 /**
  * Wraps the given [OpenId4VciManager.OnResult] with the given [Executor].
