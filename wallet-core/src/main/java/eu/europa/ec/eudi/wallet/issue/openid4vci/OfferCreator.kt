@@ -50,7 +50,7 @@ internal class OfferCreator(
                 authorizationServerMetadata = authorizationServerMetadata.first(),
                 credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
             )
-            DefaultOffer(credentialOffer, credentialConfigurationFilter)
+            DefaultOffer(credentialOffer/*, credentialConfigurationFilter*/)
         }
     }
 }
