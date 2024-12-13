@@ -9,12 +9,12 @@ The offer was successful.
 
 ## Constructors
 
-|                        |                                                                    |
-|------------------------|--------------------------------------------------------------------|
+| | |
+|---|---|
 | [Success](-success.md) | [androidJvm]<br>constructor(offer: [Offer](../../-offer/index.md)) |
 
 ## Properties
 
-| Name              | Summary                                                                            |
-|-------------------|------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [offer](offer.md) | [androidJvm]<br>val [offer](offer.md): [Offer](../../-offer/index.md)<br>the offer |

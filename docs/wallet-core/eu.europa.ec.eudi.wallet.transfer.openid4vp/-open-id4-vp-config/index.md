@@ -38,8 +38,8 @@ val config = OpenId4VpConfig.Builder()
 
 ## Types
 
-| Name                         | Summary                                                                             |
-|------------------------------|-------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for OpenId4VciConfig. |
 
 ## Properties

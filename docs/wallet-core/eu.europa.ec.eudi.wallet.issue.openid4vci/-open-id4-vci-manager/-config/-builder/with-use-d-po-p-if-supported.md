@@ -3,8 +3,7 @@
 # withUseDPoPIfSupported
 
 [androidJvm]\
-fun [withUseDPoPIfSupported](with-use-d-po-p-if-supported.md)(
-useDPoPIfSupported: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [OpenId4VciManager.Config.Builder](index.md)
+fun [withUseDPoPIfSupported](with-use-d-po-p-if-supported.md)(useDPoPIfSupported: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)): [OpenId4VciManager.Config.Builder](index.md)
 
 Set the flag to enable the use of DPoP JWT
 
@@ -16,6 +15,6 @@ this builder
 
 androidJvm
 
-|                    |          |
-|--------------------|----------|
+| | |
+|---|---|
 | useDPoPIfSupported | the flag |

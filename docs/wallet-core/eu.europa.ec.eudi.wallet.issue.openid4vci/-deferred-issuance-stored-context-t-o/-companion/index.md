@@ -7,7 +7,7 @@ object [Companion](index.md)
 
 ## Functions
 
-| Name                         | Summary                                                                                                                                                                                                                                                                                                                            |
-|------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [from](from.md)              | [androidJvm]<br>fun [from](from.md)(dCtx: DeferredIssuanceContext, dPoPSignerKid: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?, clientAttestationPopKeyId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?): [DeferredIssuanceStoredContextTO](../index.md) |
-| [ifAttested](if-attested.md) | [androidJvm]<br>fun &lt;[A](if-attested.md)&gt; Client.[ifAttested](if-attested.md)(getter: Client.Attested.() -&gt; [A](if-attested.md)?): [A](if-attested.md)?                                                                                                                                                                   |
+| Name | Summary |
+|---|---|
+| [from](from.md) | [androidJvm]<br>fun [from](from.md)(dCtx: DeferredIssuanceContext, dPoPSignerKid: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?, clientAttestationPopKeyId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?): [DeferredIssuanceStoredContextTO](../index.md) |
+| [ifAttested](if-attested.md) | [androidJvm]<br>fun &lt;[A](if-attested.md)&gt; Client.[ifAttested](if-attested.md)(getter: Client.Attested.() -&gt; [A](if-attested.md)?): [A](if-attested.md)? |

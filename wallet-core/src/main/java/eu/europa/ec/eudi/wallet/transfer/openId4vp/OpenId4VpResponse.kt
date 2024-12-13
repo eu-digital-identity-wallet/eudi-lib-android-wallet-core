@@ -29,8 +29,32 @@ sealed interface OpenId4VpResponse : Response {
     data class DeviceResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
         override val consensus: Consensus.PositiveConsensus,
-        val vpToken: VpToken.MsoMdoc,
+        val vpToken: VpToken,
         val responseBytes: DeviceResponseBytes,
         val msoMdocNonce: String,
-    ) : OpenId4VpResponse
+    ) : OpenId4VpResponse {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as DeviceResponse
+
+            if (resolvedRequestObject != other.resolvedRequestObject) return false
+            if (consensus != other.consensus) return false
+            if (vpToken != other.vpToken) return false
+            if (!responseBytes.contentEquals(other.responseBytes)) return false
+            if (msoMdocNonce != other.msoMdocNonce) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = resolvedRequestObject.hashCode()
+            result = 31 * result + consensus.hashCode()
+            result = 31 * result + vpToken.hashCode()
+            result = 31 * result + responseBytes.contentHashCode()
+            result = 31 * result + msoMdocNonce.hashCode()
+            return result
+        }
+    }
 }

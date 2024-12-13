@@ -3,7 +3,6 @@
 # component2
 
 [androidJvm]\
-open operator
-fun [component2](component2.md)(): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+open operator fun [component2](component2.md)(): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
 
 Destructures this item into a pair of name and document type.

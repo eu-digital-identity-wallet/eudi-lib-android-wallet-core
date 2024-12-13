@@ -19,16 +19,16 @@ sealed interface [EncryptionAlgorithm](index.md)
 
 ## Types
 
-| Name                                                 | Summary                                                                                                            |
-|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| [ECDH_1PU](-e-c-d-h_1-p-u/index.md)                  | [androidJvm]<br>data object [ECDH_1PU](-e-c-d-h_1-p-u/index.md) : [EncryptionAlgorithm](index.md)                  |
+| Name | Summary |
+|---|---|
+| [ECDH_1PU](-e-c-d-h_1-p-u/index.md) | [androidJvm]<br>data object [ECDH_1PU](-e-c-d-h_1-p-u/index.md) : [EncryptionAlgorithm](index.md) |
 | [ECDH_1PU_A128KW](-e-c-d-h_1-p-u_-a128-k-w/index.md) | [androidJvm]<br>data object [ECDH_1PU_A128KW](-e-c-d-h_1-p-u_-a128-k-w/index.md) : [EncryptionAlgorithm](index.md) |
 | [ECDH_1PU_A192KW](-e-c-d-h_1-p-u_-a192-k-w/index.md) | [androidJvm]<br>data object [ECDH_1PU_A192KW](-e-c-d-h_1-p-u_-a192-k-w/index.md) : [EncryptionAlgorithm](index.md) |
 | [ECDH_1PU_A256KW](-e-c-d-h_1-p-u_-a256-k-w/index.md) | [androidJvm]<br>data object [ECDH_1PU_A256KW](-e-c-d-h_1-p-u_-a256-k-w/index.md) : [EncryptionAlgorithm](index.md) |
-| [ECDH_ES](-e-c-d-h_-e-s/index.md)                    | [androidJvm]<br>data object [ECDH_ES](-e-c-d-h_-e-s/index.md) : [EncryptionAlgorithm](index.md)                    |
-| [ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md)   | [androidJvm]<br>data object [ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md) : [EncryptionAlgorithm](index.md)   |
-| [ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md)   | [androidJvm]<br>data object [ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md) : [EncryptionAlgorithm](index.md)   |
-| [ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md)   | [androidJvm]<br>data object [ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md) : [EncryptionAlgorithm](index.md)   |
+| [ECDH_ES](-e-c-d-h_-e-s/index.md) | [androidJvm]<br>data object [ECDH_ES](-e-c-d-h_-e-s/index.md) : [EncryptionAlgorithm](index.md) |
+| [ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md) | [androidJvm]<br>data object [ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md) : [EncryptionAlgorithm](index.md) |
+| [ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md) | [androidJvm]<br>data object [ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md) : [EncryptionAlgorithm](index.md) |
+| [ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md) | [androidJvm]<br>data object [ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md) : [EncryptionAlgorithm](index.md) |
 
 ## Properties
 

@@ -4,16 +4,13 @@
 
 [androidJvm]\
 
-@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-name/index.html)(name =
-&quot;getDefaultKeyUnlockData&quot;)
+@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
 
 @[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(
-documentId: DocumentId): AndroidKeystoreKeyUnlockData?
+fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(documentId: DocumentId): AndroidKeystoreKeyUnlockData?
 
-Returns the default AndroidKeystoreKeyUnlockData for the given DocumentId. The default key unlock
-data is based on the Document.keyAlias.
+Returns the default AndroidKeystoreKeyUnlockData for the given DocumentId. The default key unlock data is based on the Document.keyAlias.
 
 #### Receiver
 
@@ -21,27 +18,26 @@ the [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md) instance
 
 #### Return
 
-the default AndroidKeystoreKeyUnlockData for the given DocumentId or null if the document requires
-no user authentication
+the default AndroidKeystoreKeyUnlockData for the given DocumentId or null if the document requires no user authentication
 
 #### Parameters
 
 androidJvm
 
-|            |                                |
-|------------|--------------------------------|
+| | |
+|---|---|
 | documentId | the DocumentId of the document |
 
 #### See also
 
-|                              |
-|------------------------------|
+| |
+|---|
 | AndroidKeystoreKeyUnlockData |
-| Document                     |
+| Document |
 
 #### Throws
 
-|                                                                                                                     |                                                             |
-|---------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html)    | if the Document is not managed by AndroidKeystoreSecureArea |
-| [NoSuchElementException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-no-such-element-exception/index.html) | if the document is not found by the DocumentId              |
+| | |
+|---|---|
+| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if the Document is not managed by AndroidKeystoreSecureArea |
+| [NoSuchElementException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-no-such-element-exception/index.html) | if the document is not found by the DocumentId |

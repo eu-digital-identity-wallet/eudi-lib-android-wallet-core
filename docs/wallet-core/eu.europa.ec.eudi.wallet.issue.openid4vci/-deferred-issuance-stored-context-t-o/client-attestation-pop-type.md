@@ -6,5 +6,4 @@
 
 @SerialName(value = &quot;client_attestation_pop_typ&quot;)
 
-val [clientAttestationPopType](client-attestation-pop-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? =
-null
+val [clientAttestationPopType](client-attestation-pop-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null

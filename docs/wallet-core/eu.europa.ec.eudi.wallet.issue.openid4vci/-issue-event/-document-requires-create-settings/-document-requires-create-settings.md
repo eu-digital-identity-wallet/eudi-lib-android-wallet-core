@@ -3,8 +3,4 @@
 # DocumentRequiresCreateSettings
 
 [androidJvm]\
-constructor(offeredDocument: [Offer.OfferedDocument](../../-offer/-offered-document/index.md),
-resume: (createDocumentSettings: CreateDocumentSettings)
--&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html), cancel: (
-reason: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?)
--&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html))
+constructor(offeredDocument: [Offer.OfferedDocument](../../-offer/-offered-document/index.md), resume: (createDocumentSettings: CreateDocumentSettings) -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html), cancel: (reason: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?) -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html))

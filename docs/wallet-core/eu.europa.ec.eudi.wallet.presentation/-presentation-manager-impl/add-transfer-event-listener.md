@@ -3,5 +3,4 @@
 # addTransferEventListener
 
 [androidJvm]\
-open override fun [addTransferEventListener](add-transfer-event-listener.md)(listener:
-TransferEvent.Listener): [PresentationManagerImpl](index.md)
+open override fun [addTransferEventListener](add-transfer-event-listener.md)(listener: TransferEvent.Listener): [PresentationManagerImpl](index.md)

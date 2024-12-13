@@ -3,8 +3,7 @@
 # ktorHttpClientFactory
 
 [androidJvm]\
-fun [ktorHttpClientFactory](ktor-http-client-factory.md)(factory: () -&gt;
-HttpClient): [OpenId4VciManager.Builder](index.md)
+fun [ktorHttpClientFactory](ktor-http-client-factory.md)(factory: () -&gt; HttpClient): [OpenId4VciManager.Builder](index.md)
 
 Override the Ktor HTTP client factory
 
@@ -16,8 +15,8 @@ this builder
 
 androidJvm
 
-|         |                    |
-|---------|--------------------|
+| | |
+|---|---|
 | factory | the factory to use |
 
 [androidJvm]\

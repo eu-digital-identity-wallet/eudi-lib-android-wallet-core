@@ -3,11 +3,9 @@
 # withStorageEngine
 
 [androidJvm]\
-fun [withStorageEngine](with-storage-engine.md)(storageEngine:
-StorageEngine): [EudiWallet.Builder](index.md)
+fun [withStorageEngine](with-storage-engine.md)(storageEngine: StorageEngine): [EudiWallet.Builder](index.md)
 
-Configure with the given StorageEngine to use for storing/retrieving documents. If not set, the
-default storage engine will be used which is AndroidStorageEngine.
+Configure with the given StorageEngine to use for storing/retrieving documents. If not set, the default storage engine will be used which is AndroidStorageEngine.
 
 #### Return
 
@@ -17,6 +15,6 @@ this [Builder](index.md) instance
 
 androidJvm
 
-|               |                    |
-|---------------|--------------------|
+| | |
+|---|---|
 | storageEngine | the storage engine |

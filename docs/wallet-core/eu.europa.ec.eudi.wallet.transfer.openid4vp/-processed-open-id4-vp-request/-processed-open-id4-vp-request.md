@@ -3,6 +3,4 @@
 # ProcessedOpenId4VpRequest
 
 [androidJvm]\
-constructor(processedDeviceRequest: ProcessedDeviceRequest, resolvedRequestObject:
-ResolvedRequestObject,
-msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+constructor(processedDeviceRequest: ProcessedDeviceRequest, resolvedRequestObject: ResolvedRequestObject, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))

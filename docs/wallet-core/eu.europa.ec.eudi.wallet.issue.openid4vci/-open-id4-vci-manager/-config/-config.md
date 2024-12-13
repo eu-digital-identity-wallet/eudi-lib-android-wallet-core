@@ -6,10 +6,4 @@
 
 @[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-overloads/index.html)
 
-constructor(
-issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-clientId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html),
-useDPoPIfSupported: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) =
-true, parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) =
-IF_SUPPORTED)
+constructor(issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), clientId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), useDPoPIfSupported: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html) = true, parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) = IF_SUPPORTED)

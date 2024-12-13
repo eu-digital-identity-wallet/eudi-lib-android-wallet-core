@@ -6,5 +6,4 @@
 
 @SerialName(value = &quot;client_attestation_jwt&quot;)
 
-val [clientAttestationJwt](client-attestation-jwt.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? =
-null
+val [clientAttestationJwt](client-attestation-jwt.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null

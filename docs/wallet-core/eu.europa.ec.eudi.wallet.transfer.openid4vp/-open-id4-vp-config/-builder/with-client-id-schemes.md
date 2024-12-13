@@ -16,5 +16,4 @@ androidJvm
 | issuerUrl | the issuer url |
 
 [androidJvm]\
-fun [withClientIdSchemes](with-client-id-schemes.md)(vararg
-clientIdSchemes: [ClientIdScheme](../../-client-id-scheme/index.md)): [OpenId4VpConfig.Builder](index.md)
+fun [withClientIdSchemes](with-client-id-schemes.md)(vararg clientIdSchemes: [ClientIdScheme](../../-client-id-scheme/index.md)): [OpenId4VpConfig.Builder](index.md)

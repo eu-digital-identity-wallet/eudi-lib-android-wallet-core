@@ -3,6 +3,4 @@
 # PreregisteredVerifier
 
 [androidJvm]\
-constructor(clientId: [ClientId](../-client-id/index.md),
-legalName: [LegalName](../-legal-name/index.md),
-verifierApi: [VerifierApi](../-verifier-api/index.md))
+constructor(clientId: [ClientId](../-client-id/index.md), legalName: [LegalName](../-legal-name/index.md), verifierApi: [VerifierApi](../-verifier-api/index.md))

@@ -3,28 +3,25 @@
 # ProcessedOpenId4VpRequest
 
 [androidJvm]\
-class [ProcessedOpenId4VpRequest](index.md)(processedDeviceRequest: ProcessedDeviceRequest,
-resolvedRequestObject: ResolvedRequestObject, val
-msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) :
-RequestProcessor.ProcessedRequest.Success
+class [ProcessedOpenId4VpRequest](index.md)(processedDeviceRequest: ProcessedDeviceRequest, resolvedRequestObject: ResolvedRequestObject, val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
 
 ## Constructors
 
-|                                                                |                                                                                                                                                                                                                           |
-|----------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [ProcessedOpenId4VpRequest](-processed-open-id4-vp-request.md) | [androidJvm]<br>constructor(processedDeviceRequest: ProcessedDeviceRequest, resolvedRequestObject: ResolvedRequestObject, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
-| Name                                                                | Summary                                                                                                                                 |
-|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| [msoMdocNonce](mso-mdoc-nonce.md)                                   | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
-| [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments                             |
+| Name | Summary |
+|---|---|
+| [msoMdocNonce](mso-mdoc-nonce.md) | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
 
 ## Functions
 
-| Name                                                       | Summary                                                                                                                                                            |
-|------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [generateResponse](generate-response.md)                   | [androidJvm]<br>open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult |
-| [getOrNull](index.md#1268647320%2FFunctions%2F1615067946)  | [androidJvm]<br>open fun [getOrNull](index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success?                                   |
-| [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success                                   |
+| Name | Summary |
+|---|---|
+| [generateResponse](generate-response.md) | [androidJvm]<br>open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult |
+| [getOrNull](index.md#1268647320%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrNull](index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success? |
+| [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success |
