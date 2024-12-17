@@ -81,7 +81,7 @@ sealed interface IssueEvent : OpenId4VciResult {
      * @property cancel the callback to cancel the issuance with an optional reason
      */
     data class DocumentRequiresCreateSettings(
-        val offeredDocument: Offer.OfferedDocument,
+        val offeredDocument: OfferedDocument,
         val resume: (createDocumentSettings: CreateDocumentSettings) -> Unit,
         val cancel: (reason: String?) -> Unit,
     ) : IssueEvent

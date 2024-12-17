@@ -20,7 +20,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -50,7 +50,7 @@ internal class OfferCreator(
                 authorizationServerMetadata = authorizationServerMetadata.first(),
                 credentialConfigurationIdentifiers = listOf(credentialConfigurationId)
             )
-            DefaultOffer(credentialOffer/*, credentialConfigurationFilter*/)
+            Offer(credentialOffer)
         }
     }
 }

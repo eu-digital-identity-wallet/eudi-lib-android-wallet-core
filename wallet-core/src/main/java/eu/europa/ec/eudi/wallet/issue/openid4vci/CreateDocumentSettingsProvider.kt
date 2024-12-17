@@ -24,5 +24,5 @@ import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
  * required when creating a new [com.android.identity.document.Document]
  */
 fun interface CreateDocumentSettingsProvider {
-    fun provideSettings(offeredDocument: Offer.OfferedDocument): CreateDocumentSettings
+    fun provideSettings(offeredDocument: OfferedDocument): CreateDocumentSettings
 }

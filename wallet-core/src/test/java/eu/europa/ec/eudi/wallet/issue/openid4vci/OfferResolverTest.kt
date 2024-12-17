@@ -18,8 +18,12 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
-import io.ktor.client.*
-import io.mockk.*
+import io.ktor.client.HttpClient
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
 import kotlinx.coroutines.test.runTest
 import java.net.URLEncoder
 import kotlin.test.BeforeTest
@@ -80,7 +84,7 @@ class OfferResolverTest {
                 credentialOffer
             )
             assertNull(offerResolver.cache[offerUri])
-            val offer = DefaultOffer(credentialOffer)
+            val offer = Offer(credentialOffer)
 
             // When
             val result = offerResolver.resolve(offerUri, true)
@@ -100,7 +104,9 @@ class OfferResolverTest {
             coEvery { credentialOfferResolver.resolve(offerUri) } returns Result.success(
                 credentialOffer
             )
-            val offer = DefaultOffer(credentialOffer)
+            val offer = Offer(
+                credentialOffer
+            )
 
             // When
             val result = offerResolver.resolve(offerUri, false)
@@ -118,7 +124,9 @@ class OfferResolverTest {
         runTest {
             // Given
             coEvery { credentialOfferResolver.resolve(offerUri) } returns Result.failure(Exception())
-            val offer = DefaultOffer(credentialOffer)
+            val offer = Offer(
+                credentialOffer
+            )
             offerResolver.cache[offerUri] = offer
             assertEquals(offer, offerResolver.cache[offerUri])
 

@@ -71,7 +71,9 @@ class DefaultOfferTest {
 
     @Test
     fun `issuerName returns host of credentialIssuerIdentifier`() {
-        val offer: Offer = DefaultOffer(mockCredentialOffer)
+        val offer = Offer(
+            mockCredentialOffer
+        )
 
         assertEquals("test.host", offer.issuerName)
     }
@@ -79,11 +81,14 @@ class DefaultOfferTest {
     @Test
     fun `offeredDocuments returns filtered and mapped credentialConfigurationsSupported`() {
 
-        val offer: Offer = DefaultOffer(mockCredentialOffer)
+        val offer: Offer = Offer(
+            mockCredentialOffer
+        )
 
         assertEquals(1, offer.offeredDocuments.size)
 
-        val expectedOfferedDocument = DefaultOfferedDocument(
+        val expectedOfferedDocument = OfferedDocument(
+            offer,
             mockCredentialConfigurationIdentifiers[0],
             mockCredentialConfigurations[0]
         )

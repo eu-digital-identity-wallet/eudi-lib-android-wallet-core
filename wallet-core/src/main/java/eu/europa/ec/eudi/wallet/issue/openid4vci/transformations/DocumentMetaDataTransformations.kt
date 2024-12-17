@@ -1,24 +1,34 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci.transformations
 
 import eu.europa.ec.eudi.openid4vci.Claim
-import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.Display
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferedDocument
+import java.util.Locale
 
-fun CredentialConfiguration.extractDocumentMetaData(): DocumentMetaData {
-    val documentDisplay = display.map { it.toDocumentDisplay() }
+fun OfferedDocument.extractDocumentMetaData(): DocumentMetaData {
 
-    val claims = when (this) {
-        is MsoMdocCredential -> claims.fromMsoDocToDocumentClaim()
-        is SdJwtVcCredential -> claims.fromSdJwtVToDocumentClaim()
+    val documentDisplay = this.configuration.display.map { it.toDocumentDisplay() }
+
+    val claims = when (val config = this.configuration) {
+        is MsoMdocCredential -> config.claims.fromMsoDocToDocumentClaim()
+        is SdJwtVcCredential -> config.claims.fromSdJwtVToDocumentClaim()
         else -> null
     }
 
     return DocumentMetaData(
+        credentialIssuerIdentifier = offer.credentialOffer.credentialIssuerIdentifier.value.value.toString(),
+        documentConfigurationIdentifier = configurationIdentifier.value,
         display = documentDisplay,
-        claims = claims
+        claims = claims,
+        issuerDisplay = this.offer.issuerMetadata.display.map {
+            DocumentMetaData.Display(
+                name = it.name ?: "",
+                locale = Locale(it.locale ?: "")
+            )
+        }
     )
 }
 
@@ -58,12 +68,12 @@ private fun Map<String, Claim?>?.fromSdJwtVToDocumentClaim(): List<DocumentMetaD
 private fun Claim?.fromMsoDocToDocumentClaim(name: DocumentMetaData.Claim.Name): DocumentMetaData.Claim =
     DocumentMetaData.Claim(
         name = name,
-    mandatory = this?.mandatory,
-    valueType = this?.valueType,
-    display = this?.display?.map { display ->
-        DocumentMetaData.Claim.Display(
-            name = display.name,
-            locale = display.locale
-        )
-    } ?: emptyList()
-)
+        mandatory = this?.mandatory,
+        valueType = this?.valueType,
+        display = this?.display?.map { display ->
+            DocumentMetaData.Claim.Display(
+                name = display.name,
+                locale = display.locale
+            )
+        } ?: emptyList()
+    )
