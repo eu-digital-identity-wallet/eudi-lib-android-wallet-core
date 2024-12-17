@@ -197,7 +197,6 @@ internal class DefaultOpenId4VciManager(
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
-        offer as DefaultOffer
         val issuer = issuerCreator.createIssuer(offer)
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))

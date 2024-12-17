@@ -1,6 +1,27 @@
+/*
+ * Copyright (c) 2024 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.Claim
+import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Display
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
@@ -8,6 +29,9 @@ import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
 import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractDocumentMetaData
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.Before
 import org.junit.Test
 import java.net.URI
 import java.util.Locale
@@ -15,8 +39,35 @@ import kotlin.test.assertEquals
 
 class TestDocumentMetaDataTransformations {
 
+    private lateinit var mockedCredentialIssuerMetadata: CredentialIssuerMetadata
+
+    private lateinit var mockCredentialOffer: CredentialOffer
+
+    private lateinit var dummyOffer: Offer
+    private var dummyIssuerUrl: String = "https://test.com"
+    private var dummyDocumentId: String = "documentId"
+
+
+    @Before
+    fun setup() {
+        mockedCredentialIssuerMetadata = mockk<CredentialIssuerMetadata>(relaxed = true) {
+            every { display } returns emptyList()
+        }
+
+        val credentialIssuerIdentifier = CredentialIssuerId.invoke(dummyIssuerUrl).getOrThrow()
+
+        mockCredentialOffer = CredentialOffer(
+            credentialIssuerIdentifier = credentialIssuerIdentifier,
+            credentialIssuerMetadata = mockedCredentialIssuerMetadata,
+            authorizationServerMetadata = mockk(),
+            credentialConfigurationIdentifiers = listOf(mockk<CredentialConfigurationIdentifier>())
+        )
+
+        dummyOffer = Offer(mockCredentialOffer)
+    }
+
     @Test
-    fun `extractDocumentMetaData for MsoMdocCredential`() {
+    fun `extractDocumentMetaData from OfferedDocument`() {
         // Given
         val inputCredential = MsoMdocCredential(
             scope = "exampleScope",
@@ -56,7 +107,11 @@ class TestDocumentMetaDataTransformations {
             ),
             order = listOf("claim1")
         )
-
+        val offeredDocument = OfferedDocument(
+            offer = dummyOffer,
+            configurationIdentifier = CredentialConfigurationIdentifier(dummyDocumentId),
+            configuration = inputCredential,
+        )
         val expectedMetaData = DocumentMetaData(
             display = listOf(
                 DocumentMetaData.Display(
@@ -86,11 +141,14 @@ class TestDocumentMetaDataTransformations {
                         )
                     )
                 )
-            )
+            ),
+            issuerDisplay = emptyList(),
+            credentialIssuerIdentifier = dummyIssuerUrl,
+            documentConfigurationIdentifier = dummyDocumentId
         )
 
         // When
-        val actualMetaData = inputCredential.extractDocumentMetaData()
+        val actualMetaData: DocumentMetaData = offeredDocument.extractDocumentMetaData()
 
         // Then
         assertEquals(expectedMetaData, actualMetaData)
@@ -128,6 +186,11 @@ class TestDocumentMetaDataTransformations {
             )
         )
 
+        val offeredDocument = OfferedDocument(
+            offer = dummyOffer,
+            configurationIdentifier = CredentialConfigurationIdentifier(dummyDocumentId),
+            configuration = inputCredential,
+        )
         val expectedMetaData = DocumentMetaData(
             display = listOf(
                 DocumentMetaData.Display(
@@ -153,11 +216,14 @@ class TestDocumentMetaDataTransformations {
                         )
                     )
                 )
-            )
+            ),
+            issuerDisplay = emptyList(),
+            credentialIssuerIdentifier = dummyIssuerUrl,
+            documentConfigurationIdentifier = dummyDocumentId
         )
 
         // When
-        val actualMetaData = inputCredential.extractDocumentMetaData()
+        val actualMetaData = offeredDocument.extractDocumentMetaData()
 
         // Then
         assertEquals(expectedMetaData, actualMetaData)
@@ -179,11 +245,19 @@ class TestDocumentMetaDataTransformations {
 
         val expectedMetaData = DocumentMetaData(
             display = emptyList(),
-            claims = null
+            claims = null,
+            issuerDisplay = emptyList(),
+            credentialIssuerIdentifier = dummyIssuerUrl,
+            documentConfigurationIdentifier = dummyDocumentId
         )
 
+        val offeredDocument = OfferedDocument(
+            offer = dummyOffer,
+            configurationIdentifier = CredentialConfigurationIdentifier(dummyDocumentId),
+            configuration = credentialWithNoClaims,
+        )
         // When
-        val actualMetaData = credentialWithNoClaims.extractDocumentMetaData()
+        val actualMetaData = offeredDocument.extractDocumentMetaData()
 
         // Then
         assertEquals(expectedMetaData, actualMetaData)

@@ -34,8 +34,7 @@ internal class SubmitRequest(
     var authorizedRequest: AuthorizedRequest = authorizedRequest
         private set
 
-
-    suspend fun request(offeredDocuments: Map<UnsignedDocument, Offer.OfferedDocument>): Response {
+    suspend fun request(offeredDocuments: Map<UnsignedDocument, OfferedDocument>): Response {
         return Response(offeredDocuments.mapValues { (unsignedDocument, offeredDocument) ->
             try {
                 Result.success(submitRequest(unsignedDocument, offeredDocument))
@@ -47,10 +46,10 @@ internal class SubmitRequest(
 
     private suspend fun submitRequest(
         unsignedDocument: UnsignedDocument,
-        offeredDocument: Offer.OfferedDocument,
+        offeredDocument: OfferedDocument,
         keyUnlockData: KeyUnlockData? = null,
     ): SubmissionOutcome {
-        offeredDocument as DefaultOfferedDocument
+
         var proofSigner: JWSKeyPoPSigner? = null
         return try {
             val claimSet = null
