@@ -16,6 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.Outcome
@@ -37,18 +39,24 @@ class DocumentCreatorTest {
     @Test
     fun `assert continuation is not null when resume is executed from event`() = runTest {
         val docTypeMock = "docType"
-        val nameMock = "document name"
+        val documentFormatMock = MsoMdocFormat(docType = docTypeMock)
+        val credentialConfigurationMock = mockk<MsoMdocCredential> {
+            every { docType } returns docTypeMock
+            every { claims } returns emptyMap()
+            every { display } returns emptyList()
+        }
         val createSettings = mockk<CreateDocumentSettings>()
         val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { name } returns nameMock
-            every { docType } returns docTypeMock
+            every { offer } returns mockk(relaxed = true)
+            every { configurationIdentifier } returns CredentialConfigurationIdentifier("id")
+            every { configuration } returns credentialConfigurationMock
+            every { documentFormat } answers { callOriginal() }
         }
-        val format = MsoMdocFormat(docType = docTypeMock)
         val unsignedDocument = mockk<UnsignedDocument>(relaxed = true)
         val result = Outcome.success(unsignedDocument)
 
         val documentManager = mockk<DocumentManager> {
-            every { createDocument(format, createSettings) } returns result
+            every { createDocument(documentFormatMock, createSettings, any()) } returns result
         }
 
         val listener = OpenId4VciManager.OnResult<IssueEvent> { event ->

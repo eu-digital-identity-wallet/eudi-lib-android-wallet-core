@@ -3,4 +3,4 @@
 # txCodeSpec
 
 [androidJvm]\
-abstract val [txCodeSpec](tx-code-spec.md): [Offer.TxCodeSpec](-tx-code-spec/index.md)?
+val [txCodeSpec](tx-code-spec.md): TxCode?

@@ -1,7 +1,8 @@
 
 # EUDI Wallet Core library for Android
 ## Dependency License Report
-_2024-12-13 15:16:49 EET_
+
+_2024-12-18 16:33:35 EET_
 ## Apache License, Version 2.0
 
 **1** **Group:** `androidx.appcompat` **Name:** `appcompat` **Version:** `1.6.1` 
@@ -28,7 +29,7 @@ _2024-12-13 15:16:49 EET_
 > - **POM Project URL**: [https://github.com/ktorio/ktor](https://github.com/ktorio/ktor)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**7** **Group:** `org.jetbrains.kotlin` **Name:** `kotlin-stdlib` **Version:** `2.0.10` 
+**7** **Group:** `org.jetbrains.kotlin` **Name:** `kotlin-stdlib` **Version:** `2.0.21`
 > - **POM Project URL**: [https://kotlinlang.org/](https://kotlinlang.org/)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 

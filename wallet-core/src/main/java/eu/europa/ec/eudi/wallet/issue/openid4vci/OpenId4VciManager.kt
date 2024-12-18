@@ -19,9 +19,11 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.IntDef
+import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
@@ -41,6 +43,41 @@ interface OpenId4VciManager {
      */
     suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata>
 
+
+    /**
+     * Issue a document using a configuration identifier.
+     *
+     * The credential configuration identifier can be obtained from the [getIssuerMetadata]
+     *
+     * @see [CredentialConfigurationIdentifier] for the configuration identifier
+     *
+     * @param credentialConfigurationId the configuration identifier to issue the document
+     * @param txCode the transaction code to use for pre-authorized issuing
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onIssueEvent the callback to be called when the document is issued
+     */
+    fun issueDocumentByConfigurationIdentifier(
+        credentialConfigurationId: String,
+        txCode: String? = null,
+        executor: Executor? = null,
+        onIssueEvent: OnIssueEvent,
+    )
+
+    /**
+     * Issue a document using a document format
+     * @see DocumentFormat for the available formats
+     * @param format the document format to issue
+     * @param txCode the transaction code to use for pre-authorized issuing
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onIssueEvent the callback to be called when the document is issued
+     */
+    fun issueDocumentByFormat(
+        format: DocumentFormat,
+        txCode: String? = null,
+        executor: Executor? = null,
+        onIssueEvent: OnIssueEvent,
+    )
+
     /**
      * Issue a document using a document type
      * @param docType the document type to issue
@@ -48,7 +85,9 @@ interface OpenId4VciManager {
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued
      * @see[IssueEvent] on how to handle the result
+     * @deprecated use [issueDocumentByConfigurationIdentifier] or [issueDocumentByFormat] instead
      */
+    @Deprecated("Use issueDocumentByConfigurationIdentifier or issueDocumentByFormat instead")
     fun issueDocumentByDocType(
         docType: String,
         txCode: String? = null,

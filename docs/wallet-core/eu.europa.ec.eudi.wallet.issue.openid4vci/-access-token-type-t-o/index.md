@@ -16,11 +16,11 @@ enum [AccessTokenTypeTO](index.md) : [Enum](https://kotlinlang.org/api/latest/jv
 
 ## Properties
 
-| Name | Summary |
-|---|---|
-| [entries](entries.md) | [androidJvm]<br>val [entries](entries.md): [EnumEntries](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.enums/-enum-entries/index.html)&lt;[AccessTokenTypeTO](index.md)&gt;<br>Returns a representation of an immutable list of all enum entries, in the order they're declared. |
-| [name](../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-372974862%2FProperties%2F1615067946) | [androidJvm]<br>val [name](../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
-| [ordinal](../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) |
+| Name                                                             | Summary                                                                                                                                                                                                                                                                                |
+|------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [entries](entries.md)                                            | [androidJvm]<br>val [entries](entries.md): [EnumEntries](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.enums/-enum-entries/index.html)&lt;[AccessTokenTypeTO](index.md)&gt;<br>Returns a representation of an immutable list of all enum entries, in the order they're declared. |
+| [name](-bearer/index.md#-372974862%2FProperties%2F1615067946)    | [androidJvm]<br>val [name](-bearer/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)                                                                                                                    |
+| [ordinal](-bearer/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](-bearer/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)                                                                                                                       |
 
 ## Functions
 

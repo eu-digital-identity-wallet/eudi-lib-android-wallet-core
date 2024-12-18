@@ -34,7 +34,7 @@ internal class SubmitRequest(
     var authorizedRequest: AuthorizedRequest = authorizedRequest
         private set
 
-    suspend fun request(offeredDocuments: Map<UnsignedDocument, OfferedDocument>): Response {
+    suspend fun request(offeredDocuments: Map<UnsignedDocument, Offer.OfferedDocument>): Response {
         return Response(offeredDocuments.mapValues { (unsignedDocument, offeredDocument) ->
             try {
                 Result.success(submitRequest(unsignedDocument, offeredDocument))
@@ -46,7 +46,7 @@ internal class SubmitRequest(
 
     private suspend fun submitRequest(
         unsignedDocument: UnsignedDocument,
-        offeredDocument: OfferedDocument,
+        offeredDocument: Offer.OfferedDocument,
         keyUnlockData: KeyUnlockData? = null,
     ): SubmissionOutcome {
 

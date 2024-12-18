@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.OfferedDocument
 import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractDocumentMetaData
 import io.mockk.every
 import io.mockk.mockk

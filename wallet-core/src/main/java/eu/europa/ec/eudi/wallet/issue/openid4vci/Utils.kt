@@ -24,6 +24,8 @@ import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
@@ -56,17 +58,28 @@ internal fun EcSignature.toJoseEncoded(jwsAlgorithm: JWSAlgorithm): ByteArray {
  */
 @JvmSynthetic
 internal fun DocumentManager.createDocument(
-    offerOfferedDocument: OfferedDocument,
+    offerOfferedDocument: Offer.OfferedDocument,
     createDocumentSettings: CreateDocumentSettings,
 ): Result<UnsignedDocument> {
-    val documentFormat = (offerOfferedDocument as DefaultOfferedDocument).documentFormat
+    val documentFormat = offerOfferedDocument.documentFormat
         ?: return Result.failure(IllegalArgumentException("Unsupported document format"))
+
+    val documentName = offerOfferedDocument
+        .configuration
+        .display.firstOrNull()?.name ?: run {
+        when (documentFormat) {
+            is MsoMdocFormat -> documentFormat.docType
+            is SdJwtVcFormat -> documentFormat.vct
+        }
+    }
 
     return createDocument(
         format = documentFormat,
         createSettings = createDocumentSettings,
         documentMetaData = offerOfferedDocument.extractDocumentMetaData()
-    ).kotlinResult.map { it.apply { name = offerOfferedDocument.name } }
+    ).kotlinResult.map {
+        it.apply { name = documentName }
+    }
 }
 
 /**

@@ -18,15 +18,19 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import android.net.Uri
+import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
+import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
@@ -61,9 +65,6 @@ internal class DefaultOpenId4VciManager(
             .wrappedWithLogging(logger)
             .wrappedWithContentNegotiation()
 
-    private val offerCreator: OfferCreator by lazy {
-        OfferCreator(config, httpClientFactory)
-    }
     private val offerResolver: OfferResolver by lazy {
         OfferResolver(httpClientFactory)
     }
@@ -80,21 +81,60 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
-    override fun issueDocumentByDocType(
-        docType: String,
+    override fun issueDocumentByConfigurationIdentifier(
+        credentialConfigurationId: String,
         txCode: String?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent,
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                val offer = offerCreator.createOffer(docType)
-                doIssue(offer, txCode, listener)
+                val issuer = issuerCreator.createIssuer(
+                    listOf(
+                        CredentialConfigurationIdentifier(credentialConfigurationId)
+                    )
+                )
+                doIssue(issuer, Offer(issuer.credentialOffer), txCode, listener)
+            } catch (e: Throwable) {
+                listener(failure(e))
+                coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
+            }
+        }
+    }
+
+    override fun issueDocumentByFormat(
+        format: DocumentFormat,
+        txCode: String?,
+        executor: Executor?,
+        onIssueEvent: OpenId4VciManager.OnIssueEvent,
+    ) {
+        launch(executor, onIssueEvent) { coroutineScope, listener ->
+            try {
+                val issuer = issuerCreator.createIssuer(format)
+                val offer = Offer(issuer.credentialOffer)
+                doIssue(issuer, offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByDocType failed", e)
             }
         }
+    }
+
+    @Deprecated("Use issueDocumentByConfigurationIdentifier or issueDocumentByFormat instead")
+    override fun issueDocumentByDocType(
+        docType: String,
+        txCode: String?,
+        executor: Executor?,
+        onIssueEvent: OpenId4VciManager.OnIssueEvent,
+    ) {
+        issueDocumentByFormat(
+            format = MsoMdocFormat(
+                docType = docType
+            ),
+            txCode = txCode,
+            executor = executor,
+            onIssueEvent = onIssueEvent
+        )
     }
 
     override fun issueDocumentByOffer(
@@ -105,7 +145,8 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                doIssue(offer, txCode, listener)
+                val issuer = issuerCreator.createIssuer(offer)
+                doIssue(issuer, offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -123,7 +164,8 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
-                doIssue(offer, txCode, listener)
+                val issuer = issuerCreator.createIssuer(offer)
+                doIssue(issuer, offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -193,11 +235,11 @@ internal class DefaultOpenId4VciManager(
      * Issues the given [Offer].
      */
     private suspend fun doIssue(
+        issuer: Issuer,
         offer: Offer,
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
-        val issuer = issuerCreator.createIssuer(offer)
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()

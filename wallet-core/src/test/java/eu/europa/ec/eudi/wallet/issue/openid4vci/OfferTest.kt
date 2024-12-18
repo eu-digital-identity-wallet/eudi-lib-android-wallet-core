@@ -31,7 +31,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class DefaultOfferTest {
+class OfferTest {
 
     private lateinit var mockCredentialOffer: CredentialOffer
     private lateinit var mockCredentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>
@@ -50,7 +50,6 @@ class DefaultOfferTest {
                     ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384))
                 )
             )
-            every { name } returns "testName"
             every { docType } returns "testDocType"
         }
 
@@ -70,12 +69,12 @@ class DefaultOfferTest {
     }
 
     @Test
-    fun `issuerName returns host of credentialIssuerIdentifier`() {
+    fun `issuerMetadata returns credentialConfigruation issuer Metadata`() {
         val offer = Offer(
             mockCredentialOffer
         )
 
-        assertEquals("test.host", offer.issuerName)
+        assertEquals(mockCredentialOffer.credentialIssuerMetadata, offer.issuerMetadata)
     }
 
     @Test
@@ -86,14 +85,5 @@ class DefaultOfferTest {
         )
 
         assertEquals(1, offer.offeredDocuments.size)
-
-        val expectedOfferedDocument = OfferedDocument(
-            offer,
-            mockCredentialConfigurationIdentifiers[0],
-            mockCredentialConfigurations[0]
-        )
-
-        assertEquals("testName", offer.offeredDocuments[0].name)
-        assertEquals("testDocType", offer.offeredDocuments[0].docType)
     }
 }
