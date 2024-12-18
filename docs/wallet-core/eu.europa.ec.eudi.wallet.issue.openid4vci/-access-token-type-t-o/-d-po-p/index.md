@@ -7,7 +7,7 @@
 
 ## Properties
 
-| Name | Summary |
-|---|---|
-| [name](../../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-372974862%2FProperties%2F1615067946) | [androidJvm]<br>val [name](../../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
-| [ordinal](../../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../../-offer/-tx-code-spec/-input-mode/-t-e-x-t/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) |
+| Name                                                                | Summary                                                                                                                                                                |
+|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [name](../-bearer/index.md#-372974862%2FProperties%2F1615067946)    | [androidJvm]<br>val [name](../-bearer/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [ordinal](../-bearer/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../-bearer/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)    |

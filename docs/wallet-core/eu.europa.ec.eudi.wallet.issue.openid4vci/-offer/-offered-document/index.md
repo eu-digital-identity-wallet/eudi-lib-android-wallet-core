@@ -3,21 +3,28 @@
 # OfferedDocument
 
 [androidJvm]\
-interface [OfferedDocument](index.md)
+data class [OfferedDocument](index.md)(val offer: [Offer](../index.md), val configurationIdentifier:
+CredentialConfigurationIdentifier, val configuration: CredentialConfiguration)
 
-An item to be issued.
+Represents an offered document part of an [Offer](../index.md).
+
+## Constructors
+
+|                                         |                                                                                                                                                              |
+|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [OfferedDocument](-offered-document.md) | [androidJvm]<br>constructor(offer: [Offer](../index.md), configurationIdentifier: CredentialConfigurationIdentifier, configuration: CredentialConfiguration) |
 
 ## Properties
 
-| Name | Summary |
-|---|---|
-| [docType](doc-type.md) | [androidJvm]<br>abstract val [docType](doc-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the document type of the item |
-| [name](name.md) | [androidJvm]<br>abstract val [name](name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>the name of the item |
+| Name                                                   | Summary                                                                                                                                              |
+|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [configuration](configuration.md)                      | [androidJvm]<br>val [configuration](configuration.md): CredentialConfiguration<br>credential configuration                                           |
+| [configurationIdentifier](configuration-identifier.md) | [androidJvm]<br>val [configurationIdentifier](configuration-identifier.md): CredentialConfigurationIdentifier<br>credential configuration identifier |
+| [documentFormat](document-format.md)                   | [androidJvm]<br>val [documentFormat](document-format.md): DocumentFormat?                                                                            |
+| [offer](offer.md)                                      | [androidJvm]<br>val [offer](offer.md): [Offer](../index.md)<br>[Offer](../index.md) instance                                                         |
 
 ## Functions
 
-| Name | Summary |
-|---|---|
-| [asPair](as-pair.md) | [androidJvm]<br>open fun [asPair](as-pair.md)(): [Pair](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-pair/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html), [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)&gt;<br>Converts this item to a pair of name and document type. |
-| [component1](component1.md) | [androidJvm]<br>open operator fun [component1](component1.md)(): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>Destructures this item into a pair of name and document type. |
-| [component2](component2.md) | [androidJvm]<br>open operator fun [component2](component2.md)(): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)<br>Destructures this item into a pair of name and document type. |
+| Name                                                                                                                        | Summary                                                                                                                                                                                               |
+|-----------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [extractDocumentMetaData](../../../eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/extract-document-meta-data.md) | [androidJvm]<br>fun [Offer.OfferedDocument](index.md).[extractDocumentMetaData](../../../eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/extract-document-meta-data.md)(): DocumentMetaData |

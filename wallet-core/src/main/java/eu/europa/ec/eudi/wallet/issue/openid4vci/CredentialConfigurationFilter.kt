@@ -1,23 +1,24 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
+import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import kotlin.reflect.KClass
 
 /**
@@ -58,7 +59,26 @@ internal fun interface CredentialConfigurationFilter {
          */
         @JvmSynthetic
         internal fun DocTypeFilter(docType: String): CredentialConfigurationFilter =
-            Compose(MsoMdocFormatFilter, CredentialConfigurationFilter { conf -> conf.docType == docType })
+            CredentialConfigurationFilter { conf ->
+                when (conf) {
+                    is MsoMdocCredential -> conf.docType == docType
+                    else -> false
+                }
+            }
+
+        /**
+         * Filter for [CredentialConfiguration] instances based on the vct.
+         * @param vct vct
+         * @return [CredentialConfigurationFilter] instance
+         */
+        @JvmSynthetic
+        internal fun VctFilter(vct: String): CredentialConfigurationFilter =
+            CredentialConfigurationFilter { conf ->
+                when (conf) {
+                    is SdJwtVcCredential -> conf.type == vct
+                    else -> false
+                }
+            }
 
         /**
          * Compose multiple [CredentialConfigurationFilter] instances.
