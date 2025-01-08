@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ class DeferredIssuanceContextTest {
     }
 
     @Test
-    fun `when accessToken has expired and there is refreshToken which has not expired DeferredIssuanceContextTest_hasExpired property is false`() {
+    fun `when accessToken has expired and there is refreshToken DeferredIssuanceContextTest_hasExpired property is false`() {
         val deferredIssuanceContext: DeferredIssuanceContext = mockk {
             every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
                 .minusSeconds(3600)
@@ -88,29 +88,9 @@ class DeferredIssuanceContextTest {
             )
             every { authorizedTransaction.authorizedRequest.refreshToken } returns RefreshToken(
                 refreshToken = "refreshToken",
-                expiresInSec = 6000L
             )
         }
 
         assertFalse(deferredIssuanceContext.hasExpired)
-    }
-
-    @Test
-    fun `when accessToken has expired and there is refreshToken which has expired DeferredIssuanceContextTest_hasExpired property is true`() {
-        val deferredIssuanceContext: DeferredIssuanceContext = mockk {
-            every { authorizedTransaction.authorizedRequest.timestamp } returns Instant.now()
-                .minusSeconds(3600)
-            every { authorizedTransaction.authorizedRequest.accessToken } returns AccessToken(
-                accessToken = "accessToken",
-                expiresInSec = 10L,
-                useDPoP = false
-            )
-            every { authorizedTransaction.authorizedRequest.refreshToken } returns RefreshToken(
-                refreshToken = "refreshToken",
-                expiresInSec = 60L
-            )
-        }
-
-        assertTrue(deferredIssuanceContext.hasExpired)
     }
 }

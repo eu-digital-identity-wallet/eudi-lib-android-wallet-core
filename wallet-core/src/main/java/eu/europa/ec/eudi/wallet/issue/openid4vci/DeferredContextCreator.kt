@@ -1,17 +1,17 @@
 /*
- *  Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 @file:JvmMultifileClass
 @file:OptIn(InternalSerializationApi::class)
@@ -24,14 +24,33 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.openid4vci.*
-import eu.europa.ec.eudi.openid4vci.CredentialIssuerId.Companion.invoke
+import eu.europa.ec.eudi.openid4vci.AccessToken
+import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
+import eu.europa.ec.eudi.openid4vci.AuthorizedTransaction
+import eu.europa.ec.eudi.openid4vci.Client
+import eu.europa.ec.eudi.openid4vci.ClientAttestationJWT
+import eu.europa.ec.eudi.openid4vci.ClientAttestationPoPJWTSpec
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
+import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
+import eu.europa.ec.eudi.openid4vci.DeferredIssuerConfig
+import eu.europa.ec.eudi.openid4vci.Grant
+import eu.europa.ec.eudi.openid4vci.IssuanceResponseEncryptionSpec
+import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.PopSigner
+import eu.europa.ec.eudi.openid4vci.RefreshToken
+import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
+import eu.europa.ec.eudi.openid4vci.TransactionId
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.put
 import java.net.URI
 import java.time.Clock
 import java.time.Duration
@@ -69,18 +88,16 @@ internal fun ByteArray.toDeferredIssuanceContext(): DeferredIssuanceContext {
 @Serializable
 data class RefreshTokenTO(
     @Required @SerialName("refresh_token") val refreshToken: String,
-    @SerialName("expires_in") val expiresIn: Long? = null,
 ) {
 
     fun toRefreshToken(): RefreshToken {
-        val exp = expiresIn?.let { Duration.ofSeconds(it) }
-        return RefreshToken(refreshToken, exp)
+        return RefreshToken(refreshToken)
     }
 
     companion object {
 
         fun from(refreshToken: RefreshToken): RefreshTokenTO =
-            RefreshTokenTO(refreshToken.refreshToken, refreshToken.expiresIn?.seconds)
+            RefreshTokenTO(refreshToken.refreshToken)
     }
 }
 
@@ -120,6 +137,31 @@ data class AccessTokenTO(
 }
 
 @Serializable
+enum class GrantTO {
+    @SerialName("authorization_code")
+    AuthorizationCode,
+
+    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code")
+    PreAuthorizedCodeGrant,
+
+    ;
+
+    fun toGrant(): Grant =
+        when (this) {
+            AuthorizationCode -> Grant.AuthorizationCode
+            PreAuthorizedCodeGrant -> Grant.PreAuthorizedCodeGrant
+        }
+
+    companion object {
+        fun fromGrant(grant: Grant): GrantTO =
+            when (grant) {
+                Grant.AuthorizationCode -> AuthorizationCode
+                Grant.PreAuthorizedCodeGrant -> PreAuthorizedCodeGrant
+            }
+    }
+}
+
+@Serializable
 data class DeferredIssuanceStoredContextTO(
     @Required @SerialName("credential_issuer") val credentialIssuerId: String,
     @Required @SerialName("client_id") val clientId: String,
@@ -137,6 +179,7 @@ data class DeferredIssuanceStoredContextTO(
     @SerialName("access_token") val accessToken: AccessTokenTO,
     @SerialName("refresh_token") val refreshToken: RefreshTokenTO? = null,
     @SerialName("authorization_timestamp") val authorizationTimestamp: Long,
+    @SerialName("grant") val grant: GrantTO,
 ) {
 
     fun toDeferredIssuanceStoredContext(
@@ -184,8 +227,9 @@ data class DeferredIssuanceStoredContextTO(
                     refreshToken = refreshToken?.toRefreshToken(),
                     credentialIdentifiers = emptyMap(),
                     timestamp = Instant.ofEpochSecond(authorizationTimestamp),
-//                    authorizationServerDpopNonce = null,
-//                    resourceServerDpopNonce = null,
+                    authorizationServerDpopNonce = null,
+                    resourceServerDpopNonce = null,
+                    grant = grant.toGrant(),
                 ),
                 transactionId = TransactionId(transactionId),
             ),
@@ -236,6 +280,7 @@ data class DeferredIssuanceStoredContextTO(
                     )
                 },
                 authorizationTimestamp = authorizedTransaction.authorizedRequest.timestamp.epochSecond,
+                grant = GrantTO.fromGrant(authorizedTransaction.authorizedRequest.grant),
             )
         }
 
