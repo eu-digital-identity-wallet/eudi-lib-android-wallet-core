@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,9 +116,11 @@ internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>
 internal val DeferredIssuanceContext.hasExpired: Boolean
     get() = with(authorizedTransaction.authorizedRequest) {
         val now = Instant.now()
-        arrayOf(accessToken, refreshToken)
-            .filterNotNull()
-            .all { token -> token.isExpired(timestamp, now) }
+        if (accessToken.isExpired(timestamp, now)) {
+            return null == refreshToken
+        } else {
+            return false
+        }
     }
 
 
