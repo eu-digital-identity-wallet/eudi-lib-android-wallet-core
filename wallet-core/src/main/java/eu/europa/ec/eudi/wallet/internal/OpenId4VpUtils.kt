@@ -138,7 +138,12 @@ internal object OpenId4VpUtils {
     @JvmStatic
     internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509CertificateTrust): SiopOpenId4VPConfig {
         return SiopOpenId4VPConfig(
-            vpConfiguration = VPConfiguration(vpFormats = VpFormats(VpFormat.MsoMdoc)),
+            vpConfiguration = VPConfiguration(
+                vpFormats = VpFormats( // TODO: add this to the configuration of openid4vp
+                    VpFormat.MsoMdoc,
+                    VpFormat.sdJwtVc(
+                        listOf(JWSAlgorithm.ES256),
+                        listOf(JWSAlgorithm.ES256)))),
             jarmConfiguration = JarmConfiguration.Encryption(
                 supportedAlgorithms = encryptionAlgorithms.map {
                     JWEAlgorithm.parse(it.name)

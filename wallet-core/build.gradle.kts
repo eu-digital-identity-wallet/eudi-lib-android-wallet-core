@@ -122,6 +122,9 @@ dependencies {
     implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
         exclude(group = "org.bouncycastle")
     }
+    // SD-JWT VC library
+    implementation(libs.eudi.lib.jvm.sdjwt.kt)
+
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
