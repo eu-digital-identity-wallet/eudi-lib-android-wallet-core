@@ -1,0 +1,21 @@
+//[wallet-core](../../../../index.md)/[eu.europa.ec.eudi.wallet.issue.openid4vci](../../index.md)/[GrantTO](../index.md)/[PreAuthorizedCodeGrant](index.md)
+
+# PreAuthorizedCodeGrant
+
+[androidJvm]\
+@SerialName(value = &quot;urn:ietf:params:oauth:grant-type:pre-authorized_code&quot;)
+
+[PreAuthorizedCodeGrant](index.md)
+
+## Properties
+
+| Name                                                     | Summary                                                                                                                                                     |
+|----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [name](index.md#-372974862%2FProperties%2F1615067946)    | [androidJvm]<br>val [name](index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [ordinal](index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)    |
+
+## Functions
+
+| Name                      | Summary                                                |
+|---------------------------|--------------------------------------------------------|
+| [toGrant](../to-grant.md) | [androidJvm]<br>fun [toGrant](../to-grant.md)(): Grant |

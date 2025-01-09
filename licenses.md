@@ -2,11 +2,12 @@
 # EUDI Wallet Core library for Android
 ## Dependency License Report
 
-_2024-12-18 16:33:35 EET_
+_2025-01-09 18:16:14 EET_
 ## Apache License, Version 2.0
 
-**1** **Group:** `androidx.appcompat` **Name:** `appcompat` **Version:** `1.6.1` 
-> - **POM Project URL**: [https://developer.android.com/jetpack/androidx/releases/appcompat#1.6.1](https://developer.android.com/jetpack/androidx/releases/appcompat#1.6.1)
+**1** **Group:** `androidx.appcompat` **Name:** `appcompat` **Version:** `1.7.0`
+> - **POM Project URL
+    **: [https://developer.android.com/jetpack/androidx/releases/appcompat#1.7.0](https://developer.android.com/jetpack/androidx/releases/appcompat#1.7.0)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
 **2** **Group:** `co.nstant.in` **Name:** `cbor` **Version:** `0.9` 
@@ -16,24 +17,24 @@ _2024-12-18 16:33:35 EET_
 **3** **Group:** `com.android.identity` **Name:** `identity-android` **Version:** `202408.1` 
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**4** **Group:** `com.nimbusds` **Name:** `oauth2-oidc-sdk` **Version:** `11.8` 
+**4** **Group:** `com.nimbusds` **Name:** `oauth2-oidc-sdk` **Version:** `11.20.1`
 > - **Project URL**: [https://bitbucket.org/connect2id/oauth-2.0-sdk-with-openid-connect-extensions](https://bitbucket.org/connect2id/oauth-2.0-sdk-with-openid-connect-extensions)
 > - **Manifest License**: Apache License, Version 2.0 (Not Packaged)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**5** **Group:** `io.ktor` **Name:** `ktor-client-android` **Version:** `2.3.10` 
+**5** **Group:** `io.ktor` **Name:** `ktor-client-logging` **Version:** `3.0.1`
 > - **POM Project URL**: [https://github.com/ktorio/ktor](https://github.com/ktorio/ktor)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**6** **Group:** `io.ktor` **Name:** `ktor-client-logging` **Version:** `2.3.10` 
+**6** **Group:** `io.ktor` **Name:** `ktor-client-android` **Version:** `3.0.1`
 > - **POM Project URL**: [https://github.com/ktorio/ktor](https://github.com/ktorio/ktor)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**7** **Group:** `org.jetbrains.kotlin` **Name:** `kotlin-stdlib` **Version:** `2.0.21`
+**7** **Group:** `org.jetbrains.kotlin` **Name:** `kotlin-parcelize-runtime` **Version:** `2.0.21`
 > - **POM Project URL**: [https://kotlinlang.org/](https://kotlinlang.org/)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**8** **Group:** `org.jetbrains.kotlin` **Name:** `kotlin-parcelize-runtime` **Version:** `2.0.10` 
+**8** **Group:** `org.jetbrains.kotlin` **Name:** `kotlin-stdlib` **Version:** `2.0.21`
 > - **POM Project URL**: [https://kotlinlang.org/](https://kotlinlang.org/)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -41,11 +42,11 @@ _2024-12-18 16:33:35 EET_
 > - **POM Project URL**: [https://github.com/Kotlin/kotlinx-datetime](https://github.com/Kotlin/kotlinx-datetime)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**10** **Group:** `org.jetbrains.kotlinx` **Name:** `kotlinx-io-core` **Version:** `0.4.0` 
+**10** **Group:** `org.jetbrains.kotlinx` **Name:** `kotlinx-io-bytestring` **Version:** `0.5.4`
 > - **POM Project URL**: [https://github.com/Kotlin/kotlinx-io](https://github.com/Kotlin/kotlinx-io)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**11** **Group:** `org.jetbrains.kotlinx` **Name:** `kotlinx-io-bytestring` **Version:** `0.4.0` 
+**11** **Group:** `org.jetbrains.kotlinx` **Name:** `kotlinx-io-core` **Version:** `0.5.4`
 > - **POM Project URL**: [https://github.com/Kotlin/kotlinx-io](https://github.com/Kotlin/kotlinx-io)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
