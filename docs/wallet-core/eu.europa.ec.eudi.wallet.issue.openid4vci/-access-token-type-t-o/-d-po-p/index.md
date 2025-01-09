@@ -7,7 +7,7 @@
 
 ## Properties
 
-| Name                                                                | Summary                                                                                                                                                                |
-|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [name](../-bearer/index.md#-372974862%2FProperties%2F1615067946)    | [androidJvm]<br>val [name](../-bearer/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
-| [ordinal](../-bearer/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../-bearer/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)    |
+| Name                                                                                                 | Summary                                                                                                                                                                                                 |
+|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [name](../../-grant-t-o/-pre-authorized-code-grant/index.md#-372974862%2FProperties%2F1615067946)    | [androidJvm]<br>val [name](../../-grant-t-o/-pre-authorized-code-grant/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [ordinal](../../-grant-t-o/-pre-authorized-code-grant/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../../-grant-t-o/-pre-authorized-code-grant/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)    |
