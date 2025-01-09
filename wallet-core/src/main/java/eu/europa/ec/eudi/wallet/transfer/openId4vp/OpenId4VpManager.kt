@@ -157,6 +157,16 @@ class OpenId4VpManager(
                     )
                     logger?.d(TAG, "VpToken: ${response.vpToken}")
                 }
+                is OpenId4VpResponse.GenericResponse -> {
+                    require(response.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
+                        "Resolved request object must be OpenId4VPAuthorization"
+                    }
+                    logger?.d(
+                        TAG,
+                        "Generic Response to send: ${response.response.joinToString("\n")}"
+                    )
+                    logger?.d(TAG, "VpToken: ${response.vpToken}")
+                }
             }
 
             CoroutineScope(Dispatchers.IO).launch(exceptionHandler) {

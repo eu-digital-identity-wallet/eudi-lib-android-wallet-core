@@ -1,5 +1,5 @@
 [versions]
-appcompat = "1.6.1"
+appcompat = "1.7.0"
 biometricKtx = "1.2.0-alpha05"
 bouncy-castle = "1.78.1"
 cbor = "0.9"
@@ -9,10 +9,11 @@ dependencycheck = "9.0.9"
 dokka = "1.9.20"
 espresso-contrib = "3.6.1"
 espresso-core = "3.6.1"
-eudi-document-manager = "0.7.1-SNAPSHOT"
-eudi-iso18013-data-transfer = "0.5.1-SNAPSHOT"
+eudi-document-manager = "0.7.2-SNAPSHOT"
+eudi-iso18013-data-transfer = "0.5.2-SNAPSHOT"
 eudi-lib-jvm-openid4vci-kt = "0.6.0"
-eudi-lib-jvm-siop-openid4vp-kt = "0.6.0"
+eudi-lib-jvm-siop-openid4vp-kt = "0.6.1-SNAPSHOT"
+eudi-lib-jvm-sdjwt-kt = "0.9.0"
 google-identity-android = "202408.1"
 gradle-plugin = "8.6.0"
 jacoco = "0.8.12"
@@ -28,6 +29,7 @@ ktor = "3.0.1"
 mavenPublish = "0.27.0"
 mockito-android = "4.0.0"
 mockito-inline = "5.2.0"
+mockito-kotlin = "5.3.1"
 mockk = "1.13.5"
 nimbus-sdk = "11.20.1"
 sonarqube = "5.1.0.4882"
@@ -55,6 +57,7 @@ eudi-document-manager = { module = "eu.europa.ec.eudi:eudi-lib-android-wallet-do
 eudi-iso18013-data-transfer = { module = "eu.europa.ec.eudi:eudi-lib-android-iso18013-data-transfer", version.ref = "eudi-iso18013-data-transfer" }
 eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
 eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
+eudi-lib-jvm-sdjwt-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudi-lib-jvm-sdjwt-kt" }
 google-identity-android = { module = "com.android.identity:identity-android", version.ref = "google-identity-android" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -67,7 +70,7 @@ ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "k
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 mockito-android = { module = "org.mockito:mockito-android", version.ref = "mockito-android" }
 mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito-inline" }
-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-inline" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }

@@ -57,4 +57,11 @@ sealed interface OpenId4VpResponse : Response {
             return result
         }
     }
+
+    data class GenericResponse(
+        override val resolvedRequestObject: ResolvedRequestObject,
+        override val consensus: Consensus.PositiveConsensus,
+        val vpToken: VpToken,
+        val response: List<String>
+    ) : OpenId4VpResponse
 }
