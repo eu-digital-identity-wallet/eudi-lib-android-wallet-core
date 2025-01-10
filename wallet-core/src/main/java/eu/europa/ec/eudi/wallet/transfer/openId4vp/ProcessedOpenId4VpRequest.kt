@@ -17,6 +17,13 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import com.android.identity.crypto.Algorithm
+import com.android.identity.securearea.KeyUnlockData
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
+import com.nimbusds.jose.jca.JCAContext
+import com.nimbusds.jose.jwk.AsymmetricJWK
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -34,12 +41,19 @@ import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.present
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.serialize
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.serializeWithKeyBinding
+import eu.europa.ec.eudi.sdjwt.JwtAndClaims
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.Companion.kbJwtIssuer
 import eu.europa.ec.eudi.sdjwt.SdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
+import kotlinx.coroutines.runBlocking
 import java.util.Base64
+import java.util.Date
 import java.util.UUID
 
 class ProcessedMsoMdocOpenId4VpRequest(
@@ -109,13 +123,22 @@ class ProcessedGenericOpenId4VpRequest(
                 val document = documentManager.getValidIssuedSdJwtVcDocumentById(it.documentId)
                 require(document.format is SdJwtVcFormat)
                 // TODO: support SD JWT Vc && mDoc format in one response
-                // TODO: Key Binding
-                val issuedSdJwt =
-                    SdJwt.unverifiedIssuanceFrom(String(document.issuerProvidedData)).getOrThrow()
+                val issuedSdJwt = SdJwt.unverifiedIssuanceFrom(String(document.issuerProvidedData)).getOrThrow()
                 document.id to (issuedSdJwt.present(it.disclosedItems.map { disclosedItem ->
                     ClaimPath.claim(disclosedItem.elementIdentifier)
-                }.toSet())?.serialize()
-                    ?: return ResponseResult.Failure(IllegalArgumentException("Failed to create SD JWT VC presentation")))
+                }.toSet())?.run {
+                    // check if cnf is present and present with key binding
+                    issuedSdJwt.jwt.second["cnf"]?.run {
+                        presentWithKeyBinding(
+                            signatureAlgorithm ?: Algorithm.ES256,
+                            document,
+                            it.keyUnlockData,
+                            resolvedRequestObject.client.id,
+                            resolvedRequestObject.nonce,
+                            Date()
+                        )
+                    } ?: serialize()
+                } ?: return ResponseResult.Failure(IllegalArgumentException("Failed to create SD JWT VC presentation")))
             }.toList()
             val vpToken = VpToken.Generic(*(sdJwtVCsForPresentation.map { it.second }).toTypedArray())
             val presentationDefinition = resolvedRequestObject.presentationDefinition
@@ -130,7 +153,7 @@ class ProcessedGenericOpenId4VpRequest(
                                 DescriptorMap(
                                     id = inputDescriptor.key,
                                     format = "vc+sd-jwt",
-                                    path = JsonPath.jsonPath(if(sdJwtVCsForPresentation.size > 1) "$[$index]" else "$")!!
+                                    path = JsonPath.jsonPath(if (sdJwtVCsForPresentation.size > 1) "$[$index]" else "$")!!
                                 )
                             }
                         }
@@ -147,5 +170,35 @@ class ProcessedGenericOpenId4VpRequest(
         } catch (e: Throwable) {
             ResponseResult.Failure(e)
         }
+    }
+}
+
+private fun SdJwt.Presentation<JwtAndClaims>.presentWithKeyBinding(
+    signatureAlgorithm: Algorithm,
+    document: IssuedDocument,
+    keyUnlockData: KeyUnlockData?,
+    clientId: ClientId,
+    nonce: String,
+    issueDate: Date): String {
+    return runBlocking {
+        val algorithm = JWSAlgorithm.parse((signatureAlgorithm).jwseAlgorithmIdentifier)
+        val buildKbJwt = kbJwtIssuer(
+            algorithm,
+            object : JWSSigner {
+                override fun getJCAContext(): JCAContext = JCAContext()
+                override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
+                override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
+                    val signature =
+                        document.sign(signingInput, signatureAlgorithm, keyUnlockData).getOrThrow()
+                    return Base64URL.encode(signature.toJoseEncoded(algorithm))
+                }
+            },
+            JWK.parseFromPEMEncodedObjects(document.keyInfo.publicKey.toPem()) as AsymmetricJWK
+        ) {
+            audience(clientId)
+            claim("nonce", nonce)
+            issueTime(issueDate)
+        }
+        serializeWithKeyBinding(buildKbJwt).getOrThrow()
     }
 }
