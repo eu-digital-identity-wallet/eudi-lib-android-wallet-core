@@ -56,54 +56,72 @@ class OpenId4VpRequestProcessor(
             .flatMap { it.format?.jsonObject()?.keys ?: emptySet() }
             .toSet()
         require(requestedFormats.isNotEmpty()) { "No format is requested" }
-        require(requestedFormats.size == 1) { "Currently, only one format is supported at a time" }
-        requestedFormats.forEach {
-            require(it in listOf("mso_mdoc", "vc+sd-jwt")) { "Unsupported format: $it" }
-        }
 
-        return when (val requestedFormat = requestedFormats.first()) {
-            "mso_mdoc" -> {
-                val requestedDocuments: RequestedDocuments =
-                    request.resolvedRequestObject.presentationDefinition.inputDescriptors
-                        .map { descriptor -> descriptor.toParsedRequestedMsoMdocDocument(request) }
-                        .let { helper.getRequestedDocuments(it) }
+        return if (requestedFormats.size == 1 && requestedFormats.first() == "mso_mdoc") {
+            val requestedDocuments: RequestedDocuments =
+                request.resolvedRequestObject.presentationDefinition.inputDescriptors
+                    .map { descriptor -> descriptor.toParsedRequestedMsoMdocDocument(request) }
+                    .let { helper.getRequestedDocuments(it) }
 
-                val msoMdocNonce = generateMdocGeneratedNonce()
-                val sessionTranscriptBytes =
-                    request.resolvedRequestObject.getSessionTranscriptBytes(msoMdocNonce)
+            val msoMdocNonce = generateMdocGeneratedNonce()
+            val sessionTranscriptBytes =
+                request.resolvedRequestObject.getSessionTranscriptBytes(msoMdocNonce)
 
-                ProcessedMsoMdocOpenId4VpRequest(
-                    resolvedRequestObject = request.resolvedRequestObject,
-                    processedDeviceRequest = ProcessedDeviceRequest(
-                        documentManager = documentManager,
-                        requestedDocuments = requestedDocuments,
-                        sessionTranscript = sessionTranscriptBytes
-                    ),
-                    msoMdocNonce = msoMdocNonce
-                )
-            }
-
-            "vc+sd-jwt" -> {
-                val inputDescriptorMap: MutableMap<InputDescriptorId, List<DocumentId>> = mutableMapOf()
-                val requestedDocuments =
-                    RequestedDocuments(request.resolvedRequestObject.presentationDefinition.inputDescriptors
-                        .flatMap { descriptor ->
-                            descriptor.toParsedRequestedSdJwtVcDocument(
-                                request
-                            ).also { requestedDoc ->
-                                inputDescriptorMap[descriptor.id] = requestedDoc.map { it.documentId }.toList()
+            ProcessedMsoMdocOpenId4VpRequest(
+                resolvedRequestObject = request.resolvedRequestObject,
+                processedDeviceRequest = ProcessedDeviceRequest(
+                    documentManager = documentManager,
+                    requestedDocuments = requestedDocuments,
+                    sessionTranscript = sessionTranscriptBytes
+                ),
+                msoMdocNonce = msoMdocNonce
+            )
+        } else {
+            val inputDescriptorMap: MutableMap<InputDescriptorId, List<DocumentId>> = mutableMapOf()
+            var mdocGeneratedNonce: String? = null
+            val requestedDocuments = RequestedDocuments(
+                request.resolvedRequestObject.presentationDefinition.inputDescriptors
+                    // NOTE: mso_mdoc and vc+sd-jwt are supported, other formats are ignored
+                    .filter {
+                        it.format?.jsonObject()?.keys?.first() in listOf(
+                            "mso_mdoc",
+                            "vc+sd-jwt"
+                        )
+                    }
+                    .flatMap { inputDescriptor ->
+                        // NOTE: one format is supported per input descriptor
+                        when (inputDescriptor.format?.jsonObject()?.keys?.first()) {
+                            "mso_mdoc" -> {
+                                inputDescriptor.toParsedRequestedMsoMdocDocument(request)
+                                    .let { helper.getRequestedDocuments(listOf(it)) }
+                                    .also {
+                                        mdocGeneratedNonce =
+                                            mdocGeneratedNonce ?: generateMdocGeneratedNonce()
+                                    }.also { requestedDoc ->
+                                        inputDescriptorMap[inputDescriptor.id] =
+                                            requestedDoc.map { it.documentId }.toList()
+                                    }
                             }
-                        }
-                        .toList())
-                ProcessedGenericOpenId4VpRequest(
-                    documentManager,
-                    request.resolvedRequestObject,
-                    inputDescriptorMap,
-                    requestedDocuments
-                )
-            }
 
-            else -> throw IllegalArgumentException("Unsupported format: $requestedFormat")
+                            "vc+sd-jwt" -> {
+                                inputDescriptor.toParsedRequestedSdJwtVcDocument(request)
+                                    .also { requestedDoc ->
+                                        inputDescriptorMap[inputDescriptor.id] =
+                                            requestedDoc.map { it.documentId }.toList()
+                                    }
+                            }
+
+                            else -> throw IllegalArgumentException("Unsupported format ${inputDescriptor.format}")
+                        }
+                    }.toList()
+            )
+            ProcessedGenericOpenId4VpRequest(
+                documentManager,
+                request.resolvedRequestObject,
+                inputDescriptorMap,
+                requestedDocuments,
+                mdocGeneratedNonce
+            )
         }
     }
 
