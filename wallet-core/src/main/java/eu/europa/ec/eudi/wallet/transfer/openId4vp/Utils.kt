@@ -25,10 +25,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.toJavaInstant
 
 @JvmSynthetic
-internal fun DocumentManager.getValidIssuedSdJwtVcDocumentById(documentId: DocumentId): IssuedDocument {
+internal fun DocumentManager.getValidIssuedDocumentById(documentId: DocumentId): IssuedDocument {
     return (getDocumentById(documentId)
         ?.takeIf { it is IssuedDocument }
-        ?.takeIf { it.format is SdJwtVcFormat }
         ?.takeIf { !it.isKeyInvalidated } as? IssuedDocument)
         ?.takeIf { it.isValidAt(Clock.System.now().toJavaInstant()) }
         ?: throw IllegalArgumentException("Invalid document")

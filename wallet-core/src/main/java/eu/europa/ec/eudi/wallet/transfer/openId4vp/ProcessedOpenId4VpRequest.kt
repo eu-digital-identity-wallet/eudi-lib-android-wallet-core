@@ -33,6 +33,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpToken
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
@@ -49,9 +50,11 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import kotlinx.coroutines.runBlocking
+import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.getSessionTranscriptBytes
 import java.util.Base64
 import java.util.Date
 import java.util.UUID
@@ -112,6 +115,7 @@ class ProcessedGenericOpenId4VpRequest(
     private val resolvedRequestObject: ResolvedRequestObject,
     private val inputDescriptorMap : Map<InputDescriptorId, List<DocumentId>>,
     requestedDocuments: RequestedDocuments,
+    val msoMdocNonce: String?
 ) : RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
     override fun generateResponse(
         disclosedDocuments: DisclosedDocuments,
@@ -119,28 +123,53 @@ class ProcessedGenericOpenId4VpRequest(
     ): ResponseResult {
         return try {
             require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization)
-            val sdJwtVCsForPresentation = disclosedDocuments.map {
-                val document = documentManager.getValidIssuedSdJwtVcDocumentById(it.documentId)
-                require(document.format is SdJwtVcFormat)
-                // TODO: support SD JWT Vc && mDoc format in one response
-                val issuedSdJwt = SdJwt.unverifiedIssuanceFrom(String(document.issuerProvidedData)).getOrThrow()
-                document.id to (issuedSdJwt.present(it.disclosedItems.map { disclosedItem ->
-                    ClaimPath.claim(disclosedItem.elementIdentifier)
-                }.toSet())?.run {
-                    // check if cnf is present and present with key binding
-                    issuedSdJwt.jwt.second["cnf"]?.run {
-                        presentWithKeyBinding(
-                            signatureAlgorithm ?: Algorithm.ES256,
-                            document,
-                            it.keyUnlockData,
-                            resolvedRequestObject.client.id,
-                            resolvedRequestObject.nonce,
-                            Date()
+            val verifiablePresentations = disclosedDocuments.map { disclosedDocument ->
+                val document =
+                    documentManager.getValidIssuedDocumentById(disclosedDocument.documentId)
+                when (document.format) {
+                    is SdJwtVcFormat -> {
+                        val issuedSdJwt =
+                            SdJwt.unverifiedIssuanceFrom(String(document.issuerProvidedData))
+                                .getOrThrow()
+                        document.id to VerifiablePresentation.Generic(
+                            issuedSdJwt.present(disclosedDocument.disclosedItems.map { disclosedItem ->
+                                ClaimPath.claim(disclosedItem.elementIdentifier)
+                            }.toSet())?.run {
+                                // check if cnf is present and present with key binding
+                                issuedSdJwt.jwt.second["cnf"]?.run {
+                                    presentWithKeyBinding(
+                                        signatureAlgorithm ?: Algorithm.ES256,
+                                        document,
+                                        disclosedDocument.keyUnlockData,
+                                        resolvedRequestObject.client.id,
+                                        resolvedRequestObject.nonce,
+                                        Date()
+                                    )
+                                } ?: serialize()
+                            }
+                                ?: return ResponseResult.Failure(IllegalArgumentException("Failed to create SD JWT VC presentation")))
+                    }
+
+                    is MsoMdocFormat -> {
+                        val deviceResponse = ProcessedDeviceRequest(
+                            documentManager = documentManager,
+                            sessionTranscript = resolvedRequestObject.getSessionTranscriptBytes(
+                                msoMdocNonce!!
+                            ),
+                            requestedDocuments = RequestedDocuments(requestedDocuments.filter { it.documentId == disclosedDocument.documentId })
+                        ).generateResponse(
+                            DisclosedDocuments(disclosedDocument),
+                            signatureAlgorithm
+                        ).getOrThrow() as DeviceResponse
+                        document.id to VerifiablePresentation.MsoMdoc(
+                            Base64.getUrlEncoder().withoutPadding()
+                                .encodeToString(deviceResponse.deviceResponseBytes)
                         )
-                    } ?: serialize()
-                } ?: return ResponseResult.Failure(IllegalArgumentException("Failed to create SD JWT VC presentation")))
+                    }
+                }
             }.toList()
-            val vpToken = VpToken.Generic(*(sdJwtVCsForPresentation.map { it.second }).toTypedArray())
+            val vpToken = VpToken((verifiablePresentations.map { it.second }).toList(),
+                msoMdocNonce?.let { Base64URL.encode(it) })
             val presentationDefinition = resolvedRequestObject.presentationDefinition
             val consensus = Consensus.PositiveConsensus.VPTokenConsensus(
                 vpToken = vpToken,
@@ -148,23 +177,27 @@ class ProcessedGenericOpenId4VpRequest(
                     id = Id(UUID.randomUUID().toString()),
                     definitionId = presentationDefinition.id,
                     descriptorMaps = inputDescriptorMap.entries.flatMap { inputDescriptor ->
-                        sdJwtVCsForPresentation.mapIndexed { index, sdjwt ->
-                            inputDescriptor.value.takeIf { it.contains(sdjwt.first) }?.let {
+                        verifiablePresentations.mapIndexed { index, vp ->
+                            inputDescriptor.value.takeIf { it.contains(vp.first) }?.let {
                                 DescriptorMap(
                                     id = inputDescriptor.key,
-                                    format = "vc+sd-jwt",
-                                    path = JsonPath.jsonPath(if (sdJwtVCsForPresentation.size > 1) "$[$index]" else "$")!!
+                                    format = when (documentManager.getValidIssuedDocumentById(vp.first).format) {
+                                        is MsoMdocFormat -> "mso_mdoc"
+                                        is SdJwtVcFormat -> "vc+sd-jwt"
+                                    },
+                                    path = JsonPath.jsonPath(if (verifiablePresentations.size > 1) "$[$index]" else "$")!!
                                 )
                             }
                         }
                     }.filterNotNull()
-                ))
+                )
+            )
             ResponseResult.Success(
                 OpenId4VpResponse.GenericResponse(
                     resolvedRequestObject = resolvedRequestObject,
                     consensus = consensus,
                     vpToken = vpToken,
-                    response = sdJwtVCsForPresentation.map { it.second }.toList()
+                    response = verifiablePresentations.map { it.second.toString() }.toList()
                 )
             )
         } catch (e: Throwable) {
