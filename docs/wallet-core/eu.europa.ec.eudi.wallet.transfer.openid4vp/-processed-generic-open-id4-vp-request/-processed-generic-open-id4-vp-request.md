@@ -6,4 +6,5 @@
 constructor(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject,
 inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-map/index.html)
 &lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)
-&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments)
+&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments,
+msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?)

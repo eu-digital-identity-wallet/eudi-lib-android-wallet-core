@@ -7,20 +7,22 @@ class [ProcessedGenericOpenId4VpRequest](index.md)(documentManager: DocumentMana
 resolvedRequestObject: ResolvedRequestObject,
 inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-map/index.html)
 &lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)
-&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments) :
+&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments, val
+msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?) :
 RequestProcessor.ProcessedRequest.Success
 
 ## Constructors
 
-|                                                                               |                                                                                                                                                                                                                                                                                                                                                                                                      |
-|-------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ProcessedGenericOpenId4VpRequest](-processed-generic-open-id4-vp-request.md) | [androidJvm]<br>constructor(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject, inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-map/index.html)&lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments) |
+|                                                                               |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|-------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [ProcessedGenericOpenId4VpRequest](-processed-generic-open-id4-vp-request.md) | [androidJvm]<br>constructor(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject, inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-map/index.html)&lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)?) |
 
 ## Properties
 
-| Name                                                                | Summary                                                                                                     |
-|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
+| Name                                                                | Summary                                                                                                                                  |
+|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| [msoMdocNonce](mso-mdoc-nonce.md)                                   | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? |
+| [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments                              |
 
 ## Functions
 

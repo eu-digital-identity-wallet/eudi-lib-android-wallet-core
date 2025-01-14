@@ -1,5 +1,7 @@
 # Changelog
 
+See release notes in project's github repository.
+
 ## [0.11.0-SNAPSHOT]
 
 __ 25 Jul 2024__
