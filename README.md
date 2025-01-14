@@ -38,7 +38,7 @@ The library provides the following functionality:
         - [x] Authorization Code Flow
         - [x] Pre-authorization Code Flow
         - [x] Support for mso_mdoc format
-        - [ ] Support for sd-jwt-vc format
+      - [x] Support for sd-jwt-vc format
         - [x] Support credential offer
         - [x] Support for DPoP JWT in authorization
       - [x] Support for JWT proof types
@@ -107,7 +107,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.12.3"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.13.0"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -463,14 +463,17 @@ class by calling the `EudiWallet.createOpenId4VciManager` method.
 
 There are two ways to issue a document using OpenID4VCI:
 
-1. Using the `OpenId4VciManager.issueDocumentByDocType` method, when the document's docType is
-   known.
+1. Using the `OpenId4VciManager.issueDocumentByFormat` method, when the document's format is
+   known. In case of MsoMdoc format, the docType is required. In case of SdJwtVc format, vct is
+   required.
 2. Using the `OpenId4VciManager.issueDocumentByOffer` or `OpenId4VciManager.issueDocumentByOfferUri`
    methods, when an OpenId4VCI offer is given.
+3. Using the `issueDocumentByConfigurationIdentifier` method, when the document's configuration
+   identifier is known. The configuration identifiers can be retrieved from the issuer's metadata,
+   using the `getIssuerMetadata` method.
 
 __Important note__:
 
-- Currently, only mso_mdoc format is supported
 - Currently, only the ES256 algorithm is supported for signing OpenId4CVI proof of possession of the
   publicKey.
 - See
@@ -686,7 +689,8 @@ From the user's perspective, the application must provide a way to input the tra
 When the transaction code is provided, the issuance process can be resumed by calling any of the
 following methods:
 
-- `EudiWallet.issueDocumentByDocType`
+- `EudiWallet.issueDocumentByConfigurationIdentifier`
+- `EudiWallet.issueDocumentByFormat`
 - `EudiWallet.issueDocumentByOfferUri`
 - `EudiWallet.issueDocumentByOffer`
 
@@ -789,10 +793,11 @@ wallet.addTransferEventListener { event ->
             // ...
             // application must create the DisclosedDocuments object
             val disclosedDocuments = DisclosedDocuments(
+                // assume that the document is in mso_mdoc format
                 DisclosedDocument(
                     documentId = "document-id",
                     disclosedItems = listOf(
-                        DocItem(
+                        MsoMdocItem(
                             namespace = "eu.europa.ec.eudi.pid.1",
                             elementIdentifier = "first_name"
                         ),
