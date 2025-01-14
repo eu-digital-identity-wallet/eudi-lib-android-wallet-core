@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci.transformations
 
 import eu.europa.ec.eudi.openid4vci.Claim
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.Display
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
@@ -40,12 +41,19 @@ fun OfferedDocument.extractDocumentMetaData(): DocumentMetaData {
         display = documentDisplay,
         claims = claims,
         issuerDisplay = this.offer.issuerMetadata.display.map {
-            DocumentMetaData.Display(
+            DocumentMetaData.IssuerDisplay(
                 name = it.name ?: "",
-                locale = Locale(it.locale ?: "")
+                locale = Locale(it.locale ?: ""),
+                logo = it.logo?.toDocumentLogo()
             )
         }
     )
+}
+
+private fun CredentialIssuerMetadata.Display.Logo?.toDocumentLogo(): DocumentMetaData.Logo? {
+    if (this?.uri == null && this?.alternativeText == null) return null
+
+    return DocumentMetaData.Logo(uri, alternativeText)
 }
 
 private fun Display.toDocumentDisplay(): DocumentMetaData.Display = DocumentMetaData.Display(
@@ -58,8 +66,8 @@ private fun Display.toDocumentDisplay(): DocumentMetaData.Display = DocumentMeta
 )
 
 private fun Display.Logo.toDocumentLogo():
-        DocumentMetaData.Display.Logo =
-    DocumentMetaData.Display.Logo(uri, alternativeText)
+        DocumentMetaData.Logo =
+    DocumentMetaData.Logo(uri, alternativeText)
 
 private fun Map<String, Map<String, Claim>>.fromMsoDocToDocumentClaim(): List<DocumentMetaData.Claim> {
 
