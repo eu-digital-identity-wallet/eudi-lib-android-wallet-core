@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
 import io.mockk.every
 import io.mockk.mockk
@@ -75,6 +76,7 @@ class EudiWalletConfigTest {
                 )
                 withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
                 withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
+                withFormats(Format.MsoMdoc, Format.SdJwtVc.ES256)
             }
         }
         assertEquals(2, config.readerTrustedCertificates?.size)

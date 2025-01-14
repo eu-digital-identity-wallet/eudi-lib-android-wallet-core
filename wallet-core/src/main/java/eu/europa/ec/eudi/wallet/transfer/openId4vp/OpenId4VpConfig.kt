@@ -18,6 +18,7 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import com.android.identity.crypto.Algorithm
 import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
 import io.ktor.client.*
 import io.ktor.client.plugins.logging.*
@@ -51,6 +52,7 @@ import io.ktor.client.plugins.logging.*
  *     )
  *    .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
  *    .withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
+ *    .withFormats(Format.MsoMdoc, Format.SdJwtVc.ES256)
  *    .build()
  * ```
  *
@@ -58,6 +60,7 @@ import io.ktor.client.plugins.logging.*
  * @property encryptionAlgorithms list of [EncryptionAlgorithm] that defines the supported encryption algorithms
  * @property encryptionMethods list of [EncryptionMethod] that defines the supported encryption methods
  * @property schemes optionally you can set one or more schemes. By default, the scheme "mdoc-openid4vp" is used
+ * @property formats the supported credential formats
  */
 
 class OpenId4VpConfig private constructor(private val builder: Builder) {
@@ -74,6 +77,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
     val schemes: List<String>
         get() = builder.schemes
 
+    val formats: List<Format> =  builder.formats
+
     /**
      * Builder for [OpenId4VciConfig].
      *
@@ -83,6 +88,7 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      * @property schemes for OpenId4Vp. Optionally, you can set one or more schemes. By default, "mdoc-openid4vp" is used.
      * @property logLevel the debug logging level. By default, [LogLevel.OFF] is used
      * @property ktorHttpClientFactory the HttpClient factory for the OpenId4Vp. By default, [DefaultHttpClientFactory] is used
+     * @property formats the supported credential formats
      */
     class Builder {
         lateinit var clientIdSchemes: List<ClientIdScheme>
@@ -152,6 +158,19 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         fun withSchemes(vararg schemes: String) = withSchemes(schemes.toList())
 
 
+        lateinit var formats: List<Format>
+            private set
+
+        /**
+         * Sets the supported credential formats for the OpenId4Vp.
+         */
+        fun withFormats(formats: List<Format>) = apply {
+            this.formats = formats
+        }
+
+        fun withFormats(vararg formats: Format) =
+            withFormats(formats.toList())
+
         /**
          * Builds the [OpenId4VpConfig].
          * @return the [OpenId4VpConfig]
@@ -167,6 +186,19 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
 
             require(this::encryptionAlgorithms.isInitialized && encryptionAlgorithms.isNotEmpty()) { "OpenId4VpConfig: encryptionAlgorithms must be initialized with a not empty list" }
             require(this::encryptionMethods.isInitialized && encryptionMethods.isNotEmpty()) { "OpenId4VpConfig: encryptionMethods must be initialized with a not empty list" }
+
+            require(this.formats.isNotEmpty()) { "OpenId4VpConfig: formats must be initialized with a not empty list" }
+            this.formats.groupBy { it.toString() }
+                .forEach { (format, instances) ->
+                    require(instances.size == 1) {
+                        "OpenId4VpConfig: Multiple instances ${instances.size} found for $format."
+                    }
+                }
+            this.formats.forEach {
+                if (it is Format.SdJwtVc) {
+                    require(it.sdJwtAlgorithms.isNotEmpty()) { "OpenId4VpConfig: sdJwtAlgorithms in SdJwtVc Format must be initialized with a not empty list" }
+                }
+            }
 
             return OpenId4VpConfig(this)
         }
@@ -191,6 +223,20 @@ data class PreregisteredVerifier(
 typealias ClientId = String
 typealias LegalName = String
 typealias VerifierApi = String
+
+sealed interface Format {
+
+    data class SdJwtVc(
+        val sdJwtAlgorithms: List<Algorithm>,
+        val kbJwtAlgorithms: List<Algorithm>
+    ) : Format {
+        companion object {
+            val ES256 = SdJwtVc(listOf(Algorithm.ES256), listOf(Algorithm.ES256))
+        }
+    }
+
+    data object MsoMdoc : Format
+}
 
 sealed interface EncryptionAlgorithm {
 
