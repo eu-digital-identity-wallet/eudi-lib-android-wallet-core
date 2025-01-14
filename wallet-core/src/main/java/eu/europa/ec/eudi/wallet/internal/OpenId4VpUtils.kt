@@ -34,6 +34,7 @@ import eu.europa.ec.eudi.openid4vp.VPConfiguration
 import eu.europa.ec.eudi.openid4vp.VpFormat
 import eu.europa.ec.eudi.openid4vp.VpFormats
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import java.net.URI
 import java.security.MessageDigest
@@ -138,12 +139,6 @@ internal object OpenId4VpUtils {
     @JvmStatic
     internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509CertificateTrust): SiopOpenId4VPConfig {
         return SiopOpenId4VPConfig(
-            vpConfiguration = VPConfiguration(
-                vpFormats = VpFormats( // TODO: add this to the configuration of openid4vp
-                    VpFormat.MsoMdoc,
-                    VpFormat.sdJwtVc(
-                        listOf(JWSAlgorithm.ES256),
-                        listOf(JWSAlgorithm.ES256)))),
             jarmConfiguration = JarmConfiguration.Encryption(
                 supportedAlgorithms = encryptionAlgorithms.map {
                     JWEAlgorithm.parse(it.name)
@@ -170,7 +165,28 @@ internal object OpenId4VpUtils {
 
                     ClientIdScheme.X509SanUri -> X509SanUri(trust)
                 }
-            }
+            },
+            vpConfiguration = VPConfiguration(
+                vpFormats = VpFormats(
+                    formats.map { format ->
+                        when (format) {
+                            is Format.MsoMdoc -> {
+                                VpFormat.MsoMdoc
+                            }
+
+                            is Format.SdJwtVc -> {
+                                VpFormat.SdJwtVc(
+                                    format.sdJwtAlgorithms.map { alg ->
+                                        JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
+                                    },
+                                    format.kbJwtAlgorithms.map { alg ->
+                                        JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
+                                    }
+                                )
+                            }
+                        }
+                    }.toList()
+                ))
         )
     }
 

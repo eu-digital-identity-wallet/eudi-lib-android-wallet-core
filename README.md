@@ -194,6 +194,10 @@ val config = EudiWalletConfig()
             "eudi-openid4vp",
             "mdoc-openid4vp"
         )
+        withFormats(
+            Format.MsoMdoc, 
+            Format.SdJwtVc.ES256
+        )
     }
 
 val wallet = EudiWallet(context, config)
