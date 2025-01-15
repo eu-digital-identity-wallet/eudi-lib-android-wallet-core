@@ -5,13 +5,12 @@
 [androidJvm]\
 @Serializable
 
-data class [RefreshTokenTO](index.md)(val
-refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+data class [RefreshTokenTO](index.md)(val refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
 
 ## Constructors
 
-|                                         |                                                                                                                             |
-|-----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| | |
+|---|---|
 | [RefreshTokenTO](-refresh-token-t-o.md) | [androidJvm]<br>constructor(refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) |
 
 ## Types

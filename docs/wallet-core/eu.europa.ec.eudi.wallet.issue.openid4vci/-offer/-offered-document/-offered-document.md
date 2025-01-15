@@ -3,5 +3,4 @@
 # OfferedDocument
 
 [androidJvm]\
-constructor(offer: [Offer](../index.md), configurationIdentifier: CredentialConfigurationIdentifier,
-configuration: CredentialConfiguration)
+constructor(offer: [Offer](../index.md), configurationIdentifier: CredentialConfigurationIdentifier, configuration: CredentialConfiguration)

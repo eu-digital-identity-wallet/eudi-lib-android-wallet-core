@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
-import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp.Companion.invoke
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.d
@@ -119,7 +118,7 @@ class OpenId4VpManager(
 
                             is ResolvedRequestObject.SiopAuthentication,
                             is ResolvedRequestObject.SiopOpenId4VPAuthentication,
-                                -> {
+                            -> {
                                 logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
                                 transferEventListeners.onTransferEvent(
                                     TransferEvent.Error(
@@ -157,6 +156,7 @@ class OpenId4VpManager(
                     )
                     logger?.d(TAG, "VpToken: ${response.vpToken}")
                 }
+
                 is OpenId4VpResponse.GenericResponse -> {
                     require(response.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
                         "Resolved request object must be OpenId4VPAuthorization"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import eu.europa.ec.eudi.openid4vp.X509CertificateTrust
 import java.security.cert.X509Certificate
 
 internal class Openid4VpX509CertificateTrust(
-    private var readerTrustStore: ReaderTrustStore?
-): X509CertificateTrust {
+    private var readerTrustStore: ReaderTrustStore?,
+) : X509CertificateTrust {
 
     private var readerCertificateChain: List<X509Certificate>? = null
     private var isTrusted: Boolean? = null

@@ -4,6 +4,6 @@
 
 ## Functions
 
-| Name                                                     | Summary                                                                                                                                                                                                  |
-|----------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [extractDocumentMetaData](extract-document-meta-data.md) | [androidJvm]<br>fun [Offer.OfferedDocument](../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/index.md).[extractDocumentMetaData](extract-document-meta-data.md)(): DocumentMetaData |

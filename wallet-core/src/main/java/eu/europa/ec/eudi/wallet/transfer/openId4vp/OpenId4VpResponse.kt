@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +62,6 @@ sealed interface OpenId4VpResponse : Response {
         override val resolvedRequestObject: ResolvedRequestObject,
         override val consensus: Consensus.PositiveConsensus,
         val vpToken: VpToken,
-        val response: List<String>
+        val response: List<String>,
     ) : OpenId4VpResponse
 }
