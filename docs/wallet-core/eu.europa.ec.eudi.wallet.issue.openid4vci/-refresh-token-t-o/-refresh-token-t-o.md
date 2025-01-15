@@ -3,5 +3,4 @@
 # RefreshTokenTO
 
 [androidJvm]\
-constructor(
-refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+constructor(refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))

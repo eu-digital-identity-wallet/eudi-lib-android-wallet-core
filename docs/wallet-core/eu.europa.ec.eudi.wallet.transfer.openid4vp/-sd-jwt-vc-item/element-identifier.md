@@ -3,5 +3,4 @@
 # elementIdentifier
 
 [androidJvm]\
-open override
-val [elementIdentifier](element-identifier.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+open override val [elementIdentifier](element-identifier.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

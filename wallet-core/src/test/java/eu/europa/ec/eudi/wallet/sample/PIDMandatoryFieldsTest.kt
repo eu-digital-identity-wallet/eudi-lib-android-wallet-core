@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import eu.europa.ec.eudi.wallet.sample.util.Constants.ISSUING_COUNTRY
 import org.junit.Before
 import org.junit.Test
 
-class  PIDMandatoryFieldsTest : BaseTest() {
+class PIDMandatoryFieldsTest : BaseTest() {
 
     @Before
     override fun setUp() {

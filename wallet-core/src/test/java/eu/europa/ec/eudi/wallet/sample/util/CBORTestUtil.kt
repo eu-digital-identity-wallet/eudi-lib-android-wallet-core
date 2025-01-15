@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import co.nstant.`in`.cbor.model.DataItem
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Locale
 
 
 object CBORTestUtil {

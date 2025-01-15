@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import com.android.identity.crypto.Algorithm
 import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig.Builder
 import io.ktor.client.*
 import io.ktor.client.plugins.logging.*
 

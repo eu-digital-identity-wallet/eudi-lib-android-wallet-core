@@ -7,6 +7,6 @@ object [Companion](index.md)
 
 ## Functions
 
-| Name                       | Summary                                                                              |
-|----------------------------|--------------------------------------------------------------------------------------|
+| Name | Summary |
+|---|---|
 | [fromGrant](from-grant.md) | [androidJvm]<br>fun [fromGrant](from-grant.md)(grant: Grant): [GrantTO](../index.md) |

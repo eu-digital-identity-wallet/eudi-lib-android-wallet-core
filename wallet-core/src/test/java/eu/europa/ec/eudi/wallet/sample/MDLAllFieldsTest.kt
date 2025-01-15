@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ import eu.europa.ec.eudi.wallet.sample.util.Constants.UN_DISTINGUISHING_SIGN
 import eu.europa.ec.eudi.wallet.sample.util.Constants.WEIGHT
 import org.junit.Before
 import org.junit.Test
-import java.util.*
+import java.util.Locale
 
 class MDLAllFieldsTest : BaseTest() {
 

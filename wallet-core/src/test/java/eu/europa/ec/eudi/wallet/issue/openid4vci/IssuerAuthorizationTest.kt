@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,20 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import eu.europa.ec.eudi.openid4vci.*
+import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
+import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
+import eu.europa.ec.eudi.openid4vci.HttpsUrl
+import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
 import eu.europa.ec.eudi.wallet.logging.Logger
-import io.mockk.*
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkConstructor
+import io.mockk.mockkStatic
+import io.mockk.spyk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

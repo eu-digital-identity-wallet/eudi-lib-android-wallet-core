@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.bouncycastle.util.encoders.Hex
 import java.io.Closeable
-import java.util.*
+import java.util.Base64
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,9 +52,9 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import kotlinx.coroutines.runBlocking
-import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.getSessionTranscriptBytes
 import java.util.Base64
 import java.util.Date
 import java.util.UUID
@@ -113,13 +113,13 @@ class ProcessedMsoMdocOpenId4VpRequest(
 class ProcessedGenericOpenId4VpRequest(
     private val documentManager: DocumentManager,
     private val resolvedRequestObject: ResolvedRequestObject,
-    private val inputDescriptorMap : Map<InputDescriptorId, List<DocumentId>>,
+    private val inputDescriptorMap: Map<InputDescriptorId, List<DocumentId>>,
     requestedDocuments: RequestedDocuments,
-    val msoMdocNonce: String?
+    val msoMdocNonce: String?,
 ) : RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
     override fun generateResponse(
         disclosedDocuments: DisclosedDocuments,
-        signatureAlgorithm: Algorithm?
+        signatureAlgorithm: Algorithm?,
     ): ResponseResult {
         return try {
             require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization)
@@ -212,7 +212,8 @@ private fun SdJwt.Presentation<JwtAndClaims>.presentWithKeyBinding(
     keyUnlockData: KeyUnlockData?,
     clientId: ClientId,
     nonce: String,
-    issueDate: Date): String {
+    issueDate: Date,
+): String {
     return runBlocking {
         val algorithm = JWSAlgorithm.parse((signatureAlgorithm).jwseAlgorithmIdentifier)
         val buildKbJwt = kbJwtIssuer(
