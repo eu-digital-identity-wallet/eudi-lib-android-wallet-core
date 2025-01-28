@@ -173,7 +173,7 @@ val config = EudiWalletConfig()
         enableBlePeripheralMode = true,
         enableBleCentralMode = false,
         clearBleCache = true,
-        // regitered application service for handling NFC device engagement
+        // registered application service for handling NFC device engagement
         nfcEngagementServiceClass = MyNfcEngagementService::class.java
     )
     // mandatory configuration for OpenId4Vp if you want to enable
@@ -1065,7 +1065,7 @@ val transferEventListener = TransferEvent.Listener { event ->
                 DisclosedDocument(
                     documentId = firstDocumentId,
                     disclosedItems = listOf(
-                        DocItem(
+                        MsoMdocItem(
                             namespace = "eu.europa.ec.eudi.pid.1",
                             elementIdentifier = "first_name"
                         ),

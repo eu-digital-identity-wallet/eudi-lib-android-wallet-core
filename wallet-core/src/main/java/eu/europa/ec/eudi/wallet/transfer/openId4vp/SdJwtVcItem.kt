@@ -18,4 +18,8 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
 
-class SdJwtVcItem(override val elementIdentifier: String) : DocItem(elementIdentifier)
+/**
+ * Represents a SD-JWT VC item.
+ * @property path The path of the item.
+ */
+class SdJwtVcItem(val path: List<String>) : DocItem
