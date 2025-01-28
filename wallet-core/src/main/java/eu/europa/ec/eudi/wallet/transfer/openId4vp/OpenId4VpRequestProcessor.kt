@@ -166,11 +166,14 @@ class OpenId4VpRequestProcessor(
 
         val requestedClaims = this.constraints.fields()
             .filter { it.paths.first().value != "$.vct" }
-            .filter { it.paths.first().value.split(".").size == 2 } // TODO: support nested claims
-            .associate { fieldConstraint ->
-                val elementIdentifier = fieldConstraint.paths.first().value.removePrefix("$.")
-                SdJwtVcItem(elementIdentifier) to (fieldConstraint.intentToRetain ?: false)
-            }
+            .mapNotNull { fieldConstraint ->
+                val path = fieldConstraint.paths.first().value
+                // NOTE: currently we only support simple paths e.g. $.claim or $.claim.subclaim, not $.claim[0], $.claim.*
+                Regex("""^\$\.(\w+(?:\.\w+)*)$""").matchEntire(path)
+                    ?.groupValues?.get(1)?.split(".")?.let {
+                        SdJwtVcItem(it) to (fieldConstraint.intentToRetain ?: false)
+                    }
+            }.toMap()
 
         return RequestedDocuments(documentManager.getValidIssuedSdJwtVcDocuments(vct)
             .map { doc ->

@@ -40,13 +40,15 @@ import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.InputDescriptorId
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.present
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.serialize
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.Companion.serializeWithKeyBinding
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.present
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serialize
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serializeWithKeyBinding
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
-import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.Companion.kbJwtIssuer
+import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps.kbJwtIssuer
 import eu.europa.ec.eudi.sdjwt.SdJwt
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -129,11 +131,14 @@ class ProcessedGenericOpenId4VpRequest(
                 when (document.format) {
                     is SdJwtVcFormat -> {
                         val issuedSdJwt =
-                            SdJwt.unverifiedIssuanceFrom(String(document.issuerProvidedData))
+                            DefaultSdJwtOps.unverifiedIssuanceFrom(String(document.issuerProvidedData))
                                 .getOrThrow()
                         document.id to VerifiablePresentation.Generic(
                             issuedSdJwt.present(disclosedDocument.disclosedItems.map { disclosedItem ->
-                                ClaimPath.claim(disclosedItem.elementIdentifier)
+                                require(disclosedItem is SdJwtVcItem)
+                                ClaimPath(disclosedItem.path.map {
+                                    ClaimPathElement.Claim(it)
+                                })
                             }.toSet())?.run {
                                 // check if cnf is present and present with key binding
                                 issuedSdJwt.jwt.second["cnf"]?.run {
@@ -206,7 +211,7 @@ class ProcessedGenericOpenId4VpRequest(
     }
 }
 
-private fun SdJwt.Presentation<JwtAndClaims>.presentWithKeyBinding(
+private fun SdJwt<JwtAndClaims>.presentWithKeyBinding(
     signatureAlgorithm: Algorithm,
     document: IssuedDocument,
     keyUnlockData: KeyUnlockData?,
@@ -217,8 +222,7 @@ private fun SdJwt.Presentation<JwtAndClaims>.presentWithKeyBinding(
     return runBlocking {
         val algorithm = JWSAlgorithm.parse((signatureAlgorithm).jwseAlgorithmIdentifier)
         val buildKbJwt = kbJwtIssuer(
-            algorithm,
-            object : JWSSigner {
+            signer = object : JWSSigner {
                 override fun getJCAContext(): JCAContext = JCAContext()
                 override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
                 override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
@@ -227,7 +231,8 @@ private fun SdJwt.Presentation<JwtAndClaims>.presentWithKeyBinding(
                     return Base64URL.encode(signature.toJoseEncoded(algorithm))
                 }
             },
-            JWK.parseFromPEMEncodedObjects(document.keyInfo.publicKey.toPem()) as AsymmetricJWK
+            signAlgorithm = algorithm,
+            publicKey = JWK.parseFromPEMEncodedObjects(document.keyInfo.publicKey.toPem()) as AsymmetricJWK
         ) {
             audience(clientId)
             claim("nonce", nonce)
