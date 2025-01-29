@@ -3,7 +3,7 @@
 # Started
 
 [androidJvm]\
-data class [Started](index.md)(val total: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)) : [IssueEvent](../index.md)
+data class [Started](index.md)(val total: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html)) : [IssueEvent](../index.md)
 
 The issuance was started.
 
@@ -11,10 +11,10 @@ The issuance was started.
 
 | | |
 |---|---|
-| [Started](-started.md) | [androidJvm]<br>constructor(total: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)) |
+| [Started](-started.md) | [androidJvm]<br>constructor(total: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [total](total.md) | [androidJvm]<br>val [total](total.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)<br>the total number of documents to issue |
+| [total](total.md) | [androidJvm]<br>val [total](total.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html)<br>the total number of documents to issue |

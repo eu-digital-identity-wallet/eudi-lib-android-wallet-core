@@ -17,5 +17,5 @@ The result of an offer operation.
 
 | Name | Summary |
 |---|---|
-| [Failure](-failure/index.md) | [androidJvm]<br>data class [Failure](-failure/index.md)(val cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)) : [OfferResult](index.md), [OpenId4VciResult.Erroneous](../-open-id4-vci-result/-erroneous/index.md)<br>The offer failed. |
+| [Failure](-failure/index.md) | [androidJvm]<br>data class [Failure](-failure/index.md)(val cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html)) : [OfferResult](index.md), [OpenId4VciResult.Erroneous](../-open-id4-vci-result/-erroneous/index.md)<br>The offer failed. |
 | [Success](-success/index.md) | [androidJvm]<br>data class [Success](-success/index.md)(val offer: [Offer](../-offer/index.md)) : [OfferResult](index.md)<br>The offer was successful. |

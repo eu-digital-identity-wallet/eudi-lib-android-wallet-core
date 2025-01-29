@@ -6,4 +6,4 @@
 
 @SerialName(value = &quot;transaction_id&quot;)
 
-val [transactionId](transaction-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+val [transactionId](transaction-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

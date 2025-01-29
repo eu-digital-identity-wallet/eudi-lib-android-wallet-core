@@ -9,4 +9,4 @@ data object [ECDH_1PU](index.md) : [EncryptionAlgorithm](../index.md)
 
 | Name | Summary |
 |---|---|
-| [name](name.md) | [androidJvm]<br>open override val [name](name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [name](name.md) | [androidJvm]<br>open override val [name](name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |

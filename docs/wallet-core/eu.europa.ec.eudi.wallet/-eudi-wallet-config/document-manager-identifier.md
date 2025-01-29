@@ -3,4 +3,4 @@
 # documentManagerIdentifier
 
 [androidJvm]\
-var [documentManagerIdentifier](document-manager-identifier.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+var [documentManagerIdentifier](document-manager-identifier.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

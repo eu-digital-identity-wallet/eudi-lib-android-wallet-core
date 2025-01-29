@@ -362,8 +362,8 @@ $dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/ProcessedMsoMdocOpen
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/ProcessedMsoMdocOpenId4VpRequest/generateResponse/#eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments#com.android.identity.crypto.Algorithm?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-processed-mso-mdoc-open-id4-vp-request/generate-response.md
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/ProcessedMsoMdocOpenId4VpRequest/msoMdocNonce/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-processed-mso-mdoc-open-id4-vp-request/mso-mdoc-nonce.md
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/SdJwtVcItem///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-sd-jwt-vc-item/index.md
-$dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/SdJwtVcItem/SdJwtVcItem/#kotlin.String/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-sd-jwt-vc-item/-sd-jwt-vc-item.md
-$dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/SdJwtVcItem/elementIdentifier/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-sd-jwt-vc-item/element-identifier.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/SdJwtVcItem/SdJwtVcItem/#kotlin.collections.List[kotlin.String]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-sd-jwt-vc-item/-sd-jwt-vc-item.md
+$dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/SdJwtVcItem/path/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-sd-jwt-vc-item/path.md
 $dokka.location:eu.europa.ec.eudi.wallet.transfer.openId4vp/VerifierApi///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/-verifier-api/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.util////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/index.md

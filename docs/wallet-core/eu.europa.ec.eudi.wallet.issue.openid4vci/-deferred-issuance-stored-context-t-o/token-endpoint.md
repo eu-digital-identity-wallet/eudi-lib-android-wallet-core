@@ -8,4 +8,4 @@
 
 @SerialName(value = &quot;token_endpoint&quot;)
 
-val [tokenEndpoint](token-endpoint.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+val [tokenEndpoint](token-endpoint.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

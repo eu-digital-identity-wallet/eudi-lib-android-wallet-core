@@ -6,4 +6,4 @@
 
 @SerialName(value = &quot;client_attestation_pop_duration&quot;)
 
-val [clientAttestationPopDuration](client-attestation-pop-duration.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)? = null
+val [clientAttestationPopDuration](client-attestation-pop-duration.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html)? = null

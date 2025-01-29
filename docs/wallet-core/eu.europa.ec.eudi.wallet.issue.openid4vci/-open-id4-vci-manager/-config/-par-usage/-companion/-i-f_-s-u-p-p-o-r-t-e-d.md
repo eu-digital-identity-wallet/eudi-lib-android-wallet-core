@@ -3,4 +3,4 @@
 # IF_SUPPORTED
 
 [androidJvm]\
-const val [IF_SUPPORTED](-i-f_-s-u-p-p-o-r-t-e-d.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) = 2
+const val [IF_SUPPORTED](-i-f_-s-u-p-p-o-r-t-e-d.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 2

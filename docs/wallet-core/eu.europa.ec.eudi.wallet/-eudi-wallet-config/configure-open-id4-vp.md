@@ -27,7 +27,7 @@ androidJvm
 | [OpenId4VpConfig.Builder](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-config/-builder/index.md) |
 
 [androidJvm]\
-fun [configureOpenId4Vp](configure-open-id4-vp.md)(openId4VpConfig: [OpenId4VpConfig.Builder](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](index.md)
+fun [configureOpenId4Vp](configure-open-id4-vp.md)(openId4VpConfig: [OpenId4VpConfig.Builder](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](index.md)
 
 Configure OpenID4VP using a [OpenId4VpConfig.Builder](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-config/-builder/index.md) as a lambda with receiver.
 

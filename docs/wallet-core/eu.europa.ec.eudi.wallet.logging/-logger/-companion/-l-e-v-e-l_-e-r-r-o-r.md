@@ -3,4 +3,4 @@
 # LEVEL_ERROR
 
 [androidJvm]\
-const val [LEVEL_ERROR](-l-e-v-e-l_-e-r-r-o-r.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html) = 1
+const val [LEVEL_ERROR](-l-e-v-e-l_-e-r-r-o-r.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 1

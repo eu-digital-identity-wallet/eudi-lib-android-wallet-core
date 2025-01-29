@@ -3,13 +3,13 @@
 # SdJwtVc
 
 [androidJvm]\
-data class [SdJwtVc](index.md)(val sdJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;, val kbJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) : [Format](../index.md)
+data class [SdJwtVc](index.md)(val sdJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;, val kbJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) : [Format](../index.md)
 
 ## Constructors
 
 | | |
 |---|---|
-| [SdJwtVc](-sd-jwt-vc.md) | [androidJvm]<br>constructor(sdJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;, kbJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) |
+| [SdJwtVc](-sd-jwt-vc.md) | [androidJvm]<br>constructor(sdJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;, kbJwtAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) |
 
 ## Types
 
@@ -21,5 +21,5 @@ data class [SdJwtVc](index.md)(val sdJwtAlgorithms: [List](https://kotlinlang.or
 
 | Name | Summary |
 |---|---|
-| [kbJwtAlgorithms](kb-jwt-algorithms.md) | [androidJvm]<br>val [kbJwtAlgorithms](kb-jwt-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt; |
-| [sdJwtAlgorithms](sd-jwt-algorithms.md) | [androidJvm]<br>val [sdJwtAlgorithms](sd-jwt-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt; |
+| [kbJwtAlgorithms](kb-jwt-algorithms.md) | [androidJvm]<br>val [kbJwtAlgorithms](kb-jwt-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt; |
+| [sdJwtAlgorithms](sd-jwt-algorithms.md) | [androidJvm]<br>val [sdJwtAlgorithms](sd-jwt-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt; |

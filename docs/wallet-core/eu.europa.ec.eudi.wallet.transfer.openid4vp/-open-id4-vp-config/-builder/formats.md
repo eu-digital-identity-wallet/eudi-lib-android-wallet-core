@@ -3,4 +3,4 @@
 # formats
 
 [androidJvm]\
-lateinit var [formats](formats.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[Format](../../-format/index.md)&gt;
+lateinit var [formats](formats.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Format](../../-format/index.md)&gt;

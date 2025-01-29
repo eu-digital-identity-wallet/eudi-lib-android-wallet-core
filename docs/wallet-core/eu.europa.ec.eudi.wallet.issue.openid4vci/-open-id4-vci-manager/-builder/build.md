@@ -15,4 +15,4 @@ the [OpenId4VciManager](../index.md)
 
 | | |
 |---|---|
-| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if config or documentManager is not set |
+| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if config or documentManager is not set |

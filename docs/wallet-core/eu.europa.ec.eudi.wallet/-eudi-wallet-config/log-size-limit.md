@@ -3,4 +3,4 @@
 # logSizeLimit
 
 [androidJvm]\
-var [logSizeLimit](log-size-limit.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
+var [logSizeLimit](log-size-limit.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html)

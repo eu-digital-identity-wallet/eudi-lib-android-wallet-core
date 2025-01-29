@@ -3,7 +3,7 @@
 # withEncryptionMethods
 
 [androidJvm]\
-fun [withEncryptionMethods](with-encryption-methods.md)(encryptionMethods: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;): [OpenId4VpConfig.Builder](index.md)
+fun [withEncryptionMethods](with-encryption-methods.md)(encryptionMethods: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;): [OpenId4VpConfig.Builder](index.md)
 
 Sets the issuer url.
 

@@ -5,13 +5,13 @@
 [androidJvm]\
 @Serializable
 
-data class [RefreshTokenTO](index.md)(val refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html))
+data class [RefreshTokenTO](index.md)(val refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))
 
 ## Constructors
 
 | | |
 |---|---|
-| [RefreshTokenTO](-refresh-token-t-o.md) | [androidJvm]<br>constructor(refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) |
+| [RefreshTokenTO](-refresh-token-t-o.md) | [androidJvm]<br>constructor(refreshToken: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Types
 
@@ -23,7 +23,7 @@ data class [RefreshTokenTO](index.md)(val refreshToken: [String](https://kotlinl
 
 | Name | Summary |
 |---|---|
-| [refreshToken](refresh-token.md) | [androidJvm]<br>@Required<br>@SerialName(value = &quot;refresh_token&quot;)<br>val [refreshToken](refresh-token.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html) |
+| [refreshToken](refresh-token.md) | [androidJvm]<br>@Required<br>@SerialName(value = &quot;refresh_token&quot;)<br>val [refreshToken](refresh-token.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
 
 ## Functions
 

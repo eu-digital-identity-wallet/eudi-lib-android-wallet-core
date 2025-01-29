@@ -3,4 +3,4 @@
 # encryptionAlgorithms
 
 [androidJvm]\
-val [encryptionAlgorithms](encryption-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionAlgorithm](../-encryption-algorithm/index.md)&gt;
+val [encryptionAlgorithms](encryption-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionAlgorithm](../-encryption-algorithm/index.md)&gt;

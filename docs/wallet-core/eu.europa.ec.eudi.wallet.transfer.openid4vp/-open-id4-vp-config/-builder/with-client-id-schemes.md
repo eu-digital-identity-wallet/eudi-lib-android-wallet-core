@@ -3,7 +3,7 @@
 # withClientIdSchemes
 
 [androidJvm]\
-fun [withClientIdSchemes](with-client-id-schemes.md)(clientIdSchemes: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../../-client-id-scheme/index.md)&gt;): [OpenId4VpConfig.Builder](index.md)
+fun [withClientIdSchemes](with-client-id-schemes.md)(clientIdSchemes: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../../-client-id-scheme/index.md)&gt;): [OpenId4VpConfig.Builder](index.md)
 
 Sets the issuer url.
 
