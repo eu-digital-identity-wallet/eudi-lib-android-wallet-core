@@ -3,4 +3,4 @@
 # kbJwtAlgorithms
 
 [androidJvm]\
-val [kbJwtAlgorithms](kb-jwt-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;
+val [kbJwtAlgorithms](kb-jwt-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;

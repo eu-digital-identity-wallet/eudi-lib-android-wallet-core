@@ -2,7 +2,7 @@
 
 # Finished
 
-data class [Finished](index.md)(val issuedDocuments: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;) : [IssueEvent](../index.md)
+data class [Finished](index.md)(val issuedDocuments: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;) : [IssueEvent](../index.md)
 
 The issuance has finished.
 
@@ -16,10 +16,10 @@ The issuance has finished.
 
 | | |
 |---|---|
-| [Finished](-finished.md) | [androidJvm]<br>constructor(issuedDocuments: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;) |
+| [Finished](-finished.md) | [androidJvm]<br>constructor(issuedDocuments: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [issuedDocuments](issued-documents.md) | [androidJvm]<br>val [issuedDocuments](issued-documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;<br>the ids of the issued documents |
+| [issuedDocuments](issued-documents.md) | [androidJvm]<br>val [issuedDocuments](issued-documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;<br>the ids of the issued documents |

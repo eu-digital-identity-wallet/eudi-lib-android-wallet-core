@@ -3,7 +3,7 @@
 # PresentationManagerImpl
 
 [androidJvm]\
-class [PresentationManagerImpl](index.md)@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-overloads/index.html)constructor(transferManager: TransferManager, openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? = null, val nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? = null) : [PresentationManager](../-presentation-manager/index.md)
+class [PresentationManagerImpl](index.md)@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)constructor(transferManager: TransferManager, openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? = null, val nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? = null) : [PresentationManager](../-presentation-manager/index.md)
 
 Implementation of the [PresentationManager](../-presentation-manager/index.md) interface based on the TransferManager and [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md) implementations.
 
@@ -11,7 +11,7 @@ Implementation of the [PresentationManager](../-presentation-manager/index.md) i
 
 | | |
 |---|---|
-| [PresentationManagerImpl](-presentation-manager-impl.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>constructor(transferManager: TransferManager, openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? = null, nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? = null) |
+| [PresentationManagerImpl](-presentation-manager-impl.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>constructor(transferManager: TransferManager, openId4vpManager: [OpenId4VpManager](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md)? = null, nfcEngagementServiceClass: [Class](https://developer.android.com/reference/kotlin/java/lang/Class.html)&lt;out NfcEngagementService&gt;? = null) |
 
 ## Types
 
@@ -38,4 +38,4 @@ Implementation of the [PresentationManager](../-presentation-manager/index.md) i
 | [sendResponse](send-response.md) | [androidJvm]<br>open override fun [sendResponse](send-response.md)(response: Response)<br>Send a response to verifier |
 | [startProximityPresentation](start-proximity-presentation.md) | [androidJvm]<br>open override fun [startProximityPresentation](start-proximity-presentation.md)()<br>Starts the proximity presentation. The QR code is available through the TransferEvent.QrEngagementReady event which is triggered almost immediately after calling this method. The wallet should display the QR code to the verifier in order to start the proximity presentation. |
 | [startRemotePresentation](start-remote-presentation.md) | [androidJvm]<br>open override fun [startRemotePresentation](start-remote-presentation.md)(uri: [Uri](https://developer.android.com/reference/kotlin/android/net/Uri.html))<br>Start a remote presentation with the given URI The URI could be either |
-| [stopProximityPresentation](stop-proximity-presentation.md) | [androidJvm]<br>open override fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html))<br>Stops the proximity presentation. Method receives flags that can be used to control the session termination. The available flags are: |
+| [stopProximityPresentation](stop-proximity-presentation.md) | [androidJvm]<br>open override fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html))<br>Stops the proximity presentation. Method receives flags that can be used to control the session termination. The available flags are: |

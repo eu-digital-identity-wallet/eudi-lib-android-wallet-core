@@ -6,4 +6,4 @@
 
 @SerialName(value = &quot;client_attestation_pop_alg&quot;)
 
-val [clientAttestationPopAlgorithm](client-attestation-pop-algorithm.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null
+val [clientAttestationPopAlgorithm](client-attestation-pop-algorithm.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null

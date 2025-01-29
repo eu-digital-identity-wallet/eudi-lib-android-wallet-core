@@ -3,4 +3,4 @@
 # resume
 
 [androidJvm]\
-val [resume](resume.md): (createDocumentSettings: CreateDocumentSettings) -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
+val [resume](resume.md): (createDocumentSettings: CreateDocumentSettings) -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)

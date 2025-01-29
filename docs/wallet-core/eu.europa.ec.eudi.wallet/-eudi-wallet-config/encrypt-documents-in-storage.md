@@ -3,4 +3,4 @@
 # encryptDocumentsInStorage
 
 [androidJvm]\
-var [encryptDocumentsInStorage](encrypt-documents-in-storage.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
+var [encryptDocumentsInStorage](encrypt-documents-in-storage.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html)

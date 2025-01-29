@@ -8,4 +8,4 @@
 
 @SerialName(value = &quot;credential_issuer&quot;)
 
-val [credentialIssuerId](credential-issuer-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+val [credentialIssuerId](credential-issuer-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

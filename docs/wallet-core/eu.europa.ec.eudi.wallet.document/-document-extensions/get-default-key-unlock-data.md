@@ -4,9 +4,9 @@
 
 [androidJvm]\
 
-@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
+@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
 fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(documentId: DocumentId): AndroidKeystoreKeyUnlockData?
 
@@ -39,5 +39,5 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-illegal-state-exception/index.html) | if the Document is not managed by AndroidKeystoreSecureArea |
-| [NoSuchElementException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-no-such-element-exception/index.html) | if the document is not found by the DocumentId |
+| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if the Document is not managed by AndroidKeystoreSecureArea |
+| [NoSuchElementException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-no-such-element-exception/index.html) | if the document is not found by the DocumentId |

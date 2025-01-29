@@ -3,4 +3,4 @@
 # ClientId
 
 [androidJvm]\
-typealias [ClientId](index.md) = [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+typealias [ClientId](index.md) = [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

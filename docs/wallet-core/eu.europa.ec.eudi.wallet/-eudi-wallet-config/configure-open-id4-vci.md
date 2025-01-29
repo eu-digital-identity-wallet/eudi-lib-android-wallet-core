@@ -27,7 +27,7 @@ androidJvm
 | [OpenId4VciManager.Config.Builder](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/-builder/index.md) |
 
 [androidJvm]\
-fun [configureOpenId4Vci](configure-open-id4-vci.md)(openId4VciConfig: [OpenId4VciManager.Config.Builder](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](index.md)
+fun [configureOpenId4Vci](configure-open-id4-vci.md)(openId4VciConfig: [OpenId4VciManager.Config.Builder](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](index.md)
 
 Configure OpenID4VCI using a [OpenId4VciManager.Config.Builder](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/-builder/index.md) as a lambda with receiver.
 

@@ -3,4 +3,4 @@
 # useStrongBoxForKeys
 
 [androidJvm]\
-var [useStrongBoxForKeys](use-strong-box-for-keys.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
+var [useStrongBoxForKeys](use-strong-box-for-keys.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html)

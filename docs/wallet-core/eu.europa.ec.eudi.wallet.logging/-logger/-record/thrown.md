@@ -3,4 +3,4 @@
 # thrown
 
 [androidJvm]\
-val [thrown](thrown.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-throwable/index.html)? = null
+val [thrown](thrown.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html)? = null

@@ -3,4 +3,4 @@
 # enableBlePeripheralMode
 
 [androidJvm]\
-var [enableBlePeripheralMode](enable-ble-peripheral-mode.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
+var [enableBlePeripheralMode](enable-ble-peripheral-mode.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html)

@@ -3,7 +3,7 @@
 # stopProximityPresentation
 
 [androidJvm]\
-open override fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html))
+open override fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html))
 
 Stops the proximity presentation. Method receives flags that can be used to control the session termination. The available flags are:
 

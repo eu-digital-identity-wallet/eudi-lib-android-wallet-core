@@ -3,4 +3,4 @@
 # Started
 
 [androidJvm]\
-constructor(total: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html))
+constructor(total: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html))

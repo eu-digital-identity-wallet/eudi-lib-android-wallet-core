@@ -6,4 +6,4 @@
 
 @SerialName(value = &quot;dpop_key_id&quot;)
 
-val [dPoPSignerKid](d-po-p-signer-kid.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)? = null
+val [dPoPSignerKid](d-po-p-signer-kid.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null

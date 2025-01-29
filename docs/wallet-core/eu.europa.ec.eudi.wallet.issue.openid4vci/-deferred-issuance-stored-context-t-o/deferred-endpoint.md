@@ -8,4 +8,4 @@
 
 @SerialName(value = &quot;deferred_endpoint&quot;)
 
-val [deferredEndpoint](deferred-endpoint.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
+val [deferredEndpoint](deferred-endpoint.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

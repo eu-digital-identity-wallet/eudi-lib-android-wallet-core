@@ -3,6 +3,6 @@
 # getIssuerMetadata
 
 [androidJvm]\
-abstract suspend fun [getIssuerMetadata](get-issuer-metadata.md)(): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-result/index.html)&lt;CredentialIssuerMetadata&gt;
+abstract suspend fun [getIssuerMetadata](get-issuer-metadata.md)(): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;CredentialIssuerMetadata&gt;
 
 Provides the issuer metadata

@@ -3,4 +3,4 @@
 # toDeferredIssuanceStoredContext
 
 [androidJvm]\
-fun [toDeferredIssuanceStoredContext](to-deferred-issuance-stored-context.md)(clock: [Clock](https://developer.android.com/reference/kotlin/java/time/Clock.html), recreatePopSigner: ([String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) -&gt; PopSigner.Jwt?, recreateClientAttestationPodSigner: ([String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)) -&gt; JWSSigner?): DeferredIssuanceContext
+fun [toDeferredIssuanceStoredContext](to-deferred-issuance-stored-context.md)(clock: [Clock](https://developer.android.com/reference/kotlin/java/time/Clock.html), recreatePopSigner: ([String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) -&gt; PopSigner.Jwt?, recreateClientAttestationPodSigner: ([String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) -&gt; JWSSigner?): DeferredIssuanceContext

@@ -3,4 +3,4 @@
 # clientIdSchemes
 
 [androidJvm]\
-val [clientIdSchemes](client-id-schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../-client-id-scheme/index.md)&gt;
+val [clientIdSchemes](client-id-schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../-client-id-scheme/index.md)&gt;
