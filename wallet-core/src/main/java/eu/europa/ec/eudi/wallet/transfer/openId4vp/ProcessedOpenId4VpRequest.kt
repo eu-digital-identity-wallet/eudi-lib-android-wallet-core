@@ -54,7 +54,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.getSessionTranscriptBytes
+import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import kotlinx.coroutines.runBlocking
 import java.util.Base64

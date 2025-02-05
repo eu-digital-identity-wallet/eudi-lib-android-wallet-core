@@ -32,6 +32,7 @@ mockito-inline = "5.2.0"
 mockito-kotlin = "5.3.1"
 mockk = "1.13.5"
 nimbus-sdk = "11.20.1"
+robolectric = "4.14"
 sonarqube = "5.1.0.4882"
 test-core = "1.4.0"
 test-rules = "1.4.0"
@@ -73,6 +74,7 @@ mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-coreKtx = { module = "androidx.test:core-ktx", version.ref = "test-core" }
 test-rules = { module = "androidx.test:rules", version.ref = "test-rules" }

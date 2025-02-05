@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ import eu.europa.ec.eudi.prex.InputDescriptor
 import eu.europa.ec.eudi.prex.InputDescriptorId
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.generateMdocGeneratedNonce
-import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
+import eu.europa.ec.eudi.wallet.internal.generateMdocGeneratedNonce
+import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 
 class OpenId4VpRequestProcessor(
     private val documentManager: DocumentManager,

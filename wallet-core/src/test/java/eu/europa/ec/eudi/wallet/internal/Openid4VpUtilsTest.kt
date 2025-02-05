@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ class Openid4VpUtilsTest {
 
     @Test
     fun testGenerateOpenId4VpHandover() {
-        val openid4VpHandover = OpenId4VpUtils.generateOpenId4VpHandover(
+        val openid4VpHandover = generateOpenId4VpHandover(
             clientId,
             responseUri,
             nonce,
@@ -52,7 +52,7 @@ class Openid4VpUtilsTest {
 
     @Test
     fun testGenerateSessionTranscript() {
-        val sessionTranscript = OpenId4VpUtils.generateSessionTranscript(
+        val sessionTranscript = generateSessionTranscript(
             clientId,
             responseUri,
             nonce,

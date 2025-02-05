@@ -27,19 +27,23 @@ import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
 import eu.europa.ec.eudi.openid4vp.asException
-import eu.europa.ec.eudi.wallet.internal.OpenId4VpUtils.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.i
+import eu.europa.ec.eudi.wallet.internal.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.util.CBOR.cborPrettyPrint
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import org.bouncycastle.util.encoders.Hex.toHexString
 import java.util.concurrent.Executor
@@ -88,8 +92,20 @@ class OpenId4VpManager(
         transferEventListeners.clear()
     }
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
+    private var resolveRequestUriJob: Job? = null
+    private var sendResponseJob: Job? = null
+
+    /**
+     * Resolves a request URI. This method is asynchronous and the result is emitted through the
+     * [TransferEvent.Listener] interface. Every time it is called it cancels any previous request
+     * that is being resolved. This will lead to the [TransferEvent.Disconnected] event being emitted.
+     * @see eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager.addTransferEventListener
+     *
+     */
     fun resolveRequestUri(uri: String) {
-        CoroutineScope(Dispatchers.IO).launch(exceptionHandler) {
+        resolveRequestUriJob?.cancel()
+        resolveRequestUriJob = scope.launch {
             try {
                 require(config.schemes.contains(Uri.parse(uri).scheme)) {
                     "Not supported scheme for OpenId4Vp"
@@ -118,7 +134,7 @@ class OpenId4VpManager(
 
                             is ResolvedRequestObject.SiopAuthentication,
                             is ResolvedRequestObject.SiopOpenId4VPAuthentication,
-                            -> {
+                                -> {
                                 logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
                                 transferEventListeners.onTransferEvent(
                                     TransferEvent.Error(
@@ -131,45 +147,39 @@ class OpenId4VpManager(
                 }
             } catch (e: Throwable) {
                 logger?.e(TAG, "Failed to resolve request URL", e)
-                transferEventListeners.onTransferEvent(TransferEvent.Error(e))
+                val event = when (e) {
+                    is CancellationException -> TransferEvent.Disconnected
+                    else -> TransferEvent.Error(e)
+                }
+                transferEventListeners.onTransferEvent(event)
             }
         }
     }
 
+    /**
+     * Sends a response to the verifier.
+     * This method is asynchronous and the result is emitted through the [TransferEvent.Listener]
+     * interface.
+     * Every time it is called it cancels any previous response that is being sent. This will lead
+     * to the [TransferEvent.Disconnected] event being emitted.
+     * @see eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager.addTransferEventListener
+     *
+     * @param response The response to send.
+     */
     fun sendResponse(response: Response) {
-        try {
-            require(response is OpenId4VpResponse) {
-                "Response must be an OpenId4VpResponse"
-            }
-            when (response) {
-                is OpenId4VpResponse.DeviceResponse -> {
-                    require(response.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
-                        "Resolved request object must be OpenId4VPAuthorization"
-                    }
-                    logger?.d(
-                        TAG,
-                        "Device Response to send (hex): ${toHexString(response.responseBytes)}"
-                    )
-                    logger?.d(
-                        TAG,
-                        "Device Response to send (cbor): ${cborPrettyPrint(response.responseBytes)}"
-                    )
-                    logger?.d(TAG, "VpToken: ${response.vpToken}")
+        sendResponseJob?.cancel()
+        sendResponseJob = scope.launch {
+            try {
+                require(response is OpenId4VpResponse) {
+                    "Response must be an OpenId4VpResponse"
+                }
+                require(response.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
+                    "Resolved request object must be OpenId4VPAuthorization"
                 }
 
-                is OpenId4VpResponse.GenericResponse -> {
-                    require(response.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
-                        "Resolved request object must be OpenId4VPAuthorization"
-                    }
-                    logger?.d(
-                        TAG,
-                        "Generic Response to send: ${response.response.joinToString("\n")}"
-                    )
-                    logger?.d(TAG, "VpToken: ${response.vpToken}")
-                }
-            }
+                logResponse(response)
 
-            CoroutineScope(Dispatchers.IO).launch(exceptionHandler) {
+
                 when (val outcome = siopOpenId4Vp.dispatch(
                     request = response.resolvedRequestObject,
                     consensus = response.consensus,
@@ -199,9 +209,47 @@ class OpenId4VpManager(
                         )
                     }
                 }
+            } catch (e: Throwable) {
+                logger?.e(TAG, "Failed to send response", e)
+                val event = when (e) {
+                    is CancellationException -> TransferEvent.Disconnected
+                    else -> TransferEvent.Error(e)
+                }
+                transferEventListeners.onTransferEvent(event)
             }
-        } catch (e: Throwable) {
-            transferEventListeners.onTransferEvent(TransferEvent.Error(e))
+        }
+    }
+
+    /**
+     * Stops the manager and cancels all running connections made by the manager.
+     * When a connection is cancelled, the [TransferEvent.Disconnected] event is emitted.
+     */
+    fun stop() {
+        logger?.d(TAG, "Stopping OpenId4VpManager")
+        scope.coroutineContext.cancelChildren()
+    }
+
+    private fun logResponse(response: OpenId4VpResponse) {
+        when (response) {
+            is OpenId4VpResponse.DeviceResponse -> {
+                logger?.d(
+                    TAG,
+                    "Device Response to send (hex): ${toHexString(response.responseBytes)}"
+                )
+                logger?.d(
+                    TAG,
+                    "Device Response to send (cbor): ${cborPrettyPrint(response.responseBytes)}"
+                )
+                logger?.d(TAG, "VpToken: ${response.vpToken}")
+            }
+
+            is OpenId4VpResponse.GenericResponse -> {
+                logger?.d(
+                    TAG,
+                    "Generic Response to send: ${response.response.joinToString("\n")}"
+                )
+                logger?.d(TAG, "VpToken: ${response.vpToken}")
+            }
         }
     }
 
