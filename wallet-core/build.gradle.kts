@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +82,12 @@ android {
         jvmTarget = libs.versions.java.get()
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     sourceSets.getByName("test").apply {
         res.setSrcDirs(files("resources"))
     }
@@ -145,6 +151,7 @@ dependencies {
     testImplementation(libs.json)
     testImplementation(libs.kotlin.coroutines.test)
     testImplementation(libs.biometric.ktx)
+    testImplementation(libs.robolectric)
 
     androidTestImplementation(libs.android.junit)
     androidTestImplementation(libs.mockito.android)

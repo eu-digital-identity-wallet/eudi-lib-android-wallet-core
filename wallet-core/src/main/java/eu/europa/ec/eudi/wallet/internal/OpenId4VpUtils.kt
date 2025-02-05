@@ -42,7 +42,7 @@ import java.security.SecureRandom
 import java.util.Base64
 
 /**
- *  Utility class to generate the session transcript for the OpenID4VP protocol.
+ *  Utility to generate the session transcript for the OpenID4VP protocol.
  *
  *  SessionTranscript = [
  *    DeviceEngagementBytes,
@@ -76,136 +76,128 @@ import java.util.Base64
  *  nonce = tstr
  *
  */
+internal fun generateSessionTranscript(
+    clientId: String,
+    responseUri: String,
+    nonce: String,
+    mdocGeneratedNonce: String,
+): SessionTranscriptBytes {
 
-internal object OpenId4VpUtils {
+    val openID4VPHandover =
+        generateOpenId4VpHandover(clientId, responseUri, nonce, mdocGeneratedNonce)
 
-    @JvmStatic
-    internal fun generateSessionTranscript(
-        clientId: String,
-        responseUri: String,
-        nonce: String,
-        mdocGeneratedNonce: String,
-    ): SessionTranscriptBytes {
-
-        val openID4VPHandover =
-            generateOpenId4VpHandover(clientId, responseUri, nonce, mdocGeneratedNonce)
-
-        val sessionTranscriptBytes =
-            CBORObject.NewArray().apply {
-                Add(CBORObject.Null)
-                Add(CBORObject.Null)
-                Add(openID4VPHandover)
-            }.EncodeToBytes()
-
-        return sessionTranscriptBytes
-    }
-
-    @JvmStatic
-    internal fun generateOpenId4VpHandover(
-        clientId: String,
-        responseUri: String,
-        nonce: String,
-        mdocGeneratedNonce: String,
-    ): com.upokecenter.cbor.CBORObject {
-        val clientIdToHash = CBORObject.NewArray().apply {
-            Add(clientId)
-            Add(mdocGeneratedNonce)
+    val sessionTranscriptBytes =
+        CBORObject.NewArray().apply {
+            Add(CBORObject.Null)
+            Add(CBORObject.Null)
+            Add(openID4VPHandover)
         }.EncodeToBytes()
 
-        val responseUriToHash = CBORObject.NewArray().apply {
-            Add(responseUri)
-            Add(mdocGeneratedNonce)
-        }.EncodeToBytes()
+    return sessionTranscriptBytes
+}
 
-        val clientIdHash = MessageDigest.getInstance("SHA-256").digest(clientIdToHash)
-        val responseUriHash = MessageDigest.getInstance("SHA-256").digest(responseUriToHash)
+internal fun generateOpenId4VpHandover(
+    clientId: String,
+    responseUri: String,
+    nonce: String,
+    mdocGeneratedNonce: String,
+): CBORObject {
+    val clientIdToHash = CBORObject.NewArray().apply {
+        Add(clientId)
+        Add(mdocGeneratedNonce)
+    }.EncodeToBytes()
 
-        val openID4VPHandover = CBORObject.NewArray().apply {
-            Add(clientIdHash)
-            Add(responseUriHash)
-            Add(nonce)
-        }
-        return openID4VPHandover
+    val responseUriToHash = CBORObject.NewArray().apply {
+        Add(responseUri)
+        Add(mdocGeneratedNonce)
+    }.EncodeToBytes()
+
+    val clientIdHash = MessageDigest.getInstance("SHA-256").digest(clientIdToHash)
+    val responseUriHash = MessageDigest.getInstance("SHA-256").digest(responseUriToHash)
+
+    val openID4VPHandover = CBORObject.NewArray().apply {
+        Add(clientIdHash)
+        Add(responseUriHash)
+        Add(nonce)
     }
+    return openID4VPHandover
+}
 
-    @JvmStatic
-    internal fun generateMdocGeneratedNonce(): String {
-        val secureRandom = SecureRandom()
-        val bytes = ByteArray(16)
-        secureRandom.nextBytes(bytes)
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-    }
+internal fun generateMdocGeneratedNonce(): String {
+    val secureRandom = SecureRandom()
+    val bytes = ByteArray(16)
+    secureRandom.nextBytes(bytes)
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+}
 
-    @JvmStatic
-    internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509CertificateTrust): SiopOpenId4VPConfig {
-        return SiopOpenId4VPConfig(
-            jarmConfiguration = JarmConfiguration.Encryption(
-                supportedAlgorithms = encryptionAlgorithms.map {
-                    JWEAlgorithm.parse(it.name)
-                },
-                supportedMethods = encryptionMethods.map {
-                    EncryptionMethod.parse(it.name)
-                },
-            ),
-            supportedClientIdSchemes = clientIdSchemes.map { clientIdScheme ->
-                when (clientIdScheme) {
-                    is ClientIdScheme.Preregistered -> Preregistered(
-                        clientIdScheme.preregisteredVerifiers.associate { verifier ->
-                            verifier.clientId to PreregisteredClient(
-                                verifier.clientId,
-                                verifier.legalName,
-                                JWSAlgorithm.RS256 to ByReference(
-                                    URI("${verifier.verifierApi}/wallet/public-keys.json")
-                                )
+internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509CertificateTrust): SiopOpenId4VPConfig {
+    return SiopOpenId4VPConfig(
+        jarmConfiguration = JarmConfiguration.Encryption(
+            supportedAlgorithms = encryptionAlgorithms.map {
+                JWEAlgorithm.parse(it.name)
+            },
+            supportedMethods = encryptionMethods.map {
+                EncryptionMethod.parse(it.name)
+            },
+        ),
+        supportedClientIdSchemes = clientIdSchemes.map { clientIdScheme ->
+            when (clientIdScheme) {
+                is ClientIdScheme.Preregistered -> Preregistered(
+                    clientIdScheme.preregisteredVerifiers.associate { verifier ->
+                        verifier.clientId to PreregisteredClient(
+                            verifier.clientId,
+                            verifier.legalName,
+                            JWSAlgorithm.RS256 to ByReference(
+                                URI("${verifier.verifierApi}/wallet/public-keys.json")
+                            )
+                        )
+                    }
+                )
+
+                ClientIdScheme.X509SanDns -> X509SanDns(trust)
+
+                ClientIdScheme.X509SanUri -> X509SanUri(trust)
+            }
+        },
+        vpConfiguration = VPConfiguration(
+            vpFormats = VpFormats(
+                formats.map { format ->
+                    when (format) {
+                        is Format.MsoMdoc -> {
+                            VpFormat.MsoMdoc
+                        }
+
+                        is Format.SdJwtVc -> {
+                            VpFormat.SdJwtVc(
+                                format.sdJwtAlgorithms.map { alg ->
+                                    JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
+                                },
+                                format.kbJwtAlgorithms.map { alg ->
+                                    JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
+                                }
                             )
                         }
-                    )
-
-                    ClientIdScheme.X509SanDns -> X509SanDns(trust)
-
-                    ClientIdScheme.X509SanUri -> X509SanUri(trust)
-                }
-            },
-            vpConfiguration = VPConfiguration(
-                vpFormats = VpFormats(
-                    formats.map { format ->
-                        when (format) {
-                            is Format.MsoMdoc -> {
-                                VpFormat.MsoMdoc
-                            }
-
-                            is Format.SdJwtVc -> {
-                                VpFormat.SdJwtVc(
-                                    format.sdJwtAlgorithms.map { alg ->
-                                        JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
-                                    },
-                                    format.kbJwtAlgorithms.map { alg ->
-                                        JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
-                                    }
-                                )
-                            }
-                        }
-                    }.toList()
-                ))
+                    }
+                }.toList()
+            )
         )
-    }
+    )
+}
 
-    @JvmStatic
-    internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBytes(
-        mdocGeneratedNonce: String,
-    ): SessionTranscriptBytes {
-        val clientId = this.client.id
-        val responseUri =
-            (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
-                ?: ""
-        val nonce = this.nonce
+internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBytes(
+    mdocGeneratedNonce: String,
+): SessionTranscriptBytes {
+    val clientId = this.client.id
+    val responseUri =
+        (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
+            ?: ""
+    val nonce = this.nonce
 
-        val sessionTranscriptBytes = generateSessionTranscript(
-            clientId,
-            responseUri,
-            nonce,
-            mdocGeneratedNonce
-        )
-        return sessionTranscriptBytes
-    }
+    val sessionTranscriptBytes = generateSessionTranscript(
+        clientId,
+        responseUri,
+        nonce,
+        mdocGeneratedNonce
+    )
+    return sessionTranscriptBytes
 }

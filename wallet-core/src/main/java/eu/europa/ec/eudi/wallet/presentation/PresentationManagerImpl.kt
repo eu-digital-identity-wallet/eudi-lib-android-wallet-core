@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,6 +113,10 @@ class PresentationManagerImpl @JvmOverloads constructor(
             sendSessionTerminationMessage = flags and SEND_SESSION_TERMINATION_MESSAGE != 0,
             useTransportSpecificSessionTermination = flags and USE_TRANSPORT_SPECIFIC_SESSION_TERMINATION != 0
         )
+    }
+
+    override fun stopRemotePresentation() {
+        openId4vpManager?.stop()
     }
 
 
