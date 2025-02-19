@@ -96,15 +96,17 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             private set
 
         /**
-         * Sets the issuer url.
+         * Sets the supported client identifier schemes.
          *
-         * @param issuerUrl the issuer url
+         * @param clientIdSchemes list of [ClientIdScheme]
          */
         fun withClientIdSchemes(clientIdSchemes: List<ClientIdScheme>) =
             apply { this.clientIdSchemes = clientIdSchemes }
 
         /**
+         * Sets the supported client identifier schemes.
          *
+         * @param clientIdSchemes variable argument of [ClientIdScheme]
          */
         fun withClientIdSchemes(vararg clientIdSchemes: ClientIdScheme) =
             apply { this.clientIdSchemes = clientIdSchemes.toList() }
@@ -113,13 +115,18 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             private set
 
         /**
-         * Sets the issuer url.
+         * Sets the list of supported encryption algorithms.
          *
-         * @param issuerUrl the issuer url
+         * @param encryptionAlgorithms list of [EncryptionAlgorithm]
          */
         fun withEncryptionAlgorithms(encryptionAlgorithms: List<EncryptionAlgorithm>) =
             apply { this.encryptionAlgorithms = encryptionAlgorithms }
 
+        /**
+         * Sets the list of supported encryption algorithms.
+         *
+         * @param encryptionAlgorithms variable argument of [EncryptionAlgorithm]
+         */
         fun withEncryptionAlgorithms(vararg encryptionAlgorithms: EncryptionAlgorithm) =
             withEncryptionAlgorithms(encryptionAlgorithms.toList())
 
@@ -127,15 +134,17 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             private set
 
         /**
-         * Sets the issuer url.
+         * Sets the list of supported encryption methods.
          *
-         * @param issuerUrl the issuer url
+         * @param encryptionMethods list of [EncryptionMethod]
          */
         fun withEncryptionMethods(encryptionMethods: List<EncryptionMethod>) =
             apply { this.encryptionMethods = encryptionMethods }
 
         /**
+         * Sets the list of supported encryption methods.
          *
+         * @param encryptionMethods variable argument of [EncryptionMethod]
          */
         fun withEncryptionMethods(vararg encryptionMethods: EncryptionMethod) =
             withEncryptionMethods(encryptionMethods.toList())
@@ -144,8 +153,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             private set
 
         /**
-         * Sets a list of schemes for openId4Vp.
-         * By default, the scheme "mdoc-openid4vp" is supported
+         * Sets a list of schemes for OpenID4VP.
+         * By default, the scheme "mdoc-openid4vp" is supported.
          *
          * @param schemes the list of schemes
          */
@@ -154,7 +163,9 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         }
 
         /**
-         * Sets a list of schemes for openId4Vp.
+         * Sets a list of schemes for OpenID4VP.
+         *
+         * @param schemes variables argument of schemes
          */
         fun withSchemes(vararg schemes: String) = withSchemes(schemes.toList())
 
@@ -163,12 +174,19 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             private set
 
         /**
-         * Sets the supported credential formats for the OpenId4Vp.
+         * Sets the supported credential formats for the OpenID4VP.
+         *
+         * @param formats list of [Format]
          */
         fun withFormats(formats: List<Format>) = apply {
             this.formats = formats
         }
 
+        /**
+         * Sets the supported credential formats for the OpenID4VP.
+         *
+         * @param formats variable argument of [Format]
+         */
         fun withFormats(vararg formats: Format) =
             withFormats(formats.toList())
 
