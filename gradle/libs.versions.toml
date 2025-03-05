@@ -10,12 +10,12 @@ dokka = "1.9.20"
 espresso-contrib = "3.6.1"
 espresso-core = "3.6.1"
 eudi-document-manager = "0.9.1"
-eudi-iso18013-data-transfer = "0.6.1"
+eudi-iso18013-data-transfer = "0.6.2"
 eudi-lib-jvm-openid4vci-kt = "0.6.1"
 eudi-lib-jvm-siop-openid4vp-kt = "0.8.1"
 eudi-lib-jvm-sdjwt-kt = "0.10.0"
 google-identity-android = "202408.1"
-gradle-plugin = "8.6.0"
+gradle-plugin = "8.9.1"
 jacoco = "0.8.12"
 java = "17"
 json = "20240303"
@@ -60,6 +60,7 @@ eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4v
 eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
 eudi-lib-jvm-sdjwt-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudi-lib-jvm-sdjwt-kt" }
 google-identity-android = { module = "com.android.identity:identity-android", version.ref = "google-identity-android" }
+google-identity-mdoc = { module = "com.android.identity:identity-mdoc", version.ref = "google-identity-android" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }

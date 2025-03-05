@@ -85,7 +85,9 @@ class ProcessedMsoMdocOpenId4VpRequest(
                     resolvedRequestObject = resolvedRequestObject,
                     consensus = consensus,
                     msoMdocNonce = msoMdocNonce,
-                    responseBytes = deviceResponse.deviceResponseBytes
+                    sessionTranscript = deviceResponse.sessionTranscriptBytes,
+                    responseBytes = deviceResponse.deviceResponseBytes,
+                    documentIds = deviceResponse.documentIds
                 )
             )
         } catch (e: Throwable) {

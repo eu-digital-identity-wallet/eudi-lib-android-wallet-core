@@ -24,11 +24,10 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
-import eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.wallet.EudiWallet.Builder
-import eu.europa.ec.eudi.wallet.document.*
+import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.DocumentManagerImpl
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
 import eu.europa.ec.eudi.wallet.internal.i
@@ -36,6 +35,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
+import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestProcessor
 import io.ktor.client.HttpClient
@@ -145,6 +146,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
      * @property presentationManager the presentation manager to use if you want to provide a custom implementation
      * @property logger the logger to use if you want to provide a custom implementation
      * @property ktorHttpClientFactory the Ktor HTTP client factory to use if you want to provide a custom implementation
+     * @property transactionLogger the transaction logger to use if you want to provide a custom implementation
      */
     class Builder(
         context: Context,
@@ -159,6 +161,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
         var presentationManager: PresentationManager? = null
         var logger: Logger? = null
         var ktorHttpClientFactory: (() -> HttpClient)? = null
+        var transactionLogger: TransactionLogger? = null
 
         /**
          * Configure with the given [SecureArea] implementations to use for documents' keys management.
@@ -234,8 +237,21 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
          * @param ktorHttpClientFactory the Ktor HTTP client factory
          * @return this [Builder] instance
          */
-        fun withKtorHttpClientFactory(ktorHttpClientFactory: () -> HttpClient) =
-            apply { this.ktorHttpClientFactory = ktorHttpClientFactory }
+        fun withKtorHttpClientFactory(ktorHttpClientFactory: () -> HttpClient) = apply {
+            this.ktorHttpClientFactory = ktorHttpClientFactory
+        }
+
+
+        /**
+         * Configure with the given [TransactionLogger] to use for logging transactions.
+         * If not set, the default transaction logger will be used which logs transactions to the console.
+         *
+         * @param transactionLogger the transaction logger
+         * @return this [Builder] instance
+         */
+        fun withTransactionLogger(transactionLogger: TransactionLogger) = apply {
+            this.transactionLogger = transactionLogger
+        }
 
         /**
          * Build the [EudiWallet] instance
@@ -277,7 +293,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 documentManager = documentManagerToUse,
                 transferManager = transferManager,
                 readerTrustStore = readerTrustStoreToUse
-            )
+            ).wrapWithTrasactionLogger(documentManagerToUse)
 
             val openId4VciManagerFactory = {
                 config.openId4VciConfig?.let { openId4VciConfig ->
@@ -299,6 +315,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 logger = loggerObj,
                 readerTrustStoreConsumer = { presentationManagerToUse.readerTrustStore = it },
                 openId4VciManagerFactory = openId4VciManagerFactory,
+                transactionLogger = transactionLogger
             )
         }
 
@@ -481,5 +498,24 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 config.useStrongBoxForKeys = false
             }
         }
+
+        /**
+         * Wrap the [PresentationManager] with a transaction logger
+         *
+         * @receiver [PresentationManager]
+         * @param documentManager the document manager
+         * @return [PresentationManager] wrapped with a transaction logger
+         */
+        internal fun PresentationManager.wrapWithTrasactionLogger(documentManager: DocumentManager): PresentationManager {
+            return transactionLogger?.let { tl ->
+                TransactionsDecorator(
+                    delegate = this,
+                    documentManager = documentManager,
+                    transactionLogger = tl,
+                    logger = loggerObj,
+                )
+            } ?: this
+        }
+
     }
 }

@@ -85,7 +85,6 @@ class ProcessedGenericOpenId4VpRequest(
 
             val signatureAlgorithm = signatureAlgorithm ?: Algorithm.ES256
             val presentationDefinition = presentationQuery.value
-
             val verifiablePresentations = disclosedDocuments
                 .filter { it.disclosedItems.isNotEmpty() } // remove empty disclosed documents
                 .map { disclosedDocument ->
@@ -110,7 +109,7 @@ class ProcessedGenericOpenId4VpRequest(
                     Pair(document, verifiablePresentation)
                 }
 
-            val descriptorMaps = constructDescriptorsMap(
+            val (descriptorMaps, documentIds) = constructDescriptorsMap(
                 inputDescriptorMap = inputDescriptorMap,
                 verifiablePresentations = verifiablePresentations
             )
@@ -133,7 +132,8 @@ class ProcessedGenericOpenId4VpRequest(
                     msoMdocNonce = msoMdocNonce,
                     response = verifiablePresentations
                         .map { it.second.toString() }
-                        .toList()
+                        .toList(),
+                    documentIds = documentIds
                 )
             )
         } catch (e: Throwable) {
@@ -243,8 +243,9 @@ class ProcessedGenericOpenId4VpRequest(
 internal fun constructDescriptorsMap(
     inputDescriptorMap: Map<InputDescriptorId, List<DocumentId>>,
     verifiablePresentations: List<Pair<IssuedDocument, VerifiablePresentation.Generic>>,
-): List<DescriptorMap> {
+): Pair<List<DescriptorMap>, List<DocumentId>> {
 
+    val documentIds = mutableListOf<DocumentId>()
     val descriptorMaps = verifiablePresentations.mapIndexed { index, (document, _) ->
         // get the input descriptor id for the document
         // that is in the verifiable presentation
@@ -270,7 +271,7 @@ internal fun constructDescriptorsMap(
                 "$"
             }
         ) ?: throw IllegalStateException("Failed to create JsonPath")
-
+        documentIds.add(document.id)
         // create the descriptor map
         DescriptorMap(
             id = inputDescriptorId,
@@ -279,6 +280,6 @@ internal fun constructDescriptorsMap(
         )
     }
 
-    return descriptorMaps
+    return Pair(descriptorMaps, documentIds.toList())
 }
 
