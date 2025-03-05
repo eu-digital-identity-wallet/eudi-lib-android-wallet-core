@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.openid4vp.EncryptionParameters
 import eu.europa.ec.eudi.openid4vp.JarmRequirement
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.VpContent
+import eu.europa.ec.eudi.wallet.document.DocumentId
 
 sealed interface OpenId4VpResponse : Response {
     val resolvedRequestObject: ResolvedRequestObject
@@ -52,7 +53,9 @@ sealed interface OpenId4VpResponse : Response {
         override val resolvedRequestObject: ResolvedRequestObject,
         override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
         override val msoMdocNonce: String,
+        val sessionTranscript: ByteArray,
         val responseBytes: DeviceResponseBytes,
+        val documentIds: List<DocumentId>,
     ) : OpenId4VpResponse {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -62,8 +65,10 @@ sealed interface OpenId4VpResponse : Response {
 
             if (resolvedRequestObject != other.resolvedRequestObject) return false
             if (consensus != other.consensus) return false
-            if (!responseBytes.contentEquals(other.responseBytes)) return false
             if (msoMdocNonce != other.msoMdocNonce) return false
+            if (!sessionTranscript.contentEquals(other.sessionTranscript)) return false
+            if (!responseBytes.contentEquals(other.responseBytes)) return false
+            if (documentIds != other.documentIds) return false
 
             return true
         }
@@ -71,8 +76,10 @@ sealed interface OpenId4VpResponse : Response {
         override fun hashCode(): Int {
             var result = resolvedRequestObject.hashCode()
             result = 31 * result + consensus.hashCode()
-            result = 31 * result + responseBytes.contentHashCode()
             result = 31 * result + msoMdocNonce.hashCode()
+            result = 31 * result + sessionTranscript.contentHashCode()
+            result = 31 * result + responseBytes.contentHashCode()
+            result = 31 * result + documentIds.hashCode()
             return result
         }
     }
@@ -82,6 +89,7 @@ sealed interface OpenId4VpResponse : Response {
         override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
         override val msoMdocNonce: String,
         val response: List<String>,
+        val documentIds: List<DocumentId>,
     ) : OpenId4VpResponse
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import java.security.cert.X509Certificate
 
 /**
@@ -46,6 +47,7 @@ class EudiWalletImpl internal constructor(
     override val logger: Logger,
     internal val readerTrustStoreConsumer: ((ReaderTrustStore) -> Unit),
     internal val openId4VciManagerFactory: (() -> OpenId4VciManager),
+    val transactionLogger: TransactionLogger?,
 ) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
     SampleDocumentManager by SampleDocumentManagerImpl(documentManager) {
 

@@ -120,6 +120,9 @@ dependencies {
     api(libs.google.identity.android) {
         exclude(group = "org.bouncycastle")
     }
+    implementation(libs.google.identity.mdoc) {
+        exclude(group = "org.bouncycastle")
+    }
 
     implementation(libs.appcompat)
     // OpenID4VCI

@@ -29,6 +29,7 @@ import co.nstant.`in`.cbor.model.Map
 import co.nstant.`in`.cbor.model.NegativeInteger
 import co.nstant.`in`.cbor.model.SimpleValue
 import co.nstant.`in`.cbor.model.SimpleValueType
+import co.nstant.`in`.cbor.model.Tag
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
 import java.io.ByteArrayInputStream
@@ -36,9 +37,21 @@ import java.io.ByteArrayOutputStream
 import java.math.BigInteger
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.time.LocalDate
+import java.time.ZonedDateTime
 import java.util.Locale
 
+/*
+ * Utility object for encoding and decoding CBOR (Concise Binary Object Representation) data.
+ */
 object CBOR {
+    /**
+     * Encodes a given [DataItem] into a CBOR byte array.
+     *
+     * @param dataItem The [DataItem] to encode.
+     * @return A byte array representing the encoded CBOR data.
+     * @throws IllegalStateException If encoding fails.
+     */
     @JvmStatic
     fun cborEncode(dataItem: DataItem): ByteArray {
         return ByteArrayOutputStream().use { stream ->
@@ -53,6 +66,13 @@ object CBOR {
         }
     }
 
+    /**
+     * Decodes a given CBOR byte array into a [DataItem].
+     *
+     * @param encodedBytes The byte array to decode.
+     * @return The decoded [DataItem].
+     * @throws IllegalArgumentException If decoding fails or the number of decoded items is not 1.
+     */
     @JvmStatic
     fun cborDecode(encodedBytes: ByteArray): DataItem {
         return ByteArrayInputStream(encodedBytes).use { stream ->
@@ -63,14 +83,27 @@ object CBOR {
                 }
                 dataItems[0]
             } catch (e: CborException) {
-                throw java.lang.IllegalArgumentException("Error decoding CBOR", e)
+                throw IllegalArgumentException("Error decoding CBOR", e)
             }
         }
     }
 
+    /**
+     * Decodes a given CBOR byte array into a byte array.
+     *
+     * @param data The CBOR byte array to decode.
+     * @return The decoded byte array.
+     */
     @JvmStatic
     fun cborDecodeByteString(data: ByteArray): ByteArray = (cborDecode(data) as ByteString).bytes
 
+    /**
+     * Pretty prints a given CBOR byte array.
+     *
+     * @param encodedBytes The CBOR byte array to pretty print.
+     * @return A string representing the pretty-printed CBOR data.
+     * @throws IllegalStateException If decoding fails.
+     */
     @JvmStatic
     fun cborPrettyPrint(encodedBytes: ByteArray): String =
         ByteArrayInputStream(encodedBytes).use { bais ->
@@ -87,7 +120,13 @@ object CBOR {
             }
         }.toString()
 
-
+    /**
+     * Helper function to pretty print a [DataItem].
+     *
+     * @param sb The [StringBuilder] to append the pretty-printed data to.
+     * @param indent The current indentation level.
+     * @param dataItem The [DataItem] to pretty print.
+     */
     @JvmStatic
     private fun cborPrettyPrintDataItem(
         sb: StringBuilder, indent: Int,
@@ -103,26 +142,16 @@ object CBOR {
         }
         @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
         when (dataItem.majorType) {
-            MajorType.INVALID ->                 // TODO: throw
-                sb.append("<invalid>")
-
+            MajorType.INVALID -> sb.append("<invalid>")
             MajorType.UNSIGNED_INTEGER -> {
-
-                // Major type 0: an unsigned integer.
                 val value = (dataItem as UnsignedInteger).value
                 sb.append(value)
             }
-
             MajorType.NEGATIVE_INTEGER -> {
-
-                // Major type 1: a negative integer.
                 val value: BigInteger = (dataItem as NegativeInteger).value
                 sb.append(value)
             }
-
             MajorType.BYTE_STRING -> {
-
-                // Major type 2: a byte string.
                 val value = (dataItem as ByteString).bytes
                 sb.append("[")
                 for ((count, b) in value.withIndex()) {
@@ -133,23 +162,15 @@ object CBOR {
                 }
                 sb.append("]")
             }
-
             MajorType.UNICODE_STRING -> {
-
-                // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
                 val value = (dataItem as UnicodeString).string
-                // TODO: escape ' in |value|
                 sb.append("'$value'")
             }
-
             MajorType.ARRAY -> {
-
-                // Major type 4: an array of data items.
                 val items = (dataItem as Array).dataItems
                 if (items.size == 0) {
                     sb.append("[]")
                 } else if (cborAreAllDataItemsNonCompound(items)) {
-                    // The case where everything fits on one line.
                     sb.append("[")
                     for ((count, item) in items.withIndex()) {
                         cborPrettyPrintDataItem(sb, indent, item)
@@ -166,20 +187,12 @@ object CBOR {
                         if (count + 1 < items.size) {
                             sb.append(",")
                         }
-                        sb.append(
-                            """
-                            
-                            $indentString
-                            """.trimIndent()
-                        )
+                        sb.append("\n$indentString")
                     }
                     sb.append("]")
                 }
             }
-
             MajorType.MAP -> {
-
-                // Major type 5: a map of pairs of data items.
                 val keys = (dataItem as Map).keys
                 if (keys.isEmpty()) {
                     sb.append("{}")
@@ -194,57 +207,99 @@ object CBOR {
                         if (count + 1 < keys.size) {
                             sb.append(",")
                         }
-                        sb.append(
-                            """
-                            
-                            $indentString
-                            """.trimIndent()
-                        )
+                        sb.append("\n$indentString")
                     }
                     sb.append("}")
                 }
             }
-
-            MajorType.TAG -> throw java.lang.IllegalStateException("Semantic tag data item not expected")
-            MajorType.SPECIAL ->                 // Major type 7: floating point numbers and simple data types that need no
-                // content, as well as the "break" stop code.
-                when (dataItem) {
-                    is SimpleValue -> {
-                        @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
-                        when (dataItem.simpleValueType) {
-                            SimpleValueType.FALSE -> sb.append("false")
-                            SimpleValueType.TRUE -> sb.append("true")
-                            SimpleValueType.NULL -> sb.append("null")
-                            SimpleValueType.UNDEFINED -> sb.append("undefined")
-                            SimpleValueType.RESERVED -> sb.append("reserved")
-                            SimpleValueType.UNALLOCATED -> sb.append("unallocated")
-                        }
+            MajorType.TAG -> throw IllegalStateException("Semantic tag data item not expected")
+            MajorType.SPECIAL -> when (dataItem) {
+                is SimpleValue -> {
+                    @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
+                    when (dataItem.simpleValueType) {
+                        SimpleValueType.FALSE -> sb.append("false")
+                        SimpleValueType.TRUE -> sb.append("true")
+                        SimpleValueType.NULL -> sb.append("null")
+                        SimpleValueType.UNDEFINED -> sb.append("undefined")
+                        SimpleValueType.RESERVED -> sb.append("reserved")
+                        SimpleValueType.UNALLOCATED -> sb.append("unallocated")
                     }
-
-                    is DoublePrecisionFloat -> {
-                        val df = DecimalFormat(
-                            "0",
-                            DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                        )
-                        df.maximumFractionDigits = 340
-                        sb.append(df.format(dataItem.value))
-                    }
-
-                    is AbstractFloat -> {
-                        val df = DecimalFormat(
-                            "0",
-                            DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                        )
-                        df.maximumFractionDigits = 340
-                        sb.append(df.format(dataItem.value.toDouble()))
-                    }
-
-                    else -> sb.append("break")
                 }
+                is DoublePrecisionFloat -> {
+                    val df = DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
+                    df.maximumFractionDigits = 340
+                    sb.append(df.format(dataItem.value))
+                }
+                is AbstractFloat -> {
+                    val df = DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
+                    df.maximumFractionDigits = 340
+                    sb.append(df.format(dataItem.value.toDouble()))
+                }
+                else -> sb.append("break")
+            }
         }
     }
 
+    /**
+     * Checks if all [DataItem]s in a list are non-compound (i.e., not arrays or maps).
+     *
+     * @param items The list of [DataItem]s to check.
+     * @return `true` if all items are non-compound, `false` otherwise.
+     */
     private fun cborAreAllDataItemsNonCompound(items: List<DataItem>): Boolean {
         return items.all { it.majorType != MajorType.ARRAY && it.majorType != MajorType.MAP }
+    }
+
+    /**
+     * Parses a given CBOR byte array into a Kotlin object.
+     *
+     * @param data The CBOR byte array to parse.
+     * @return The parsed object.
+     */
+    fun cborParse(data: ByteArray): Any? {
+        val dataItem = cborDecode(data)
+        return cborParse(dataItem)
+    }
+
+    /**
+     * Parses a given [DataItem] into a Kotlin object.
+     *
+     * @param dataItem The [DataItem] to parse.
+     * @return The parsed object.
+     */
+    private fun cborParse(dataItem: DataItem): Any? {
+        return when (dataItem.majorType) {
+            MajorType.INVALID -> "invalid"
+            MajorType.UNSIGNED_INTEGER -> (dataItem as UnsignedInteger).value.toLong()
+            MajorType.NEGATIVE_INTEGER -> (dataItem as NegativeInteger).value.toLong()
+            MajorType.BYTE_STRING -> (dataItem as ByteString).bytes
+            MajorType.UNICODE_STRING -> {
+                val value = (dataItem as UnicodeString).string
+                when {
+                    dataItem.tag == Tag(0) -> ZonedDateTime.parse(value)
+                    dataItem.tag == Tag(1004) -> LocalDate.parse(value)
+                    else -> value
+                }
+            }
+            MajorType.ARRAY -> (dataItem as Array).dataItems.map { cborParse(it) }
+            MajorType.MAP -> {
+                val map = (dataItem as Map)
+                map.keys.associate { cborParse(it) to cborParse(map[it]) }
+            }
+            MajorType.TAG -> null
+            MajorType.SPECIAL -> when (dataItem) {
+                is SimpleValue -> when (dataItem.simpleValueType) {
+                    SimpleValueType.FALSE -> false
+                    SimpleValueType.TRUE -> true
+                    SimpleValueType.NULL -> null
+                    SimpleValueType.UNDEFINED -> "undefined"
+                    SimpleValueType.RESERVED -> "reserved"
+                    SimpleValueType.UNALLOCATED -> "unallocated"
+                }
+                is DoublePrecisionFloat -> dataItem.value
+                is AbstractFloat -> dataItem.value.toDouble()
+                else -> null
+            }
+        }
     }
 }

@@ -55,16 +55,15 @@ class ConstructDescriptorsMapTest {
         )
 
 
-
         val result = constructDescriptorsMap(inputDescriptorMap, verifiablePresentations)
 
-        assertEquals(2, result.size)
-        assertEquals("descriptor1", result[0].id.value)
-        assertEquals("descriptor2", result[1].id.value)
-        assertEquals(FORMAT_MSO_MDOC, result[0].format)
-        assertEquals(FORMAT_SD_JWT_VC, result[1].format)
-        assertEquals("$[0]", result[0].path.value)
-        assertEquals("$[1]", result[1].path.value)
+        assertEquals(2, result.first.size)
+        assertEquals("descriptor1", result.first[0].id.value)
+        assertEquals("descriptor2", result.first[1].id.value)
+        assertEquals(FORMAT_MSO_MDOC, result.first[0].format)
+        assertEquals(FORMAT_SD_JWT_VC, result.first[1].format)
+        assertEquals("$[0]", result.first[0].path.value)
+        assertEquals("$[1]", result.first[1].path.value)
     }
 
     @Test
@@ -85,13 +84,12 @@ class ConstructDescriptorsMapTest {
         )
 
 
-
         val result = constructDescriptorsMap(inputDescriptorMap, verifiablePresentations)
 
-        assertEquals(1, result.size)
-        assertEquals("descriptor2", result[0].id.value)
-        assertEquals(FORMAT_SD_JWT_VC, result[0].format)
-        assertEquals("$", result[0].path.value)
+        assertEquals(1, result.first.size)
+        assertEquals("descriptor2", result.first[0].id.value)
+        assertEquals(FORMAT_SD_JWT_VC, result.first[0].format)
+        assertEquals("$", result.first[0].path.value)
     }
 
     @Test
