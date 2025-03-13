@@ -178,7 +178,7 @@ data class DeferredIssuanceStoredContextTO(
     @SerialName("transaction_id") val transactionId: String,
     @SerialName("access_token") val accessToken: AccessTokenTO,
     @SerialName("refresh_token") val refreshToken: RefreshTokenTO? = null,
-    @SerialName("authorization_timestamp") val authorizationTimestamp: Long,
+    @SerialName("authorization_timestamGrantTO.fromGrant(grant)p") val authorizationTimestamp: Long,
     @SerialName("grant") val grant: GrantTO,
 ) {
 
@@ -192,29 +192,29 @@ data class DeferredIssuanceStoredContextTO(
                 credentialIssuerId = CredentialIssuerId(credentialIssuerId).getOrThrow(),
                 clock = clock,
                 client =
-                if (clientAttestationJwt == null) Client.Public(clientId)
-                else {
-                    val jwt = runCatching {
-                        ClientAttestationJWT(SignedJWT.parse(clientAttestationJwt))
-                    }.getOrNull() ?: error("Invalid client attestation JWT")
-                    val poPJWTSpec = ClientAttestationPoPJWTSpec(
-                        signingAlgorithm = JWSAlgorithm.parse(
-                            checkNotNull(
-                                clientAttestationPopAlgorithm
-                            )
-                        ),
-                        duration = Duration.ofSeconds(checkNotNull(clientAttestationPopDuration))
-                            .toKotlinDuration(),
-                        typ = checkNotNull(clientAttestationPopType),
-                        jwsSigner = checkNotNull(recreateClientAttestationPodSigner).invoke(
-                            checkNotNull(
-                                clientAttestationPopKeyId,
+                    if (clientAttestationJwt == null) Client.Public(clientId)
+                    else {
+                        val jwt = runCatching {
+                            ClientAttestationJWT(SignedJWT.parse(clientAttestationJwt))
+                        }.getOrNull() ?: error("Invalid client attestation JWT")
+                        val poPJWTSpec = ClientAttestationPoPJWTSpec(
+                            signingAlgorithm = JWSAlgorithm.parse(
+                                checkNotNull(
+                                    clientAttestationPopAlgorithm
+                                )
                             ),
-                        ),
-                    )
+                            duration = Duration.ofSeconds(checkNotNull(clientAttestationPopDuration))
+                                .toKotlinDuration(),
+                            typ = checkNotNull(clientAttestationPopType),
+                            jwsSigner = checkNotNull(recreateClientAttestationPodSigner).invoke(
+                                checkNotNull(
+                                    clientAttestationPopKeyId,
+                                ),
+                            ),
+                        )
 
-                    Client.Attested(jwt, poPJWTSpec)
-                },
+                        Client.Attested(jwt, poPJWTSpec)
+                    },
                 deferredEndpoint = URI(deferredEndpoint).toURL(),
                 authServerId = URI(authServerId).toURL(),
                 tokenEndpoint = URI(tokenEndpoint).toURL(),
@@ -255,7 +255,7 @@ data class DeferredIssuanceStoredContextTO(
                 credentialIssuerId = dCtx.config.credentialIssuerId.toString(),
                 clientId = dCtx.config.client.id,
                 clientAttestationJwt = dCtx.config.client.ifAttested { attestationJWT.jwt.serialize() },
-                clientAttestationPopType = dCtx.config.client.ifAttested { popJwtSpec.typ.toString() },
+                clientAttestationPopType = dCtx.config.client.ifAttested { popJwtSpec.typ },
                 clientAttestationPopDuration = dCtx.config.client.ifAttested { popJwtSpec.duration.inWholeSeconds },
                 clientAttestationPopAlgorithm = dCtx.config.client.ifAttested { popJwtSpec.signingAlgorithm.toJSONString() },
                 clientAttestationPopKeyId = dCtx.config.client.ifAttested {
