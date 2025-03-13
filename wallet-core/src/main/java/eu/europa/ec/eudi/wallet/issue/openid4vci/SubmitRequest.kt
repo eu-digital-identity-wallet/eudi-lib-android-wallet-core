@@ -52,10 +52,8 @@ internal class SubmitRequest(
 
         var proofSigner: JWSKeyPoPSigner? = null
         return try {
-            val claimSet = null
             val payload = IssuanceRequestPayload.ConfigurationBased(
-                offeredDocument.configurationIdentifier,
-                claimSet
+                offeredDocument.configurationIdentifier
             )
             proofSigner = JWSKeyPoPSigner(
                 document = unsignedDocument,

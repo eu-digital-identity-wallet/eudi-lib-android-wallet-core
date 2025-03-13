@@ -222,7 +222,7 @@ data class DeferredIssuanceStoredContextTO(
                 responseEncryptionSpec = responseEncryptionSpec?.let { responseEncryption(it) },
             ),
             authorizedTransaction = AuthorizedTransaction(
-                authorizedRequest = AuthorizedRequest.NoProofRequired(
+                authorizedRequest = AuthorizedRequest(
                     accessToken = accessToken.toAccessToken(),
                     refreshToken = refreshToken?.toRefreshToken(),
                     credentialIdentifiers = emptyMap(),
