@@ -18,6 +18,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.Claim
+import eu.europa.ec.eudi.openid4vci.ClaimPath
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
@@ -92,21 +93,19 @@ class TestDocumentMetaDataTransformations {
                 )
             ),
             docType = "exampleDocType",
-            claims = mapOf(
-                "namespace1" to mapOf(
-                    "claim1" to Claim(
-                        mandatory = true,
-                        valueType = "string",
-                        display = listOf(
-                            Claim.Display(
-                                name = "Claim 1 Display",
-                                locale = Locale.forLanguageTag("en")
-                            )
+            claims = listOf(
+                Claim(
+                    path = ClaimPath.claim("namespace1").claim("claim1"),
+                    mandatory = true,
+                    display = listOf(
+                        Claim.Display(
+                            name = "Claim 1 Display",
+                            locale = Locale.forLanguageTag("en")
                         )
                     )
                 )
-            ),
-            order = listOf("claim1")
+
+            )
         )
         val offeredDocument = OfferedDocument(
             offer = dummyOffer,
@@ -129,12 +128,11 @@ class TestDocumentMetaDataTransformations {
             ),
             claims = listOf(
                 DocumentMetaData.Claim(
-                    name = DocumentMetaData.Claim.Name.MsoMdoc(
-                        name = "claim1",
-                        nameSpace = "namespace1"
+                    path = listOf(
+                        "namespace1",
+                        "claim1",
                     ),
                     mandatory = true,
-                    valueType = "string",
                     display = listOf(
                         DocumentMetaData.Claim.Display(
                             name = "Claim 1 Display",
@@ -173,10 +171,10 @@ class TestDocumentMetaDataTransformations {
                 )
             ),
             type = "exampleType",
-            claims = mapOf(
-                "claim2" to Claim(
+            claims = listOf(
+                Claim(
+                    path = ClaimPath.claim("claim2"),
                     mandatory = false,
-                    valueType = "integer",
                     display = listOf(
                         Claim.Display(
                             name = "Claim 2 Display",
@@ -205,11 +203,8 @@ class TestDocumentMetaDataTransformations {
             ),
             claims = listOf(
                 DocumentMetaData.Claim(
-                    name = DocumentMetaData.Claim.Name.SdJwtVc(
-                        name = "claim2"
-                    ),
+                    path = listOf("claim2"),
                     mandatory = false,
-                    valueType = "integer",
                     display = listOf(
                         DocumentMetaData.Claim.Display(
                             name = "Claim 2 Display",
@@ -241,12 +236,11 @@ class TestDocumentMetaDataTransformations {
             proofTypesSupported = ProofTypesSupported.Empty,
             display = emptyList(),
             type = "exampleType",
-            claims = null
         )
 
         val expectedMetaData = DocumentMetaData(
             display = emptyList(),
-            claims = null,
+            claims = emptyList(),
             issuerDisplay = emptyList(),
             credentialIssuerIdentifier = dummyIssuerUrl,
             documentConfigurationIdentifier = dummyDocumentId

@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.KeyAttestationRequirement
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
@@ -47,7 +48,10 @@ class OfferTest {
         val msoMdocCredential = mockk<MsoMdocCredential>(relaxed = true) {
             every { proofTypesSupported } returns ProofTypesSupported(
                 setOf(
-                    ProofTypeMeta.Jwt(listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384))
+                    ProofTypeMeta.Jwt(
+                        listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384),
+                        KeyAttestationRequirement.NotRequired
+                    )
                 )
             )
             every { docType } returns "testDocType"
