@@ -16,8 +16,20 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
+import com.nimbusds.jose.JWSAlgorithm
+import com.upokecenter.cbor.CBORObject
+import eu.europa.ec.eudi.openid4vp.Client
+import eu.europa.ec.eudi.openid4vp.PresentationQuery
+import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.ResponseMode
+import eu.europa.ec.eudi.openid4vp.VpFormat
+import eu.europa.ec.eudi.openid4vp.VpFormats
+import io.mockk.mockk
 import org.bouncycastle.util.encoders.Hex
+import java.net.URL
+import java.security.MessageDigest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 
@@ -59,5 +71,83 @@ class Openid4VpUtilsTest {
             mdocGeneratedNonce
         )
         assertEquals(ANNEX_B_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
+    }
+
+    @Test
+    fun testGetSessionTranscriptBytes() {
+        val expected = CBORObject.NewArray()
+            .Add(CBORObject.Null)
+            .Add(CBORObject.Null)
+            .Add(
+                CBORObject.NewArray()
+                    .Add(MessageDigest.getInstance("SHA-256").digest(
+                        CBORObject.NewArray()
+                            .Add(clientId)
+                            .Add(mdocGeneratedNonce)
+                            .EncodeToBytes()
+                    ))
+                    .Add(MessageDigest.getInstance("SHA-256").digest(
+                        CBORObject.NewArray()
+                            .Add(responseUri)
+                            .Add(mdocGeneratedNonce)
+                            .EncodeToBytes()
+                    ))
+                    .Add(nonce)
+            )
+            .EncodeToBytes()
+        val auth = ResolvedRequestObject.OpenId4VPAuthorization(
+            client = Client.Preregistered(clientId, legalName = clientId),
+            responseMode = ResponseMode.DirectPostJwt(URL(responseUri)),
+            nonce = nonce,
+            state = "state",
+            vpFormats = VpFormats(
+                msoMdoc = VpFormat.MsoMdoc(listOf(JWSAlgorithm.ES256))
+            ),
+            jarmRequirement = mockk(),
+            presentationQuery = PresentationQuery.ByPresentationDefinition(mockk()),
+            transactionData = null
+        )
+        val mdocGeneratedNonce = mdocGeneratedNonce
+        val sessionTranscriptBytes = auth.getSessionTranscriptBytes(mdocGeneratedNonce)
+        assertContentEquals(expected, sessionTranscriptBytes)
+    }
+
+    @Test
+    fun testGetSessionTranscriptBytesWithOtherThanDirectPostJwtLeadsToEmtpyResponseUri() {
+        val expected = CBORObject.NewArray()
+            .Add(CBORObject.Null)
+            .Add(CBORObject.Null)
+            .Add(
+                CBORObject.NewArray()
+                    .Add(MessageDigest.getInstance("SHA-256").digest(
+                        CBORObject.NewArray()
+                            .Add(clientId)
+                            .Add(mdocGeneratedNonce)
+                            .EncodeToBytes()
+                    ))
+                    .Add(MessageDigest.getInstance("SHA-256").digest(
+                        CBORObject.NewArray()
+                            .Add("")
+                            .Add(mdocGeneratedNonce)
+                            .EncodeToBytes()
+                    ))
+                    .Add(nonce)
+            )
+            .EncodeToBytes()
+        val auth = ResolvedRequestObject.OpenId4VPAuthorization(
+            client = Client.Preregistered(clientId, legalName = clientId),
+            responseMode = ResponseMode.DirectPost(URL(responseUri)),
+            nonce = nonce,
+            state = "state",
+            vpFormats = VpFormats(
+                msoMdoc = VpFormat.MsoMdoc(listOf(JWSAlgorithm.ES256))
+            ),
+            jarmRequirement = mockk(),
+            presentationQuery = PresentationQuery.ByPresentationDefinition(mockk()),
+            transactionData = null
+        )
+        val mdocGeneratedNonce = mdocGeneratedNonce
+        val sessionTranscriptBytes = auth.getSessionTranscriptBytes(mdocGeneratedNonce)
+        assertContentEquals(expected, sessionTranscriptBytes)
     }
 }

@@ -170,9 +170,10 @@ internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBy
     mdocGeneratedNonce: String,
 ): SessionTranscriptBytes {
     val clientId = this.client.id.clientId
-    val responseUri =
-        (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
-            ?: ""
+    val responseUri = when(val mode = this.responseMode) {
+        is ResponseMode.DirectPostJwt -> mode.responseURI.toString()
+        else -> ""
+    }
     val nonce = this.nonce
 
     val sessionTranscriptBytes = generateSessionTranscript(
