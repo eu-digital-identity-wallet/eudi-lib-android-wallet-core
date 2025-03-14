@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig.Builder
 import io.ktor.client.*
 import io.ktor.client.plugins.logging.*
+import java.net.URI
 
 /**
  * Configuration for the OpenId4Vp transfer.
@@ -78,7 +79,7 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
     val schemes: List<String>
         get() = builder.schemes
 
-    val formats: List<Format> =  builder.formats
+    val formats: List<Format> = builder.formats
 
     /**
      * Builder for [OpenId4VciConfig].
@@ -215,10 +216,20 @@ sealed interface ClientIdScheme {
     data object X509SanUri : ClientIdScheme
 }
 
+/**
+ * Preregistered verifier for the [ClientIdScheme.Preregistered] client identifier scheme.
+ * @property clientId the client identifier
+ * @property legalName the legal name of the client
+ * @property verifierApi the verifier API
+ * @property jwsAlgorithm the JWS algorithm. Default is [JwsAlgorithm.ES256]
+ * @property jwkSetSource the JWK set source. Default is the [verifierApi] with the path "/wallet/public-keys.json"
+ */
 data class PreregisteredVerifier(
     var clientId: ClientId,
     var legalName: LegalName,
     var verifierApi: VerifierApi,
+    var jwsAlgorithm: JwsAlgorithm = JwsAlgorithm.ES256,
+    var jwkSetSource: URI = URI("$verifierApi/wallet/public-keys.json"),
 )
 
 typealias ClientId = String
@@ -229,7 +240,7 @@ sealed interface Format {
 
     data class SdJwtVc(
         val sdJwtAlgorithms: List<Algorithm>,
-        val kbJwtAlgorithms: List<Algorithm>
+        val kbJwtAlgorithms: List<Algorithm>,
     ) : Format {
         companion object {
             val ES256 = SdJwtVc(listOf(Algorithm.ES256), listOf(Algorithm.ES256))
@@ -237,6 +248,29 @@ sealed interface Format {
     }
 
     data object MsoMdoc : Format
+}
+
+/**
+ * Algorithm enumeration for [PreregisteredVerifier.jwsAlgorithm]
+ * @see PreregisteredVerifier
+ */
+enum class JwsAlgorithm {
+    HS256,
+    HS384,
+    HS512,
+    RS256,
+    RS384,
+    RS512,
+    ES256,
+    ES256K,
+    ES384,
+    ES512,
+    PS256,
+    PS384,
+    PS512,
+    EdDSA,
+    Ed25519,
+    Ed448;
 }
 
 sealed interface EncryptionAlgorithm {
