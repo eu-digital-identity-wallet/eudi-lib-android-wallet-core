@@ -72,11 +72,11 @@ class PresentationManagerImpl @JvmOverloads constructor(
         transferManager.startQrEngagement()
     }
 
-
-    override fun startRemotePresentation(uri: Uri) {
+    override fun startRemotePresentation(intent: Intent) {
+        val uri = intent.data ?: throw IllegalArgumentException("Intent data is missing")
         when {
             uri.scheme == MDOC_SCHEME ->
-                transferManager.startEngagementToApp(Intent().apply { data = uri })
+                transferManager.startEngagementToApp(intent)
 
 
             true == openId4vpManager?.config?.schemes?.contains(uri.scheme) ->
@@ -84,6 +84,13 @@ class PresentationManagerImpl @JvmOverloads constructor(
 
             else -> throw IllegalStateException("Not supported scheme")
         }
+    }
+
+    override fun startRemotePresentation(uri: Uri, refererUrl: String?) {
+        startRemotePresentation(Intent().apply {
+            data = uri
+            refererUrl?.let { putExtra(Intent.EXTRA_REFERRER, it) }
+        })
     }
 
     override fun enableNFCEngagement(

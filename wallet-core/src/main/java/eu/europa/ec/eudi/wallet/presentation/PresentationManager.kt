@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.presentation
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
@@ -74,7 +75,16 @@ interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware 
      * - a OpenId4Vp request
      * @param uri the URI
      */
-    fun startRemotePresentation(uri: Uri)
+    fun startRemotePresentation(uri: Uri, refererUrl: String? = null)
+
+    /**
+     * Start a remote presentation with the given intent
+     * The intent.data could either contain the URI of
+     * - a REST API request ISO-18013-7
+     * - a OpenId4Vp request
+     * @param intent the intent
+     */
+    fun startRemotePresentation(intent: Intent)
 
     /**
      * Stops any ongoing remote presentation
