@@ -36,8 +36,8 @@ import eu.europa.ec.eudi.openid4vp.VpFormat
 import eu.europa.ec.eudi.openid4vp.VpFormats
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
-import java.net.URI
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -146,11 +146,9 @@ internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509Certifica
                 is ClientIdScheme.Preregistered -> Preregistered(
                     clientIdScheme.preregisteredVerifiers.associate { verifier ->
                         verifier.clientId to PreregisteredClient(
-                            verifier.clientId,
-                            verifier.legalName,
-                            JWSAlgorithm.RS256 to ByReference(
-                                URI("${verifier.verifierApi}/wallet/public-keys.json")
-                            )
+                            clientId = verifier.clientId,
+                            legalName = verifier.legalName,
+                            jarConfig = verifier.jwsAlgorithm.nimbus to ByReference(verifier.jwkSetSource)
                         )
                     }
                 )
@@ -210,3 +208,23 @@ internal fun Algorithm.toJwsAlgorithm(default: JWSAlgorithm): JWSAlgorithm = try
 } catch (_: Throwable) {
     default
 }
+
+internal val JwsAlgorithm.nimbus: JWSAlgorithm
+    get() = when (this) {
+        JwsAlgorithm.ES256 -> JWSAlgorithm.ES256
+        JwsAlgorithm.ES384 -> JWSAlgorithm.ES384
+        JwsAlgorithm.ES512 -> JWSAlgorithm.ES512
+        JwsAlgorithm.EdDSA -> JWSAlgorithm.EdDSA
+        JwsAlgorithm.HS256 -> JWSAlgorithm.HS256
+        JwsAlgorithm.HS384 -> JWSAlgorithm.HS384
+        JwsAlgorithm.HS512 -> JWSAlgorithm.HS512
+        JwsAlgorithm.PS256 -> JWSAlgorithm.PS256
+        JwsAlgorithm.PS384 -> JWSAlgorithm.PS384
+        JwsAlgorithm.PS512 -> JWSAlgorithm.PS512
+        JwsAlgorithm.RS256 -> JWSAlgorithm.RS256
+        JwsAlgorithm.RS384 -> JWSAlgorithm.RS384
+        JwsAlgorithm.RS512 -> JWSAlgorithm.RS512
+        JwsAlgorithm.ES256K -> JWSAlgorithm.ES256K
+        JwsAlgorithm.Ed448 -> JWSAlgorithm.Ed448
+        JwsAlgorithm.Ed25519 -> JWSAlgorithm.Ed25519
+    }

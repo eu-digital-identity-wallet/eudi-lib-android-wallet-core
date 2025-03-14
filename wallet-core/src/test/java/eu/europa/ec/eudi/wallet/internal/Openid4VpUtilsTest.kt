@@ -16,14 +16,25 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
+import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.openid4vp.Client
+import eu.europa.ec.eudi.openid4vp.JwkSetSource
 import eu.europa.ec.eudi.openid4vp.PresentationQuery
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.ResponseMode
+import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
 import eu.europa.ec.eudi.openid4vp.VpFormat
 import eu.europa.ec.eudi.openid4vp.VpFormats
+import eu.europa.ec.eudi.openid4vp.encryptionConfig
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme.*
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
 import io.mockk.mockk
 import org.bouncycastle.util.encoders.Hex
 import java.net.URL
@@ -31,6 +42,7 @@ import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 
 /**
@@ -71,6 +83,60 @@ class Openid4VpUtilsTest {
             mdocGeneratedNonce
         )
         assertEquals(ANNEX_B_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
+    }
+
+    @Test
+    fun testToSiopOpenId4VPConfig() {
+        val trust = Openid4VpX509CertificateTrust(null) // Assuming a default constructor or mock
+
+        val openId4VpConfig = OpenId4VpConfig.Builder()
+            .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
+            .withEncryptionMethods(listOf(EncryptionMethod.A256GCM))
+            .withClientIdSchemes(
+                listOf(
+                    Preregistered(
+                        preregisteredVerifiers = listOf(
+                            PreregisteredVerifier(
+                                clientId = "client1",
+                                legalName = "Client 1",
+                                jwsAlgorithm = JwsAlgorithm.RS256,
+                                verifierApi = "https://example.com"
+                            )
+                        )
+                    )
+                )
+            ).withFormats(listOf(Format.MsoMdoc))
+            .build()
+
+        val siopOpenId4VPConfig = openId4VpConfig.toSiopOpenId4VPConfig(trust)
+
+        assertEquals(
+            1,
+            siopOpenId4VPConfig.jarmConfiguration.encryptionConfig()?.supportedAlgorithms?.size
+        )
+        val supportedAlgorithms =
+            siopOpenId4VPConfig.jarmConfiguration.encryptionConfig()!!.supportedAlgorithms
+        assertEquals(JWEAlgorithm.ECDH_ES, supportedAlgorithms[0])
+
+        assertEquals(
+            1,
+            siopOpenId4VPConfig.jarmConfiguration.encryptionConfig()?.supportedMethods?.size
+        )
+        val supportedMethods =
+            siopOpenId4VPConfig.jarmConfiguration.encryptionConfig()!!.supportedMethods
+        assertEquals(com.nimbusds.jose.EncryptionMethod.A256GCM, supportedMethods[0])
+
+        assertEquals(1, siopOpenId4VPConfig.supportedClientIdSchemes.size)
+        val supportedClientIdScheme = siopOpenId4VPConfig.supportedClientIdSchemes[0]
+        assertIs<SupportedClientIdScheme.Preregistered>(supportedClientIdScheme)
+
+        val preregisteredClient = supportedClientIdScheme.clients.values.first()
+        assertEquals("client1", preregisteredClient.clientId)
+        assertEquals("Client 1", preregisteredClient.legalName)
+        assertEquals(JWSAlgorithm.RS256, preregisteredClient.jarConfig?.first)
+        val jwkSetSource = preregisteredClient.jarConfig?.second
+        assertIs<JwkSetSource.ByReference>(jwkSetSource)
+        assertEquals("https://example.com/wallet/public-keys.json", jwkSetSource.jwksUri.toString())
     }
 
     @Test
