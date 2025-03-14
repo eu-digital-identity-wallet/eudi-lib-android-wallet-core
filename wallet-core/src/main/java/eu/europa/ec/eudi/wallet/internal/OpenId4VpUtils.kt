@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
+import com.android.identity.crypto.Algorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
@@ -160,26 +161,7 @@ internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509Certifica
             }
         },
         vpConfiguration = VPConfiguration(
-            vpFormats = VpFormats(
-                formats.map { format ->
-                    when (format) {
-                        is Format.MsoMdoc -> {
-                            VpFormat.MsoMdoc
-                        }
-
-                        is Format.SdJwtVc -> {
-                            VpFormat.SdJwtVc(
-                                format.sdJwtAlgorithms.map { alg ->
-                                    JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
-                                },
-                                format.kbJwtAlgorithms.map { alg ->
-                                    JWSAlgorithm.parse(alg.jwseAlgorithmIdentifier)
-                                }
-                            )
-                        }
-                    }
-                }.toList()
-            )
+            vpFormats = formats.toVpFormats()
         )
     )
 }
@@ -187,7 +169,7 @@ internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509Certifica
 internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBytes(
     mdocGeneratedNonce: String,
 ): SessionTranscriptBytes {
-    val clientId = this.client.id
+    val clientId = this.client.id.clientId
     val responseUri =
         (this.responseMode as ResponseMode.DirectPostJwt?)?.responseURI?.toString()
             ?: ""
@@ -200,4 +182,30 @@ internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBy
         mdocGeneratedNonce
     )
     return sessionTranscriptBytes
+}
+
+internal fun List<Format>.toVpFormats(): VpFormats {
+
+    val msoMdocVpFormat = firstOrNull { it == Format.MsoMdoc }
+        ?.let { VpFormat.MsoMdoc.ES256 }
+
+    val sdJwtVcVpFormat = filterIsInstance<Format.SdJwtVc>()
+        .firstOrNull()
+        ?.let {
+            VpFormat.SdJwtVc(
+                sdJwtAlgorithms = it.sdJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) },
+                kbJwtAlgorithms = it.kbJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) }
+            )
+        }
+
+    return VpFormats(
+        sdJwtVc = sdJwtVcVpFormat,
+        msoMdoc = msoMdocVpFormat
+    )
+}
+
+internal fun Algorithm.toJwsAlgorithm(default: JWSAlgorithm): JWSAlgorithm = try {
+    JWSAlgorithm.parse(jwseAlgorithmIdentifier)
+} catch (_: Throwable) {
+    default
 }

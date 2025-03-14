@@ -183,6 +183,7 @@ class OpenId4VpManager(
                 when (val outcome = siopOpenId4Vp.dispatch(
                     request = response.resolvedRequestObject,
                     consensus = response.consensus,
+                    encryptionParameters = response.encryptionParameters,
                 )) {
                     is DispatchOutcome.RedirectURI -> {
                         logger?.d(TAG, "Verifier respond with RedirectURI: ${outcome.value}")
@@ -240,7 +241,7 @@ class OpenId4VpManager(
                     TAG,
                     "Device Response to send (cbor): ${cborPrettyPrint(response.responseBytes)}"
                 )
-                logger?.d(TAG, "VpToken: ${response.vpToken}")
+                logger?.d(TAG, "VpContent: ${response.vpContent}")
             }
 
             is OpenId4VpResponse.GenericResponse -> {
@@ -248,7 +249,7 @@ class OpenId4VpManager(
                     TAG,
                     "Generic Response to send: ${response.response.joinToString("\n")}"
                 )
-                logger?.d(TAG, "VpToken: ${response.vpToken}")
+                logger?.d(TAG, "VpContent: ${response.vpContent}")
             }
         }
     }
