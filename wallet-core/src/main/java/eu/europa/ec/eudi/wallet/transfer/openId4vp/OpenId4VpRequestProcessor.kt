@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
+import eu.europa.ec.eudi.openid4vp.PresentationQuery
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.prex.InputDescriptor
@@ -52,15 +53,25 @@ class OpenId4VpRequestProcessor(
         require(request.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
             "Request must have be a OpenId4VPAuthorization"
         }
-        val requestedFormats = request.resolvedRequestObject.presentationDefinition.inputDescriptors
+        val presentationQuery = request.resolvedRequestObject.presentationQuery
+        require(presentationQuery is PresentationQuery.ByPresentationDefinition) {
+            "Currently only PresentationDefinition is supported"
+        }
+
+        val presentationDefinition = presentationQuery.value
+
+        val requestedFormats = presentationDefinition.inputDescriptors
             .flatMap { it.format?.jsonObject()?.keys ?: emptySet() }
             .toSet()
         require(requestedFormats.isNotEmpty()) { "No format is requested" }
+        val msoMdocNonce: String = generateMdocGeneratedNonce()
+        val requestedOnlyMsoMdoc =
+            requestedFormats.size == 1 && requestedFormats.first() == FORMAT_MSO_MDOC
 
-        return if (requestedFormats.size == 1 && requestedFormats.first() == "mso_mdoc") {
+        return if (requestedOnlyMsoMdoc) {
             val requestedDocuments: RequestedDocuments =
-                request.resolvedRequestObject.presentationDefinition.inputDescriptors
-                    .map { descriptor -> descriptor.toParsedRequestedMsoMdocDocument(request) }
+                presentationDefinition.inputDescriptors
+                    .map { descriptor -> parseDescriptorForMsoMdocDocument(descriptor, request) }
                     .let { helper.getRequestedDocuments(it) }
 
             val msoMdocNonce = generateMdocGeneratedNonce()
@@ -78,33 +89,29 @@ class OpenId4VpRequestProcessor(
             )
         } else {
             val inputDescriptorMap: MutableMap<InputDescriptorId, List<DocumentId>> = mutableMapOf()
-            var mdocGeneratedNonce: String? = null
+
             val requestedDocuments = RequestedDocuments(
-                request.resolvedRequestObject.presentationDefinition.inputDescriptors
+                presentationDefinition.inputDescriptors
                     // NOTE: mso_mdoc and vc+sd-jwt are supported, other formats are ignored
                     .filter {
                         it.format?.jsonObject()?.keys?.first() in listOf(
-                            "mso_mdoc",
-                            "vc+sd-jwt"
+                            FORMAT_MSO_MDOC, FORMAT_SD_JWT_VC
                         )
                     }
                     .flatMap { inputDescriptor ->
                         // NOTE: one format is supported per input descriptor
                         when (inputDescriptor.format?.jsonObject()?.keys?.first()) {
-                            "mso_mdoc" -> {
-                                inputDescriptor.toParsedRequestedMsoMdocDocument(request)
+                            FORMAT_MSO_MDOC -> {
+                                parseDescriptorForMsoMdocDocument(inputDescriptor, request)
                                     .let { helper.getRequestedDocuments(listOf(it)) }
-                                    .also {
-                                        mdocGeneratedNonce =
-                                            mdocGeneratedNonce ?: generateMdocGeneratedNonce()
-                                    }.also { requestedDoc ->
+                                    .also { requestedDoc ->
                                         inputDescriptorMap[inputDescriptor.id] =
                                             requestedDoc.map { it.documentId }.toList()
                                     }
                             }
 
-                            "vc+sd-jwt" -> {
-                                inputDescriptor.toParsedRequestedSdJwtVcDocument(request)
+                            FORMAT_SD_JWT_VC -> {
+                                parseDescriptorForSdJwtVcDocument(inputDescriptor, request)
                                     .also { requestedDoc ->
                                         inputDescriptorMap[inputDescriptor.id] =
                                             requestedDoc.map { it.documentId }.toList()
@@ -116,17 +123,20 @@ class OpenId4VpRequestProcessor(
                     }.toList()
             )
             ProcessedGenericOpenId4VpRequest(
-                documentManager,
-                request.resolvedRequestObject,
-                inputDescriptorMap,
-                requestedDocuments,
-                mdocGeneratedNonce
+                documentManager = documentManager,
+                resolvedRequestObject = request.resolvedRequestObject,
+                inputDescriptorMap = inputDescriptorMap,
+                requestedDocuments = requestedDocuments,
+                msoMdocNonce = msoMdocNonce
             )
         }
     }
 
-    private fun InputDescriptor.toParsedRequestedMsoMdocDocument(request: OpenId4VpRequest): DeviceRequestProcessor.RequestedMdocDocument {
-        val requested = constraints.fields()
+    private fun parseDescriptorForMsoMdocDocument(
+        descriptor: InputDescriptor,
+        request: OpenId4VpRequest,
+    ): DeviceRequestProcessor.RequestedMdocDocument {
+        val requested = descriptor.constraints.fields()
             .mapNotNull { fields ->
                 val path = fields.paths.first().value
                 Regex("\\\$\\['(.*?)']\\['(.*?)']").find(path)
@@ -139,7 +149,7 @@ class OpenId4VpRequestProcessor(
             .mapValues { (_, elementIdentifiers) -> elementIdentifiers.associateWith { false } }
 
         return DeviceRequestProcessor.RequestedMdocDocument(
-            docType = id.value.trim(),
+            docType = descriptor.id.value.trim(),
             requested = requested,
             readerAuthentication = {
                 openid4VpX509CertificateTrustStore.getTrustResult()
@@ -158,13 +168,17 @@ class OpenId4VpRequestProcessor(
         )
     }
 
-    private fun InputDescriptor.toParsedRequestedSdJwtVcDocument(request: OpenId4VpRequest): RequestedDocuments {
-        val vct = constraints.fields().find { field ->
+    private fun parseDescriptorForSdJwtVcDocument(
+        descriptor: InputDescriptor,
+        request: OpenId4VpRequest,
+    ): RequestedDocuments {
+        val vct = descriptor.constraints.fields().find { field ->
             field.paths.first().value == "$.vct"
-        }?.filter?.jsonObject()?.getValue("const")?.toString()?.removeSurrounding("\"")
+        }?.filter?.jsonObject()?.getValue("const")?.toString()
+            ?.removeSurrounding("\"")
             ?: throw IllegalArgumentException("vct not found")
 
-        val requestedClaims = this.constraints.fields()
+        val requestedClaims = descriptor.constraints.fields()
             .filter { it.paths.first().value != "$.vct" }
             .mapNotNull { fieldConstraint ->
                 val path = fieldConstraint.paths.first().value

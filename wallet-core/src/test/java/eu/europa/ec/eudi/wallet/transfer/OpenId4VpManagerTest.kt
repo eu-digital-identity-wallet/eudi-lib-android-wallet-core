@@ -17,11 +17,24 @@
 package eu.europa.ec.eudi.wallet.transfer
 
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.openid4vp.*
+import eu.europa.ec.eudi.openid4vp.Consensus
+import eu.europa.ec.eudi.openid4vp.EncryptionParameters
+import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
 import eu.europa.ec.eudi.wallet.internal.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.*
-import io.mockk.*
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestProcessor
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.spyk
+import io.mockk.unmockkAll
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelChildren
@@ -101,15 +114,23 @@ class OpenId4VpManagerTest {
     @Test
     fun `test stop cancels sendResponse coroutine`() = runTest(timeout = 1.minutes) {
 
-        val mockConsensus = mockk<Consensus.PositiveConsensus>()
+        val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
         val mockResolvedRequestObject = mockk<ResolvedRequestObject>()
+        val encryptionParametersMock = mockk<EncryptionParameters>()
         val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
             every { consensus } returns mockConsensus
             every { resolvedRequestObject } returns mockResolvedRequestObject
             every { responseBytes } returns byteArrayOf()
-            every { vpToken } returns mockk()
+            every { vpContent } returns mockk()
+            every { encryptionParameters } returns encryptionParametersMock
         }
-        coEvery { siopOpenId4Vp.dispatch(mockResolvedRequestObject, mockConsensus) } coAnswers {
+        coEvery {
+            siopOpenId4Vp.dispatch(
+                request = mockResolvedRequestObject,
+                consensus = mockConsensus,
+                encryptionParameters = encryptionParametersMock
+            )
+        } coAnswers {
             delay(Long.MAX_VALUE)
             mockk()
         }
@@ -132,19 +153,22 @@ class OpenId4VpManagerTest {
     fun `when sendResponse throws inside coroutine exception is passed as event`() =
         runTest(timeout = 1.minutes) {
 
-            val mockConsensus = mockk<Consensus.PositiveConsensus>()
+            val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
             val mockResolvedRequestObject = mockk<ResolvedRequestObject>()
+            val encryptionParametersMock = mockk<EncryptionParameters>()
             val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
                 every { consensus } returns mockConsensus
                 every { resolvedRequestObject } returns mockResolvedRequestObject
                 every { responseBytes } returns byteArrayOf()
-                every { vpToken } returns mockk()
+                every { vpContent } returns mockk()
+                every { encryptionParameters } returns encryptionParametersMock
             }
             val exception = Exception("test")
             coEvery {
                 siopOpenId4Vp.dispatch(
-                    mockResolvedRequestObject,
-                    mockConsensus
+                    request = mockResolvedRequestObject,
+                    consensus = mockConsensus,
+                    encryptionParameters = encryptionParametersMock
                 )
             } throws exception
 

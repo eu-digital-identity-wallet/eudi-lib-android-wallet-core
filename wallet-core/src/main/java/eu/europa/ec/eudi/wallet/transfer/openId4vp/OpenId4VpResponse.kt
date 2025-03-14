@@ -16,22 +16,43 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.DeviceResponseBytes
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.openid4vp.Consensus
+import eu.europa.ec.eudi.openid4vp.EncryptionParameters
+import eu.europa.ec.eudi.openid4vp.JarmRequirement
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
-import eu.europa.ec.eudi.openid4vp.VpToken
+import eu.europa.ec.eudi.openid4vp.VpContent
 
 sealed interface OpenId4VpResponse : Response {
     val resolvedRequestObject: ResolvedRequestObject
-    val consensus: Consensus.PositiveConsensus
+    val consensus: Consensus.PositiveConsensus.VPTokenConsensus
+    val msoMdocNonce: String
+    val vpContent: VpContent
+        get() = consensus.vpContent
+
+    val encryptionParameters: EncryptionParameters?
+        get() = when (val jarmReq = resolvedRequestObject.jarmRequirement) {
+            is JarmRequirement.Encrypted -> constructEncryptedParameters(
+                jarmReq.responseEncryptionAlg,
+                msoMdocNonce
+            )
+
+            is JarmRequirement.SignedAndEncrypted -> constructEncryptedParameters(
+                jarmReq.encryptResponse.responseEncryptionAlg,
+                msoMdocNonce
+            )
+
+            else -> null
+        }
 
     data class DeviceResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
-        override val consensus: Consensus.PositiveConsensus,
-        val vpToken: VpToken,
+        override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
+        override val msoMdocNonce: String,
         val responseBytes: DeviceResponseBytes,
-        val msoMdocNonce: String,
     ) : OpenId4VpResponse {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -41,7 +62,6 @@ sealed interface OpenId4VpResponse : Response {
 
             if (resolvedRequestObject != other.resolvedRequestObject) return false
             if (consensus != other.consensus) return false
-            if (vpToken != other.vpToken) return false
             if (!responseBytes.contentEquals(other.responseBytes)) return false
             if (msoMdocNonce != other.msoMdocNonce) return false
 
@@ -51,7 +71,6 @@ sealed interface OpenId4VpResponse : Response {
         override fun hashCode(): Int {
             var result = resolvedRequestObject.hashCode()
             result = 31 * result + consensus.hashCode()
-            result = 31 * result + vpToken.hashCode()
             result = 31 * result + responseBytes.contentHashCode()
             result = 31 * result + msoMdocNonce.hashCode()
             return result
@@ -60,8 +79,17 @@ sealed interface OpenId4VpResponse : Response {
 
     data class GenericResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
-        override val consensus: Consensus.PositiveConsensus,
-        val vpToken: VpToken,
+        override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
+        override val msoMdocNonce: String,
         val response: List<String>,
     ) : OpenId4VpResponse
+}
+
+private fun constructEncryptedParameters(
+    alg: JWEAlgorithm,
+    msoMdocNonce: String,
+): EncryptionParameters? {
+    return if (alg in JWEAlgorithm.Family.ECDH_ES) {
+        EncryptionParameters.DiffieHellman(apu = Base64URL.from(msoMdocNonce))
+    } else null
 }
