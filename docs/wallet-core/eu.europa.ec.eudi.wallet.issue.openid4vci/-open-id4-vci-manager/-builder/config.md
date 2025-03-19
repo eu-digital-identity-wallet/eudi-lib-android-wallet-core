@@ -3,7 +3,7 @@
 # config
 
 [androidJvm]\
-fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md)): [OpenId4VciManager.Builder](index.md)
+fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md)): &lt;Error class: unknown class&gt;
 
 Set the [Config](../-config/index.md) to use
 

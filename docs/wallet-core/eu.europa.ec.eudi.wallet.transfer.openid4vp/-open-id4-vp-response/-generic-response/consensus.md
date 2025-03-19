@@ -3,4 +3,4 @@
 # consensus
 
 [androidJvm]\
-open override val [consensus](consensus.md): Consensus.PositiveConsensus
+open override val [consensus](consensus.md): Consensus.PositiveConsensus.VPTokenConsensus

@@ -3,4 +3,4 @@
 # removeTransferEventListener
 
 [androidJvm]\
-open override fun [removeTransferEventListener](remove-transfer-event-listener.md)(listener: TransferEvent.Listener): [OpenId4VpManager](index.md)
+open override fun [removeTransferEventListener](remove-transfer-event-listener.md)(listener: TransferEvent.Listener): &lt;Error class: unknown class&gt;

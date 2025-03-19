@@ -32,8 +32,9 @@ class [OpenId4VpManager](index.md)(val config: [OpenId4VpConfig](../-open-id4-vp
 
 | Name | Summary |
 |---|---|
-| [addTransferEventListener](add-transfer-event-listener.md) | [androidJvm]<br>open override fun [addTransferEventListener](add-transfer-event-listener.md)(listener: TransferEvent.Listener): [OpenId4VpManager](index.md) |
-| [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md) | [androidJvm]<br>open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): [OpenId4VpManager](index.md) |
-| [removeTransferEventListener](remove-transfer-event-listener.md) | [androidJvm]<br>open override fun [removeTransferEventListener](remove-transfer-event-listener.md)(listener: TransferEvent.Listener): [OpenId4VpManager](index.md) |
-| [resolveRequestUri](resolve-request-uri.md) | [androidJvm]<br>fun [resolveRequestUri](resolve-request-uri.md)(uri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
-| [sendResponse](send-response.md) | [androidJvm]<br>fun [sendResponse](send-response.md)(response: Response) |
+| [addTransferEventListener](add-transfer-event-listener.md) | [androidJvm]<br>open override fun [addTransferEventListener](add-transfer-event-listener.md)(listener: TransferEvent.Listener): &lt;Error class: unknown class&gt; |
+| [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md) | [androidJvm]<br>open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): &lt;Error class: unknown class&gt; |
+| [removeTransferEventListener](remove-transfer-event-listener.md) | [androidJvm]<br>open override fun [removeTransferEventListener](remove-transfer-event-listener.md)(listener: TransferEvent.Listener): &lt;Error class: unknown class&gt; |
+| [resolveRequestUri](resolve-request-uri.md) | [androidJvm]<br>fun [resolveRequestUri](resolve-request-uri.md)(uri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))<br>Resolves a request URI. This method is asynchronous and the result is emitted through the TransferEvent.Listener interface. Every time it is called it cancels any previous request that is being resolved. This will lead to the TransferEvent.Disconnected event being emitted. |
+| [sendResponse](send-response.md) | [androidJvm]<br>fun [sendResponse](send-response.md)(response: Response)<br>Sends a response to the verifier. This method is asynchronous and the result is emitted through the TransferEvent.Listener interface. Every time it is called it cancels any previous response that is being sent. This will lead to the TransferEvent.Disconnected event being emitted. |
+| [stop](stop.md) | [androidJvm]<br>fun [stop](stop.md)()<br>Stops the manager and cancels all running connections made by the manager. When a connection is cancelled, the TransferEvent.Disconnected event is emitted. |

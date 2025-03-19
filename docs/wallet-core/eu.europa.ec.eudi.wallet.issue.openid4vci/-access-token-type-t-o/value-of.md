@@ -11,4 +11,4 @@ Returns the enum constant of this type with the specified name. The string must 
 
 | | |
 |---|---|
-| [IllegalArgumentException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-illegal-argument-exception/index.html) | if this enum type has no constant with the specified name |
+| kotlin.IllegalArgumentException | if this enum type has no constant with the specified name |

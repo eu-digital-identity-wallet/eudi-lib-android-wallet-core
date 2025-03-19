@@ -3,4 +3,4 @@
 # consensus
 
 [androidJvm]\
-abstract val [consensus](consensus.md): Consensus.PositiveConsensus
+abstract val [consensus](consensus.md): Consensus.PositiveConsensus.VPTokenConsensus

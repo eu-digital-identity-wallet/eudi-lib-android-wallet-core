@@ -3,7 +3,7 @@
 # withStorageEngine
 
 [androidJvm]\
-fun [withStorageEngine](with-storage-engine.md)(storageEngine: StorageEngine): [EudiWallet.Builder](index.md)
+fun [withStorageEngine](with-storage-engine.md)(storageEngine: StorageEngine): &lt;Error class: unknown class&gt;
 
 Configure with the given StorageEngine to use for storing/retrieving documents. If not set, the default storage engine will be used which is AndroidStorageEngine.
 
