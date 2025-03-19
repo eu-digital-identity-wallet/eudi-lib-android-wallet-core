@@ -107,7 +107,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.14.0"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.15.0"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -970,6 +970,7 @@ wallet.addTransferEventListener { event ->
         }
     }
     ```
+    To cancel the remote presentation, call the `wallet.stopRemotePresentation()` method.
 
 4. OpenID4VP
 
@@ -1015,6 +1016,7 @@ wallet.addTransferEventListener { event ->
         }
     }
     ```
+   To cancel the remote presentation, call the `wallet.stopRemotePresentation()` method.
 
 #### Receiving a request and sending a response
 

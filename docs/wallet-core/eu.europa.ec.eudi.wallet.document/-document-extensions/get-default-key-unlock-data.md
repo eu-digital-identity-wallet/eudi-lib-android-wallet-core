@@ -39,5 +39,5 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if the Document is not managed by AndroidKeystoreSecureArea |
-| [NoSuchElementException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-no-such-element-exception/index.html) | if the document is not found by the DocumentId |
+| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea |
+| NoSuchElementException | if the document is not found by the DocumentId |

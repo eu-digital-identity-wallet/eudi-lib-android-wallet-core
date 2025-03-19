@@ -40,4 +40,4 @@ androidJvm
 
 | | |
 |---|---|
-| [NoSuchElementException](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-no-such-element-exception/index.html) | if no AndroidKeystoreSecureArea implementation is available |
+| NoSuchElementException | if no AndroidKeystoreSecureArea implementation is available |

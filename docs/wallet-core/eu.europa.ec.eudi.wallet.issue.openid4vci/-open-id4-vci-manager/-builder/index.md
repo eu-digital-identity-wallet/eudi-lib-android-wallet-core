@@ -34,7 +34,7 @@ androidJvm
 | Name | Summary |
 |---|---|
 | [build](build.md) | [androidJvm]<br>fun [build](build.md)(): [OpenId4VciManager](../index.md)<br>Build the [OpenId4VciManager](../index.md) |
-| [config](config.md) | [androidJvm]<br>fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md)): [OpenId4VciManager.Builder](index.md)<br>Set the [Config](../-config/index.md) to use |
-| [documentManager](document-manager.md) | [androidJvm]<br>fun [documentManager](document-manager.md)(documentManager: DocumentManager): [OpenId4VciManager.Builder](index.md)<br>Set the DocumentManager to use |
-| [ktorHttpClientFactory](ktor-http-client-factory.md) | [androidJvm]<br>fun [ktorHttpClientFactory](ktor-http-client-factory.md)(factory: () -&gt; HttpClient): [OpenId4VciManager.Builder](index.md)<br>Override the Ktor HTTP client factory |
-| [logger](logger.md) | [androidJvm]<br>fun [logger](logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): [OpenId4VciManager.Builder](index.md)<br>Set the logger to use |
+| [config](config.md) | [androidJvm]<br>fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md)): &lt;Error class: unknown class&gt;<br>Set the [Config](../-config/index.md) to use |
+| [documentManager](document-manager.md) | [androidJvm]<br>fun [documentManager](document-manager.md)(documentManager: DocumentManager): &lt;Error class: unknown class&gt;<br>Set the DocumentManager to use |
+| [ktorHttpClientFactory](ktor-http-client-factory.md) | [androidJvm]<br>fun [ktorHttpClientFactory](ktor-http-client-factory.md)(factory: () -&gt; HttpClient): &lt;Error class: unknown class&gt;<br>Override the Ktor HTTP client factory |
+| [logger](logger.md) | [androidJvm]<br>fun [logger](logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): &lt;Error class: unknown class&gt;<br>Set the logger to use |

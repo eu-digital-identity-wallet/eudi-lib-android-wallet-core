@@ -6,7 +6,7 @@
 
 @[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)
 
-fun [configureDocumentManager](configure-document-manager.md)(storageDir: [File](https://developer.android.com/reference/kotlin/java/io/File.html), identifier: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null, encryptDocuments: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = true): [EudiWalletConfig](index.md)
+fun [configureDocumentManager](configure-document-manager.md)(storageDir: [File](https://developer.android.com/reference/kotlin/java/io/File.html), identifier: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null, encryptDocuments: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = true): &lt;Error class: unknown class&gt;
 
 Configure the built-in document manager.
 
