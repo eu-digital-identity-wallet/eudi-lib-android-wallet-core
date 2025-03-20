@@ -34,7 +34,7 @@ The library provides the following functionality:
     - [x] Support for custom SecureArea implementations
     - [x] Support for multiple SecureArea implementations
 - Document issuance
-    - [x] Support for OpenId4VCI Draft 14 document issuance
+    - [x] Support for [OpenId4VCI (draft 14)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-14.html) document issuance
         - [x] Authorization Code Flow
         - [x] Pre-authorization Code Flow
         - [x] Support for mso_mdoc format
@@ -51,7 +51,7 @@ The library provides the following functionality:
         - [ ] NFC data transfer
         - [ ] Wifi-Aware data transfer
 - Remote document presentation
-    - [x] OpenId4VP document transfer
+    - [x] [OpenId4VP (draft 23)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) document transfer
         - [x] For pre-registered verifiers
         - [x] Dynamic registration of verifiers
 
