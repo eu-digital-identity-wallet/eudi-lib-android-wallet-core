@@ -110,7 +110,10 @@ class ProcessedGenericOpenId4VpRequest(
                     Pair(document, verifiablePresentation)
                 }
 
-            val descriptorMaps = constructDescriptorsMap(verifiablePresentations)
+            val descriptorMaps = constructDescriptorsMap(
+                inputDescriptorMap = inputDescriptorMap,
+                verifiablePresentations = verifiablePresentations
+            )
 
             val presentationSubmission = PresentationSubmission(
                 id = Id(UUID.randomUUID().toString()),
@@ -235,25 +238,47 @@ class ProcessedGenericOpenId4VpRequest(
             serializeWithKeyBinding(buildKbJwt).getOrThrow()
         }
     }
-
-    private fun constructDescriptorsMap(
-        verifiablePresentations: List<Pair<IssuedDocument, VerifiablePresentation.Generic>>,
-    ): List<DescriptorMap> {
-
-        return inputDescriptorMap.flatMap { (inputDescriptorId, documents) ->
-            verifiablePresentations
-                .filter { (document, _) -> documents.contains(document.id) }
-                .mapIndexed { index, (document, _) ->
-                    DescriptorMap(
-                        id = inputDescriptorId,
-                        format = when (document.format) {
-                            is MsoMdocFormat -> FORMAT_MSO_MDOC
-                            is SdJwtVcFormat -> FORMAT_SD_JWT_VC
-                        },
-                        path = JsonPath.jsonPath(if (verifiablePresentations.size > 1) "$[$index]" else "$")
-                            ?: throw IllegalStateException("Failed to create JsonPath")
-                    )
-                }
-        }
-    }
 }
+
+internal fun constructDescriptorsMap(
+    inputDescriptorMap: Map<InputDescriptorId, List<DocumentId>>,
+    verifiablePresentations: List<Pair<IssuedDocument, VerifiablePresentation.Generic>>,
+): List<DescriptorMap> {
+
+    val descriptorMaps = verifiablePresentations.mapIndexed { index, (document, _) ->
+        // get the input descriptor id for the document
+        // that is in the verifiable presentation
+        val inputDescriptorId = inputDescriptorMap.entries
+            .firstOrNull { (_, documentIds) ->
+                documentIds.contains(document.id)
+            }?.key
+            ?: throw IllegalArgumentException("No input descriptor found for document")
+        // determine the format of the document
+        val format = when (document.format) {
+            is MsoMdocFormat -> FORMAT_MSO_MDOC
+            is SdJwtVcFormat -> FORMAT_SD_JWT_VC
+        }
+        // create the json path for the document
+        // if there are multiple verifiable presentations
+        // the json path will be an array
+        // e.g. $[0], $[1]
+        // otherwise it will be just $
+        val jsonPath = JsonPath.jsonPath(
+            if (verifiablePresentations.size > 1) {
+                "$[$index]"
+            } else {
+                "$"
+            }
+        ) ?: throw IllegalStateException("Failed to create JsonPath")
+
+        // create the descriptor map
+        DescriptorMap(
+            id = inputDescriptorId,
+            format = format,
+            path = jsonPath
+        )
+    }
+
+    return descriptorMaps
+}
+
