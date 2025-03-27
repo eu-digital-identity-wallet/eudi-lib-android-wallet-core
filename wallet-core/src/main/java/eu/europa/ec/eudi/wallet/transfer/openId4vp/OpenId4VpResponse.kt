@@ -90,6 +90,6 @@ private fun constructEncryptedParameters(
     msoMdocNonce: String,
 ): EncryptionParameters? {
     return if (alg in JWEAlgorithm.Family.ECDH_ES) {
-        EncryptionParameters.DiffieHellman(apu = Base64URL.from(msoMdocNonce))
+        EncryptionParameters.DiffieHellman(apu = Base64URL.encode(msoMdocNonce))
     } else null
 }
