@@ -14,6 +14,7 @@ eudi-iso18013-data-transfer = "0.6.2"
 eudi-lib-jvm-openid4vci-kt = "0.6.1"
 eudi-lib-jvm-siop-openid4vp-kt = "0.8.1"
 eudi-lib-jvm-sdjwt-kt = "0.10.0"
+eudi-lib-kmp-statium = "0.2.0"
 google-identity-android = "202408.1"
 gradle-plugin = "8.9.1"
 jacoco = "0.8.12"
@@ -59,6 +60,7 @@ eudi-iso18013-data-transfer = { module = "eu.europa.ec.eudi:eudi-lib-android-iso
 eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
 eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
 eudi-lib-jvm-sdjwt-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudi-lib-jvm-sdjwt-kt" }
+eudi-lib-kmp-statium = { module = "eu.europa.ec.eudi:eudi-lib-kmp-statium-android", version.ref = "eudi-lib-kmp-statium" }
 google-identity-android = { module = "com.android.identity:identity-android", version.ref = "google-identity-android" }
 google-identity-mdoc = { module = "com.android.identity:identity-mdoc", version.ref = "google-identity-android" }
 json = { module = "org.json:json", version.ref = "json" }

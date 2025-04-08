@@ -134,6 +134,9 @@ dependencies {
     // SD-JWT VC library
     implementation(libs.eudi.lib.jvm.sdjwt.kt)
 
+    // Document status
+    api(libs.eudi.lib.kmp.statium)
+
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
