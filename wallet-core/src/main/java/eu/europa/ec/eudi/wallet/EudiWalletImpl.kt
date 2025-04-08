@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
+import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import java.security.cert.X509Certificate
 
@@ -36,6 +37,8 @@ import java.security.cert.X509Certificate
  * @property documentManager the document manager
  * @property presentationManager the presentation manager
  * @property transferManager the transfer manager
+ * @property documentStatusResolver the document status resolver
+ * @property transactionLogger the transaction logger
  * @property logger the logger
  */
 class EudiWalletImpl internal constructor(
@@ -45,11 +48,13 @@ class EudiWalletImpl internal constructor(
     override val presentationManager: PresentationManager,
     override val transferManager: TransferManager,
     override val logger: Logger,
+    override val documentStatusResolver: DocumentStatusResolver,
     internal val readerTrustStoreConsumer: ((ReaderTrustStore) -> Unit),
     internal val openId4VciManagerFactory: (() -> OpenId4VciManager),
     val transactionLogger: TransactionLogger?,
 ) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
-    SampleDocumentManager by SampleDocumentManagerImpl(documentManager) {
+    SampleDocumentManager by SampleDocumentManagerImpl(documentManager),
+    DocumentStatusResolver by documentStatusResolver {
 
     override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
         readerTrustStoreConsumer(readerTrustStore)

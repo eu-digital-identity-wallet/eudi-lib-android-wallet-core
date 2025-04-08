@@ -26,8 +26,11 @@ import com.android.identity.storage.StorageEngine
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.statium.Status
+import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.DocumentManagerImpl
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
 import eu.europa.ec.eudi.wallet.internal.i
@@ -35,6 +38,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
+import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
@@ -58,14 +62,16 @@ import com.android.identity.util.Logger as IdentityLogger
  * @property presentationManager the presentation manager for both proximity and remote presentation
  * @property transferManager the transfer manager for proximity presentation
  * @property logger the logger
+ * @property documentStatusResolver
  */
-interface EudiWallet : SampleDocumentManager, PresentationManager {
+interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatusResolver {
 
     val config: EudiWalletConfig
     val documentManager: DocumentManager
     val presentationManager: PresentationManager
     val transferManager: TransferManager
     val logger: Logger
+    val documentStatusResolver: DocumentStatusResolver
 
     /**
      * Enumerate the secure areas available in the wallet
@@ -110,6 +116,20 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
      */
     fun createOpenId4VciManager(): OpenId4VciManager
 
+    /**
+     * Resolve the status of the document with the given [documentId]
+     *
+     * This method will return the status of the document if it is an [IssuedDocument]
+     *
+     * @param documentId the document ID
+     * @return the status of the document
+     */
+    suspend fun resolveStatusById(documentId: DocumentId): Result<Status> {
+        val document = getDocumentById(documentId) as? IssuedDocument
+            ?: return Result.failure(IllegalStateException("Document is not an IssuedDocument"))
+        return resolveStatus(document)
+    }
+
     companion object {
 
         private const val TAG = "EudiWallet"
@@ -147,6 +167,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
      * @property logger the logger to use if you want to provide a custom implementation
      * @property ktorHttpClientFactory the Ktor HTTP client factory to use if you want to provide a custom implementation
      * @property transactionLogger the transaction logger to use if you want to provide a custom implementation
+     * @property documentStatusResolver the document status resolver to use if you want to provide a custom implementation
      */
     class Builder(
         context: Context,
@@ -162,6 +183,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
         var logger: Logger? = null
         var ktorHttpClientFactory: (() -> HttpClient)? = null
         var transactionLogger: TransactionLogger? = null
+        var documentStatusResolver: DocumentStatusResolver? = null
 
         /**
          * Configure with the given [SecureArea] implementations to use for documents' keys management.
@@ -254,6 +276,18 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
         }
 
         /**
+         * Configure with the given [DocumentStatusResolver] to use for resolving the status of documents.
+         * If not set, the default document status resolver will be used which is
+         * [eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverImpl] that uses the [HttpClient] provided in the configuration.
+         *
+         * @param documentStatusResolver the document status resolver
+         * @return this [Builder] instance
+         */
+        fun withDocumentStatusResolver(documentStatusResolver: DocumentStatusResolver) = apply {
+            this.documentStatusResolver = documentStatusResolver
+        }
+
+        /**
          * Build the [EudiWallet] instance
          *
          * The [EudiWallet] instance will be created based on the configuration provided in the [Builder] class.
@@ -264,7 +298,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
          * - [DocumentManagerImpl] for managing documents
          * - [PresentationManagerImpl] for both proximity and remote presentation
          * - [OpenId4VpManager] for remote presentation
-         * - [TransferManagerImpl] for proximity presentation
+         * - [eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl] for proximity presentation
+         * - [eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverImpl] for resolving the status of documents
          *
          * **Note**: The [EudiWalletConfig.documentsStorageDir] is not set, the default storage directory
          * will be used which is the application's no backup files directory.
@@ -306,6 +341,11 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 } ?: throw IllegalStateException("OpenId4Vp configuration is missing")
             }
 
+            // Use the provided DocumentStatusResolver or create a new one
+            val documentStatusResolverToUse = documentStatusResolver
+                ?: ktorHttpClientFactory?.let { DocumentStatusResolver(ktorHttpClientFactory = it) }
+                ?: DocumentStatusResolver()
+
             return EudiWalletImpl(
                 context = context,
                 config = config,
@@ -315,7 +355,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager {
                 logger = loggerObj,
                 readerTrustStoreConsumer = { presentationManagerToUse.readerTrustStore = it },
                 openId4VciManagerFactory = openId4VciManagerFactory,
-                transactionLogger = transactionLogger
+                transactionLogger = transactionLogger,
+                documentStatusResolver = documentStatusResolverToUse
             )
         }
 
