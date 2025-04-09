@@ -341,10 +341,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 } ?: throw IllegalStateException("OpenId4Vp configuration is missing")
             }
 
-            // Use the provided DocumentStatusResolver or create a new one
-            val documentStatusResolverToUse = documentStatusResolver
-                ?: ktorHttpClientFactory?.let { DocumentStatusResolver(ktorHttpClientFactory = it) }
-                ?: DocumentStatusResolver()
+            val documentStatusResolverToUse = getDocumentStatusResolver()
 
             return EudiWalletImpl(
                 context = context,
@@ -500,6 +497,21 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 )
             )
         )
+
+        /**
+         * Get the default [DocumentStatusResolver] instance based on the configuration if not set
+         *
+         * @return the [DocumentStatusResolver] instance
+         */
+        @JvmSynthetic
+        internal fun getDocumentStatusResolver(): DocumentStatusResolver {
+            return documentStatusResolver ?: ktorHttpClientFactory?.let {
+                DocumentStatusResolver(
+                    ktorHttpClientFactory = it,
+                    allowedClockSkew = config.documentStatusResolverClockSkew
+                )
+            } ?: DocumentStatusResolver(allowedClockSkew = config.documentStatusResolverClockSkew)
+        }
 
         /**
          * Returns the capabilities of the Android Keystore Secure Area

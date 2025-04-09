@@ -58,13 +58,13 @@ object SdJwtStatusReferenceExtractor : StatusReferenceExtractor {
                 ?.jsonObject
                 ?.get(STATUS_LIST)
                 ?.jsonObject
-                ?: error("No status list found in SD-JWT VC")
+                ?: throw IllegalStateException("No status list found in SD-JWT VC")
 
             val uri = statusList[URI]?.jsonPrimitive?.content
-                ?: error("No URI found in status list")
+                ?: throw IllegalStateException("No URI found in status list")
 
             val idx = statusList[IDX]?.jsonPrimitive?.intOrNull
-                ?: error("No index found in status list")
+                ?: throw IllegalStateException("No index found in status list")
 
             StatusReference(
                 uri = uri,
