@@ -1,7 +1,7 @@
 
 # EUDI Wallet Core library for Android
 ## Dependency License Report
-_2025-04-10 17:24:58 EEST_
+_2025-04-10 17:51:31 EEST_
 ## Apache License, Version 2.0
 
 **1** **Group:** `androidx.appcompat` **Name:** `appcompat` **Version:** `1.7.0` 
@@ -39,7 +39,7 @@ _2025-04-10 17:24:58 EEST_
 > - **POM Project URL**: [https://kotlinlang.org/](https://kotlinlang.org/)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**10** **Group:** `org.jetbrains.kotlinx` **Name:** `kotlinx-datetime` **Version:** `0.6.0` 
+**10** **Group:** `org.jetbrains.kotlinx` **Name:** `kotlinx-datetime` **Version:** `0.6.2` 
 > - **POM Project URL**: [https://github.com/Kotlin/kotlinx-datetime](https://github.com/Kotlin/kotlinx-datetime)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 

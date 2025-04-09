@@ -22,7 +22,9 @@ The [EudiWallet](../index.md) instance will be created with the following defaul
 - 
    [OpenId4VpManager](../../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-manager/index.md) for remote presentation
 - 
-   TransferManagerImpl for proximity presentation
+   eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl for proximity presentation
+- 
+   [eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverImpl](../../../eu.europa.ec.eudi.wallet.statium/-document-status-resolver-impl/index.md) for resolving the status of documents
 
 **Note**: The [EudiWalletConfig.documentsStorageDir](../../-eudi-wallet-config/documents-storage-dir.md) is not set, the default storage directory will be used which is the application's no backup files directory.
 

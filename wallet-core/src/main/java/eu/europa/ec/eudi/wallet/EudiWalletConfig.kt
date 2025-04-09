@@ -28,6 +28,8 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import java.io.File
 import java.security.cert.X509Certificate
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Eudi wallet config. This config is used to configure the default settings of the Eudi wallet.
@@ -103,6 +105,7 @@ import java.security.cert.X509Certificate
  * @property userAuthenticationRequired whether user authentication is required
  * @property userAuthenticationTimeout the user authentication timeout
  * @property useStrongBoxForKeys whether to use the strong box for keys
+ * @property documentStatusResolverClockSkew the clock skew for the document status resolver
  *
  * @see EudiWallet.Builder
  */
@@ -341,6 +344,17 @@ class EudiWalletConfig {
         if (this.userAuthenticationRequired) {
             require(this.userAuthenticationTimeout >= 0) { "User authentication timeout must be equal or greater than 0" }
         }
+    }
+
+    var documentStatusResolverClockSkew: Duration = Duration.ZERO
+        private set
+
+    /**
+     * Configure the document status resolver clock skew. This allows to configure the clock skew for
+     * the provided document status resolver.
+     */
+    fun configureDocumentStatusResolver(clockSkewInMinutes: Long) = apply {
+        this.documentStatusResolverClockSkew = clockSkewInMinutes.minutes
     }
 
 

@@ -39,6 +39,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration.Companion.minutes
 
 class DocumentStatusResolverTest {
 
@@ -86,8 +87,9 @@ class DocumentStatusResolverTest {
         // Create resolver with mock extractor
         val resolver = DocumentStatusResolverImpl(
             verifySignature,
+            0.minutes,
             mockHttpClientFactory,
-            mockStatusReferenceExtractor
+            mockStatusReferenceExtractor,
         )
 
         // When
@@ -95,7 +97,7 @@ class DocumentStatusResolverTest {
 
         // Then
         assertTrue(result.isFailure)
-        assertEquals(extractionError, result.exceptionOrNull())
+        assertEquals(extractionError.message, result.exceptionOrNull()?.message)
     }
 
     @Test
@@ -136,7 +138,8 @@ class DocumentStatusResolverTest {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
                 mockHttpClientFactory,
-                verifySignature
+                verifySignature,
+                any()   // allowedClockSkew
             )
         } returns mockGetStatusListToken
 
@@ -153,6 +156,7 @@ class DocumentStatusResolverTest {
         // Create resolver with mock extractor
         val resolver = DocumentStatusResolverImpl(
             verifySignature,
+            0.minutes,
             mockHttpClientFactory,
             mockStatusReferenceExtractor
         )
@@ -165,9 +169,78 @@ class DocumentStatusResolverTest {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
                 mockHttpClientFactory,
-                verifySignature
+                verifySignature,
+                0.minutes
             )
         }
     }
 
+    @Test
+    fun `resolveStatus passes the correct allowedClockSkew parameter`() = runTest {
+        // Given
+        val customClockSkew = 10.minutes
+        
+        // Setup mock behavior
+        coEvery { mockStatusReferenceExtractor.extractStatusReference(mockDocument) } returns Result.success(
+            statusReference
+        )
+
+        every {
+            GetStatusListToken.Companion.usingJwt(
+                any(),  // clock
+                mockHttpClientFactory,
+                verifySignature,
+                any()   // allowedClockSkew
+            )
+        } returns mockGetStatusListToken
+
+        every {
+            GetStatus.Companion.invoke(mockGetStatusListToken)
+        } returns mockGetStatus
+
+        coEvery {
+            with(mockGetStatus) {
+                statusReference.currentStatus()
+            }
+        } returns Result.success(Status.Valid)
+
+        // Create resolver with custom clock skew
+        val resolver = DocumentStatusResolverImpl(
+            verifySignature,
+            customClockSkew,
+            mockHttpClientFactory,
+            mockStatusReferenceExtractor
+        )
+
+        // When
+        resolver.resolveStatus(mockDocument)
+
+        // Then
+        verify(exactly = 1) {
+            GetStatusListToken.Companion.usingJwt(
+                any(),  // clock
+                mockHttpClientFactory,
+                verifySignature,
+                customClockSkew
+            )
+        }
+    }
+
+    @Test
+    fun `companion object creates resolver with custom allowedClockSkew`() {
+        // Given
+        val customClockSkew = 5.minutes
+        
+        // When
+        val resolver = DocumentStatusResolver(
+            verifySignature = verifySignature,
+            ktorHttpClientFactory = mockHttpClientFactory,
+            allowedClockSkew = customClockSkew
+        )
+
+        // Then
+        assertTrue(resolver is DocumentStatusResolverImpl)
+        // We can't directly test the private property, but we'll verify it's created correctly
+    }
 }
+

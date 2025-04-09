@@ -34,15 +34,17 @@ The library provides the following functionality:
     - [x] Support for custom SecureArea implementations
     - [x] Support for multiple SecureArea implementations
 - Document issuance
-    - [x] Support for [OpenId4VCI (draft 14)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-14.html) document issuance
+    - [x] Support
+      for [OpenId4VCI (draft 14)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-14.html)
+      document issuance
         - [x] Authorization Code Flow
         - [x] Pre-authorization Code Flow
         - [x] Support for mso_mdoc format
-      - [x] Support for sd-jwt-vc format
-        - [x] Support credential offer
-        - [x] Support for DPoP JWT in authorization
-      - [x] Support for JWT proof types
-      - [x] Support for deferred issuing
+        - [x] Support for sd-jwt-vc format
+            - [x] Support credential offer
+            - [x] Support for DPoP JWT in authorization
+        - [x] Support for JWT proof types
+        - [x] Support for deferred issuing
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -51,7 +53,8 @@ The library provides the following functionality:
         - [ ] NFC data transfer
         - [ ] Wifi-Aware data transfer
 - Remote document presentation
-    - [x] [OpenId4VP (draft 23)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) document transfer
+    - [x] [OpenId4VP (draft 23)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
+      document transfer
         - [x] For pre-registered verifiers
         - [x] Dynamic registration of verifiers
 
@@ -195,7 +198,7 @@ val config = EudiWalletConfig()
             "mdoc-openid4vp"
         )
         withFormats(
-            Format.MsoMdoc, 
+            Format.MsoMdoc,
             Format.SdJwtVc.ES256
         )
     }
@@ -405,6 +408,112 @@ IssuerSignedItem = {
  "elementValue" : DataElementValue ; Data element value
 }
 ```
+
+#### Resolving document status
+
+The wallet-core library provides functionality to check the revocation status of documents. This is
+useful to verify if a document is still valid or has been revoked.
+
+To check the status of a document, you can use the `resolveStatusById` method on the `EudiWallet`
+instance.
+
+```kotlin
+// Get a document's ID
+val documentId = "some_document_id"
+
+// Check the document's status
+wallet.resolveStatusById(documentId).fold(
+    onSuccess = { status ->
+        when (status) {
+            Status.Valid -> println("Token is valid")
+            Status.Invalid -> println("Token is invalid")
+            Status.Suspended -> println("Token is suspended")
+            is Status.ApplicationSpecific -> println("Application-specific status: ${status.value}")
+            is Status.Reserved -> println("Reserved status: ${status.value}")
+        }
+    },
+    onFailure = { error ->
+        // Handle errors (network issues, document not found, etc.)
+    }
+)
+```
+
+You can also check the status of a document directly if you have an `IssuedDocument` instance:
+
+```kotlin
+val document = wallet.getDocumentById(documentId) as? IssuedDocument
+if (document != null) {
+    wallet.resolveStatus(document).fold(
+        onSuccess = { status ->
+            // Handle the status
+        },
+        onFailure = { error ->
+            // Handle errors
+        }
+    )
+}
+```
+
+By default, the library uses a built-in implementation of `DocumentStatusResolver` that works with
+token status lists as specified in various credential formats. The resolver supports both MSO MDOC
+and SD-JWT VC document formats.
+
+If needed, you can provide your own custom implementation of `DocumentStatusResolver` during wallet
+initialization:
+
+```kotlin
+val wallet = EudiWallet(context, config) {
+    // Custom HTTP client factory for status resolution if needed
+    withKtorHttpClientFactory { HttpClient(OkHttp) { /* custom configuration */ } }
+
+    // Or a completely custom document status resolver
+    withDocumentStatusResolver(myCustomDocumentStatusResolver)
+}
+```
+
+###### Basic Configuration
+
+You can configure the default implementation using `EudiWalletConfig`:
+
+```kotlin
+val config = EudiWalletConfig()
+    // Configure a clock skew allowance (in minutes) for token verification
+    .configureDocumentStatusResolver(clockSkewInMinutes = 5)
+    // ... other configurations
+```
+
+###### Custom DocumentStatusResolver Implementation
+
+For more advanced customization, you can create your own DocumentStatusResolver using the builder:
+
+```kotlin
+// Create a custom DocumentStatusResolver
+val customResolver = DocumentStatusResolver {
+    // Configure verification mechanism
+    withVerifySignature(VerifyStatusListTokenSignature.x5c)
+    
+    // Configure clock skew tolerance
+    withAllowedClockSkew(Duration.minutes(5))
+    
+    // Custom HTTP client factory
+    withKtorHttpClientFactory { 
+        HttpClient(CIO) { 
+            // Custom client configuration 
+        } 
+    }
+    
+    // Custom status reference extractor if needed
+    withExtractor(MyCustomStatusReferenceExtractor)
+}
+
+// Use the custom resolver during wallet initialization
+val wallet = EudiWallet(context, config) {
+    withDocumentStatusResolver(customResolver)
+}
+```
+
+or even provide a custom implementation of `DocumentStatusResolver` interface.
+
 
 ### Issue document using OpenID4VCI
 
@@ -970,7 +1079,7 @@ wallet.addTransferEventListener { event ->
         }
     }
     ```
-    To cancel the remote presentation, call the `wallet.stopRemotePresentation()` method.
+   To cancel the remote presentation, call the `wallet.stopRemotePresentation()` method.
 
 4. OpenID4VP
 
@@ -1200,3 +1309,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+`

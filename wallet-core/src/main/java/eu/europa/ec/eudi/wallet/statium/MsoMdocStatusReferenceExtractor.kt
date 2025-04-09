@@ -65,8 +65,6 @@ object MsoMdocStatusReferenceExtractor : StatusReferenceExtractor {
 
         val issuerAuthSign1 = Message.DecodeFromBytes(issuerAuthBytes, MessageTag.Sign1)
 
-
-
         return issuerAuthSign1
             .GetContent()
             .let { CBORObject.DecodeFromBytes(it) }
@@ -81,7 +79,6 @@ object MsoMdocStatusReferenceExtractor : StatusReferenceExtractor {
      * @return The extracted [StatusReference].
      */
     internal fun extractStatusList(mso: CBORObject): StatusReference {
-
         require(mso.type == CBORType.Map) {
             "MSO is not a CBOR map"
         }
