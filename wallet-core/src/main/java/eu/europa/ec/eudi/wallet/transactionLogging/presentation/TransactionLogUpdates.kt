@@ -116,7 +116,7 @@ internal fun TransactionLog.withRelyingParty(processedRequest: RequestProcessor.
  * @param e An optional exception that occurred during the response processing.
  * @return A new transaction log with the response information added.
  */
-fun TransactionLog.withResponse(
+internal fun TransactionLog.withResponse(
     response: Response,
     metadataResolver: (List<DocumentId>) -> List<String?>,
     e: Throwable? = null

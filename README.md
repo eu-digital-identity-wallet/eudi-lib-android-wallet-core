@@ -1101,6 +1101,79 @@ the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-manage
 for more information on how to use the wallet-core library for presentation with custom SecureArea
 implementations.
 
+### Transaction Logging
+
+The library supports logging transactions for auditing and analytics purposes. Currently, only presentation transactions (both proximity and remote) are supported by the library. Issuing transactions will be added in a future release.
+
+#### Configuring Transaction Logger
+
+To enable transaction logging, you need to implement the `TransactionLogger` interface and provide it when initializing the `EudiWallet` instance:
+
+```kotlin
+// Implement the TransactionLogger interface
+class MyTransactionLogger : TransactionLogger {
+    override fun log(transaction: TransactionLog) {
+        // Implement logging logic here
+        // For example, save transaction to a local database
+    }
+}
+
+// Then provide it when creating the wallet instance
+val wallet = EudiWallet(context, config) {
+    // other configurations
+    withTransactionLogger(MyTransactionLogger())
+}
+```
+
+#### Working with Transaction Logs
+
+Transaction logs contain information about the presentation transaction, such as:
+- Timestamp of the transaction
+- Transaction status (Completed, Error, Incomplete)
+- Type of transaction (currently only Presentation is supported)
+- Relying party information
+- Raw request and response data
+- Format of the data (CBOR, JSON)
+
+Here's an example of how to retrieve and parse a presentation transaction log:
+
+```kotlin
+// Assuming you have a TransactionLog object from your storage
+val transactionLog: TransactionLog = retrieveTransactionLog()
+
+// Check if it's a presentation transaction
+if (transactionLog.type == TransactionLog.Type.Presentation) {
+    // Parse the presentation transaction log
+    val presentationLogResult = PresentationTransactionLog.fromTransactionLog(transactionLog)
+    
+    presentationLogResult.onSuccess { presentationLog ->
+        // Access the parsed information
+        val timestamp = presentationLog.timestamp
+        val status = presentationLog.status
+        val relyingParty = presentationLog.relyingParty
+        
+        // Access the presented documents and claims
+        for (document in presentationLog.documents) {
+            val format = document.format
+            val metadata = document.metadata
+            
+            // Access individual claims
+            for (claim in document.claims) {
+                val path = claim.path
+                val value = claim.value
+                // Process the claim...
+            }
+        }
+    }
+    
+    presentationLogResult.onFailure { error ->
+        // Handle parsing error
+    }
+}
+```
+
+This parsed information can be used to display transaction history to the user, perform audits, or for any other analytical purposes.
+
 ## How to contribute
 
 We welcome contributions to this project. To ensure that the process is smooth for everyone
