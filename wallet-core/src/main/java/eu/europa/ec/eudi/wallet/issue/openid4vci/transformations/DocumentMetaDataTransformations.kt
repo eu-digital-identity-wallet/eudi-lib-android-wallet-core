@@ -56,21 +56,20 @@ private fun Display.toDocumentDisplay(): DocumentMetaData.Display = DocumentMeta
     backgroundImageUri = backgroundImage
 )
 
-private fun Display.Logo.toDocumentLogo():
-        DocumentMetaData.Logo =
+private fun Display.Logo.toDocumentLogo(): DocumentMetaData.Logo =
     DocumentMetaData.Logo(uri, alternativeText)
 
 
-private fun Claim?.toDocumentMetaDataClaim(): DocumentMetaData.Claim =
+private fun Claim.toDocumentMetaDataClaim(): DocumentMetaData.Claim =
     DocumentMetaData.Claim(
-        path = this?.path?.toMetaDataClaimName() ?: emptyList(),
-        mandatory = this?.mandatory,
-        display = this?.display?.map { display ->
+        path = path.toMetaDataClaimName(),
+        mandatory = mandatory,
+        display = display.map { display ->
             DocumentMetaData.Claim.Display(
                 name = display.name,
                 locale = display.locale
             )
-        } ?: emptyList()
+        }
     )
 
 private fun ClaimPath.toMetaDataClaimName(): List<String> {

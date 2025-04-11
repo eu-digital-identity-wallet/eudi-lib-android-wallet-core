@@ -43,7 +43,7 @@ fun parseMsoMdoc(
     ).parse()
 
     // Convert metadata strings to DocumentMetaData objects
-    val documentMetadata = metadata?.map { it?.let { DocumentMetaData.fromJson(it) } }
+    val documentMetadata = metadata?.mapNotNull { it?.let { DocumentMetaData.fromJson(it).getOrNull() } }
 
     // Map parsed documents to PresentedDocument objects
     return parsed.documents.mapIndexed { index, doc ->
@@ -56,7 +56,7 @@ fun parseMsoMdoc(
                     value = CBOR.cborParse(data),
                     rawValue = data,
                     metadata = documentMetadata?.getOrNull(index)?.claims?.find {
-                        it.name is DocumentMetaData.Claim.Name.MsoMdoc && it.name.name == elementIdentifier
+                        it.path.size == 2 && it.path[0] == nameSpace && it.path[1] == elementIdentifier
                     }
                 )
             }
