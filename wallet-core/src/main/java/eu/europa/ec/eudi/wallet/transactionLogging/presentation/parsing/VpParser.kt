@@ -199,7 +199,7 @@ fun parseVcSdJwt(
 
     val presentedDocument = getPresentedDocumentsFromClaims(
         claims = sdJwt.claims,
-        metadata = metadata?.let { DocumentMetaData.fromJson(it) }
+        metadata = metadata?.let { DocumentMetaData.fromJson(it).getOrNull() }
     )
 
     return presentedDocument
@@ -336,16 +336,12 @@ fun PresentationSubmission.getResponseIndicesByFormat(): Map<String, List<Int>> 
  * @param metadata the metadata to parse
  * @return the claim metadata as a [DocumentMetaData.Claim] object
  */
-fun findClaimMetadataForSdJwtVc(path: List<String>, metadata: DocumentMetaData?): DocumentMetaData.Claim? {
-    // If metadata is null or claims is null, return null
-    if (metadata?.claims == null) return null
-
-    // Search in metadata claims to find a matching claim
-    return metadata.claims
-        ?.filter {
-            it.name is DocumentMetaData.Claim.Name.SdJwtVc
-        }?.find { claim ->
-            path.any { it == claim.name.name }
-        }
+fun findClaimMetadataForSdJwtVc(
+    path: List<String>,
+    metadata: DocumentMetaData?
+): DocumentMetaData.Claim? {
+    return metadata?.claims?.find {
+        it.path.size == path.size && it.path.zip(path).all { (a, b) -> a == b }
+    }
 }
 
