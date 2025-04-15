@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPrivateKey
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
@@ -28,6 +24,10 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.openid4vci.PopSigner
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
 
 
 /**
@@ -55,7 +55,7 @@ internal class JWSDPoPSigner private constructor(val algorithm: Algorithm) : JWS
     private val jwk: JWK
         get() = JWK.parseFromPEMEncodedObjects(privateKey.publicKey.toPem())
 
-    private val jwsAlgorithm: JWSAlgorithm = JWSAlgorithm.parse(algorithm.jwseAlgorithmIdentifier)
+    private val jwsAlgorithm: JWSAlgorithm = JWSAlgorithm.parse(algorithm.joseAlgorithmIdentifier)
 
     val popSigner: PopSigner.Jwt
         get() = PopSigner.Jwt(
@@ -80,7 +80,7 @@ internal class JWSDPoPSigner private constructor(val algorithm: Algorithm) : JWS
          * @return [Result<PopSigner.Jwt>] The result of the operation. If successful, the result contains the [PopSigner.Jwt] instance.
          * If unsuccessful, the result contains the exception that occurred.
          */
-        operator fun invoke(algorithm: Algorithm = Algorithm.ES256): Result<PopSigner.Jwt> {
+        operator fun invoke(algorithm: Algorithm = Algorithm.ESP256): Result<PopSigner.Jwt> {
             return try {
                 Result.success(JWSDPoPSigner(algorithm).popSigner)
             } catch (e: Exception) {

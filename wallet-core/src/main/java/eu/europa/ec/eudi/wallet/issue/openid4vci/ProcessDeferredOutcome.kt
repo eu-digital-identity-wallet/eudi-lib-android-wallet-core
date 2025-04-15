@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.DeferredCredentialQueryOutcome
-import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.d
@@ -27,11 +26,15 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 internal class ProcessDeferredOutcome(
     val documentManager: DocumentManager,
     val callback: OpenId4VciManager.OnResult<DeferredIssueResult>,
-    val deferredIssuanceContext: DeferredIssuanceContext?,
+    val deferredContext: DeferredContext?,
     val logger: Logger? = null,
 ) {
 
-    fun process(deferredDocument: DeferredDocument, outcome: DeferredCredentialQueryOutcome) {
+    fun process(
+        deferredDocument: DeferredDocument,
+        keyAliases: List<String>,
+        outcome: DeferredCredentialQueryOutcome
+    ) {
         try {
             when (outcome) {
                 is DeferredCredentialQueryOutcome.Errored -> {
@@ -44,7 +47,7 @@ internal class ProcessDeferredOutcome(
                 }
 
                 is DeferredCredentialQueryOutcome.IssuancePending -> {
-                    deferredIssuanceContext?.let { ctx ->
+                    deferredContext?.let { ctx ->
                         documentManager.storeDeferredDocument(deferredDocument, ctx.toByteArray())
                             .kotlinResult.onSuccess { document ->
                                 callback(DeferredIssueResult.DocumentNotReady(document))
@@ -63,8 +66,8 @@ internal class ProcessDeferredOutcome(
                 }
 
                 is DeferredCredentialQueryOutcome.Issued -> {
-                    val credential = outcome.credentials.first().credential
-                    documentManager.storeIssuedDocument(deferredDocument, credential) {
+                    val credentials = outcome.credentials.map { it.credential }.zip(keyAliases)
+                    documentManager.storeIssuedDocument(deferredDocument, credentials) {
                         logger?.d(TAG, message = it)
                     }.onSuccess { document ->
                         callback(DeferredIssueResult.DocumentIssued(document))

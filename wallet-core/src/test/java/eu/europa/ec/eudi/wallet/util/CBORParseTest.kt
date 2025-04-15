@@ -16,11 +16,23 @@
 
 package eu.europa.ec.eudi.wallet.util
 
-import kotlin.test.Test
-import co.nstant.`in`.cbor.model.*
-import org.junit.Assert.*
+import co.nstant.`in`.cbor.model.Array
+import co.nstant.`in`.cbor.model.ByteString
+import co.nstant.`in`.cbor.model.DoublePrecisionFloat
+import co.nstant.`in`.cbor.model.Map
+import co.nstant.`in`.cbor.model.NegativeInteger
+import co.nstant.`in`.cbor.model.SimpleValue
+import co.nstant.`in`.cbor.model.SimpleValueType
+import co.nstant.`in`.cbor.model.Tag
+import co.nstant.`in`.cbor.model.UnicodeString
+import co.nstant.`in`.cbor.model.UnsignedInteger
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import kotlin.test.Test
 
 class CBORParseTest {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,23 @@
 
 package eu.europa.ec.eudi.wallet.document
 
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.crypto.EcCurve
-import com.android.identity.securearea.KeyInfo
-import com.android.identity.securearea.SecureArea
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.DefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.verify
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
+import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
+import org.multipaz.securearea.AndroidKeystoreKeyInfo
+import org.multipaz.securearea.AndroidKeystoreKeyUnlockData
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.securearea.KeyInfo
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.UserAuthenticationType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -72,6 +72,7 @@ class DocumentExtensionsTest {
             every { isUserAuthenticationRequired } returns true
         }
         val document: Document = mockk {
+            every { secureArea } returns mockk<AndroidKeystoreSecureArea> { }
             every { keyInfo } returns mockKeyInfo
             every { keyAlias } returns "keyAlias"
         }
@@ -94,48 +95,13 @@ class DocumentExtensionsTest {
     }
 
     @Test
-    fun `EudiWallet getDefaultKeyUnlockData for documentId should call Document DefaultKeyUnlockData extension`() {
-        val documentId = "existingDocument"
-        val mockDocument: Document = mockk {
-            every { id } returns documentId
-        }
-
-        val wallet: EudiWallet = mockk {
-            every { getDocumentById(documentId) } returns mockDocument
-        }
-
-        val keyUnlockData: AndroidKeystoreKeyUnlockData = mockk()
-
-        mockkStatic("eu.europa.ec.eudi.wallet.document.DocumentExtensions")
-        every { mockDocument.DefaultKeyUnlockData } returns keyUnlockData
-        every { wallet.getDefaultKeyUnlockData(documentId) } answers { callOriginal() }
-
-        val result = wallet.getDefaultKeyUnlockData(documentId)
-        assertEquals(keyUnlockData, result)
-        verify(exactly = 1) { mockDocument.DefaultKeyUnlockData }
-    }
-
-    @Test
-    fun `EudiWallet getDefaultCreateDocumentSettings should throw if no AndroidKeystoreSecureArea is found in the wallet`() {
-        val wallet: EudiWallet = mockk {
-            every { secureAreaRepository } returns mockk {
-                every { implementations } returns listOf(
-                    mockk(), mockk()
-                )
-            }
-        }
-
-        val exception = runCatching { wallet.getDefaultCreateDocumentSettings() }
-        assertTrue(exception.isFailure)
-        assertIs<NoSuchElementException>(exception.exceptionOrNull())
-    }
-
-    @Test
     fun `EudiWallet getDefaultCreateDocumentSettings should return the CreateDocumentSettings with first secureArea identifier and AndroidKeystoreCreateKeySettings based on EudiWalletConfig`() {
 
-        val secureArea1: SecureArea = mockk()
-        val secureArea2: AndroidKeystoreSecureArea = mockk {
+        val secureArea1: SecureArea = mockk {
             every { identifier } returns "secureArea1"
+        }
+        val secureArea2: AndroidKeystoreSecureArea = mockk {
+            every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
         }
         val eudiWalletConfig = EudiWalletConfig()
             .configureDocumentKeyCreation(
@@ -146,9 +112,12 @@ class DocumentExtensionsTest {
         val wallet: EudiWallet = mockk {
             every { config } returns eudiWalletConfig
             every { secureAreaRepository } returns mockk {
-                every { implementations } returns listOf(
-                    secureArea1, secureArea2
-                )
+                coEvery {
+                    getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
+                } returns secureArea2
+                coEvery {
+                    getImplementation("secureArea1")
+                } returns secureArea1
             }
         }
 
@@ -170,13 +139,13 @@ class DocumentExtensionsTest {
     @Test
     fun `EudiWallet getDefaultCreateDocumentSettings should return the CreateDocumentSettings with first secureArea identifier and AndroidKeystoreCreateKeySettings based on configure argument`() {
         val secureArea: AndroidKeystoreSecureArea = mockk {
-            every { identifier } returns "secureArea1"
+            every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
         }
         val wallet: EudiWallet = mockk {
             every { secureAreaRepository } returns mockk {
-                every { implementations } returns listOf(
-                    secureArea
-                )
+                coEvery {
+                    getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
+                } returns secureArea
             }
         }
 
@@ -190,7 +159,7 @@ class DocumentExtensionsTest {
                 )
             )
             setUseStrongBox(true)
-            setEcCurve(EcCurve.P384)
+            setAlgorithm(Algorithm.ESP384)
         }
 
         assertEquals(secureArea.identifier, result.secureAreaIdentifier)
@@ -203,19 +172,19 @@ class DocumentExtensionsTest {
             createKeySettings.userAuthenticationTypes
         )
         assertTrue(createKeySettings.useStrongBox)
-        assertEquals(EcCurve.P384, createKeySettings.ecCurve)
+        assertEquals(Algorithm.ESP384, createKeySettings.algorithm)
     }
 
     @Test
     fun `EudiWallet getDefaultCreateDocumentSettings should return the CreateDocumentSettings with first secureArea identifier and AndroidKeystoreCreateKeySettings with attestationChallenge from arguments`() {
         val secureArea: AndroidKeystoreSecureArea = mockk {
-            every { identifier } returns "secureArea1"
+            every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
         }
         val wallet: EudiWallet = mockk {
             every { secureAreaRepository } returns mockk {
-                every { implementations } returns listOf(
-                    secureArea
-                )
+                coEvery {
+                    getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
+                } returns secureArea
             }
         }
         val attestationChallenge = byteArrayOf(1, 2, 3)
@@ -226,6 +195,6 @@ class DocumentExtensionsTest {
         assertEquals(secureArea.identifier, result.secureAreaIdentifier)
         val createKeySettings = result.createKeySettings
         assertIs<AndroidKeystoreCreateKeySettings>(createKeySettings)
-        assertEquals(attestationChallenge, createKeySettings.attestationChallenge)
+        assertEquals(ByteString(attestationChallenge), createKeySettings.attestationChallenge)
     }
 }

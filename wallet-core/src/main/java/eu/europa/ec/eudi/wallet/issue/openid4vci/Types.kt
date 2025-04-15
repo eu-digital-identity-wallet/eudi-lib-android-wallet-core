@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 European Commission
+ * Copyright (c) 2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmMultifileClass
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
-import org.multipaz.crypto.Algorithm
-import org.multipaz.securearea.KeyUnlockData
-import org.multipaz.securearea.SecureArea
-
-/**
- * Exception thrown when user authentication is required.
- */
-internal class UserAuthRequiredException(
-    val signingAlgorithm: Algorithm,
-    val keysAndSecureAreas: Map<KeyAlias, SecureArea>,
-    val resume: suspend (Map<KeyAlias, KeyUnlockData?>) -> Pair<List<String>, SubmissionOutcome>,
-    override val cause: Throwable? = null,
-) : Throwable()
+typealias KeyAlias = String

@@ -17,7 +17,7 @@
 package eu.europa.ec.eudi.wallet.transactionLogging.presentation
 
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing.parsePresentationTransactionLog
 import java.time.Instant
@@ -31,7 +31,7 @@ import java.time.Instant
  */
 data class PresentedDocument(
     val format: DocumentFormat,
-    val metadata: DocumentMetaData?,
+    val metadata: IssuerMetadata?,
     val claims: List<PresentedClaim>
 )
 
@@ -47,7 +47,7 @@ data class PresentedClaim(
     val path: List<String>,
     val value: Any?,
     val rawValue: Any,
-    val metadata: DocumentMetaData.Claim?
+    val metadata: IssuerMetadata.Claim?
 )
 
 /**

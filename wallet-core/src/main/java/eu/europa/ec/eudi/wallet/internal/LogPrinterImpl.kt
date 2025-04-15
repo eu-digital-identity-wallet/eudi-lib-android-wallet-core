@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package eu.europa.ec.eudi.wallet.internal
 
 import eu.europa.ec.eudi.wallet.logging.Logger
-import com.android.identity.util.Logger as IdentityLogger
+import org.multipaz.util.Logger as IdentityLogger
 
 internal class LogPrinterImpl(private val logger: Logger) : IdentityLogger.LogPrinter {
     override fun printLn(level: Int, tag: String, msg: String, throwable: Throwable?) {

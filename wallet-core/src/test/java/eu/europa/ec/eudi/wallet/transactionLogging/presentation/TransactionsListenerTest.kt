@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
@@ -52,7 +52,7 @@ class TransactionsListenerTest {
     private lateinit var emptyLog: TransactionLog
     private lateinit var documentId: DocumentId
     private lateinit var document: Document
-    private lateinit var mockMetadata: DocumentMetaData
+    private lateinit var mockMetadata: IssuerMetadata
 
     @Before
     fun setup() {
@@ -79,7 +79,7 @@ class TransactionsListenerTest {
             every { toJson() } returns "{\"docType\":\"TestDoc\"}"
         }
         document = mockk {
-            every { this@mockk.metadata } returns mockMetadata
+            every { this@mockk.issuerMetadata } returns mockMetadata
         }
 
         // Setup document manager mock
@@ -93,11 +93,11 @@ class TransactionsListenerTest {
     fun `metadataResolver returns correct metadata for document IDs`() {
         // Setup additional document
         val documentId2 = "test-document-id-2"
-        val metadata2 = mockk<DocumentMetaData> {
+        val metadata2 = mockk<IssuerMetadata> {
             every { toJson() } returns "{\"docType\":\"TestDoc2\"}"
         }
         val document2 = mockk<Document> {
-            every { metadata } returns metadata2
+            every { issuerMetadata } returns metadata2
         }
 
         every { documentManager.getDocumentById(documentId) } returns document

@@ -19,7 +19,6 @@ package eu.europa.ec.eudi.wallet.statium
 import COSE.Message
 import COSE.MessageTag
 import COSE.Sign1Message
-import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.statium.StatusReference
 import eu.europa.ec.eudi.statium.TokenStatusListSpec.IDX
@@ -45,6 +44,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.mdoc.mso.StaticAuthDataParser
 import kotlin.test.assertIs
 
 class MsoMdocStatusReferenceExtractorTest {
@@ -75,13 +76,16 @@ class MsoMdocStatusReferenceExtractorTest {
     // Tests for parseMso method
 
     @Test
-    fun `parseMso correctly parses valid MSO data`() {
+    fun `parseMso correctly parses valid MSO data`() = runTest {
         // Setup
         val mockFormat = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
         val expectedCborMap = createMockCborMapWithoutStatus()
+        val mockCredential = mockk<SecureAreaBoundCredential> {
+            every { issuerProvidedData } returns ByteArray(10)
+        }
         val mockDocument = mockk<IssuedDocument> {
             every { format } returns mockFormat
-            every { issuerProvidedData } returns ByteArray(10)
+            coEvery { findCredential() } returns mockCredential
         }
 
         // Mock StaticAuthDataParser and related classes
@@ -112,13 +116,13 @@ class MsoMdocStatusReferenceExtractorTest {
 
         // Verify
         assertEquals(expectedCborMap, result)
-        verify { StaticAuthDataParser(mockDocument.issuerProvidedData) }
+        verify { StaticAuthDataParser(mockCredential.issuerProvidedData) }
         verify { Message.DecodeFromBytes(any(), MessageTag.Sign1) }
         verify(exactly = 2) { CBORObject.DecodeFromBytes(any()) }
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun `parseMso throws exception for non-MsoMdoc format`() {
+    fun `parseMso throws exception for non-MsoMdoc format`() = runTest {
         // Setup document with SdJwtVcFormat
         val wrongFormatDoc = mockk<IssuedDocument> {
             every { format } returns SdJwtVcFormat(vct = "TestVct")
@@ -129,11 +133,16 @@ class MsoMdocStatusReferenceExtractorTest {
     }
 
     @Test(expected = Exception::class)
-    fun `parseMso handles StaticAuthDataParser exceptions`() {
+    fun `parseMso handles StaticAuthDataParser exceptions`() = runTest {
         // Setup
-        val mockDocument = mockk<IssuedDocument> {
-            every { format } returns MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
+        val mockFormat = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
+        val expectedCborMap = createMockCborMapWithoutStatus()
+        val mockCredential = mockk<SecureAreaBoundCredential> {
             every { issuerProvidedData } returns ByteArray(10)
+        }
+        val mockDocument = mockk<IssuedDocument> {
+            every { format } returns mockFormat
+            coEvery { findCredential() } returns mockCredential
         }
 
         // Mock StaticAuthDataParser to throw exception
@@ -145,11 +154,16 @@ class MsoMdocStatusReferenceExtractorTest {
     }
 
     @Test(expected = Exception::class)
-    fun `parseMso handles COSE Message decoding exceptions`() {
+    fun `parseMso handles COSE Message decoding exceptions`() = runTest {
         // Setup
-        val mockDocument = mockk<IssuedDocument> {
-            every { format } returns MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
+        val mockFormat = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
+        val expectedCborMap = createMockCborMapWithoutStatus()
+        val mockCredential = mockk<SecureAreaBoundCredential> {
             every { issuerProvidedData } returns ByteArray(10)
+        }
+        val mockDocument = mockk<IssuedDocument> {
+            every { format } returns mockFormat
+            coEvery { findCredential() } returns mockCredential
         }
 
         // Mock StaticAuthDataParser
@@ -161,7 +175,12 @@ class MsoMdocStatusReferenceExtractorTest {
 
         // Mock COSE Message to throw exception
         mockkStatic(Message::class)
-        every { Message.DecodeFromBytes(any(), MessageTag.Sign1) } throws RuntimeException("COSE error")
+        every {
+            Message.DecodeFromBytes(
+                any(),
+                MessageTag.Sign1
+            )
+        } throws RuntimeException("COSE error")
 
         // This should propagate the exception
         statusListExtractor.parseMso(mockDocument)

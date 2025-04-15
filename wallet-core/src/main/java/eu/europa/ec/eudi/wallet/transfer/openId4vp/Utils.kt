@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,23 +21,20 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Vct
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import kotlinx.datetime.Clock
-import kotlinx.datetime.toJavaInstant
 
 @JvmSynthetic
-internal fun DocumentManager.getValidIssuedDocumentById(documentId: DocumentId): IssuedDocument {
-    return (getDocumentById(documentId)
+internal suspend fun DocumentManager.getValidIssuedDocumentById(documentId: DocumentId): IssuedDocument {
+    return getDocumentById(documentId)
         ?.takeIf { it is IssuedDocument }
-        ?.takeIf { !it.isKeyInvalidated } as? IssuedDocument)
-        ?.takeIf { it.isValidAt(Clock.System.now().toJavaInstant()) }
+        ?.let { it as IssuedDocument }
+        ?.takeIf { it.findCredential() != null }
         ?: throw IllegalArgumentException("Invalid document")
 }
 
 @JvmSynthetic
-internal fun DocumentManager.getValidIssuedSdJwtVcDocuments(vct: Vct): List<IssuedDocument> {
+internal suspend fun DocumentManager.getValidIssuedSdJwtVcDocuments(vct: Vct): List<IssuedDocument> {
     return getDocuments()
         .filter { it.format is SdJwtVcFormat && (it.format as SdJwtVcFormat).vct == vct }
-        .filter { !it.isKeyInvalidated }
         .filterIsInstance<IssuedDocument>()
-        .filter { it.isValidAt(Clock.System.now().toJavaInstant()) }
+        .filter { it.findCredential() != null }
 }

@@ -16,12 +16,12 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
 
-import com.android.identity.mdoc.response.DeviceResponseParser
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import eu.europa.ec.eudi.wallet.util.CBOR
+import org.multipaz.mdoc.response.DeviceResponseParser
 
 /**
  * Parses the MSO mdoc response and returns a list of presented documents.
@@ -42,8 +42,9 @@ fun parseMsoMdoc(
         sessionTranscript ?: byteArrayOf(0)
     ).parse()
 
-    // Convert metadata strings to DocumentMetaData objects
-    val documentMetadata = metadata?.mapNotNull { it?.let { DocumentMetaData.fromJson(it).getOrNull() } }
+    // Convert metadata strings to IssuerMetaData objects
+    val issuerMetaData =
+        metadata?.mapNotNull { it?.let { IssuerMetadata.fromJson(it).getOrNull() } }
 
     // Map parsed documents to PresentedDocument objects
     return parsed.documents.mapIndexed { index, doc ->
@@ -55,7 +56,7 @@ fun parseMsoMdoc(
                     path = listOf(nameSpace, elementIdentifier),
                     value = CBOR.cborParse(data),
                     rawValue = data,
-                    metadata = documentMetadata?.getOrNull(index)?.claims?.find {
+                    metadata = issuerMetaData?.getOrNull(index)?.claims?.find {
                         it.path.size == 2 && it.path[0] == nameSpace && it.path[1] == elementIdentifier
                     }
                 )
@@ -64,7 +65,7 @@ fun parseMsoMdoc(
         // Create a PresentedDocument object
         PresentedDocument(
             format = MsoMdocFormat(docType = doc.docType),
-            metadata = documentMetadata?.getOrNull(index),
+            metadata = issuerMetaData?.getOrNull(index),
             claims = claims
         )
     }

@@ -20,11 +20,11 @@ graph TD
     C[eudi-lib-android-iso18013-data-transfer] -->|TransferManager| A
     D[eudi-lib-jvm-openid4vci-kt] -->|OpenId4VciManager| A
     E[eudi-lib-jvm-siop-openid4vp-kt] -->|OpenId4VpManager| A
-    F[com.android.identity] -->|SecureArea,StorageEngine| B
+    F[org.multipaz] -->|SecureArea,Storage| B
     H[eudi-lib-jvm-presentation-exchange] --> E
-    G[identity-credential-android] --> A
+    G[multipaz-android] --> A
     B -->|DocumentManager| C
-    F -->|SecureArea,StorageEngine| A
+    F -->|SecureArea,Storage| A
 ```
 
 The library provides the following functionality:
@@ -131,7 +131,7 @@ will be used to configure the library's built-in components.
 The built-in components are:
 
 - `AndroidKeystoreSecureArea` for storing and managing the documents' keys
-- `AndroidStorageEngine` for storing the documents' data
+- `AndroidStorage` for storing the documents' data
 - `ReaderTrustStore` implementation for validating the reader's certificates
 - `PresentationManager` implementation for managing both proximity and remote presentation of
   documents
@@ -141,10 +141,11 @@ The following example demonstrates how to initialize the library for using the b
 
 ```kotlin
 // configuring the wallet
+val storageFile = File(applicationContext.noBackupFilesDir.path, "main.db")
 val config = EudiWalletConfig()
     // configure the document storage
     // the noBackupFilesDir is used to store the documents by default
-    .configureDocumentManager(context.noBackupFilesDir)
+    .configureDocumentManager(storageFile.absolutePath)
     // configure the built-in logger
     .configureLogging(
         // set log level to info
@@ -211,12 +212,12 @@ val wallet = EudiWallet(context, config)
 components.
 
 The following example demonstrates how to initialize the library with custom implementations for
-StorageEngine, SecureArea, ReaderTrustStore, and Logger:
+Storage, SecureArea, ReaderTrustStore, and Logger:
 
 ```kotlin
 val wallet = EudiWallet(context, config) {
-    // custom StorageEngine to store documents' data
-    withStorageEngine(myStorageEngine)
+    // custom Storage to store documents' data
+    withStorage(myStorage)
     // a list of SecureArea implementations to be used
     withSecureAreas(listOf(deviceSecureArea, cloudSecureArea))
     // ReaderTrustStore to be used for reader authentication

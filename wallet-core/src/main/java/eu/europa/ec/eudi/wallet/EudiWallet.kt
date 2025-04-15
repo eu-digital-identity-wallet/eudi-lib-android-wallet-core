@@ -18,11 +18,6 @@ package eu.europa.ec.eudi.wallet
 
 import android.content.Context
 import androidx.annotation.RawRes
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.storage.StorageEngine
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
@@ -44,10 +39,16 @@ import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDeco
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestProcessor
 import io.ktor.client.HttpClient
-import kotlinx.io.files.Path
+import kotlinx.coroutines.runBlocking
+import org.multipaz.context.initializeApplication
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.storage.Storage
+import org.multipaz.storage.android.AndroidStorage
 import java.io.File
 import java.security.cert.X509Certificate
-import com.android.identity.util.Logger as IdentityLogger
+import org.multipaz.util.Logger as IdentityLogger
 
 /**
  * The main entry point for interacting with the wallet
@@ -72,13 +73,6 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
     val transferManager: TransferManager
     val logger: Logger
     val documentStatusResolver: DocumentStatusResolver
-
-    /**
-     * Enumerate the secure areas available in the wallet
-     * @return a list of secure area identifiers
-     */
-    fun enumerateSecureAreas(): List<String> =
-        secureAreaRepository.implementations.map { it.identifier }
 
     /**
      * Sets the reader trust store with the given [ReaderTrustStore]. This method is useful when
@@ -166,7 +160,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
      * @param config the configuration object
      *
      * @property config the configuration object
-     * @property storageEngine the storage engine to use for storing/retrieving documents if you want to provide a different implementation
+     * @property storage the storage to use for storing/retrieving documents if you want to provide a different implementation
      * @property secureAreas the secure areas to use for documents' keys management if you want to provide a different implementation
      * @property documentManager the document manager to use if you want to provide a custom implementation
      * @property readerTrustStore the reader trust store to use if you want to provide a custom implementation
@@ -181,8 +175,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         val config: EudiWalletConfig,
     ) {
         private val context = context.applicationContext
-
-        var storageEngine: StorageEngine? = null
+        var storage: Storage? = null
         var secureAreas: List<SecureArea>? = null
         var documentManager: DocumentManager? = null
         var readerTrustStore: ReaderTrustStore? = null
@@ -204,14 +197,14 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         }
 
         /**
-         * Configure with the given [StorageEngine] to use for storing/retrieving documents.
-         * If not set, the default storage engine will be used which is [AndroidStorageEngine].
+         * Configure with the given [Storage] to use for storing/retrieving documents.
+         * If not set, the default storage will be used which is [AndroidStorage].
          *
-         * @param storageEngine the storage engine
+         * @param storage the storage
          * @return this [Builder] instance
          */
-        fun withStorageEngine(storageEngine: StorageEngine) = apply {
-            this.storageEngine = storageEngine
+        fun withStorage(storage: Storage) = apply {
+            this.storage = storage
         }
 
         /**
@@ -300,7 +293,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
          * The [EudiWallet] instance will be created based on the configuration provided in the [Builder] class.
          *
          * The [EudiWallet] instance will be created with the following default implementations if not set:
-         * - [AndroidStorageEngine] for storing/retrieving documents
+         * - [AndroidStorage] for storing/retrieving documents
          * - [AndroidKeystoreSecureArea] for managing documents' keys
          * - [DocumentManagerImpl] for managing documents
          * - [PresentationManagerImpl] for both proximity and remote presentation
@@ -308,7 +301,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
          * - [eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl] for proximity presentation
          * - [eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverImpl] for resolving the status of documents
          *
-         * **Note**: The [EudiWalletConfig.documentsStorageDir] is not set, the default storage directory
+         * **Note**: The [EudiWalletConfig.documentsStoragePath] is not set, the default storage path
          * will be used which is the application's no backup files directory.
          *
          * **Note**: The [EudiWalletConfig.userAuthenticationRequired] is set to true and the device is not secured with a PIN,
@@ -321,11 +314,13 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
          */
         fun build(): EudiWallet {
 
+            initializeApplication(context.applicationContext)
+
             ensureStrongBoxIsSupported()
             ensureUserAuthIsSupported()
 
             val documentManagerToUse =
-                documentManager ?: getDefaultDocumentManager(storageEngine, secureAreas)
+                documentManager ?: getDefaultDocumentManager(storage, secureAreas)
 
             val readerTrustStoreToUse = readerTrustStore ?: defaultReaderTrustStore
 
@@ -388,13 +383,11 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         }
 
         @get:JvmSynthetic
-        internal val defaultStorageDir: Path
-            get() = Path(
-                File(
-                    context.noBackupFilesDir,
-                    "${config.documentManagerIdentifier}.bin"
-                ).path
-            )
+        internal val defaultStoragePath: String
+            get() = File(
+                context.noBackupFilesDir.path,
+                "${config.documentManagerIdentifier}.db"
+            ).absolutePath
 
         /**
          * Get the default [ReaderTrustStore] instance based on the certificates provided in the configuration
@@ -407,64 +400,50 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             }
 
         /**
-         * Get the default [StorageEngine] instance based on the configuration
-         * @return the default [StorageEngine] instance
-         * @throws IllegalStateException if [EudiWalletConfig.documentsStorageDir] is not set
+         * Get the default [Storage] instance based on the configuration
+         * @return the default [Storage] instance
+         * @throws IllegalStateException if [EudiWalletConfig.documentsStoragePath] is not set
          */
         @get:JvmSynthetic
-        internal val defaultStorageEngine: StorageEngine
+        internal val defaultStorage: Storage
             get() {
-                val documentsStorageDirToUse = config.documentsStorageDir
-                    ?.let { dir ->
-                        when {
-                            dir.isDirectory -> File(dir, "${config.documentManagerIdentifier}.bin")
-
-                            else -> dir
-                        }.path
-                    }
-                    ?.let { Path(it) }
-                    ?: defaultStorageDir
-
-                return AndroidStorageEngine.Builder(
-                    context = context,
-                    storageFile = documentsStorageDirToUse
+                val documentsStoragePathToUse = config.documentsStoragePath
+                    ?: defaultStoragePath
+                return AndroidStorage(
+                    databasePath = documentsStoragePathToUse
                 )
-                    .setUseEncryption(config.encryptDocumentsInStorage)
-                    .build()
             }
 
         /**
-         * Get the default [SecureArea] instance based on the [StorageEngine]
-         * @param storageEngine the storage engine
+         * Get the default [SecureArea] instance based on the [Storage]
+         * @param storage the storage
          * @return the default [SecureArea] instance
          */
         @JvmSynthetic
-        internal fun getDefaultSecureArea(storageEngine: StorageEngine): SecureArea {
-            return AndroidKeystoreSecureArea(context, storageEngine)
+        internal fun getDefaultSecureArea(storage: Storage): SecureArea {
+            return runBlocking { AndroidKeystoreSecureArea.create(storage) }
         }
 
         /**
-         * Get the default [DocumentManager] instance based on the [StorageEngine] and [SecureArea] implementations
-         * @param storageEngine the storage engine
+         * Get the default [DocumentManager] instance based on the [Storage] and [SecureArea] implementations
+         * @param storage the storage
          * @param secureAreas the secure areas
          * @return the default [DocumentManager] instance
          */
         @JvmSynthetic
         internal fun getDefaultDocumentManager(
-            storageEngine: StorageEngine? = null,
+            storage: Storage? = null,
             secureAreas: List<SecureArea>? = null,
         ): DocumentManager {
-            val storageEngineToUse = storageEngine ?: defaultStorageEngine
-
-            val secureAreaRepository = SecureAreaRepository().apply {
-                val implementations = secureAreas.takeUnless { it.isNullOrEmpty() }
-                    ?: setOf(getDefaultSecureArea(storageEngineToUse))
-
-                implementations.forEach { addImplementation(it) }
+            val storageToUse = storage ?: defaultStorage
+            val secureAreaRepository = SecureAreaRepository.build {
+                secureAreas?.forEach {
+                    add(it)
+                } ?: add(getDefaultSecureArea(storageToUse))
             }
 
             return DocumentManager {
-                setStorageEngine(storageEngineToUse)
+                setStorage(storageToUse)
                 setSecureAreaRepository(secureAreaRepository)
                 setIdentifier(config.documentManagerIdentifier)
             }
@@ -513,7 +492,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
          */
         @get:JvmSynthetic
         internal val capabilities: AndroidKeystoreSecureArea.Capabilities by lazy {
-            AndroidKeystoreSecureArea.Capabilities(context)
+            AndroidKeystoreSecureArea.Capabilities()
         }
 
         /**

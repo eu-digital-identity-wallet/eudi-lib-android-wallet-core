@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.wallet.statium
 
 import COSE.Message
 import COSE.MessageTag
-import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.upokecenter.cbor.CBORObject
 import com.upokecenter.cbor.CBORType
 import eu.europa.ec.eudi.statium.StatusIndex
@@ -29,6 +28,7 @@ import eu.europa.ec.eudi.statium.TokenStatusListSpec.STATUS_LIST
 import eu.europa.ec.eudi.statium.TokenStatusListSpec.URI
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import org.multipaz.mdoc.mso.StaticAuthDataParser
 
 /**
  * Implements [StatusReferenceExtractor] for MSO MDOC format.
@@ -54,12 +54,18 @@ object MsoMdocStatusReferenceExtractor : StatusReferenceExtractor {
      * @param document The issued document to parse.
      * @return The parsed MSO data as a [CBORObject].
      */
-    internal fun parseMso(document: IssuedDocument): CBORObject {
+    internal suspend fun parseMso(document: IssuedDocument): CBORObject {
         require(document.format is MsoMdocFormat) {
             "Document format is not MsoMdocFormat"
         }
 
-        val issuerAuthBytes = StaticAuthDataParser(document.issuerProvidedData)
+        val credential = document.findCredential()
+
+        requireNotNull(credential) {
+            "No credential found for ${document.name}"
+        }
+
+        val issuerAuthBytes = StaticAuthDataParser(credential.issuerProvidedData)
             .parse()
             .issuerAuth
 

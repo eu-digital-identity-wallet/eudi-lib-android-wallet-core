@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2023-2024 European Commission
- *
+ * Copyright (c) 2023-2025 European Commission
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,12 +21,12 @@ import android.content.Context
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
-import java.io.File
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -40,8 +40,9 @@ import kotlin.time.Duration.Companion.minutes
  * Example usage:
  *
  * ```
+ * val storageFile = File(applicationContext.noBackupFilesDir.path, "main.db")
  * val config = EudiWalletConfig()
- *     .configureDocumentManager(context.noBackupFilesDir)
+ *     .configureDocumentManager(storageFile.absolutePath)
  *     .configureLogging(
  *         // set log level to info
  *         level = Logger.LEVEL_INFO
@@ -94,8 +95,7 @@ import kotlin.time.Duration.Companion.minutes
  * @property openId4VciConfig the OpenID4VCI configuration
  * @property openId4VpConfig the OpenID4VP configuration
  * @property documentManagerIdentifier the document manager identifier
- * @property documentsStorageDir the documents storage directory
- * @property encryptDocumentsInStorage whether to encrypt documents in storage
+ * @property documentsStoragePath the documents storage path
  * @property enableBlePeripheralMode whether to enable BLE peripheral mode
  * @property enableBleCentralMode whether to enable BLE central mode
  * @property clearBleCache whether to clear the BLE cache
@@ -177,35 +177,30 @@ class EudiWalletConfig {
 
     var documentManagerIdentifier: String = DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
         private set
-    var documentsStorageDir: File? = null
+    var documentsStoragePath: String? = null
         internal set // internal for setting the default value from the builder
-    var encryptDocumentsInStorage: Boolean = true
-        private set
 
     /**
      * Configure the built-in document manager.
      *
-     * Allowing to configure the documents storage directory, the document manager identifier and
-     * whether to encrypt documents in storage. The default document manager identifier is set to
+     * Allowing to configure the documents storage path and the document manager identifier.
+     * The default document manager identifier is set to
      * [DEFAULT_DOCUMENT_MANAGER_IDENTIFIER].
      *
      * @see eu.europa.ec.eudi.wallet.document.DocumentManagerImpl
-     * @see com.android.identity.android.storage.AndroidStorageEngine
+     * @see org.multipaz.storage.Storage
      *
-     * @param storageDir the documents storage directory
+     * @param storagePath the documents storage path
      * @param identifier the document manager identifier
-     * @param encryptDocuments whether to encrypt documents in storage
      * @return the [EudiWalletConfig] instance
      */
     @JvmOverloads
     fun configureDocumentManager(
-        storageDir: File,
-        identifier: String? = null,
-        encryptDocuments: Boolean = true,
+        storagePath: String,
+        identifier: String? = null
     ) = apply {
-        documentsStorageDir = storageDir
+        documentsStoragePath = storagePath
         identifier?.let { documentManagerIdentifier = it }
-        encryptDocumentsInStorage = encryptDocuments
     }
 
     var enableBlePeripheralMode: Boolean = true

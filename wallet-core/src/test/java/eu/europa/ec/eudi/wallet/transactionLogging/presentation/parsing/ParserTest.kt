@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
 
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument

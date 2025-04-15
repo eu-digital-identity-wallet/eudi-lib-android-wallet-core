@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
+import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -45,10 +47,22 @@ class DocumentCreatorTest {
             every { claims } returns emptyList()
             every { display } returns emptyList()
         }
+        val configurationIdentifiers = listOf(
+            CredentialConfigurationIdentifier("id")
+        )
         val createSettings = mockk<CreateDocumentSettings>()
         val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { offer } returns mockk(relaxed = true)
-            every { configurationIdentifier } returns CredentialConfigurationIdentifier("id")
+            every { offer } returns mockk(relaxed = true) {
+                every { credentialOffer } returns CredentialOffer(
+                    credentialIssuerIdentifier = CredentialIssuerId(
+                        value = "https://some.issuer.com"
+                    ).getOrThrow(),
+                    credentialIssuerMetadata = mockk(),
+                    authorizationServerMetadata = mockk(),
+                    credentialConfigurationIdentifiers = configurationIdentifiers,
+                )
+            }
+            every { configurationIdentifier } returns configurationIdentifiers.first()
             every { configuration } returns credentialConfigurationMock
             every { documentFormat } answers { callOriginal() }
         }

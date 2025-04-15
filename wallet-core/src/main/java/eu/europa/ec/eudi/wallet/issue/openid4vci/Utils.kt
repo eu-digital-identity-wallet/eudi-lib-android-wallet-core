@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,8 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import com.android.identity.crypto.EcSignature
-import com.android.identity.crypto.toDer
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
 import eu.europa.ec.eudi.openid4vci.Credential
@@ -26,14 +24,16 @@ import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.document.credential.IssuerProvidedCredential
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
-import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractDocumentMetaData
+import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractIssuerMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import org.bouncycastle.util.encoders.Hex
+import org.multipaz.crypto.EcSignature
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.Executor
@@ -49,7 +49,7 @@ import java.util.concurrent.Executor
  */
 internal fun EcSignature.toJoseEncoded(jwsAlgorithm: JWSAlgorithm): ByteArray {
     return ECDSA.transcodeSignatureToConcat(
-        toDer(), ECDSA.getSignatureByteArrayLength(jwsAlgorithm)
+        toDerEncoded(), ECDSA.getSignatureByteArrayLength(jwsAlgorithm)
     )
 }
 
@@ -80,7 +80,7 @@ internal fun DocumentManager.createDocument(
     return createDocument(
         format = documentFormat,
         createSettings = createDocumentSettings,
-        documentMetaData = offerOfferedDocument.extractDocumentMetaData()
+        issuerMetadata = offerOfferedDocument.extractIssuerMetadata()
     ).kotlinResult.map {
         it.apply { name = documentName }
     }
@@ -130,21 +130,28 @@ internal val DeferredIssuanceContext.hasExpired: Boolean
 @JvmSynthetic
 internal fun DocumentManager.storeIssuedDocument(
     document: UnsignedDocument,
-    credential: Credential,
+    credentials: List<Pair<Credential, String>>,
     log: (message: String) -> Unit,
 ): Result<IssuedDocument> = runCatching {
-    require(credential is Credential.Str) { "Credential must be a string" }
-    val issuerData = when (document.format) {
-        is MsoMdocFormat -> Base64.getUrlDecoder().decode(credential.value)
-            .also {
-                log("CBOR bytes: ${Hex.toHexString(it)}")
-            }
 
-        is SdJwtVcFormat -> credential.value.also {
-            log("SD-JWT-VC: $it")
-        }.toByteArray(charset = Charsets.US_ASCII)
+    val issuerProvidedData = credentials.map { (credential, keyAlias) ->
+        require(credential is Credential.Str) { "Credential must be a string" }
+        val issuerData = when (document.format) {
+            is MsoMdocFormat -> Base64.getUrlDecoder().decode(credential.value)
+                .also {
+                    log("CBOR bytes: ${Hex.toHexString(it)}")
+                }
+
+            is SdJwtVcFormat -> credential.value.also {
+                log("SD-JWT-VC: $it")
+            }.toByteArray(charset = Charsets.US_ASCII)
+        }
+        IssuerProvidedCredential(
+            publicKeyAlias = keyAlias,
+            data = issuerData
+        )
     }
-    storeIssuedDocument(document, issuerData).kotlinResult.getOrThrow()
+    storeIssuedDocument(document, issuerProvidedData).kotlinResult.getOrThrow()
 }
 
 

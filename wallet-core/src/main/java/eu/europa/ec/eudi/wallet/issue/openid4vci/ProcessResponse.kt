@@ -31,21 +31,25 @@ import kotlin.coroutines.resume
 
 internal class ProcessResponse(
     val documentManager: DocumentManager,
-    val deferredContextCreator: DeferredContextCreator,
+    val deferredContextFactory: DeferredContextFactory,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
-) : Closeable {
+) {
 
     suspend fun process(response: SubmitRequest.Response) {
         response.forEach { (unsignedDocument, result) ->
-            process(unsignedDocument, result)
+            process(unsignedDocument, result.first, result.second)
         }
     }
 
-    suspend fun process(unsignedDocument: UnsignedDocument, outcomeResult: Result<SubmissionOutcome>) {
+    suspend fun process(
+        unsignedDocument: UnsignedDocument,
+        keyAliases: List<String>,
+        outcomeResult: Result<SubmissionOutcome>
+    ) {
         try {
-            processSubmittedRequest(unsignedDocument, outcomeResult.getOrThrow())
+            processSubmittedRequest(unsignedDocument, keyAliases, outcomeResult.getOrThrow())
         } catch (e: Throwable) {
             when (e) {
                 is UserAuthRequiredException -> {
@@ -56,6 +60,7 @@ internal class ProcessResponse(
                             IssueEvent.DocumentRequiresUserAuth(
                                 document = unsignedDocument,
                                 signingAlgorithm = e.signingAlgorithm,
+                                keysRequireAuth = e.keysAndSecureAreas,
                                 resume = { keyUnlockData ->
                                     runBlocking {
                                         cont.resume(keyUnlockData)
@@ -69,7 +74,8 @@ internal class ProcessResponse(
                             )
                         )
                     }
-                    processSubmittedRequest(unsignedDocument, e.resume(keyUnlockData))
+                    val (keyAliases, outcome) = e.resume(keyUnlockData)
+                    processSubmittedRequest(unsignedDocument, keyAliases, outcome)
                 }
 
                 else -> listener(IssueEvent.Failure(e))
@@ -77,25 +83,23 @@ internal class ProcessResponse(
         }
     }
 
-    override fun close() {
-    }
-
-    fun processSubmittedRequest(unsignedDocument: UnsignedDocument, outcome: SubmissionOutcome) {
+    fun processSubmittedRequest(
+        unsignedDocument: UnsignedDocument,
+        keyAliases: List<String>,
+        outcome: SubmissionOutcome
+    ) {
         when (outcome) {
-            is SubmissionOutcome.Success -> try {
-                val credential = outcome.credentials.first().credential
-                documentManager.storeIssuedDocument(unsignedDocument, credential) { message ->
+            is SubmissionOutcome.Success -> runCatching {
+                val credentials = outcome.credentials.map { it.credential }.zip(keyAliases)
+                documentManager.storeIssuedDocument(unsignedDocument, credentials) { message ->
                     logger?.d(TAG, message)
-                }.onSuccess { document ->
-                    issuedDocumentIds.add(document.id)
-                    listener(IssueEvent.DocumentIssued(document))
-                }.onFailure { error ->
-                    documentManager.deleteDocumentById(unsignedDocument.id)
-                    listener(IssueEvent.DocumentFailed(unsignedDocument, error))
-                }
-            } catch (e: Throwable) {
+                }.getOrThrow()
+            }.onSuccess { document ->
+                issuedDocumentIds.add(document.id)
+                listener(IssueEvent.DocumentIssued(document))
+            }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)
-                listener(failure(e, unsignedDocument))
+                listener(IssueEvent.DocumentFailed(unsignedDocument, error))
             }
 
             is SubmissionOutcome.Failed -> {
@@ -108,18 +112,18 @@ internal class ProcessResponse(
                 )
             }
 
-            is SubmissionOutcome.Deferred -> {
-                val contextToStore = deferredContextCreator.create(outcome)
+            is SubmissionOutcome.Deferred -> runCatching {
+                val contextToStore = deferredContextFactory(keyAliases, outcome)
                 documentManager.storeDeferredDocument(
                     unsignedDocument = unsignedDocument,
                     relatedData = contextToStore.toByteArray()
-                ).kotlinResult.onSuccess { document ->
-                    issuedDocumentIds.add(document.id)
-                    listener(IssueEvent.DocumentDeferred(document))
-                }.onFailure { error ->
-                    documentManager.deleteDocumentById(unsignedDocument.id)
-                    listener(IssueEvent.DocumentFailed(unsignedDocument, error))
-                }
+                ).getOrThrow()
+            }.onSuccess { document ->
+                issuedDocumentIds.add(document.id)
+                listener(IssueEvent.DocumentDeferred(document))
+            }.onFailure { error ->
+                documentManager.deleteDocumentById(unsignedDocument.id)
+                listener(IssueEvent.DocumentFailed(unsignedDocument, error))
             }
         }
     }

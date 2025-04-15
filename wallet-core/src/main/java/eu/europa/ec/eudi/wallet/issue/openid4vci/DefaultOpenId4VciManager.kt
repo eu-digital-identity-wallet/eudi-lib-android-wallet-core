@@ -180,24 +180,29 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueResult) { coroutineScope, callback ->
             try {
-                val deferredContext = deferredDocument.relatedData.toDeferredIssuanceContext()
+                val deferredContext = DeferredContext.fromByteArray(deferredDocument.relatedData)
                 when {
-                    deferredContext.hasExpired -> callback(
+                    deferredContext.issuanceContext.hasExpired -> callback(
                         DeferredIssueResult.DocumentExpired(deferredDocument)
                     )
 
                     else -> {
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
-                            deferredContext,
+                            deferredContext.issuanceContext,
                             httpClientFactory
                         )
                             .getOrThrow()
                         ProcessDeferredOutcome(
                             documentManager = documentManager,
                             callback = callback,
-                            deferredIssuanceContext = ctx,
+                            deferredContext = ctx?.let {
+                                DeferredContext(
+                                    issuanceContext = it,
+                                    keyAliases = deferredContext.keyAliases,
+                                )
+                            } ?: deferredContext,
                             logger = logger
-                        ).process(deferredDocument, outcome)
+                        ).process(deferredDocument, deferredContext.keyAliases, outcome)
                     }
                 }
             } catch (e: Throwable) {
@@ -256,11 +261,11 @@ internal class DefaultOpenId4VciManager(
         }
         ProcessResponse(
             documentManager = documentManager,
-            deferredContextCreator = DeferredContextCreator(issuer, authorizedRequest),
+            deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest),
             listener = listener,
             issuedDocumentIds = issuedDocumentIds,
-            logger = logger
-        ).use { it.process(response) }
+            logger = logger,
+        ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds))
     }
 

@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,11 +18,9 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
-import com.android.identity.crypto.Algorithm
 import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig.Builder
-import io.ktor.client.*
-import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.logging.LogLevel
+import org.multipaz.crypto.Algorithm
 import java.net.URI
 
 /**
@@ -261,7 +259,7 @@ sealed interface Format {
         val kbJwtAlgorithms: List<Algorithm>,
     ) : Format {
         companion object {
-            val ES256 = SdJwtVc(listOf(Algorithm.ES256), listOf(Algorithm.ES256))
+            val ES256 = SdJwtVc(listOf(Algorithm.ESP256), listOf(Algorithm.ESP256))
         }
     }
 

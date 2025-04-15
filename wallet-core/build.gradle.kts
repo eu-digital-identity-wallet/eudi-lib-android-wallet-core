@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -116,12 +116,10 @@ dependencies {
     api(libs.eudi.document.manager)
     api(libs.eudi.iso18013.data.transfer)
     api(libs.eudi.lib.jvm.openid4vci.kt)
-    // Identity android library
-    api(libs.google.identity.android) {
+    // multipaz library
+    api(libs.multipaz.android) {
         exclude(group = "org.bouncycastle")
-    }
-    implementation(libs.google.identity.mdoc) {
-        exclude(group = "org.bouncycastle")
+        exclude(group = "io.ktor")
     }
 
     implementation(libs.appcompat)

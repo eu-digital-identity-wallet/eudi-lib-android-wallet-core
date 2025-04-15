@@ -28,7 +28,7 @@ import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme
 import eu.europa.ec.eudi.openid4vp.VpFormat
 import eu.europa.ec.eudi.openid4vp.VpFormats
 import eu.europa.ec.eudi.openid4vp.encryptionConfig
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme.*
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme.Preregistered
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format

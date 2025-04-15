@@ -25,11 +25,9 @@ import eu.europa.ec.eudi.statium.VerifyStatusListTokenSignature
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import io.ktor.client.HttpClient
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
-import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.unmockkObject
 import io.mockk.verify

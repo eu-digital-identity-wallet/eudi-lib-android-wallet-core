@@ -59,6 +59,7 @@ internal class DocumentCreator(
                     }
                 ))
             }
+
         return documentManager.createDocument(offeredDocument, createDocumentSettings).getOrThrow()
     }
 }

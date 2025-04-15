@@ -45,7 +45,7 @@ class TransactionsListener(
      */
     internal val metadataResolver: (List<DocumentId>) -> List<String?> = { ids ->
         ids.map {
-            documentManager.getDocumentById(it)?.metadata?.toJson()
+            documentManager.getDocumentById(it)?.issuerMetadata?.toJson()
         }
     }
 

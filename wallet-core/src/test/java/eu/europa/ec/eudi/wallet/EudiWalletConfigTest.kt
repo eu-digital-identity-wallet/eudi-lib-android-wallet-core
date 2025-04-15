@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package eu.europa.ec.eudi.wallet
 
-import android.content.Context
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
@@ -25,6 +24,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
 import io.mockk.every
 import io.mockk.mockk
+import java.io.File
 import java.security.cert.X509Certificate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,19 +34,14 @@ import kotlin.test.assertTrue
 
 class EudiWalletConfigTest {
 
-    private val context: Context = mockk(relaxed = true) {
-        every { applicationContext } returns this@mockk
-        every { noBackupFilesDir } returns mockk()
-    }
-
     @Test
     fun testInvoke() {
         val readerCertificate1 = mockk<X509Certificate>()
         val readerCertificate2 = mockk<X509Certificate>()
-        val config = EudiWalletConfig() {
+        val config = EudiWalletConfig {
             configureReaderTrustStore(readerCertificate1, readerCertificate2)
             configureLogging(Logger.LEVEL_ERROR)
-            configureDocumentManager(context.noBackupFilesDir)
+            configureDocumentManager("storage/path")
             configureOpenId4Vci {
                 withIssuerUrl("https://example.com")
                 withClientId("client-id")

@@ -16,8 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
-import com.android.identity.crypto.Algorithm
-import com.android.identity.securearea.KeyUnlockData
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
@@ -60,6 +58,9 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import kotlinx.coroutines.runBlocking
+import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.crypto.Algorithm
+import org.multipaz.securearea.KeyUnlockData
 import java.util.Base64
 import java.util.Date
 import java.util.UUID
@@ -76,68 +77,70 @@ class ProcessedGenericOpenId4VpRequest(
         disclosedDocuments: DisclosedDocuments,
         signatureAlgorithm: Algorithm?,
     ): ResponseResult {
-        return try {
-            require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization)
-            val presentationQuery = resolvedRequestObject.presentationQuery
-            require(presentationQuery is PresentationQuery.ByPresentationDefinition) {
-                "Currently only PresentationDefinition is supported"
-            }
-
-            val signatureAlgorithm = signatureAlgorithm ?: Algorithm.ES256
-            val presentationDefinition = presentationQuery.value
-            val verifiablePresentations = disclosedDocuments
-                .filter { it.disclosedItems.isNotEmpty() } // remove empty disclosed documents
-                .map { disclosedDocument ->
-                    val document = documentManager.getValidIssuedDocumentById(
-                        documentId = disclosedDocument.documentId
-                    )
-                    val verifiablePresentation = when (document.format) {
-                        is SdJwtVcFormat -> verifiablePresentationForSdJwtVc(
-                            document = document,
-                            disclosedDocument = disclosedDocument,
-                            signatureAlgorithm = signatureAlgorithm,
-                        )
-
-                        is MsoMdocFormat -> verifiablePresentationForMsoMdoc(
-                            sessionTranscript = resolvedRequestObject
-                                .getSessionTranscriptBytes(msoMdocNonce),
-                            disclosedDocument = disclosedDocument,
-                            requestedDocuments = requestedDocuments,
-                            signatureAlgorithm = signatureAlgorithm
-                        )
-                    }
-                    Pair(document, verifiablePresentation)
+        return runBlocking {
+            try {
+                require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization)
+                val presentationQuery = resolvedRequestObject.presentationQuery
+                require(presentationQuery is PresentationQuery.ByPresentationDefinition) {
+                    "Currently only PresentationDefinition is supported"
                 }
 
-            val (descriptorMaps, documentIds) = constructDescriptorsMap(
-                inputDescriptorMap = inputDescriptorMap,
-                verifiablePresentations = verifiablePresentations
-            )
+                val signatureAlgorithm = signatureAlgorithm ?: Algorithm.ESP256
+                val presentationDefinition = presentationQuery.value
+                val verifiablePresentations = disclosedDocuments
+                    .filter { it.disclosedItems.isNotEmpty() } // remove empty disclosed documents
+                    .map { disclosedDocument ->
+                        val document = documentManager.getValidIssuedDocumentById(
+                            documentId = disclosedDocument.documentId
+                        )
+                        val verifiablePresentation = when (document.format) {
+                            is SdJwtVcFormat -> verifiablePresentationForSdJwtVc(
+                                document = document,
+                                disclosedDocument = disclosedDocument,
+                                signatureAlgorithm = signatureAlgorithm,
+                            )
 
-            val presentationSubmission = PresentationSubmission(
-                id = Id(UUID.randomUUID().toString()),
-                definitionId = presentationDefinition.id,
-                descriptorMaps = descriptorMaps,
-            )
-            val vpContent = VpContent.PresentationExchange(
-                verifiablePresentations = verifiablePresentations.map { it.second }.toList(),
-                presentationSubmission = presentationSubmission,
-            )
-            val consensus = Consensus.PositiveConsensus.VPTokenConsensus(vpContent)
+                            is MsoMdocFormat -> verifiablePresentationForMsoMdoc(
+                                sessionTranscript = resolvedRequestObject
+                                    .getSessionTranscriptBytes(msoMdocNonce),
+                                disclosedDocument = disclosedDocument,
+                                requestedDocuments = requestedDocuments,
+                                signatureAlgorithm = signatureAlgorithm
+                            )
+                        }
+                        Pair(document, verifiablePresentation)
+                    }
 
-            ResponseResult.Success(
-                OpenId4VpResponse.GenericResponse(
-                    resolvedRequestObject = resolvedRequestObject,
-                    consensus = consensus,
-                    msoMdocNonce = msoMdocNonce,
-                    response = verifiablePresentations
-                        .map { it.second.toString() }
-                        .toList(),
-                    documentIds = documentIds
+                val (descriptorMaps, documentIds) = constructDescriptorsMap(
+                    inputDescriptorMap = inputDescriptorMap,
+                    verifiablePresentations = verifiablePresentations
                 )
-            )
-        } catch (e: Throwable) {
-            ResponseResult.Failure(e)
+
+                val presentationSubmission = PresentationSubmission(
+                    id = Id(UUID.randomUUID().toString()),
+                    definitionId = presentationDefinition.id,
+                    descriptorMaps = descriptorMaps,
+                )
+                val vpContent = VpContent.PresentationExchange(
+                    verifiablePresentations = verifiablePresentations.map { it.second }.toList(),
+                    presentationSubmission = presentationSubmission,
+                )
+                val consensus = Consensus.PositiveConsensus.VPTokenConsensus(vpContent)
+
+                ResponseResult.Success(
+                    OpenId4VpResponse.GenericResponse(
+                        resolvedRequestObject = resolvedRequestObject,
+                        consensus = consensus,
+                        msoMdocNonce = msoMdocNonce,
+                        response = verifiablePresentations
+                            .map { it.second.toString() }
+                            .toList(),
+                        documentIds = documentIds
+                    )
+                )
+            } catch (e: Throwable) {
+                ResponseResult.Failure(e)
+            }
         }
     }
 
@@ -163,80 +166,85 @@ class ProcessedGenericOpenId4VpRequest(
         )
     }
 
-    private fun verifiablePresentationForSdJwtVc(
+    private suspend fun verifiablePresentationForSdJwtVc(
         document: IssuedDocument,
         disclosedDocument: DisclosedDocument,
         signatureAlgorithm: Algorithm,
     ): VerifiablePresentation.Generic {
-        val unverifiedSdJwt = String(document.issuerProvidedData)
-        val issuedSdJwt = DefaultSdJwtOps
-            .unverifiedIssuanceFrom(unverifiedSdJwt)
-            .getOrThrow()
+        return document.consumingCredential {
+            val unverifiedSdJwt = String(issuerProvidedData)
+            val issuedSdJwt = DefaultSdJwtOps
+                .unverifiedIssuanceFrom(unverifiedSdJwt)
+                .getOrThrow()
 
-        val query = disclosedDocument.disclosedItems
-            .filterIsInstance<SdJwtVcItem>()
-            .map { item ->
-                ClaimPath(
-                    value = item.path.map { ClaimPathElement.Claim(it) }
+            val query = disclosedDocument.disclosedItems
+                .filterIsInstance<SdJwtVcItem>()
+                .map { item ->
+                    ClaimPath(
+                        value = item.path.map { ClaimPathElement.Claim(it) }
+                    )
+                }.toSet()
+
+            if (query.isEmpty()) {
+                throw IllegalArgumentException("No claims to disclose")
+            }
+
+            val presentation = issuedSdJwt.present(query)
+                ?: throw IllegalArgumentException("Failed to create SD JWT VC presentation")
+
+            val containsCnf = issuedSdJwt.jwt.second["cnf"] != null
+
+            val serialized = if (containsCnf) {
+                presentation.serializeWithKeyBinding(
+                    credential = this, //credential
+                    keyUnlockData = disclosedDocument.keyUnlockData,
+                    clientId = resolvedRequestObject.client.id,
+                    nonce = resolvedRequestObject.nonce,
+                    signatureAlgorithm = signatureAlgorithm,
+                    issueDate = Date()
                 )
-            }.toSet()
+            } else {
+                presentation.serialize()
+            }
 
-        if (query.isEmpty()) {
-            throw IllegalArgumentException("No claims to disclose")
-        }
-
-        val presentation = issuedSdJwt.present(query)
-            ?: throw IllegalArgumentException("Failed to create SD JWT VC presentation")
-
-        val containsCnf = issuedSdJwt.jwt.second["cnf"] != null
-
-        val serialized = if (containsCnf) {
-            presentation.serializeWithKeyBinding(
-                document = document,
-                keyUnlockData = disclosedDocument.keyUnlockData,
-                clientId = resolvedRequestObject.client.id,
-                nonce = resolvedRequestObject.nonce,
-                signatureAlgorithm = signatureAlgorithm,
-                issueDate = Date()
-            )
-        } else {
-            presentation.serialize()
-        }
-
-        return VerifiablePresentation.Generic(serialized)
+            VerifiablePresentation.Generic(serialized)
+        }.getOrThrow()
     }
 
 
-    private fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
-        document: IssuedDocument,
+    private suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
+        credential: SecureAreaBoundCredential,
         keyUnlockData: KeyUnlockData?,
         clientId: VerifierId,
         nonce: String,
         signatureAlgorithm: Algorithm,
         issueDate: Date,
     ): String {
-        return runBlocking {
-            val algorithm = JWSAlgorithm.parse((signatureAlgorithm).jwseAlgorithmIdentifier)
-            val buildKbJwt = NimbusSdJwtOps.kbJwtIssuer(
-                signer = object : JWSSigner {
-                    override fun getJCAContext(): JCAContext = JCAContext()
-                    override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
-                    override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-                        val signature =
-                            document.sign(signingInput, signatureAlgorithm, keyUnlockData)
-                                .getOrThrow()
-                        return Base64URL.encode(signature.toJoseEncoded(algorithm))
+        val algorithm = JWSAlgorithm.parse((signatureAlgorithm).joseAlgorithmIdentifier)
+        val publicKey = credential.secureArea.getKeyInfo(credential.alias).publicKey
+        val buildKbJwt = NimbusSdJwtOps.kbJwtIssuer(
+            signer = object : JWSSigner {
+                override fun getJCAContext(): JCAContext = JCAContext()
+                override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
+                override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
+                    val signature = runBlocking {
+                        credential.secureArea.sign(
+                            alias = credential.alias,
+                            dataToSign = signingInput,
+                            keyUnlockData = keyUnlockData
+                        )
                     }
-                },
-                signAlgorithm = algorithm,
-                publicKey = JWK.parseFromPEMEncodedObjects(document.keyInfo.publicKey.toPem()) as AsymmetricJWK
-            ) {
-                audience(clientId.clientId)
-                claim("nonce", nonce)
-                issueTime(issueDate)
-            }
-            serializeWithKeyBinding(buildKbJwt).getOrThrow()
+                    return Base64URL.encode(signature.toJoseEncoded(algorithm))
+                }
+            },
+            signAlgorithm = algorithm,
+            publicKey = JWK.parseFromPEMEncodedObjects(publicKey.toPem()) as AsymmetricJWK
+        ) {
+            audience(clientId.clientId)
+            claim("nonce", nonce)
+            issueTime(issueDate)
         }
+        return serializeWithKeyBinding(buildKbJwt).getOrThrow()
     }
 }
 
@@ -282,4 +290,5 @@ internal fun constructDescriptorsMap(
 
     return Pair(descriptorMaps, documentIds.toList())
 }
+
 

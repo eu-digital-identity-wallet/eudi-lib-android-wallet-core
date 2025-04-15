@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
-import com.android.identity.crypto.Algorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
@@ -38,6 +37,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
+import org.multipaz.crypto.Algorithm
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -204,7 +204,7 @@ internal fun List<Format>.toVpFormats(): VpFormats {
 }
 
 internal fun Algorithm.toJwsAlgorithm(default: JWSAlgorithm): JWSAlgorithm = try {
-    JWSAlgorithm.parse(jwseAlgorithmIdentifier)
+    JWSAlgorithm.parse(this.joseAlgorithmIdentifier)
 } catch (_: Throwable) {
     default
 }
