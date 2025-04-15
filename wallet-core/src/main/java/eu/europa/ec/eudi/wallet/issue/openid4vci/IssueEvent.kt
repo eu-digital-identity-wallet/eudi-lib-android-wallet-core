@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,14 @@
  */
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import com.android.identity.crypto.Algorithm
-import com.android.identity.securearea.KeyUnlockData
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import org.multipaz.crypto.Algorithm
+import org.multipaz.securearea.KeyUnlockData
+import org.multipaz.securearea.SecureArea
 
 /**
  * Events related to document issuance.
@@ -99,7 +100,8 @@ sealed interface IssueEvent : OpenId4VciResult {
     data class DocumentRequiresUserAuth(
         val document: UnsignedDocument,
         val signingAlgorithm: Algorithm,
-        val resume: (keyUnlockData: KeyUnlockData) -> Unit,
+        val keysRequireAuth: Map<KeyAlias, SecureArea>,
+        val resume: (keyUnlockData: Map<KeyAlias, KeyUnlockData?>) -> Unit,
         val cancel: (reason: String?) -> Unit,
     ) : IssueEvent,
         DocumentDetails by DocumentDetails(document)

@@ -16,7 +16,6 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
-import com.android.identity.crypto.Algorithm
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
@@ -31,15 +30,50 @@ import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
+import org.multipaz.crypto.Algorithm
 import java.util.Base64
 import java.util.UUID
 
+/**
+ * Processes and handles OpenID4VP requests specifically for MSO_MDOC document format.
+ *
+ * This class extends [RequestProcessor.ProcessedRequest.Success] and specializes in handling
+ * OpenID for Verifiable Presentation (OpenID4VP) requests that exclusively target MSO_MDOC
+ * (Mobile Security Object Mobile Driving License) document formats. It transforms the processed
+ * device request into an OpenID4VP response that conforms to the Presentation Exchange protocol.
+ *
+ * The class is responsible for:
+ * - Converting device responses to OpenID4VP verifiable presentations
+ * - Creating presentation submissions based on input descriptors
+ * - Generating Base64-encoded responses suitable for OpenID4VP communication
+ *
+ * @param processedDeviceRequest The device request that has been processed and is ready for response generation
+ * @param resolvedRequestObject The resolved OpenID4VP request object containing presentation query information
+ * @param msoMdocNonce A nonce value used for the MSO_MDOC protocol to prevent replay attacks
+ */
 class ProcessedMsoMdocOpenId4VpRequest(
     private val processedDeviceRequest: ProcessedDeviceRequest,
     private val resolvedRequestObject: ResolvedRequestObject,
     val msoMdocNonce: String,
 ) : RequestProcessor.ProcessedRequest.Success(processedDeviceRequest.requestedDocuments) {
 
+    /**
+     * Generates an OpenID4VP response from the disclosed documents.
+     *
+     * This method converts the disclosed documents into an OpenID4VP response by:
+     * 1. Validating the OpenID4VP request object and presentation definition
+     * 2. Generating a device response using the processed request
+     * 3. Encoding the device response as a verifiable presentation
+     * 4. Creating a presentation submission that maps input descriptors to the presentation
+     * 5. Wrapping everything in an OpenID4VP response object
+     *
+     * @param disclosedDocuments Documents that the user has agreed to disclose
+     * @param signatureAlgorithm Optional algorithm to use for signing the response
+     * @return A [ResponseResult] object containing either a successful [OpenId4VpResponse.DeviceResponse]
+     *         or a [ResponseResult.Failure] with the error that occurred during processing
+     * @throws IllegalArgumentException if the request object is not a valid OpenId4VPAuthorization
+     *         or if the presentation query is not a PresentationDefinition
+     */
     override fun generateResponse(
         disclosedDocuments: DisclosedDocuments,
         signatureAlgorithm: Algorithm?,

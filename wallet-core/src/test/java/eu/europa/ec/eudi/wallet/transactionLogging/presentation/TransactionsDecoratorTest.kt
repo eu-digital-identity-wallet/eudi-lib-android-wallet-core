@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
@@ -202,13 +202,13 @@ class TransactionsDecoratorTest {
 
     // Helper methods
     private fun createMockDocument(): IssuedDocument {
-        val metadata = mockk<DocumentMetaData> {
+        val metadata = mockk<IssuerMetadata> {
             every { toJson() } returns """{"docType": "TestDocument", "name": "Test Doc"}"""
         }
 
         return mockk {
             every { this@mockk.id } returns "test-document-id"
-            every { this@mockk.metadata } returns metadata
+            every { this@mockk.issuerMetadata } returns metadata
         }
     }
 

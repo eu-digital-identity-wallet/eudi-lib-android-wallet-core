@@ -9,13 +9,12 @@ dependencycheck = "9.0.9"
 dokka = "1.9.20"
 espresso-contrib = "3.6.1"
 espresso-core = "3.6.1"
-eudi-document-manager = "0.10.0"
-eudi-iso18013-data-transfer = "0.6.3"
+eudi-document-manager = "0.11.0"
+eudi-iso18013-data-transfer = "0.7.0"
 eudi-lib-jvm-openid4vci-kt = "0.7.0"
 eudi-lib-jvm-siop-openid4vp-kt = "0.9.0"
 eudi-lib-jvm-sdjwt-kt = "0.10.0"
 eudi-lib-kmp-statium = "0.2.1"
-google-identity-android = "202408.1"
 gradle-plugin = "8.9.2"
 jacoco = "0.8.12"
 java = "17"
@@ -32,6 +31,7 @@ mockito-android = "4.0.0"
 mockito-inline = "5.2.0"
 mockito-kotlin = "5.3.1"
 mockk = "1.13.5"
+multipaz = "0.90"
 nimbus-sdk = "11.20.1"
 robolectric = "4.14"
 sonarqube = "5.1.0.4882"
@@ -61,8 +61,6 @@ eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4v
 eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-siop-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
 eudi-lib-jvm-sdjwt-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudi-lib-jvm-sdjwt-kt" }
 eudi-lib-kmp-statium = { module = "eu.europa.ec.eudi:eudi-lib-kmp-statium-android", version.ref = "eudi-lib-kmp-statium" }
-google-identity-android = { module = "com.android.identity:identity-android", version.ref = "google-identity-android" }
-google-identity-mdoc = { module = "com.android.identity:identity-mdoc", version.ref = "google-identity-android" }
 json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
@@ -76,6 +74,7 @@ mockito-android = { module = "org.mockito:mockito-android", version.ref = "mocki
 mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito-inline" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+multipaz-android = { module = "org.multipaz:multipaz-android", version.ref = "multipaz" }
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }

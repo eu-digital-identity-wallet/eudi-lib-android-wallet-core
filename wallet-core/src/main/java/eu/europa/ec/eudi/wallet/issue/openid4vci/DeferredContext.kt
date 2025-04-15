@@ -41,10 +41,16 @@ import eu.europa.ec.eudi.openid4vci.RefreshToken
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.openid4vci.TransactionId
 import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -62,23 +68,139 @@ private val json = Json {
     encodeDefaults = false
 }
 
-internal data class DeferredContextCreator(
-    val issuer: Issuer,
-    val authorizedRequest: AuthorizedRequest,
-) {
-    fun create(outcome: SubmissionOutcome.Deferred): DeferredIssuanceContext {
-        return with(issuer) {
-            authorizedRequest.deferredContext(outcome)
+/**
+ * Factory for creating [DeferredContext] instances from key aliases and deferred submission outcomes.
+ *
+ * @param keyAliases List of key aliases used in the deferred issuance process
+ * @param outcome The outcome of a deferred submission containing transaction details
+ * @return A [DeferredContext] containing the issuance context and key aliases
+ */
+internal typealias DeferredContextFactory = (keyAliases: List<String>, outcome: SubmissionOutcome.Deferred) -> DeferredContext
+
+/**
+ * Creates a [DeferredContextFactory] from an [Issuer] and [AuthorizedRequest].
+ *
+ * @param issuer The credential issuer that will provide the deferred context
+ * @param authorizedRequest The authorized request associated with the deferred issuance
+ * @return A factory function that creates [DeferredContext] instances
+ */
+internal fun DeferredContextFactory(
+    issuer: Issuer,
+    authorizedRequest: AuthorizedRequest
+): DeferredContextFactory {
+    return { keyAliases, outcome ->
+        with(issuer) {
+            DeferredContext(
+                issuanceContext = authorizedRequest.deferredContext(outcome),
+                keyAliases = keyAliases
+            )
         }
     }
 }
 
-internal fun DeferredIssuanceContext.toByteArray(): ByteArray =
-    json.encodeToString(DeferredIssuanceStoredContextTO.from(this, null, null)).toByteArray()
+/**
+ * A data class that holds the deferred issuance context along with key aliases.
+ * This class is serializable and used for storing and retrieving deferred issuance data.
+ *
+ * @property issuanceContext The deferred issuance context containing information about the credential issuance process.
+ * @property keyAliases List of key aliases used in the deferred issuance process.
+ */
+@Serializable
+internal data class DeferredContext(
+    @Serializable(with = DeferredIssuanceContextSerializer::class)
+    val issuanceContext: DeferredIssuanceContext,
+    val keyAliases: List<String>,
+) {
 
-internal fun ByteArray.toDeferredIssuanceContext(): DeferredIssuanceContext {
-    return json.decodeFromString(DeferredIssuanceStoredContextTO.serializer(), String(this))
-        .toDeferredIssuanceStoredContext(Clock.systemUTC(), null, null)
+    /**
+     * Converts this DeferredContext object to a byte array for storage or transmission.
+     *
+     * @return A byte array representation of this object.
+     */
+    fun toByteArray(): ByteArray = json.encodeToString(this).toByteArray()
+
+    companion object {
+        /**
+         * Creates a DeferredContext from its byte array representation.
+         *
+         * @param bytes The byte array containing the serialized DeferredContext.
+         * @return The deserialized DeferredContext instance.
+         */
+        fun fromByteArray(bytes: ByteArray): DeferredContext {
+            return json.decodeFromString(serializer(), String(bytes))
+        }
+    }
+}
+
+/**
+ * A serializer for [DeferredIssuanceContext] that handles the nested JSON structure required for serialization.
+ *
+ * This serializer addresses a specific JSON structure format where the context is nested within a
+ * "context" field in the JSON. It correctly handles both serialization and deserialization of this structure.
+ *
+ * During serialization, it wraps the [DeferredIssuanceStoredContextTO] in a nested structure, and during
+ * deserialization, it properly navigates this nested structure to extract the context object.
+ */
+internal class DeferredIssuanceContextSerializer : KSerializer<DeferredIssuanceContext> {
+    override val descriptor: SerialDescriptor =
+        buildClassSerialDescriptor("eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext") {
+            element("context", DeferredIssuanceStoredContextTO.serializer().descriptor)
+        }
+
+    /**
+     * Serializes the [DeferredIssuanceContext] into a JSON structure with a nested "context" field.
+     *
+     * @param encoder The encoder to serialize to.
+     * @param value The [DeferredIssuanceContext] to serialize.
+     */
+    override fun serialize(encoder: Encoder, value: DeferredIssuanceContext) {
+        // TODO add dPoP info in serialization
+        val contextTO = DeferredIssuanceStoredContextTO.from(value, null, null)
+        encoder.encodeStructure(descriptor) {
+            encodeSerializableElement(
+                descriptor,
+                0,
+                DeferredIssuanceStoredContextTO.serializer(),
+                contextTO
+            )
+        }
+    }
+
+    /**
+     * Deserializes a [DeferredIssuanceContext] from a JSON structure with a nested "context" field.
+     *
+     * This method handles the nested JSON structure by properly navigating through the structure to
+     * extract the context object stored in the "context" field. It uses a loop to process all elements
+     * in the structure, breaking when reaching the end of the structure.
+     *
+     * @param decoder The decoder to deserialize from.
+     * @return The deserialized [DeferredIssuanceContext].
+     */
+    override fun deserialize(decoder: Decoder): DeferredIssuanceContext {
+        // TODO use dPoP info in deserialization to recreate dPoP signer
+        var storedContext: DeferredIssuanceStoredContextTO? = null
+
+        decoder.decodeStructure(descriptor) {
+            while (true) {
+                val index = decodeElementIndex(descriptor)
+                if (index == -1) break
+
+                when (index) {
+                    0 -> storedContext = decodeSerializableElement(
+                        descriptor,
+                        0,
+                        DeferredIssuanceStoredContextTO.serializer()
+                    )
+                }
+            }
+        }
+
+        return requireNotNull(storedContext).toDeferredIssuanceStoredContext(
+            Clock.systemUTC(),
+            null,
+            null
+        )
+    }
 }
 
 //
@@ -178,7 +300,7 @@ data class DeferredIssuanceStoredContextTO(
     @SerialName("transaction_id") val transactionId: String,
     @SerialName("access_token") val accessToken: AccessTokenTO,
     @SerialName("refresh_token") val refreshToken: RefreshTokenTO? = null,
-    @SerialName("authorization_timestamGrantTO.fromGrant(grant)p") val authorizationTimestamp: Long,
+    @SerialName("authorization_timestamp") val authorizationTimestamp: Long,
     @SerialName("grant") val grant: GrantTO,
 ) {
 
@@ -313,3 +435,4 @@ data class DeferredIssuanceStoredContextTO(
             )
     }
 }
+

@@ -16,16 +16,14 @@
 
 package eu.europa.ec.eudi.wallet.statium
 
-import com.android.identity.securearea.SecureArea
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.SdJwt
 import eu.europa.ec.eudi.statium.StatusIndex
 import eu.europa.ec.eudi.statium.StatusReference
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -40,7 +38,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.Instant
+import org.multipaz.securearea.SecureArea
 
 class SdJwtVcStatusReferenceExtractorTest {
 
@@ -223,44 +221,26 @@ class SdJwtVcStatusReferenceExtractorTest {
     }
 
     private fun createSdJwtDocument(sdJwtContent: String): IssuedDocument {
-        val documentData = mockk<SdJwtVcData>().apply {
-            every { format } returns SdJwtVcFormat(vct = "PID")
-        }
+        val fixedFormat = SdJwtVcFormat(vct = "PID")
 
-        return IssuedDocument(
-            id = "test-doc-id",
-            name = "Test SD-JWT Doc",
-            documentManagerId = "test-manager",
-            isCertified = true,
-            keyAlias = "test-key",
-            secureArea = secureAreaMock,
-            createdAt = Instant.now(),
-            validFrom = Instant.now(),
-            validUntil = Instant.now().plusSeconds(3600),
-            issuedAt = Instant.now(),
-            issuerProvidedData = sdJwtContent.toByteArray(Charsets.US_ASCII),
-            data = documentData
-        )
+        return mockk {
+            every { format } returns fixedFormat
+            every { name } returns fixedFormat.vct
+            coEvery { findCredential() } returns mockk() {
+                every { issuerProvidedData } returns sdJwtContent.toByteArray(Charsets.US_ASCII)
+            }
+        }
     }
 
     private fun createMsoMdocDocument(): IssuedDocument {
-        val documentData = mockk<MsoMdocData>().apply {
-            every { format } returns MsoMdocFormat(docType = "mDL")
-        }
+        val fixedFormat = MsoMdocFormat(docType = "mDL")
 
-        return IssuedDocument(
-            id = "test-mso-id",
-            name = "Test MSO Doc",
-            documentManagerId = "test-manager",
-            isCertified = true,
-            keyAlias = "test-key",
-            secureArea = secureAreaMock,
-            createdAt = Instant.now(),
-            validFrom = Instant.now(),
-            validUntil = Instant.now().plusSeconds(3600),
-            issuedAt = Instant.now(),
-            issuerProvidedData = byteArrayOf(1, 2, 3, 4),
-            data = documentData
-        )
+        return mockk {
+            every { format } returns fixedFormat
+            every { name } returns fixedFormat.docType
+            coEvery { findCredential() } returns mockk() {
+                every { issuerProvidedData } returns byteArrayOf(1, 2, 3, 4)
+            }
+        }
     }
 }

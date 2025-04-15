@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,74 +16,119 @@
 
 package eu.europa.ec.eudi.wallet.document
 
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
+import eu.europa.ec.eudi.openid4vci.BatchCredentialIssuance
+import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
+import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
+import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy.OneTimeUse
+import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy.RotateUse
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
+import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
+import org.multipaz.securearea.AndroidKeystoreKeyInfo
+import org.multipaz.securearea.AndroidKeystoreKeyUnlockData
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.securearea.KeyUnlockData
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.UserAuthenticationType
 import java.security.SecureRandom
 
+/**
+ * Provides extension functions for [Document] and [EudiWallet] related to document management.
+ * This object includes methods for retrieving default key unlock data and create document settings.
+ */
 object DocumentExtensions {
     /**
      * Returns the default [AndroidKeystoreKeyUnlockData] for the [Document] instance.
      * The default key unlock data is based on the [Document.keyAlias].
-     * @see [AndroidKeystoreKeyUnlockData]
-     * @see [Document]
-     * @throws IllegalStateException if the [Document] is not managed by [AndroidKeystoreSecureArea]
-     * @receiver the [Document] instance
-     * @return the default [AndroidKeystoreKeyUnlockData] for the [Document] instance if document requires user authentication
+     * This is applicable only if the document's key requires user authentication.
+     *
+     * @receiver the [Document] instance.
+     * @return The default [AndroidKeystoreKeyUnlockData] for the [Document] instance if document requires user authentication, otherwise `null`.
+     * @throws IllegalStateException if the [Document] is not managed by [AndroidKeystoreSecureArea].
+     * @see AndroidKeystoreKeyUnlockData
+     * @see Document
      */
     @get:JvmName("getDefaultKeyUnlockData")
     @get:Throws(IllegalStateException::class)
     @get:JvmStatic
+    @Deprecated("Use getDefaultKeyUnlockData(secureArea: SecureArea, keyAlias: String) instead")
     val Document.DefaultKeyUnlockData: AndroidKeystoreKeyUnlockData?
         get() = when (val ki = keyInfo) {
             is AndroidKeystoreKeyInfo -> ki.takeIf { it.isUserAuthenticationRequired }
-                ?.let { AndroidKeystoreKeyUnlockData(keyAlias) }
+                ?.let {
+                    AndroidKeystoreKeyUnlockData(
+                        secureArea as AndroidKeystoreSecureArea,
+                        keyAlias
+                    )
+                }
 
             else -> throw IllegalStateException("Document is not managed by AndroidKeystoreSecureArea")
         }
 
     /**
      * Returns the default [AndroidKeystoreKeyUnlockData] for the given [DocumentId].
-     * The default key unlock data is based on the [Document.keyAlias].
-     * @see [AndroidKeystoreKeyUnlockData]
-     * @see [Document]
-     * @throws IllegalStateException if the [Document] is not managed by [AndroidKeystoreSecureArea]
-     * @throws NoSuchElementException if the document is not found by the [DocumentId]
-     * @receiver the [EudiWallet] instance
-     * @param documentId the [DocumentId] of the document
-     * @return the default [AndroidKeystoreKeyUnlockData] for the given [DocumentId] or null
-     * if the document requires no user authentication
+     * The default key unlock data is based on the [Document.keyAlias] of the found document.
+     * This is applicable only if the document's key requires user authentication.
+     *
+     * @receiver The [EudiWallet] instance.
+     * @param documentId The [DocumentId] of the document.
+     * @return The default [AndroidKeystoreKeyUnlockData] for the given [DocumentId] if the document requires user authentication, otherwise `null`.
+     * @throws NoSuchElementException if the document is not found by the [DocumentId].
+     * @throws IllegalStateException if the [Document] is not managed by [AndroidKeystoreSecureArea].
+     * @see AndroidKeystoreKeyUnlockData
+     * @see Document
      */
     @JvmName("getDefaultKeyUnlockData")
     @Throws(NoSuchElementException::class, IllegalStateException::class)
     @JvmStatic
     fun EudiWallet.getDefaultKeyUnlockData(documentId: DocumentId): AndroidKeystoreKeyUnlockData? {
-        return when (val document = getDocumentById(documentId)) {
+        return when (val document = getDocumentById(documentId) as? IssuedDocument) {
             null -> throw NoSuchElementException("Document not found")
-            else -> document.DefaultKeyUnlockData
+            else -> runBlocking {
+                document.findCredential()?.let {
+                    getDefaultKeyUnlockData(it.secureArea, it.alias)
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the default [AndroidKeystoreKeyUnlockData] for the given [SecureArea] and [keyAlias]
+     * if the [secureArea] is an instance of [AndroidKeystoreSecureArea].
+     * @param secureArea The [SecureArea] instance.
+     * @param keyAlias The key alias.
+     * @return The default [AndroidKeystoreKeyUnlockData] if the [secureArea] is an instance of [AndroidKeystoreSecureArea], otherwise `null`.
+     */
+    fun getDefaultKeyUnlockData(
+        secureArea: SecureArea,
+        keyAlias: String
+    ): AndroidKeystoreKeyUnlockData? {
+        return (secureArea as? AndroidKeystoreSecureArea)?.let {
+            AndroidKeystoreKeyUnlockData(it, keyAlias)
         }
     }
 
     /**
      * Returns the default [CreateDocumentSettings] for the [EudiWallet] instance.
-     * The default settings are based on the [EudiWalletConfig] and the first available
+     * The default settings are based on the [EudiWalletConfig] and the presence of an available
      * [AndroidKeystoreSecureArea] implementation.
-     * The [attestationChallenge] is generated using a [SecureRandom] instance.
+     * The [attestationChallenge] is generated using a [SecureRandom] instance if not provided.
      * The [configure] lambda can be used to further customize the [AndroidKeystoreCreateKeySettings].
-     * The first available [AndroidKeystoreSecureArea] implementation is used.
-     * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available
-     * @see [AndroidKeystoreCreateKeySettings.Builder]
-     * @see [AndroidKeystoreCreateKeySettings]
-     * @see [AndroidKeystoreSecureArea]
-     * @see [CreateDocumentSettings]
      *
-     * @receiver the [EudiWallet] instance
-     * @param attestationChallenge the attestation challenge to use when creating the keys
-     * @param configure a lambda to further customize the [AndroidKeystoreCreateKeySettings]
+     * @receiver The [EudiWallet] instance.
+     * @param attestationChallenge The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated.
+     * @param numberOfCredentials The number of credentials to pre-generate for the document. Defaults to 1.
+     * @param credentialPolicy The policy for credential usage ([OneTimeUse] or [RotateUse]). Defaults to [RotateUse].
+     * @param configure A lambda to further customize the [AndroidKeystoreCreateKeySettings].
+     * @return The default [CreateDocumentSettings].
+     * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
+     * @see AndroidKeystoreCreateKeySettings.Builder
+     * @see AndroidKeystoreCreateKeySettings
+     * @see AndroidKeystoreSecureArea
+     * @see CreateDocumentSettings
      */
     @JvmName("getDefaultCreateDocumentSettings")
     @Throws(NoSuchElementException::class)
@@ -91,27 +136,98 @@ object DocumentExtensions {
     @JvmStatic
     fun EudiWallet.getDefaultCreateDocumentSettings(
         attestationChallenge: ByteArray? = null,
+        numberOfCredentials: Int = 1,
+        credentialPolicy: CreateDocumentSettings.CredentialPolicy = RotateUse,
+        configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null
+    ): CreateDocumentSettings {
+        return runBlocking {
+            doGetDefaultCreateDocumentSettings(
+                eudiWallet = this@getDefaultCreateDocumentSettings,
+                attestationChallenge = attestationChallenge,
+                configure = configure,
+                numberOfCredentials = numberOfCredentials,
+                credentialPolicy = credentialPolicy,
+            )
+        }
+    }
+
+    /**
+     * Returns the default [CreateDocumentSettings] for the [EudiWallet] instance based on an [Offer.OfferedDocument].
+     * The settings are derived from the issuer metadata and the document configuration within the offer.
+     * The [attestationChallenge] is generated using a [SecureRandom] instance if not provided.
+     * The [configure] lambda can be used to further customize the [AndroidKeystoreCreateKeySettings].
+     *
+     * @receiver The [EudiWallet] instance.
+     * @param offeredDocument The [Offer.OfferedDocument] from which to derive settings.
+     * @param attestationChallenge The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated.
+     * @param configure A lambda to further customize the [AndroidKeystoreCreateKeySettings].
+     * @return The default [CreateDocumentSettings] tailored for the offered document.
+     * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
+     */
+    @JvmOverloads
+    @JvmStatic
+    suspend fun EudiWallet.getDefaultCreateDocumentSettings(
+        offeredDocument: Offer.OfferedDocument,
+        attestationChallenge: ByteArray? = null,
         configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
     ): CreateDocumentSettings {
-
-        val secureAreaIdentifier = secureAreaRepository
-            .implementations
-            .filterIsInstance<AndroidKeystoreSecureArea>()
-            .firstOrNull()
-            ?.identifier
-            ?: throw NoSuchElementException("No AndroidKeystoreSecureArea implementation available")
+        val batchCredentialIssuanceSize =
+            when (val batch = offeredDocument.offer.issuerMetadata.batchCredentialIssuance) {
+                is BatchCredentialIssuance.Supported -> batch.batchSize
+                else -> 1
+            }
 
 
-        val attestationChallengeToUse = attestationChallenge ?: SecureRandom().let { secureRandom ->
-            ByteArray(32).also { secureRandom.nextBytes(it) }
+        val policy = when (val configuration = offeredDocument.configuration) {
+            is MsoMdocCredential -> configuration.isoPolicy
+            else -> null
         }
-        val builder = AndroidKeystoreCreateKeySettings.Builder(attestationChallengeToUse)
+        val credentialPolicy = CreateDocumentSettings.CredentialPolicy.from(policy)
+        // Ensure the number of credentials does not exceed the issuer's supported batch size.
+        val numberOfCredentials = (policy?.batchSize ?: 1)
+            .takeIf { it <= batchCredentialIssuanceSize }
+            ?: batchCredentialIssuanceSize
+
+        return doGetDefaultCreateDocumentSettings(
+            eudiWallet = this@getDefaultCreateDocumentSettings,
+            attestationChallenge = attestationChallenge,
+            configure = configure,
+            numberOfCredentials = numberOfCredentials,
+            credentialPolicy = credentialPolicy
+        )
+    }
+
+    /**
+     * Internal helper function to construct [CreateDocumentSettings].
+     *
+     * @param eudiWallet The [EudiWallet] instance.
+     * @param attestationChallenge Optional attestation challenge.
+     * @param configure Optional configuration lambda for [AndroidKeystoreCreateKeySettings.Builder].
+     * @param numberOfCredentials Number of credentials to pre-generate.
+     * @param credentialPolicy The credential usage policy.
+     * @return Configured [CreateDocumentSettings].
+     * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
+     */
+    private suspend fun doGetDefaultCreateDocumentSettings(
+        eudiWallet: EudiWallet,
+        attestationChallenge: ByteArray? = null,
+        configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
+        numberOfCredentials: Int,
+        credentialPolicy: CreateDocumentSettings.CredentialPolicy,
+    ): CreateDocumentSettings {
+        val secureAreaIdentifier = AndroidKeystoreSecureArea.IDENTIFIER
+        val attestationChallengeToUse =
+            attestationChallenge ?: SecureRandom().let { secureRandom ->
+                ByteArray(32).also { secureRandom.nextBytes(it) }
+            }
+        val builder =
+            AndroidKeystoreCreateKeySettings.Builder(ByteString(attestationChallengeToUse))
         val createKeySettings = when (configure) {
             null -> builder
-                .setUseStrongBox(config.useStrongBoxForKeys)
+                .setUseStrongBox(eudiWallet.config.useStrongBoxForKeys)
                 .setUserAuthenticationRequired(
-                    required = config.userAuthenticationRequired,
-                    timeoutMillis = config.userAuthenticationTimeout,
+                    required = eudiWallet.config.userAuthenticationRequired,
+                    timeoutMillis = eudiWallet.config.userAuthenticationTimeout,
                     userAuthenticationTypes = setOf(
                         UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC
                     )
@@ -122,7 +238,25 @@ object DocumentExtensions {
 
         return CreateDocumentSettings(
             secureAreaIdentifier = secureAreaIdentifier,
-            createKeySettings = createKeySettings
+            createKeySettings = createKeySettings,
+            numberOfCredentials = numberOfCredentials,
+            credentialPolicy = credentialPolicy
         )
+    }
+
+    /**
+     * Converts an [MsoMdocPolicy] to a [CreateDocumentSettings.CredentialPolicy].
+     * If the [isoPolicy] indicates one-time use, [OneTimeUse] is returned. Otherwise, [RotateUse] is returned.
+     *
+     * @receiver The companion object of [CreateDocumentSettings.CredentialPolicy].
+     * @param isoPolicy The [MsoMdocPolicy] to convert. Can be `null`.
+     * @return The corresponding [CreateDocumentSettings.CredentialPolicy].
+     */
+    @JvmStatic
+    @JvmName("getCredentialPolicy")
+    fun CreateDocumentSettings.CredentialPolicy.Companion.from(
+        isoPolicy: MsoMdocPolicy?
+    ): CreateDocumentSettings.CredentialPolicy {
+        return if (isoPolicy?.oneTimeUse == true) OneTimeUse else RotateUse
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.identity.crypto.Algorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -26,6 +25,7 @@ import eu.europa.ec.eudi.openid4vci.PopSigner
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.multipaz.crypto.Algorithm
 
 @RunWith(AndroidJUnit4::class)
 class JWSDPoPSignerTest {
@@ -46,7 +46,7 @@ class JWSDPoPSignerTest {
 
     @Test
     fun signerSupportedJWSAlgorithmsIsSameWithConstructorParam() {
-        val signer = JWSDPoPSigner(Algorithm.ES384).getOrThrow()
+        val signer = JWSDPoPSigner(Algorithm.ESP384).getOrThrow()
         Assert.assertEquals(JWSAlgorithm.ES384, signer.algorithm)
         Assert.assertEquals(1, signer.jwsSigner.supportedJWSAlgorithms().size)
         Assert.assertEquals(JWSAlgorithm.ES384, signer.jwsSigner.supportedJWSAlgorithms().first())

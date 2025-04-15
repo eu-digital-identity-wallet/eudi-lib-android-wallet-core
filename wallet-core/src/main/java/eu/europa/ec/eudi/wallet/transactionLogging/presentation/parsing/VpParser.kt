@@ -25,7 +25,7 @@ import eu.europa.ec.eudi.sdjwt.JwtAndClaims
 import eu.europa.ec.eudi.sdjwt.SdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.select
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import kotlinx.coroutines.runBlocking
@@ -199,7 +199,7 @@ fun parseVcSdJwt(
 
     val presentedDocument = getPresentedDocumentsFromClaims(
         claims = sdJwt.claims,
-        metadata = metadata?.let { DocumentMetaData.fromJson(it).getOrNull() }
+        metadata = metadata?.let { IssuerMetadata.fromJson(it).getOrNull() }
     )
 
     return presentedDocument
@@ -255,7 +255,7 @@ val SdJwt<JwtAndClaims>.claims: Map<List<String>, JsonElement?>
  */
 fun getPresentedDocumentsFromClaims(
     claims: Map<List<String>, JsonElement?>,
-    metadata: DocumentMetaData?
+    metadata: IssuerMetadata?
 ): PresentedDocument {
     // accumulate claims
     val presentedClaims = mutableListOf<PresentedClaim>()
@@ -329,17 +329,17 @@ fun PresentationSubmission.getResponseIndicesByFormat(): Map<String, List<Int>> 
 
 /**
  * Function to find the claim metadata from the path and metadata
- * It takes the path as a list of strings and metadata and iterates [DocumentMetaData.claims] to find
+ * It takes the path as a list of strings and metadata and iterates [IssuerMetadata.claims] to find
  * the claim metadata
  *
  * @param path the path to parse
  * @param metadata the metadata to parse
- * @return the claim metadata as a [DocumentMetaData.Claim] object
+ * @return the claim metadata as a [IssuerMetadata.Claim] object
  */
 fun findClaimMetadataForSdJwtVc(
     path: List<String>,
-    metadata: DocumentMetaData?
-): DocumentMetaData.Claim? {
+    metadata: IssuerMetadata?
+): IssuerMetadata.Claim? {
     return metadata?.claims?.find {
         it.path.size == path.size && it.path.zip(path).all { (a, b) -> a == b }
     }

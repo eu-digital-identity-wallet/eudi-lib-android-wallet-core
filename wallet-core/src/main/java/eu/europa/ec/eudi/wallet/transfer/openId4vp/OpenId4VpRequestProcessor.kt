@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,7 +35,24 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.internal.generateMdocGeneratedNonce
 import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
+import kotlinx.coroutines.runBlocking
 
+/**
+ * Processor for handling OpenID for Verifiable Presentation (OpenID4VP) requests.
+ *
+ * This class implements the [RequestProcessor] and [ReaderTrustStoreAware] interfaces to process
+ * presentation requests using the OpenID4VP protocol. It supports both MSO_MDOC (Mobile Security
+ * Object Mobile Driving License) and SD-JWT VC (Selective Disclosure JWT Verifiable Credential) document formats.
+ *
+ * The processor handles:
+ * - Parsing and validation of OpenID4VP requests
+ * - Processing of presentation definitions with different document formats
+ * - Reader authentication through X.509 certificates
+ * - Extraction of requested document claims based on input descriptors
+ *
+ * @param documentManager Manages document retrieval and processing
+ * @property readerTrustStore Provides trust information for verifying reader certificates
+ */
 class OpenId4VpRequestProcessor(
     private val documentManager: DocumentManager,
     override var readerTrustStore: ReaderTrustStore?,
@@ -48,6 +65,20 @@ class OpenId4VpRequestProcessor(
     internal val openid4VpX509CertificateTrustStore: Openid4VpX509CertificateTrust
             by lazy { Openid4VpX509CertificateTrust(readerTrustStore) }
 
+    /**
+     * Processes an OpenID4VP request and returns the appropriate processed request object.
+     *
+     * This method validates that the incoming request is an [OpenId4VpRequest] with a valid
+     * presentation definition, then processes it based on the requested document formats:
+     * - For MSO_MDOC-only requests, returns a [ProcessedMsoMdocOpenId4VpRequest]
+     * - For mixed format requests, returns a [ProcessedGenericOpenId4VpRequest] supporting both
+     *   MSO_MDOC and SD-JWT VC formats
+     *
+     * @param request The request to process, must be an [OpenId4VpRequest] instance
+     * @return A [RequestProcessor.ProcessedRequest] object containing the processed data
+     * @throws IllegalArgumentException if the request is not an [OpenId4VpRequest], lacks an OpenId4VPAuthorization,
+     *                                  uses an unsupported presentation format, or has no requested formats
+     */
     override fun process(request: Request): RequestProcessor.ProcessedRequest {
         require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
         require(request.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
@@ -69,10 +100,11 @@ class OpenId4VpRequestProcessor(
             requestedFormats.size == 1 && requestedFormats.first() == FORMAT_MSO_MDOC
 
         return if (requestedOnlyMsoMdoc) {
-            val requestedDocuments: RequestedDocuments =
+            val requestedDocuments: RequestedDocuments = runBlocking {
                 presentationDefinition.inputDescriptors
                     .map { descriptor -> parseDescriptorForMsoMdocDocument(descriptor, request) }
                     .let { helper.getRequestedDocuments(it) }
+            }
 
             val msoMdocNonce = generateMdocGeneratedNonce()
             val sessionTranscriptBytes =
@@ -101,7 +133,7 @@ class OpenId4VpRequestProcessor(
                     .flatMap { inputDescriptor ->
                         // NOTE: one format is supported per input descriptor
                         when (inputDescriptor.format?.jsonObject()?.keys?.first()) {
-                            FORMAT_MSO_MDOC -> {
+                            FORMAT_MSO_MDOC -> runBlocking {
                                 parseDescriptorForMsoMdocDocument(inputDescriptor, request)
                                     .let { helper.getRequestedDocuments(listOf(it)) }
                                     .also { requestedDoc ->
@@ -110,7 +142,7 @@ class OpenId4VpRequestProcessor(
                                     }
                             }
 
-                            FORMAT_SD_JWT_VC -> {
+                            FORMAT_SD_JWT_VC -> runBlocking {
                                 parseDescriptorForSdJwtVcDocument(inputDescriptor, request)
                                     .also { requestedDoc ->
                                         inputDescriptorMap[inputDescriptor.id] =
@@ -132,6 +164,19 @@ class OpenId4VpRequestProcessor(
         }
     }
 
+    /**
+     * Parses an input descriptor for MSO_MDOC document format.
+     *
+     * This method extracts namespace and element identifier pairs from the input descriptor's
+     * constraint fields paths. It creates a mapping of namespaces to their requested element
+     * identifiers, which will be used to build the document request.
+     *
+     * The method also configures reader authentication based on the certificate trust store.
+     *
+     * @param descriptor The input descriptor containing document type and requested claim paths
+     * @param request The original OpenID4VP request containing client information
+     * @return A [DeviceRequestProcessor.RequestedMdocDocument] that describes the requested document
+     */
     private fun parseDescriptorForMsoMdocDocument(
         descriptor: InputDescriptor,
         request: OpenId4VpRequest,
@@ -168,7 +213,20 @@ class OpenId4VpRequestProcessor(
         )
     }
 
-    private fun parseDescriptorForSdJwtVcDocument(
+    /**
+     * Parses an input descriptor for SD-JWT VC document format.
+     *
+     * This method extracts the Verifiable Credential Type (vct) from the input descriptor's
+     * constraints fields and maps the requested claims based on JSONPath expressions.
+     * It then retrieves matching SD-JWT VC documents from the document manager and configures
+     * reader authentication.
+     *
+     * @param descriptor The input descriptor containing vct and requested claim paths
+     * @param request The original OpenID4VP request containing client information
+     * @return A [RequestedDocuments] collection containing the matching documents and their requested claims
+     * @throws IllegalArgumentException if vct is not found in the input descriptor
+     */
+    private suspend fun parseDescriptorForSdJwtVcDocument(
         descriptor: InputDescriptor,
         request: OpenId4VpRequest,
     ): RequestedDocuments {
@@ -189,26 +247,28 @@ class OpenId4VpRequestProcessor(
                     }
             }.toMap()
 
-        return RequestedDocuments(documentManager.getValidIssuedSdJwtVcDocuments(vct)
-            .map { doc ->
-                RequestedDocument(
-                    documentId = doc.id,
-                    requestedItems = requestedClaims,
-                    readerAuth =
-                    openid4VpX509CertificateTrustStore.getTrustResult()
-                        ?.let { (chain, isTrusted) ->
-                            val readerCommonName =
-                                request.resolvedRequestObject.client.legalName() ?: ""
-                            ReaderAuth(
-                                readerAuth = byteArrayOf(0),
-                                readerSignIsValid = true,
-                                readerCertificatedIsTrusted = isTrusted,
-                                readerCertificateChain = chain,
-                                readerCommonName = readerCommonName
-                            )
-                        }
-                )
-            }
+        return RequestedDocuments(
+            documents = documentManager.getValidIssuedSdJwtVcDocuments(vct)
+                .map { doc ->
+                    RequestedDocument(
+                        documentId = doc.id,
+                        requestedItems = requestedClaims,
+                        readerAuth =
+                            openid4VpX509CertificateTrustStore.getTrustResult()
+                                ?.let { (chain, isTrusted) ->
+                                    val readerCommonName =
+                                        request.resolvedRequestObject.client.legalName() ?: ""
+                                    ReaderAuth(
+                                        readerAuth = ByteArray(0),
+                                        readerSignIsValid = true,
+                                        readerCertificatedIsTrusted = isTrusted,
+                                        readerCertificateChain = chain,
+                                        readerCommonName = readerCommonName
+                                    )
+                                }
+                    )
+                }
         )
     }
 }
+

@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2024 European Commission
- *
+ * Copyright (c) 2024-2025 European Commission
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,15 +20,6 @@ import android.app.KeyguardManager
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.android.identity.crypto.Algorithm
-import com.android.identity.securearea.KeyLockedException
-import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.software.SoftwareCreateKeySettings
-import com.android.identity.securearea.software.SoftwareKeyUnlockData
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.storage.StorageEngine
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSAVerifier
@@ -39,6 +30,8 @@ import eu.europa.ec.eudi.openid4vci.JwtBindingKey
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import junit.framework.TestCase.assertEquals
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -48,15 +41,24 @@ import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.multipaz.securearea.KeyLockedException
+import org.multipaz.securearea.PassphraseConstraints
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.securearea.software.SoftwareCreateKeySettings
+import org.multipaz.securearea.software.SoftwareKeyUnlockData
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.Storage
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.io.IOException
 import java.time.Instant
-import java.util.*
+import java.util.Date
 
 @RunWith(AndroidJUnit4::class)
 class JWSProofSignerTest {
 
     private lateinit var documentManager: DocumentManager
-    private lateinit var storageEngine: StorageEngine
+    private lateinit var storage: Storage
     private lateinit var secureArea: SecureArea
 
     companion object {
@@ -72,12 +74,14 @@ class JWSProofSignerTest {
 
     @Before
     fun setUpEach() {
-        storageEngine = EphemeralStorageEngine()
-        secureArea = SoftwareSecureArea(storageEngine)
+        storage = EphemeralStorage()
+        secureArea = runBlocking { SoftwareSecureArea.create(storage) }
         documentManager = DocumentManager {
             setIdentifier(JWSProofSignerTest::class.simpleName!!)
-            setStorageEngine(this@JWSProofSignerTest.storageEngine)
-            addSecureArea(this@JWSProofSignerTest.secureArea)
+            setStorage(this@JWSProofSignerTest.storage)
+            setSecureAreaRepository(SecureAreaRepository.build {
+                add(this@JWSProofSignerTest.secureArea)
+            })
         }
     }
 
@@ -92,7 +96,9 @@ class JWSProofSignerTest {
             secureAreaIdentifier = secureArea.identifier,
             createKeySettings = SoftwareCreateKeySettings.Builder()
                 .setPassphraseRequired(true, "1234", PassphraseConstraints.PIN_FOUR_DIGITS)
-                .build()
+                .build(),
+            numberOfCredentials = 1,
+            credentialPolicy = CreateDocumentSettings.CredentialPolicy.RotateUse
         )
         val createDocumentResult =
             documentManager.createDocument(
@@ -104,9 +110,12 @@ class JWSProofSignerTest {
 
         val unsignedDocument = createDocumentResult.getOrThrow()
 
+        val popSigners = runBlocking { unsignedDocument.getPoPSigners() }
+        assertEquals(1, popSigners.size)
+
+
         val proofSigner = JWSKeyPoPSigner(
-            document = unsignedDocument,
-            algorithm = Algorithm.ES256,
+            proofSigner = popSigners.first(),
             keyUnlockData = null
         )
         val algorithm = proofSigner.popSigner.algorithm
@@ -141,7 +150,9 @@ class JWSProofSignerTest {
             secureAreaIdentifier = secureArea.identifier,
             createKeySettings = SoftwareCreateKeySettings.Builder()
                 .setPassphraseRequired(true, "1234", PassphraseConstraints.PIN_FOUR_DIGITS)
-                .build()
+                .build(),
+            numberOfCredentials = 1,
+            credentialPolicy = CreateDocumentSettings.CredentialPolicy.RotateUse
         )
         val createDocumentResult =
             documentManager.createDocument(
@@ -152,10 +163,14 @@ class JWSProofSignerTest {
 
 
         val unsignedDocument = createDocumentResult.getOrThrow()
+
+        val popSigners = runBlocking { unsignedDocument.getPoPSigners() }
+        assertEquals(1, popSigners.size)
+
         val keyUnlockData = SoftwareKeyUnlockData(passphrase = "1234")
+
         val proofSigner = JWSKeyPoPSigner(
-            document = unsignedDocument,
-            algorithm = Algorithm.ES256,
+            proofSigner = popSigners.first(),
             keyUnlockData = keyUnlockData
         )
         val algorithm = proofSigner.popSigner.algorithm

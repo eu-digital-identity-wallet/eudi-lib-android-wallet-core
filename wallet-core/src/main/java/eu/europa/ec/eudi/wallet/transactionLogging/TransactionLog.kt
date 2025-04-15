@@ -16,6 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging
 
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.DataFormat.Cbor
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.DataFormat.Json
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Status.Completed
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Status.Error
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Status.Incomplete
