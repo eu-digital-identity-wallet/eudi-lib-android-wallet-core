@@ -20,9 +20,11 @@ import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.toDer
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.impl.ECDSA
+import eu.europa.ec.eudi.openid4vci.Credential
 import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
@@ -31,7 +33,9 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractDocumentMetaData
 import eu.europa.ec.eudi.wallet.logging.Logger
+import org.bouncycastle.util.encoders.Hex
 import java.time.Instant
+import java.util.*
 import java.util.concurrent.Executor
 
 /**
@@ -122,5 +126,25 @@ internal val DeferredIssuanceContext.hasExpired: Boolean
             return false
         }
     }
+
+@JvmSynthetic
+internal fun DocumentManager.storeIssuedDocument(
+    document: UnsignedDocument,
+    credential: Credential,
+    log: (message: String) -> Unit,
+): Result<IssuedDocument> = runCatching {
+    require(credential is Credential.Str) { "Credential must be a string" }
+    val issuerData = when (document.format) {
+        is MsoMdocFormat -> Base64.getUrlDecoder().decode(credential.value)
+            .also {
+                log("CBOR bytes: ${Hex.toHexString(it)}")
+            }
+
+        is SdJwtVcFormat -> credential.value.also {
+            log("SD-JWT-VC: $it")
+        }.toByteArray(charset = Charsets.US_ASCII)
+    }
+    storeIssuedDocument(document, issuerData).kotlinResult.getOrThrow()
+}
 
 
