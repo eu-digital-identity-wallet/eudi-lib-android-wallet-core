@@ -16,19 +16,15 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import eu.europa.ec.eudi.openid4vci.Credential
 import eu.europa.ec.eudi.openid4vci.DeferredCredentialQueryOutcome
 import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
-import org.bouncycastle.util.encoders.Hex
-import java.util.Base64
 
 internal class ProcessDeferredOutcome(
     val documentManager: DocumentManager,
@@ -52,21 +48,18 @@ internal class ProcessDeferredOutcome(
                 is DeferredCredentialQueryOutcome.IssuancePending -> {
                     deferredIssuanceContext?.let { ctx ->
                         documentManager.storeDeferredDocument(deferredDocument, ctx.toByteArray())
+                            .kotlinResult
                             .notifyListener(deferredDocument)
                     } ?: callback(
                         DeferredIssueResult.DocumentNotReady(deferredDocument)
                     )
                 }
 
-                is DeferredCredentialQueryOutcome.Issued -> when (val credential =
-                    outcome.credentials.first().credential) {
-                    is Credential.Json -> TODO("Not supported yet")
-                    is Credential.Str -> {
-                        val cborBytes = Base64.getUrlDecoder().decode(credential.value)
-                        logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(cborBytes)}")
-                        documentManager.storeIssuedDocument(deferredDocument, cborBytes)
-                            .notifyListener(deferredDocument)
-                    }
+                is DeferredCredentialQueryOutcome.Issued -> {
+                    val credential = outcome.credentials.first().credential
+                    documentManager.storeIssuedDocument(deferredDocument, credential) {
+                        logger?.d(TAG, message = it)
+                    }.notifyListener(deferredDocument)
                 }
             }
         } catch (e: Throwable) {
@@ -75,9 +68,9 @@ internal class ProcessDeferredOutcome(
     }
 
 
-    private fun Outcome<Document>.notifyListener(
+    private fun Result<Document>.notifyListener(
         deferredDocument: DeferredDocument,
-    ) = this.kotlinResult.onSuccess { document ->
+    ) = this.onSuccess { document ->
         when (document) {
             is DeferredDocument -> callback(DeferredIssueResult.DocumentNotReady(document))
             is IssuedDocument -> callback(DeferredIssueResult.DocumentIssued(document))

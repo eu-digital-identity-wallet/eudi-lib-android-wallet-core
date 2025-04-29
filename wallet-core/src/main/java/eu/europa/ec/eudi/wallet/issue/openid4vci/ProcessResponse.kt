@@ -17,16 +17,8 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import com.android.identity.securearea.KeyUnlockData
-import eu.europa.ec.eudi.openid4vci.Credential
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
-import eu.europa.ec.eudi.wallet.document.DeferredDocument
-import eu.europa.ec.eudi.wallet.document.Document
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.UnsignedDocument
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.document.*
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
@@ -34,9 +26,7 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
-import org.bouncycastle.util.encoders.Hex
 import java.io.Closeable
-import java.util.Base64
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(
@@ -86,30 +76,16 @@ internal class ProcessResponse(
 
     fun processSubmittedRequest(unsignedDocument: UnsignedDocument, outcome: SubmissionOutcome) {
         when (outcome) {
-            is SubmissionOutcome.Success -> when (val credential =
-                outcome.credentials.first().credential) {
-                is Credential.Json -> TODO("Not supported yet")
-                is Credential.Str -> try {
-                    val issuerData = when (unsignedDocument.format) {
-                        is MsoMdocFormat -> Base64.getUrlDecoder().decode(credential.value)
-                            .also {
-                                logger?.d(TAG, "CBOR bytes: ${Hex.toHexString(it)}")
-                            }
-
-                        is SdJwtVcFormat -> credential.value.also {
-                            logger?.d(TAG, "SD-JWT-VC: $it")
-                        }.toByteArray(charset = Charsets.US_ASCII)
-                    }
-
-                    documentManager.storeIssuedDocument(unsignedDocument, issuerData)
-                        .kotlinResult
-                        .onSuccess { issuedDocumentIds.add(unsignedDocument.id) }
-                        .notifyListener(unsignedDocument)
-
-                } catch (e: Throwable) {
-                    documentManager.deleteDocumentById(unsignedDocument.id)
-                    listener(failure(e, unsignedDocument))
+            is SubmissionOutcome.Success -> try {
+                val credential = outcome.credentials.first().credential
+                documentManager.storeIssuedDocument(unsignedDocument, credential) { message ->
+                    logger?.d(TAG, message)
                 }
+                    .onSuccess { issuedDocumentIds.add(unsignedDocument.id) }
+                    .notifyListener(unsignedDocument)
+            } catch (e: Throwable) {
+                documentManager.deleteDocumentById(unsignedDocument.id)
+                listener(failure(e, unsignedDocument))
             }
 
             is SubmissionOutcome.Failed -> {
