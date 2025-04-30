@@ -19,9 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.DeferredCredentialQueryOutcome
 import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
-import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -39,7 +37,7 @@ internal class ProcessDeferredOutcome(
                 is DeferredCredentialQueryOutcome.Errored -> {
                     callback(
                         DeferredIssueResult.DocumentFailed(
-                            deferredDocument,
+                            document = deferredDocument,
                             cause = IllegalStateException(outcome.error)
                         )
                     )
@@ -48,8 +46,17 @@ internal class ProcessDeferredOutcome(
                 is DeferredCredentialQueryOutcome.IssuancePending -> {
                     deferredIssuanceContext?.let { ctx ->
                         documentManager.storeDeferredDocument(deferredDocument, ctx.toByteArray())
-                            .kotlinResult
-                            .notifyListener(deferredDocument)
+                            .kotlinResult.onSuccess { document ->
+                                callback(DeferredIssueResult.DocumentNotReady(document))
+                            }.onFailure { error ->
+                                documentManager.deleteDocumentById(deferredDocument.id)
+                                callback(
+                                    DeferredIssueResult.DocumentFailed(
+                                        document = deferredDocument,
+                                        cause = error
+                                    )
+                                )
+                            }
                     } ?: callback(
                         DeferredIssueResult.DocumentNotReady(deferredDocument)
                     )
@@ -59,36 +66,21 @@ internal class ProcessDeferredOutcome(
                     val credential = outcome.credentials.first().credential
                     documentManager.storeIssuedDocument(deferredDocument, credential) {
                         logger?.d(TAG, message = it)
-                    }.notifyListener(deferredDocument)
+                    }.onSuccess { document ->
+                        callback(DeferredIssueResult.DocumentIssued(document))
+                    }.onFailure { error ->
+                        documentManager.deleteDocumentById(deferredDocument.id)
+                        callback(
+                            DeferredIssueResult.DocumentFailed(
+                                document = deferredDocument,
+                                cause = error
+                            )
+                        )
+                    }
                 }
             }
         } catch (e: Throwable) {
             callback(DeferredIssueResult.DocumentFailed(deferredDocument, e))
         }
-    }
-
-
-    private fun Result<Document>.notifyListener(
-        deferredDocument: DeferredDocument,
-    ) = this.onSuccess { document ->
-        when (document) {
-            is DeferredDocument -> callback(DeferredIssueResult.DocumentNotReady(document))
-            is IssuedDocument -> callback(DeferredIssueResult.DocumentIssued(document))
-            else -> callback(
-                DeferredIssueResult.DocumentFailed(
-                    document, IllegalStateException(
-                        "Unexpected document state"
-                    )
-                )
-            )
-        }
-    }.onFailure { throwable ->
-        documentManager.deleteDocumentById(deferredDocument.id)
-        callback(
-            DeferredIssueResult.DocumentFailed(
-                deferredDocument,
-                cause = throwable
-            )
-        )
     }
 }
