@@ -5,7 +5,7 @@
 [androidJvm]\
 fun [withEncryptionMethods](with-encryption-methods.md)(encryptionMethods: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;): &lt;Error class: unknown class&gt;
 
-Sets the issuer url.
+Sets the list of supported encryption methods.
 
 #### Parameters
 
@@ -13,7 +13,17 @@ androidJvm
 
 | | |
 |---|---|
-| issuerUrl | the issuer url |
+| encryptionMethods | list of [EncryptionMethod](../../-encryption-method/index.md) |
 
 [androidJvm]\
 fun [withEncryptionMethods](with-encryption-methods.md)(vararg encryptionMethods: [EncryptionMethod](../../-encryption-method/index.md)): &lt;Error class: unknown class&gt;
+
+Sets the list of supported encryption methods.
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| encryptionMethods | variable argument of [EncryptionMethod](../../-encryption-method/index.md) |

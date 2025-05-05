@@ -5,7 +5,7 @@
 [androidJvm]\
 fun [withSchemes](with-schemes.md)(schemes: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;): &lt;Error class: unknown class&gt;
 
-Sets a list of schemes for openId4Vp. By default, the scheme &quot;mdoc-openid4vp&quot; is supported
+Sets a list of schemes for OpenID4VP. By default, the scheme &quot;mdoc-openid4vp&quot; is supported.
 
 #### Parameters
 
@@ -18,4 +18,12 @@ androidJvm
 [androidJvm]\
 fun [withSchemes](with-schemes.md)(vararg schemes: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): &lt;Error class: unknown class&gt;
 
-Sets a list of schemes for openId4Vp.
+Sets a list of schemes for OpenID4VP.
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| schemes | variables argument of schemes |
