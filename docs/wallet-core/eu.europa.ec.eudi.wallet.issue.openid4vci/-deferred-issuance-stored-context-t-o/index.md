@@ -24,7 +24,7 @@ data class [DeferredIssuanceStoredContextTO](index.md)(val credentialIssuerId: [
 | Name | Summary |
 |---|---|
 | [accessToken](access-token.md) | [androidJvm]<br>@SerialName(value = &quot;access_token&quot;)<br>val [accessToken](access-token.md): [AccessTokenTO](../-access-token-t-o/index.md) |
-| [authorizationTimestamp](authorization-timestamp.md) | [androidJvm]<br>@SerialName(value = &quot;authorization_timestamp&quot;)<br>val [authorizationTimestamp](authorization-timestamp.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html) |
+| [authorizationTimestamp](authorization-timestamp.md) | [androidJvm]<br>@SerialName(value = &quot;authorization_timestamGrantTO.fromGrant(grant)p&quot;)<br>val [authorizationTimestamp](authorization-timestamp.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html) |
 | [authServerId](auth-server-id.md) | [androidJvm]<br>@Required<br>@SerialName(value = &quot;auth_server_id&quot;)<br>val [authServerId](auth-server-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
 | [clientAttestationJwt](client-attestation-jwt.md) | [androidJvm]<br>@SerialName(value = &quot;client_attestation_jwt&quot;)<br>val [clientAttestationJwt](client-attestation-jwt.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null |
 | [clientAttestationPopAlgorithm](client-attestation-pop-algorithm.md) | [androidJvm]<br>@SerialName(value = &quot;client_attestation_pop_alg&quot;)<br>val [clientAttestationPopAlgorithm](client-attestation-pop-algorithm.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null |
