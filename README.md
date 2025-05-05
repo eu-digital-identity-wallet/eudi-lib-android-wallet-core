@@ -35,7 +35,7 @@ The library provides the following functionality:
     - [x] Support for multiple SecureArea implementations
 - Document issuance
     - [x] Support
-      for [OpenId4VCI (draft 14)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-14.html)
+      for [OpenId4VCI (draft 15)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html)
       document issuance
         - [x] Authorization Code Flow
         - [x] Pre-authorization Code Flow
@@ -45,6 +45,7 @@ The library provides the following functionality:
             - [x] Support for DPoP JWT in authorization
         - [x] Support for JWT proof types
         - [x] Support for deferred issuing
+        - [ ] Support for batch issuing
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -53,7 +54,7 @@ The library provides the following functionality:
         - [ ] NFC data transfer
         - [ ] Wifi-Aware data transfer
 - Remote document presentation
-    - [x] [OpenId4VP (draft 23)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
+    - [x] [OpenId4VP (draft 24)](https://openid.net/specs/openid-4-verifiable-presentations-1_0-24.html)
       document transfer
         - [x] For pre-registered verifiers
         - [x] Dynamic registration of verifiers
@@ -63,7 +64,7 @@ and can be included in any Android project that uses Android 8 (API level 26) or
 
 ## Disclaimer
 
-The released software is a initial development release version:
+The released software is an initial development release version:
 
 - The initial development release is an early endeavor reflecting the efforts of a short timeboxed
   period, and by no means can be considered as the final product.
@@ -237,7 +238,7 @@ val documents = wallet.getDocuments()
 ```
 
 You can also retrieve documents based on a predicate. The following snippet shows how to retrieve
-documents of mso_mdoc format of a specific docType:
+documents in mso_mdoc format of a specific docType:
 
 ```kotlin
 val documents = wallet.getDocuments { document ->
@@ -280,7 +281,7 @@ After the document is created, the user must retrieve the document's data from t
 it in the wallet using the storeIssuedDocument method.
 
 The following snippet demonstrates how to create a new document for the mso_mdoc format, using
-library's default implementation of CreateDocumentSettings.
+the library's default implementation of CreateDocumentSettings.
 
 ```kotlin
 try {
@@ -528,9 +529,8 @@ class by calling the `EudiWallet.createOpenId4VciManager` method.
 
 The library provides the `OpenId4VciManager.resolveDocumentOffer` method that resolves the
 credential offer URI.
-The method returns the resolved [
-`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt) object that
-contains the offer's data. The offer's data can be displayed to the user.
+The method returns the resolved [`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt) object that contains the offer's data. The offer's 
+data can be displayed to the user.
 
 The following example shows how to resolve a credential offer:
 
@@ -852,7 +852,7 @@ The library supports the following 3 ways to transfer documents:
     - RestAPI using app link
 3. Document retrieval using OpenID4VP
 
-Transfer process is asynchronous. During the transfer, events are emitted that indicate the current
+The transfer process is asynchronous. During the transfer, events are emitted that indicate the current
 state of the transfer. The following events are emitted:
 
 1. `TransferEvent.QrEngagementReady`: The QR code is ready to be displayed. Get the QR code from
