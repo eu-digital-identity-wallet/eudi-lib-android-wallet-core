@@ -39,7 +39,7 @@ class TransactionsDecorator(
     /**
      * Listener for logging transactions.
      */
-    internal val transactionListener: TransactionsListener =
+    internal var transactionListener: TransactionsListener =
         TransactionsListener(transactionLogger, documentManager, logger)
 
     init {
@@ -67,6 +67,16 @@ class TransactionsDecorator(
             transactionListener.logResponse(response, it)
             throw it
         }
+    }
+
+    override fun stopProximityPresentation(flags: Int) {
+        delegate.stopProximityPresentation(flags)
+        transactionListener.stop()
+    }
+
+    override fun stopRemotePresentation() {
+        delegate.stopRemotePresentation()
+        transactionListener.stop()
     }
 
     /**

@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.spyk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -129,11 +130,9 @@ class TransactionsListenerTest {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
         every { mockedLogBuilder.createEmptyPresentationLog() } returns emptyLog
-
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
+        
+        // Set the mocked logBuilder
+        listener.logBuilder = mockedLogBuilder
 
         // Test
         listener.onTransferEvent(TransferEvent.Connected)
@@ -161,15 +160,9 @@ class TransactionsListenerTest {
             )
         } returns logWithRelyingParty
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
-
-        // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, emptyLog)
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = emptyLog
 
         // Test
         listener.onTransferEvent(
@@ -201,15 +194,9 @@ class TransactionsListenerTest {
         } throws RuntimeException("Test exception")
         every { mockedLogBuilder.withError(any()) } returns errorLog
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
-
-        // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, emptyLog)
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = emptyLog
 
         // Test
         listener.onTransferEvent(
@@ -241,15 +228,9 @@ class TransactionsListenerTest {
 
         every { mockedLogBuilder.withError(any()) } returns errorLog
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
-
-        // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, emptyLog)
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = emptyLog
 
         // Test
         listener.onTransferEvent(TransferEvent.Error(Exception("Test error")))
@@ -267,10 +248,8 @@ class TransactionsListenerTest {
 
         every { mockedLogBuilder.withError(any()) } throws RuntimeException("Secondary error")
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
+        // Set the mocked logBuilder
+        listener.logBuilder = mockedLogBuilder
 
         // Test
         listener.onTransferEvent(TransferEvent.Error(Exception("Primary error")))
@@ -292,9 +271,7 @@ class TransactionsListenerTest {
         val initialLog = emptyLog
 
         // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, initialLog)
+        listener.log = initialLog
 
         // Test
         listener.onTransferEvent(otherEvent)
@@ -313,15 +290,9 @@ class TransactionsListenerTest {
 
         every { mockedLogBuilder.withResponse(any(), response, null) } returns updatedLog
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
-
-        // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, emptyLog)
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = emptyLog
 
         // Test
         listener.logResponse(response)
@@ -342,15 +313,9 @@ class TransactionsListenerTest {
 
         every { mockedLogBuilder.withResponse(any(), response, error) } returns updatedLog
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
-
-        // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, emptyLog)
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = emptyLog
 
         // Test
         listener.logResponse(response, error)
@@ -377,15 +342,9 @@ class TransactionsListenerTest {
         } throws RuntimeException("Test exception")
         every { mockedLogBuilder.withError(any()) } returns errorLog
 
-        // Use reflection to set the private logBuilder field
-        val field = TransactionsListener::class.java.getDeclaredField("logBuilder")
-        field.isAccessible = true
-        field.set(listener, mockedLogBuilder)
-
-        // Set initial log
-        val logField = TransactionsListener::class.java.getDeclaredField("log")
-        logField.isAccessible = true
-        logField.set(listener, emptyLog)
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = emptyLog
 
         // Test
         listener.logResponse(response)
@@ -402,5 +361,119 @@ class TransactionsListenerTest {
         verify(exactly = 1) { mockedLogBuilder.withError(emptyLog) }
         verify(exactly = 1) { transactionLogger.log(errorLog) }
         assertEquals(errorLog, listener.log)
+    }
+
+    @Test
+    fun `stop marks incomplete log with error and logs it`() {
+        // Setup
+        val mockedLogBuilder = mockk<TransactionLogBuilder>()
+        val errorLog = mockk<TransactionLog>()
+        
+        // Set status to Incomplete
+        val incompleteLog = TransactionLog(
+            timestamp = Instant.now().toEpochMilli(),
+            status = TransactionLog.Status.Incomplete,
+            type = TransactionLog.Type.Presentation,
+            relyingParty = null,
+            rawRequest = null,
+            rawResponse = null,
+            dataFormat = null,
+            sessionTranscript = null,
+            metadata = null
+        )
+        
+        every { mockedLogBuilder.withError(any()) } returns errorLog
+        
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = incompleteLog
+        
+        // Test
+        listener.stop()
+        
+        // Verify log marked with error and logged
+        verify(exactly = 1) { mockedLogBuilder.withError(incompleteLog) }
+        verify(exactly = 1) { transactionLogger.log(errorLog) }
+        assertEquals(errorLog, listener.log)
+    }
+    
+    @Test
+    fun `stop does not log completed transactions`() {
+        // Setup
+        val mockedLogBuilder = mockk<TransactionLogBuilder>()
+        
+        // Set status to Completed
+        val completedLog = TransactionLog(
+            timestamp = Instant.now().toEpochMilli(),
+            status = TransactionLog.Status.Completed,
+            type = TransactionLog.Type.Presentation,
+            relyingParty = null,
+            rawRequest = null,
+            rawResponse = null,
+            dataFormat = null,
+            sessionTranscript = null,
+            metadata = null
+        )
+        
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = completedLog
+        
+        // Test
+        listener.stop()
+        
+        // Verify no interactions with logBuilder or transactionLogger
+        verify(exactly = 0) { mockedLogBuilder.withError(any()) }
+        verify(exactly = 0) { transactionLogger.log(any()) }
+        assertEquals(completedLog, listener.log)
+    }
+    
+    @Test
+    fun `stop handles exceptions during error handling`() {
+        // Setup
+        val mockedLogBuilder = mockk<TransactionLogBuilder>()
+        
+        // Set status to Incomplete
+        val incompleteLog = TransactionLog(
+            timestamp = Instant.now().toEpochMilli(),
+            status = TransactionLog.Status.Incomplete,
+            type = TransactionLog.Type.Presentation,
+            relyingParty = null,
+            rawRequest = null,
+            rawResponse = null,
+            dataFormat = null,
+            sessionTranscript = null,
+            metadata = null
+        )
+        
+        every { mockedLogBuilder.withError(any()) } throws RuntimeException("Error during stop")
+        
+        // Set the mocked logBuilder and initial log
+        listener.logBuilder = mockedLogBuilder
+        listener.log = incompleteLog
+        
+        // Test
+        listener.stop()
+        
+        // Verify logger called with error
+        verify(exactly = 1) { 
+            logger.log(match { 
+                it.level == Logger.LEVEL_ERROR && 
+                it.message == "Failed to log transaction" &&
+                it.sourceMethod == "onTransferEvent: Disconnected"
+            })
+        }
+    }
+    
+    @Test
+    fun `onTransferEvent with Disconnected event calls stop method`() {
+        // Create a spy to verify the stop method is called
+        val spyListener = spyk(listener)
+        
+        // Test
+        spyListener.onTransferEvent(TransferEvent.Disconnected)
+        
+        // Verify stop is called
+        verify(exactly = 1) { spyListener.stop() }
     }
 }
