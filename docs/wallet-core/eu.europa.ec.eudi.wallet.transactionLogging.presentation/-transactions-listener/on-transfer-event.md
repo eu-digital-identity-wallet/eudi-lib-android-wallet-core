@@ -5,13 +5,13 @@
 [androidJvm]\
 open override fun [onTransferEvent](on-transfer-event.md)(event: TransferEvent)
 
-Listen for transfer events
+Handle transfer events
 
-Updates the log based on the event type.
+Updates the log based on the event type:
 
 - 
    TransferEvent.Connected - resets the log
 - 
-   TransferEvent.RequestReceived - updates the log with the request and relying party
+   TransferEvent.RequestReceived - updates with request and relying party info
 - 
-   TransferEvent.Error - updates the log with the error status
+   TransferEvent.Error - marks log with error status
