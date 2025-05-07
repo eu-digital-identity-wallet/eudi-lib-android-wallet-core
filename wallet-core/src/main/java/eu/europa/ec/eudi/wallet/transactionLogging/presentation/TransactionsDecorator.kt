@@ -28,7 +28,6 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
  * This class is responsible for logging the transactions that are sent through the
  * [PresentationManager]. It wraps the original [PresentationManager] and
  * adds logging functionality to it.
- *
  */
 class TransactionsDecorator(
     private val delegate: PresentationManager,
