@@ -4,3 +4,11 @@
 
 [androidJvm]\
 constructor(transactionLogger: [TransactionLogger](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md), documentManager: DocumentManager, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| documentManager | The manager responsible for accessing document details. |
