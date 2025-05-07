@@ -5,4 +5,4 @@
 [androidJvm]\
 open override fun [stopRemotePresentation](stop-remote-presentation.md)()
 
-Stops any ongoing remote presentation
+Stops the remote presentation using the delegate [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md) and ensures the transaction logging is appropriately finalized by calling [TransactionsListener.logStopped](../-transactions-listener/log-stopped.md).

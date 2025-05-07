@@ -364,7 +364,7 @@ class TransactionsListenerTest {
     }
 
     @Test
-    fun `stop marks incomplete log with error and logs it`() {
+    fun `logStopped marks incomplete log with error and logs it`() {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
         val errorLog = mockk<TransactionLog>()
@@ -389,7 +389,7 @@ class TransactionsListenerTest {
         listener.log = incompleteLog
         
         // Test
-        listener.stop()
+        listener.logStopped()
         
         // Verify log marked with error and logged
         verify(exactly = 1) { mockedLogBuilder.withError(incompleteLog) }
@@ -398,7 +398,7 @@ class TransactionsListenerTest {
     }
     
     @Test
-    fun `stop does not log completed transactions`() {
+    fun `logStopped does not log completed transactions`() {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
         
@@ -420,7 +420,7 @@ class TransactionsListenerTest {
         listener.log = completedLog
         
         // Test
-        listener.stop()
+        listener.logStopped()
         
         // Verify no interactions with logBuilder or transactionLogger
         verify(exactly = 0) { mockedLogBuilder.withError(any()) }
@@ -429,7 +429,7 @@ class TransactionsListenerTest {
     }
     
     @Test
-    fun `stop handles exceptions during error handling`() {
+    fun `logStopped handles exceptions during error handling`() {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
         
@@ -453,7 +453,7 @@ class TransactionsListenerTest {
         listener.log = incompleteLog
         
         // Test
-        listener.stop()
+        listener.logStopped()
         
         // Verify logger called with error
         verify(exactly = 1) { 
@@ -466,7 +466,7 @@ class TransactionsListenerTest {
     }
     
     @Test
-    fun `onTransferEvent with Disconnected event calls stop method`() {
+    fun `onTransferEvent with Disconnected event calls logStopped method`() {
         // Create a spy to verify the stop method is called
         val spyListener = spyk(listener)
         
@@ -474,6 +474,6 @@ class TransactionsListenerTest {
         spyListener.onTransferEvent(TransferEvent.Disconnected)
         
         // Verify stop is called
-        verify(exactly = 1) { spyListener.stop() }
+        verify(exactly = 1) { spyListener.logStopped() }
     }
 }

@@ -23,11 +23,16 @@ import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 
 /**
- * Decorator for [PresentationManager] that logs transactions.
+ * Decorator for [PresentationManager] that adds transaction logging capabilities.
  *
- * This class is responsible for logging the transactions that are sent through the
- * [PresentationManager]. It wraps the original [PresentationManager] and
- * adds logging functionality to it.
+ * This class wraps an existing [PresentationManager] instance and intercepts
+ * key operations like sending responses and stopping presentations to ensure
+ * that all relevant transaction details are logged via a [TransactionsListener].
+ *
+ * @property delegate The underlying [PresentationManager] instance that this decorator wraps.
+ * @param documentManager The manager for accessing document details, passed to the [TransactionsListener].
+ * @param transactionLogger The logger for persisting transaction logs, passed to the [TransactionsListener].
+ * @param logger Optional logger for internal logging of the decorator and listener.
  */
 class TransactionsDecorator(
     private val delegate: PresentationManager,
@@ -48,13 +53,15 @@ class TransactionsDecorator(
     }
 
     /**
-     * Sends a response and logs it.
+     * Sends a response using the delegate [PresentationManager] and logs the outcome.
      *
-     * This method is responsible for sending the response through the
-     * [PresentationManager] and logging the response.
+     * It attempts to send the response and then logs the response details.
+     * If sending the response is successful, it logs the response.
+     * If an error occurs while sending, it logs the response along with the error
+     * and then re-throws the original exception.
      *
-     * @param response the response to be sent
-     * @throws Exception if an error occurs while sending the response
+     * @param response The response to be sent.
+     * @throws Exception if an error occurs while sending the response via the delegate.
      */
     override fun sendResponse(response: Response) {
         runCatching {
@@ -69,20 +76,34 @@ class TransactionsDecorator(
         }
     }
 
+    /**
+     * Stops the proximity presentation using the delegate [PresentationManager]
+     * and ensures the transaction logging is appropriately finalized by calling [TransactionsListener.logStopped].
+     *
+     * @param flags Flags to control the stopping behavior, passed to the delegate.
+     */
     override fun stopProximityPresentation(flags: Int) {
         delegate.stopProximityPresentation(flags)
-        transactionListener.stop()
-    }
-
-    override fun stopRemotePresentation() {
-        delegate.stopRemotePresentation()
-        transactionListener.stop()
+        transactionListener.logStopped()
     }
 
     /**
-     * Removes all transfer event listeners and adds the transaction listener.
+     * Stops the remote presentation using the delegate [PresentationManager]
+     * and ensures the transaction logging is appropriately finalized by calling [TransactionsListener.logStopped].
+     */
+    override fun stopRemotePresentation() {
+        delegate.stopRemotePresentation()
+        transactionListener.logStopped()
+    }
+
+    /**
+     * Removes all transfer event listeners from the delegate [PresentationManager]
+     * and then re-adds the internal [transactionListener].
      *
-     * @return this instance of [TransactionsDecorator]
+     * This ensures that the [transactionListener] remains active even if other listeners
+     * are cleared.
+     *
+     * @return This instance of [TransactionsDecorator].
      */
     override fun removeAllTransferEventListeners() = apply {
         delegate.removeAllTransferEventListeners()

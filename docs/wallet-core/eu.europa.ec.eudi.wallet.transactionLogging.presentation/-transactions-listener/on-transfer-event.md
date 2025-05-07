@@ -5,13 +5,23 @@
 [androidJvm]\
 open override fun [onTransferEvent](on-transfer-event.md)(event: TransferEvent)
 
-Handle transfer events
+Handles transfer events to update the transaction log.
 
 Updates the log based on the event type:
 
 - 
-   TransferEvent.Connected - resets the log
+   TransferEvent.Connected: Resets the log for a new transaction.
 - 
-   TransferEvent.RequestReceived - updates with request and relying party info
+   TransferEvent.RequestReceived: Updates the log with request and relying party information.
 - 
-   TransferEvent.Error - marks log with error status
+   TransferEvent.Error: Marks the log with an error status and persists it.
+- 
+   TransferEvent.Disconnected: Calls [logStopped](log-stopped.md) to finalize logging for an incomplete transaction.
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| event | The transfer event to handle. |

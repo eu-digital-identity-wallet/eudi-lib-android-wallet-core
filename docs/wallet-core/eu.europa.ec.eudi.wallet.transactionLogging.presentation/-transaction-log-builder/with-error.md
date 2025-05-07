@@ -5,11 +5,13 @@
 [androidJvm]\
 fun [withError](with-error.md)(log: [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)): [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)
 
-Updates the transaction log with error status
+Updates the provided [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) to indicate an error occurred.
+
+Sets the log status to [TransactionLog.Status.Error](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/-status/-error/index.md) and updates the timestamp.
 
 #### Return
 
-Updated transaction log with error status
+An updated [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) instance with error status.
 
 #### Parameters
 
@@ -17,4 +19,4 @@ androidJvm
 
 | | |
 |---|---|
-| log | The current transaction log |
+| log | The current transaction log to update. |

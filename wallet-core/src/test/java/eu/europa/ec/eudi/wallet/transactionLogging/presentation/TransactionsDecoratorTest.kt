@@ -182,7 +182,7 @@ class TransactionsDecoratorTest {
 
         // Assert
         verify(exactly = 1) { presentationManager.stopProximityPresentation(flags) }
-        verify(exactly = 1) { spyListener.stop() }
+        verify(exactly = 1) { spyListener.logStopped() }
     }
 
     @Test
@@ -197,7 +197,7 @@ class TransactionsDecoratorTest {
 
         // Assert
         verify(exactly = 1) { presentationManager.stopRemotePresentation() }
-        verify(exactly = 1) { spyListener.stop() }
+        verify(exactly = 1) { spyListener.logStopped() }
     }
 
     // Helper methods

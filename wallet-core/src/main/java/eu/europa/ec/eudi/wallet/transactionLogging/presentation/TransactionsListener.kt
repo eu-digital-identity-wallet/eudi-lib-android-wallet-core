@@ -25,9 +25,14 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 
 /**
- * Listener for transaction logging
+ * Listener for transaction logging.
  *
- * Observes transfer events and logs transaction details using TransactionLogBuilder
+ * Observes transfer events and logs transaction details using [TransactionLogBuilder].
+ * It also handles logging when a presentation is stopped or an error occurs.
+ *
+ * @property transactionLogger The logger used to persist transaction logs.
+ * @param documentManager The manager responsible for accessing document details.
+ * @property logger Optional logger for internal logging of the listener itself.
  */
 class TransactionsListener(
     private val transactionLogger: TransactionLogger,
@@ -55,10 +60,15 @@ class TransactionsListener(
     internal var log: TransactionLog = logBuilder.createEmptyPresentationLog()
 
     /**
-     * Logs the response after sending it to the relying party
+     * Logs the response after sending it to the relying party.
      *
-     * @param response the response to be logged
-     * @param error the exception that occurred during sending the response, if any
+     * This method updates the current transaction log with the response details and
+     * any error that might have occurred during the sending process.
+     * If an error occurs during logging itself, it logs that error and marks the
+     * transaction log with an error status.
+     *
+     * @param response The response to be logged.
+     * @param error The exception that occurred during sending the response, if any.
      */
     fun logResponse(response: Response, error: Throwable? = null) {
         try {
@@ -71,7 +81,15 @@ class TransactionsListener(
         }
     }
 
-    fun stop() {
+    /**
+     * Logs that the current transaction has been stopped.
+     *
+     * If the current transaction log is incomplete (i.e., its status is
+     * [TransactionLog.Status.Incomplete]), this method marks the log with an
+     * [TransactionLog.Status.Error] status and persists it. This is typically
+     * called when a presentation is explicitly stopped or disconnected before completion.
+     */
+    fun logStopped() {
         try {
             // If the current log is incomplete and presentation is stopped
             if (log.status == TransactionLog.Status.Incomplete) {
@@ -84,12 +102,15 @@ class TransactionsListener(
     }
 
     /**
-     * Handle transfer events
+     * Handles transfer events to update the transaction log.
      *
      * Updates the log based on the event type:
-     * - [TransferEvent.Connected] - resets the log
-     * - [TransferEvent.RequestReceived] - updates with request and relying party info
-     * - [TransferEvent.Error] - marks log with error status
+     * - [TransferEvent.Connected]: Resets the log for a new transaction.
+     * - [TransferEvent.RequestReceived]: Updates the log with request and relying party information.
+     * - [TransferEvent.Error]: Marks the log with an error status and persists it.
+     * - [TransferEvent.Disconnected]: Calls [logStopped] to finalize logging for an incomplete transaction.
+     *
+     * @param event The transfer event to handle.
      */
     override fun onTransferEvent(event: TransferEvent) {
         when (event) {
@@ -116,12 +137,18 @@ class TransactionsListener(
                 }
             }
 
-            TransferEvent.Disconnected -> stop()
+            TransferEvent.Disconnected -> logStopped()
 
             else -> Unit
         }
     }
 
+    /**
+     * Logs an error that occurred within the [TransactionsListener].
+     *
+     * @param e The throwable to log.
+     * @param source The name of the method where the error occurred.
+     */
     private fun logError(e: Throwable, source: String) {
         logger?.log(
             Logger.Record(
