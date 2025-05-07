@@ -31,6 +31,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.spyk
 import io.mockk.verify
 import io.mockk.verifyOrder
 import org.junit.Assert.assertEquals
@@ -166,6 +167,37 @@ class TransactionsDecoratorTest {
 
         // Assert
         verify(exactly = 1) { presentationManager.removeTransferEventListener(mockListener) }
+    }
+
+    @Test
+    fun `stopProximityPresentation delegates to presentation manager and calls listener stop`() {
+        // Arrange
+        val flags = 0
+        val spyListener = spyk(transactionsDecorator.transactionListener)
+        transactionsDecorator.transactionListener = spyListener
+        every { presentationManager.stopProximityPresentation(any()) } just Runs
+
+        // Act
+        transactionsDecorator.stopProximityPresentation(flags)
+
+        // Assert
+        verify(exactly = 1) { presentationManager.stopProximityPresentation(flags) }
+        verify(exactly = 1) { spyListener.stop() }
+    }
+
+    @Test
+    fun `stopRemotePresentation delegates to presentation manager and calls listener stop`() {
+        // Arrange
+        val spyListener = spyk(transactionsDecorator.transactionListener)
+        transactionsDecorator.transactionListener = spyListener
+        every { presentationManager.stopRemotePresentation() } just Runs
+
+        // Act
+        transactionsDecorator.stopRemotePresentation()
+
+        // Assert
+        verify(exactly = 1) { presentationManager.stopRemotePresentation() }
+        verify(exactly = 1) { spyListener.stop() }
     }
 
     // Helper methods

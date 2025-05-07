@@ -44,7 +44,10 @@ class TransactionsListener(
         }
     }
 
-    private val logBuilder = TransactionLogBuilder(metadataResolver)
+    /**
+     * Log builder for creating and updating transaction logs
+     */
+    internal var logBuilder = TransactionLogBuilder(metadataResolver)
 
     /**
      * The transaction log for the current transaction
@@ -65,6 +68,18 @@ class TransactionsListener(
             logError(e, "logResponse")
             log = logBuilder.withError(log)
             transactionLogger.log(log)
+        }
+    }
+
+    fun stop() {
+        try {
+            // If the current log is incomplete and presentation is stopped
+            if (log.status == TransactionLog.Status.Incomplete) {
+                log = logBuilder.withError(log)
+                transactionLogger.log(log)
+            }
+        } catch (e: Throwable) {
+            logError(e, "onTransferEvent: Disconnected")
         }
     }
 
@@ -100,6 +115,8 @@ class TransactionsListener(
                     logError(e, "onTransferEvent: Error")
                 }
             }
+
+            TransferEvent.Disconnected -> stop()
 
             else -> Unit
         }
