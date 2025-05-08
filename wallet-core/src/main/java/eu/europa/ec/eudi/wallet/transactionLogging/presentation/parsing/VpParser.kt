@@ -71,7 +71,7 @@ fun parseVp(
                 return parseMsoMdocFromVp(vp = verifiablePresentation, metadata = metadata)
             }
 
-            "vc+sd-jwt" -> {
+            "dc+sd-jwt", "vc+sd-jwt" -> {
                 // if we cannot get sd-jwt for the one and only verifiable presentation
                 // we need to return empty list since there is nothing else to parse
                 return parseVcSdJwt(
@@ -111,7 +111,7 @@ fun parseVp(
                         parseMsoMdocFromVp(vp, listOf(metadata))
                     }
 
-                    "vc+sd-jwt" -> vpAndMetadata.map { (vp, metadata) ->
+                    "dc+sd-jwt", "vc+sd-jwt" -> vpAndMetadata.map { (vp, metadata) ->
                         parseVcSdJwt(vp, metadata)
                     }
 

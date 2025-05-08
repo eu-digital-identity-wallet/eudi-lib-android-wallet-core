@@ -92,7 +92,7 @@ class OpenId4VpRequestProcessor(
 
             val requestedDocuments = RequestedDocuments(
                 presentationDefinition.inputDescriptors
-                    // NOTE: mso_mdoc and vc+sd-jwt are supported, other formats are ignored
+                    // NOTE: mso_mdoc and dc+sd-jwt are supported, other formats are ignored
                     .filter {
                         it.format?.jsonObject()?.keys?.first() in listOf(
                             FORMAT_MSO_MDOC, FORMAT_SD_JWT_VC
