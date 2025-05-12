@@ -522,10 +522,38 @@ The library provides issuing documents using OpenID4VCI protocol. To issue a doc
 using this functionality, EudiWallet must be initialized with the `openId4VciConfig` configuration,
 during configuration. See the [Initialize the library](#initialize-the-library) section.
 
-#### Resolving Credential offer
+#### Creating an OpenId4VciManager
 
 First, you need an instance of the `OpenId4VciManager` class. You can create an instance of the
-class by calling the `EudiWallet.createOpenId4VciManager` method.
+class by calling the `EudiWallet.createOpenId4VciManager` method:
+
+```kotlin
+// Create an instance of OpenId4VciManager using wallet-wide configuration
+val openId4VciManager = wallet.createOpenId4VciManager()
+
+// Or provide a specific configuration for this instance
+val customConfig = OpenId4VciManager.Config.Builder()
+    .withIssuerUrl("https://custom-issuer.com")
+    .withClientId("custom-client-id")
+    .withAuthFlowRedirectionURI("eudi-openid4ci://custom-authorize")
+    .build()
+    
+val openId4VciManagerWithCustomConfig = wallet.createOpenId4VciManager(customConfig)
+```
+
+##### How configuration is resolved
+
+The `createOpenId4VciManager` method can accept an optional `OpenId4VciManager.Config` parameter:
+
+1. If you provide a configuration parameter, that configuration will be used for the created manager instance.
+2. If you don't provide a configuration parameter, the method will attempt to use the configuration from `EudiWalletConfig.openId4VciConfig`.
+3. If neither are provided, the method will throw an `IllegalStateException` with a message indicating that you need to provide configuration either as a method parameter or in the `EudiWalletConfig`.
+
+This flexibility allows you to:
+- Use a single global configuration for all OpenId4VCI operations by configuring it once in `EudiWalletConfig`
+- Override the global configuration for specific operations by passing a custom configuration
+
+#### Resolving Credential offer
 
 The library provides the `OpenId4VciManager.resolveDocumentOffer` method that resolves the
 credential offer URI.

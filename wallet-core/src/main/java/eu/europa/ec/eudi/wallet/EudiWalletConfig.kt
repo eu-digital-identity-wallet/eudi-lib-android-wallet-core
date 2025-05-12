@@ -111,11 +111,16 @@ import kotlin.time.Duration.Companion.minutes
  */
 
 class EudiWalletConfig {
+    /**
+     * Configuration for OpenID4VCI operations. This can be set using [configureOpenId4Vci] methods.
+     * When null, OpenID4VCI functionality requires configuration to be passed directly to methods that use it.
+     */
     var openId4VciConfig: OpenId4VciManager.Config? = null
         private set
 
     /**
-     * Configure OpenID4VCI.
+     * Configure OpenID for Verifiable Credential Issuance (OpenID4VCI).
+     * This configuration is used by [EudiWallet.createOpenId4VciManager] when no specific config is provided.
      *
      * @see OpenId4VciManager.Config
      * @see OpenId4VciManager.Config.Builder
@@ -128,12 +133,13 @@ class EudiWalletConfig {
     }
 
     /**
-     * Configure OpenID4VCI using a [OpenId4VciManager.Config.Builder] as a lambda with receiver.
+     * Configure OpenID for Verifiable Credential Issuance (OpenID4VCI) using a builder pattern.
+     * This configuration is used by [EudiWallet.createOpenId4VciManager] when no specific config is provided.
      *
      * @see OpenId4VciManager.Config
      * @see OpenId4VciManager.Config.Builder
      *
-     * @param openId4VciConfig the OpenID4VCI configuration lambda
+     * @param openId4VciConfig the OpenID4VCI configuration lambda with [OpenId4VciManager.Config.Builder] as receiver
      * @return the [EudiWalletConfig] instance
      */
     fun configureOpenId4Vci(openId4VciConfig: OpenId4VciManager.Config.Builder.() -> Unit) = apply {

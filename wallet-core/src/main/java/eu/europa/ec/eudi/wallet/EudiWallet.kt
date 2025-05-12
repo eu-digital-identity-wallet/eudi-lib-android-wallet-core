@@ -110,11 +110,18 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
     fun setTrustedReaderCertificates(@RawRes vararg rawRes: Int): EudiWallet
 
     /**
-     * Create an instance of [OpenId4VciManager] for the wallet to interact with the OpenId4Vci service
+     * Creates an instance of [OpenId4VciManager] for the wallet to interact with the OpenID for Verifiable Credential Issuance service.
      *
-     * @return an instance of [OpenId4VciManager]
+     * The configuration can be provided in two ways:
+     * 1. As a parameter to this method
+     * 2. From the wallet's [EudiWalletConfig.openId4VciConfig]
+     *
+     * @param config Optional specific configuration for this manager instance. If null, the configuration 
+     *               from [EudiWalletConfig.openId4VciConfig] will be used.
+     * @return An instance of [OpenId4VciManager]
+     * @throws IllegalStateException If neither a config parameter is provided nor a configuration exists in [EudiWalletConfig]
      */
-    fun createOpenId4VciManager(): OpenId4VciManager
+    fun createOpenId4VciManager(config: OpenId4VciManager.Config? = null): OpenId4VciManager
 
     /**
      * Resolve the status of the document with the given [documentId]
@@ -330,17 +337,6 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 readerTrustStore = readerTrustStoreToUse
             ).wrapWithTrasactionLogger(documentManagerToUse)
 
-            val openId4VciManagerFactory = {
-                config.openId4VciConfig?.let { openId4VciConfig ->
-                    OpenId4VciManager(context) {
-                        documentManager(documentManagerToUse)
-                        config(openId4VciConfig)
-                        logger(loggerObj)
-                        ktorHttpClientFactory?.let { ktorHttpClientFactory(it) }
-                    }
-                } ?: throw IllegalStateException("OpenId4Vp configuration is missing")
-            }
-
             val documentStatusResolverToUse = getDocumentStatusResolver()
 
             return EudiWalletImpl(
@@ -351,7 +347,6 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 transferManager = transferManager,
                 logger = loggerObj,
                 readerTrustStoreConsumer = { presentationManagerToUse.readerTrustStore = it },
-                openId4VciManagerFactory = openId4VciManagerFactory,
                 transactionLogger = transactionLogger,
                 documentStatusResolver = documentStatusResolverToUse
             )
