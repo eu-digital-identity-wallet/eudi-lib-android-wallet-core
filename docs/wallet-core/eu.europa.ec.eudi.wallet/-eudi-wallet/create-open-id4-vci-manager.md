@@ -3,7 +3,7 @@
 # createOpenId4VciManager
 
 [androidJvm]\
-abstract fun [createOpenId4VciManager](create-open-id4-vci-manager.md)(): [OpenId4VciManager](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/index.md)
+abstract fun [createOpenId4VciManager](create-open-id4-vci-manager.md)(config: [OpenId4VciManager.Config](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/index.md)? = null): [OpenId4VciManager](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/index.md)
 
 Create an instance of [OpenId4VciManager](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/index.md) for the wallet to interact with the OpenId4Vci service
 

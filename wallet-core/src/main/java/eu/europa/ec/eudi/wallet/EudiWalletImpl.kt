@@ -50,7 +50,6 @@ class EudiWalletImpl internal constructor(
     override val logger: Logger,
     override val documentStatusResolver: DocumentStatusResolver,
     internal val readerTrustStoreConsumer: ((ReaderTrustStore) -> Unit),
-    internal val openId4VciManagerFactory: (() -> OpenId4VciManager),
     val transactionLogger: TransactionLogger?,
 ) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
     SampleDocumentManager by SampleDocumentManagerImpl(documentManager),
@@ -69,7 +68,23 @@ class EudiWalletImpl internal constructor(
         readerTrustStoreConsumer(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }))
     }
 
-    override fun createOpenId4VciManager(): OpenId4VciManager {
-        return openId4VciManagerFactory()
+    /**
+     * Creates an instance of [OpenId4VciManager] for interacting with the OpenID for Verifiable Credential Issuance protocol.
+     *
+     * @param config Optional configuration for the OpenId4VciManager. If null, the configuration from [EudiWalletConfig.openId4VciConfig]
+     *               will be used. If both are null, an [IllegalStateException] is thrown.
+     * @return An instance of [OpenId4VciManager] configured with the provided or default settings
+     * @throws IllegalStateException If neither a config parameter is provided nor a configuration exists in [EudiWalletConfig]
+     */
+    override fun createOpenId4VciManager(config: OpenId4VciManager.Config?): OpenId4VciManager {
+        return (config ?: this.config.openId4VciConfig)?.let { openId4VciConfig ->
+            OpenId4VciManager(context) {
+                documentManager(this@EudiWalletImpl)
+                config(openId4VciConfig)
+                logger(this@EudiWalletImpl.logger)
+                ktorHttpClientFactory?.let { ktorHttpClientFactory(it) }
+            }
+        } ?: throw IllegalStateException("OpenId4Vci configuration is missing. Please provide a config parameter or configure it in EudiWalletConfig.")
     }
 }
+
