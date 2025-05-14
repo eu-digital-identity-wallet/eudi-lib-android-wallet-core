@@ -113,7 +113,8 @@ import kotlin.time.Duration.Companion.minutes
 class EudiWalletConfig {
     /**
      * Configuration for OpenID4VCI operations. This can be set using [configureOpenId4Vci] methods.
-     * When null, OpenID4VCI functionality requires configuration to be passed directly to methods that use it.
+     * When null, OpenID4VCI functionality requires configuration to be passed directly to methods that use it,
+     * such as [EudiWallet.createOpenId4VciManager].
      */
     var openId4VciConfig: OpenId4VciManager.Config? = null
         private set
@@ -372,3 +373,4 @@ class EudiWalletConfig {
             EudiWalletConfig().apply(configure)
     }
 }
+
