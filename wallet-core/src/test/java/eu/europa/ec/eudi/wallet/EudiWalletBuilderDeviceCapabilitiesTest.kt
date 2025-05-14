@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2024 European Commission
- *
+ * Copyright (c) 2024-2025 European Commission
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -63,12 +63,13 @@ class EudiWalletBuilderDeviceCapabilitiesTest(
         val context: Context = mockk {
             every { applicationContext } returns this
         }
+        val logger = Logger { record ->
+            println(record.message)
+        }
 
         val builder = spyk(
             EudiWallet.Builder(context, config)
-                .withLogger(Logger { record ->
-                    println(record.message)
-                })
+                .withLogger(logger)
         ) {
             every { capabilities } returns mockk {
                 every { secureLockScreenSetup } returns deviceSecureLockScreenSetup
@@ -76,8 +77,8 @@ class EudiWalletBuilderDeviceCapabilitiesTest(
             }
         }
 
-        builder.ensureUserAuthIsSupported()
-        builder.ensureStrongBoxIsSupported()
+        builder.ensureUserAuthIsSupported(logger)
+        builder.ensureStrongBoxIsSupported(logger)
 
         assertEquals(expectedUserAuthenticationRequired, config.userAuthenticationRequired)
         assertEquals(expectedUseStrongBoxForKeys, config.useStrongBoxForKeys)
