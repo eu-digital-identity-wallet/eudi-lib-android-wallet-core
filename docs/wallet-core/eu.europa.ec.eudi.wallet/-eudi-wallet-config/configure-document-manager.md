@@ -6,11 +6,11 @@
 
 @[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)
 
-fun [configureDocumentManager](configure-document-manager.md)(storageDir: [File](https://developer.android.com/reference/kotlin/java/io/File.html), identifier: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null, encryptDocuments: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = true): &lt;Error class: unknown class&gt;
+fun [configureDocumentManager](configure-document-manager.md)(storagePath: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), identifier: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null): &lt;Error class: unknown class&gt;
 
 Configure the built-in document manager.
 
-Allowing to configure the documents storage directory, the document manager identifier and whether to encrypt documents in storage. The default document manager identifier is set to [DEFAULT_DOCUMENT_MANAGER_IDENTIFIER](-companion/-d-e-f-a-u-l-t_-d-o-c-u-m-e-n-t_-m-a-n-a-g-e-r_-i-d-e-n-t-i-f-i-e-r.md).
+Allowing to configure the documents storage path and the document manager identifier. The default document manager identifier is set to [DEFAULT_DOCUMENT_MANAGER_IDENTIFIER](-companion/-d-e-f-a-u-l-t_-d-o-c-u-m-e-n-t_-m-a-n-a-g-e-r_-i-d-e-n-t-i-f-i-e-r.md).
 
 #### Return
 
@@ -22,13 +22,12 @@ androidJvm
 
 | | |
 |---|---|
-| storageDir | the documents storage directory |
+| storagePath | the documents storage path |
 | identifier | the document manager identifier |
-| encryptDocuments | whether to encrypt documents in storage |
 
 #### See also
 
 | |
 |---|
 | DocumentManagerImpl |
-| AndroidStorageEngine |
+| Storage |

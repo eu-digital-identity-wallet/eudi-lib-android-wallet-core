@@ -12,7 +12,7 @@ The [EudiWallet](../index.md) instance will be created based on the configuratio
 The [EudiWallet](../index.md) instance will be created with the following default implementations if not set:
 
 - 
-   AndroidStorageEngine for storing/retrieving documents
+   AndroidStorage for storing/retrieving documents
 - 
    AndroidKeystoreSecureArea for managing documents' keys
 - 
@@ -26,7 +26,7 @@ The [EudiWallet](../index.md) instance will be created with the following defaul
 - 
    [eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverImpl](../../../eu.europa.ec.eudi.wallet.statium/-document-status-resolver-impl/index.md) for resolving the status of documents
 
-**Note**: The [EudiWalletConfig.documentsStorageDir](../../-eudi-wallet-config/documents-storage-dir.md) is not set, the default storage directory will be used which is the application's no backup files directory.
+**Note**: The [EudiWalletConfig.documentsStoragePath](../../-eudi-wallet-config/documents-storage-path.md) is not set, the default storage path will be used which is the application's no backup files directory.
 
 **Note**: The [EudiWalletConfig.userAuthenticationRequired](../../-eudi-wallet-config/user-authentication-required.md) is set to true and the device is not secured with a PIN, pattern, or password, the configuration will be updated to set the user authentication required to false.
 

@@ -8,17 +8,25 @@
 
 @get:[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-val Document.[DefaultKeyUnlockData](-default-key-unlock-data.md): AndroidKeystoreKeyUnlockData?
+val Document.[~~DefaultKeyUnlockData~~](-default-key-unlock-data.md): AndroidKeystoreKeyUnlockData?
 
-Returns the default AndroidKeystoreKeyUnlockData for the Document instance. The default key unlock data is based on the Document.keyAlias.
+---
+
+### Deprecated
+
+Use getDefaultKeyUnlockData(document) instead
+
+---
+
+Returns the default AndroidKeystoreKeyUnlockData for the Document instance. The default key unlock data is based on the Document.keyAlias. This is applicable only if the document's key requires user authentication.
 
 #### Receiver
 
-the Document instance
+the Document instance.
 
 #### Return
 
-the default AndroidKeystoreKeyUnlockData for the Document instance if document requires user authentication
+The default AndroidKeystoreKeyUnlockData for the Document instance if document requires user authentication, otherwise `null`.
 
 #### See also
 
@@ -31,4 +39,4 @@ the default AndroidKeystoreKeyUnlockData for the Document instance if document r
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea |
+| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea. |

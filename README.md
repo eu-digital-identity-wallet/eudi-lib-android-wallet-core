@@ -33,6 +33,7 @@ The library provides the following functionality:
     - [x] Documents' Key creation and management with Android Keystore by default
     - [x] Support for custom SecureArea implementations
     - [x] Support for multiple SecureArea implementations
+    - [x] Support for multiple credentials for the same document
 - Document issuance
     - [x] Support
       for [OpenId4VCI (draft 15)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html)
@@ -45,7 +46,7 @@ The library provides the following functionality:
             - [x] Support for DPoP JWT in authorization
         - [x] Support for JWT proof types
         - [x] Support for deferred issuing
-        - [ ] Support for batch issuing
+        - [x] Support for batch issuing
 - Proximity document presentation
     - [x] Support for ISO-18013-5 device retrieval
         - [x] QR device engagement
@@ -238,16 +239,32 @@ wallet-core library with custom SecureArea implementations.
 
 The library provides a set of methods to work with documents.
 
+#### Retrieving documents
+
+The following snippet shows how to retrieve all documents:
+
 ```kotlin
+// Get all documents in the wallet
 val documents = wallet.getDocuments()
 ```
 
-You can also retrieve documents based on a predicate. The following snippet shows how to retrieve
-documents in mso_mdoc format of a specific docType:
+You can also retrieve documents based on a predicate. The following snippet shows how to retrieve documents of mso_mdoc format of a specific docType:
 
 ```kotlin
+// Get documents filtered by a specific docType
 val documents = wallet.getDocuments { document ->
-    (document.format as MsoMdocFormat).docType == "eu.europa.ec.eudi.pid.1"
+    (document.format as? MsoMdocFormat)?.docType == "eu.europa.ec.eudi.pid.1"
+}
+
+// Get only issued documents (excluding deferred documents)
+val issuedDocuments = wallet.getDocuments { document ->
+    document is IssuedDocument
+}
+
+// Combine multiple conditions
+val specificDocuments = wallet.getDocuments { document ->
+    document is IssuedDocument && 
+    (document.format as? SdJwtVcFormat)?.vct == "IdentityCredential" 
 }
 ```
 
@@ -256,7 +273,45 @@ The following snippet shows how to retrieve a document by its id:
 ```kotlin
 val documentId = "some_document_id"
 val document: Document? = wallet.getDocumentById(documentId)
+
+// You can also cast to a specific document type if needed
+val issuedDocument = wallet.getDocumentById(documentId) as? IssuedDocument
+val deferredDocument = wallet.getDocumentById(documentId) as? DeferredDocument
 ```
+
+##### Working with Credentials in Issued Documents
+
+Issued documents provide methods to work with individual credentials:
+
+```kotlin
+val issuedDocument = documentManager.getDocumentById("document_id") as? IssuedDocument
+requireNotNull(issuedDocument)
+
+// Get the number of valid credentials for the document
+val numberOfValidCredentials = issuedDocument.credentialsCount()
+
+// Get a list of all valid credentials for the document
+val validCredentials = issuedDocument.getCredentials()
+
+// Find an available credential (automatically selects the best one based on policy)
+val credential = issuedDocument?.findCredential()
+
+// Use a credential and apply the policy (e.g., delete if OneTimeUse, increment usage if RotateUse)
+issuedDocument?.consumingCredential {
+    // Use the credential for presentation or other operations
+    // The credential policy will be applied automatically after this block
+    performPresentationWithCredential(this)
+}
+```
+
+The `findCredential()` method intelligently selects credentials based on:
+
+- Credential policy (e.g., OneTimeUse or RotateUse)
+- Usage count (selecting least-used credentials first in RotateUse policy)
+- Validity period (ensuring the credential is currently valid)
+- Availability (excluding deleted or invalidated credentials)
+
+#### Deleting documents
 
 To delete a document, use the following code snippet:
 
@@ -270,158 +325,11 @@ try {
 }
 ```
 
-### Creating and storing a new document
-
-Adding a new document to the wallet is a two-step process. First, a new document must be
-created using the `createDocument` method. The method returns an `UnsignedDocument` object that
-contains the keys that will be used for signing the proof of possession for the issuer. Creating a
-new document requires the document format and the create key settings. The create key settings can
-be used to specify the way the keys are created.
-
-When using the built-in `AndroidKeystoreSecureArea` implementation of the library, the
-`wallet.getDefaultCreateDocumentSettings()` extension can be used to create an instance of the
-appropriate `CreateDocumentSettings` class.
-
-After the document is created, the user must retrieve the document's data from the issuer and store
-it in the wallet using the storeIssuedDocument method.
-
-The following snippet demonstrates how to create a new document for the mso_mdoc format, using
-the library's default implementation of CreateDocumentSettings.
-
-```kotlin
-try {
-    // create a new document
-    // Construct the CreateDocumentSettings object
-    val createSettings = wallet.getDefaultCreateDocumentSettings()
-
-    val createDocumentResult = wallet.createDocument(
-        format = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1"),
-        createSettings = createSettings
-    )
-    val unsignedDocument = createDocumentResult.getOrThrow()
-    val publicKeyBytes = unsignedDocument.publicKeyCoseBytes
-
-    // prepare keyUnlockData to unlock the key
-    // here we use the default key unlock data for the document
-    // provided by the library
-    val keyUnlockData = unsignedDocument.DefaultKeyUnlockData
-    // proof of key possession
-    // Sign the documents public key with the private key
-    // before sending it to the issuer
-    val signatureResult =
-        unsignedDocument.sign(publicKeyBytes, keyUnlockData = keyUnlockData)
-    val signature = signatureResult.getOrThrow().toCoseEncoded()
-
-    // send the public key and the signature to the issuer
-    // and get the document data
-    val documentData = sendToIssuer(
-        publicKeyCoseBytes = publicKeyBytes,
-        signatureCoseBytes = signature
-    )
-
-    // store the issued document with the document data received from the issuer
-    val storeResult =
-        wallet.storeIssuedDocument(unsignedDocument, documentData)
-
-    // get the issued document
-    val issuedDocument = storeResult.getOrThrow()
-} catch (e: Throwable) {
-    // Handle the exception
-}
-
-// ...
-
-fun sendToIssuer(publicKeyCoseBytes: ByteArray, signatureCoseBytes: ByteArray): ByteArray {
-    TODO("Send publicKey and proof of possession signature to issuer and retrieve document's data")
-}
-```
-
-**Important!:** In the case of `DocumentFormat.MsoMdoc`, `DocumentManager.storeIssuedDocument()`
-method expects document's data to be in CBOR bytes and have the IssuerSigned structure according to
-ISO 23220-4.
-
-Currently, the library does not support IssuerSigned structure without the `nameSpaces` field.
-
-The following CDDL schema describes the structure of the IssuerSigned structure:
-
-```cddl
-IssuerSigned = {
- ?"nameSpaces" : IssuerNameSpaces, ; Returned data elements
- "issuerAuth" : IssuerAuth ; Contains the mobile security object (MSO) for issuer data authentication
-}
-IssuerNameSpaces = { ; Returned data elements for each namespace
- + NameSpace => [ + IssuerSignedItemBytes ]
-}
-IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)
-IssuerSignedItem = {
- "digestID" : uint, ; Digest ID for issuer data authentication
- "random" : bstr, ; Random value for issuer data authentication
- "elementIdentifier" : DataElementIdentifier, ; Data element identifier
- "elementValue" : DataElementValue ; Data element value
-}
-IssuerAuth = COSE_Sign1 ; The payload is MobileSecurityObjectBytes
-```
-
-#### Working with sample documents
-
-The wallet-core library provides a method to load sample documents easily. This feature is useful
-for demonstration or testing purposes.
-
-Currently, the library supports loading sample documents in MsoMdoc format.
-
-The following code snippet shows how to load sample documents:
-
-```kotlin
-val sampleMdocDocuments: ByteArray = readFileWithSampleData()
-
-val createSettings = wallet.getDefaultCreateDocumentSettings()
-val loadResult = wallet.loadMdocSampleDocuments(
-    sampleData = sampleMdocDocuments,
-    createSettings = createSettings,
-    documentNamesMap = mapOf(
-        "eu.europa.ec.eudi.pid.1" to "EU PID",
-        "org.iso.18013.5.1.mDL" to "mDL"
-    )
-)
-
-val documentIds: List<DocumentId> = loadResult.getOrThrow()
-
-// ...
-
-fun readFileWithSampleData(): ByteArray = TODO("Reads the bytes from file with sample documents")
-```
-
-Sample documents must be in CBOR format with the following structure:
-
-```
-Data = {
- "documents" : [+Document] ; Sample documents
-}
-Document = {
- "docType" : DocType, ; Document type returned
- "issuerSigned" : IssuerSigned ; Data elements
-}
-IssuerSigned = {
- "nameSpaces" : IssuerNameSpaces, ; Returned data elements
-}
-IssuerNameSpaces = { ; Returned data elements for each namespace
- + NameSpace => [ + IssuerSignedItemBytes ]
-}
-IssuerSignedItem = {
- "digestID" : uint, ; Digest ID for issuer data authentication
- "random" : bstr, ; Random value for issuer data authentication
- "elementIdentifier" : DataElementIdentifier, ; Data element identifier
- "elementValue" : DataElementValue ; Data element value
-}
-```
-
 #### Resolving document status
 
-The wallet-core library provides functionality to check the revocation status of documents. This is
-useful to verify if a document is still valid or has been revoked.
+The wallet-core library provides functionality to check the revocation status of documents. This is useful to verify if a document is still valid or has been revoked.
 
-To check the status of a document, you can use the `resolveStatusById` method on the `EudiWallet`
-instance.
+To check the status of a document, you can use the `resolveStatusById` method on the `EudiWallet` instance:
 
 ```kotlin
 // Get a document's ID
@@ -431,9 +339,9 @@ val documentId = "some_document_id"
 wallet.resolveStatusById(documentId).fold(
     onSuccess = { status ->
         when (status) {
-            Status.Valid -> println("Token is valid")
-            Status.Invalid -> println("Token is invalid")
-            Status.Suspended -> println("Token is suspended")
+            Status.Valid -> println("Document is valid")
+            Status.Invalid -> println("Document is invalid")
+            Status.Suspended -> println("Document is suspended")
             is Status.ApplicationSpecific -> println("Application-specific status: ${status.value}")
             is Status.Reserved -> println("Reserved status: ${status.value}")
         }
@@ -460,22 +368,11 @@ if (document != null) {
 }
 ```
 
-By default, the library uses a built-in implementation of `DocumentStatusResolver` that works with
-token status lists as specified in various credential formats. The resolver supports both MSO MDOC
-and SD-JWT VC document formats.
+For more details on document management, see the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.0/README.md).
 
-If needed, you can provide your own custom implementation of `DocumentStatusResolver` during wallet
-initialization:
+##### Document Status Resolution Configuration
 
-```kotlin
-val wallet = EudiWallet(context, config) {
-    // Custom HTTP client factory for status resolution if needed
-    withKtorHttpClientFactory { HttpClient(OkHttp) { /* custom configuration */ } }
-
-    // Or a completely custom document status resolver
-    withDocumentStatusResolver(myCustomDocumentStatusResolver)
-}
-```
+By default, the library uses a built-in implementation of `DocumentStatusResolver` that works with token status lists as specified in various credential formats. The resolver supports both MSO MDOC and SD-JWT VC document formats.
 
 ###### Basic Configuration
 
@@ -490,7 +387,19 @@ val config = EudiWalletConfig()
 
 ###### Custom DocumentStatusResolver Implementation
 
-For more advanced customization, you can create your own DocumentStatusResolver using the builder:
+For more advanced customization, you can provide your own custom implementation of `DocumentStatusResolver` during wallet initialization:
+
+```kotlin
+val wallet = EudiWallet(context, config) {
+    // Custom HTTP client factory for status resolution if needed
+    withKtorHttpClientFactory { HttpClient(OkHttp) { /* custom configuration */ } }
+
+    // Or a completely custom document status resolver
+    withDocumentStatusResolver(myCustomDocumentStatusResolver)
+}
+```
+
+You can also create your own DocumentStatusResolver using the builder:
 
 ```kotlin
 // Create a custom DocumentStatusResolver
@@ -517,9 +426,6 @@ val wallet = EudiWallet(context, config) {
     withDocumentStatusResolver(customResolver)
 }
 ```
-
-or even provide a custom implementation of `DocumentStatusResolver` interface.
-
 
 ### Issue document using OpenID4VCI
 
@@ -644,104 +550,97 @@ The following example shows how to issue a document using OpenID4VCI:
 val onIssueEvent = OnIssueEvent { event ->
     when (event) {
         is IssueEvent.Started -> {
-            // indicates that OpenId4VCI process is started
-            // and holds the total number of documents to be issued
-            val numberOfDocumentsToBeIssued: Int = event.total
+            // Process started, show progress
+            val numberOfDocumentsToBeIssued = event.total
+        }
+
+        is IssueEvent.DocumentRequiresCreateSettings -> {
+            // Need to provide settings for document creation
+            val offeredDocument = event.offeredDocument
+            val createSettings = wallet.getDefaultCreateDocumentSettings(offeredDocument)
+
+            // Resume with settings
+            event.resume(createSettings)
+
+            // Or cancel
+            // event.cancel("User cancelled")
         }
 
         is IssueEvent.Finished -> {
-            // triggered when the OpenId4VCI process is finished
-            // and holds the documentIds of the issued documents
-            val issuedDocumentIds: List<String> = event.issuedDocuments
+            // All documents issued, show success
+            val issuedDocumentIds = event.issuedDocuments
         }
 
         is IssueEvent.Failure -> {
-            // triggered when an error occurs during the OpenId4VCI process
-            // and holds the error
+            // Overall process failed
             val cause = event.cause
         }
 
         is IssueEvent.DocumentIssued -> {
-            // triggered each time a document is issued
-            // and holds information about the issued document
-            val documentId: String = event.documentId
-            val documentName: String = event.name
-            val docType: String = event.docType
+            // Individual document issued successfully
+            val documentId = event.documentId
+            val documentName = event.name
+            val docType = event.docType
         }
 
         is IssueEvent.DocumentFailed -> {
-            // triggered when an error occurs during the issuance of a document
-            // and holds the error and information about the failed to issue document
-            val documentName: String = event.name
-            val docType: String = event.docType
-            val cause: Throwable = event.cause
+            // Individual document failed to issue
+            val documentName = event.name
+            val docType = event.docType
+            val cause = event.cause
         }
 
         is IssueEvent.DocumentRequiresUserAuth -> {
-            // triggered when user authentication is required to issue a document
-            // Holds the document object that requires user authentication
-            // and the algorithm that is going to be used for signing the proof of possession,
-            // as well as methods for resuming the issuance process or canceling it
+            // Document requires user authentication to sign
             val signingAlgorithm = event.signingAlgorithm
             val document = event.document
-            // create the keyUnlockData to unlock the key. Here we use the default key unlock data
-            // provided by the library
-            val keyUnlockData = document.DefaultKeyUnlockData
-            // use the keyUnlockData to get the crypto object for authenticating
-            // the user using bio-metrics or any other method
 
-            // to resume the issuance process, after authenticating user,  call
-            // resume with the keyUnlockData
+            // Create keyUnlockData (e.g., prompt for biometrics)
+            val keyUnlockData = event.keysRequireAuth.mapValues { (keyAlias, secureArea) ->
+                getDefaultKeyUnlockData(secureArea, keyAlias)
+            }
+
+            // Resume after authentication
             event.resume(keyUnlockData)
 
-            // or cancel the issuance process by calling cancel method
-            event.cancel("User canceled the issuance process")
+            // Or cancel the process
+            // event.cancel("User cancelled authentication")
         }
 
         is IssueEvent.DocumentDeferred -> {
-            // triggered when the document issuance is deferred
-            // and holds the documentId of the deferred document
-            val documentId: String = event.documentId
-            val documentName: String = event.name
-            val docType: String = event.docType
-        }
-
-        is IssueEvent.DocumentRequiresCreateSettings -> {
-            // triggered when creating a document for a given offered document
-            val offeredDocument = event.offeredDocument
-            // create the createSettings for the document
-            // Here we use the default create settings provided by the library
-            val createSettings = wallet.getDefaultCreateDocumentSettings()
-            // resume the issuance process with the createSettings
-            event.resume(createSettings)
-            // or cancel the issuance process
-            event.cancel("User canceled the issuance process")
+            // Issuance is deferred (will be issued later)
+            val documentId = event.documentId
+            val documentName = event.name
+            val docType = event.docType
         }
     }
 }
 // Create an instance of OpenId4VciManager
 val openId4VciManager = wallet.createOpenId4VciManager()
 
-openId4VciManager.issueDocumentByDocType(
-    docType = "eu.europa.ec.eudi.pid.1",
-    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+// Issue by document type
+openId4VciManager.issueDocumentByFormat(
+    format = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1"),
+    txCode = "123456", // For pre-authorized flow
     onIssueEvent = onIssueEvent
 )
-// or
+
+// Or by offer URI
 openId4VciManager.issueDocumentByOfferUri(
     offerUri = "https://issuer.com/?credential_offer=...",
-    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    txCode = "123456", // Optional
     onIssueEvent = onIssueEvent
 )
-// or given a resolved offer object
+
+// Or by resolved offer
 openId4VciManager.issueDocumentByOffer(
     offer = offer,
-    txCode = "<Transaction Code for Pre-authorized flow>", // if transaction code is provided
+    txCode = "123456", // Optional
     onIssueEvent = onIssueEvent
 )
 ```
 
-There's also available for `issueDocumentByDocType`, `issueDocumentByOfferUri` and
+There's also available for `issueDocumentByFormat`, `issueDocumentByOfferUri` and
 `issueDocumentByOffer` methods to specify the executor in which the onIssueEvent callback is
 executed, by assigning the `executor` parameter. If the `executor` parameter is null, the callback
 will be executed on the main thread.
@@ -772,7 +671,7 @@ application's manifest file.
 __Important note__: The `resumeWithAuthorization` method must be called from the same
 OpenId4VciManager instance that was used to start the issuance process. You will need to keep the
 reference of the `OpenId4VciManager` instance that was used for calling the
-`issueDocumentByDocType`, `issueDocumentByOfferUri` or `issueDocumentByOffer` method and use this
+`issueDocumentByFormat`, `issueDocumentByOfferUri` or `issueDocumentByOffer` method and use this
 same instance to call the `resumeWithAuthorization` method.
 
 ```xml
@@ -808,9 +707,7 @@ EudiWalletConfig()
 //...
 ```
 
-```kotlin 
-import javax.management.openmbean.OpenMBeanInfo
-
+```kotlin
 class SomeActivity : AppCompatActivity() {
 
     val openId4VciManager: OpenId4VciManager

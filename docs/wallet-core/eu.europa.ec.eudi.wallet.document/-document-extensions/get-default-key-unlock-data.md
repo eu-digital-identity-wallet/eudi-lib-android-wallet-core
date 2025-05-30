@@ -3,22 +3,13 @@
 # getDefaultKeyUnlockData
 
 [androidJvm]\
+suspend fun [getDefaultKeyUnlockData](get-default-key-unlock-data.md)(document: IssuedDocument): AndroidKeystoreKeyUnlockData?
 
-@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
-
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
-
-fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(documentId: DocumentId): AndroidKeystoreKeyUnlockData?
-
-Returns the default AndroidKeystoreKeyUnlockData for the given DocumentId. The default key unlock data is based on the Document.keyAlias.
-
-#### Receiver
-
-the [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md) instance
+Returns the default AndroidKeystoreKeyUnlockData for the given IssuedDocument. The key unlock data is retrieved based on the document's associated credential.
 
 #### Return
 
-the default AndroidKeystoreKeyUnlockData for the given DocumentId or null if the document requires no user authentication
+The AndroidKeystoreKeyUnlockData for the document if it requires user authentication, otherwise `null`.
 
 #### Parameters
 
@@ -26,7 +17,46 @@ androidJvm
 
 | | |
 |---|---|
-| documentId | the DocumentId of the document |
+| document | The IssuedDocument for which to retrieve key unlock data. |
+
+#### See also
+
+| |
+|---|
+| AndroidKeystoreKeyUnlockData |
+| IssuedDocument |
+
+#### Throws
+
+| | |
+|---|---|
+| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the document is not managed by AndroidKeystoreSecureArea. |
+
+[androidJvm]\
+
+@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
+
+@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+
+fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(documentId: DocumentId): AndroidKeystoreKeyUnlockData?
+
+Returns the default AndroidKeystoreKeyUnlockData for the given DocumentId. The default key unlock data is based on the Document.keyAlias of the found document. This is applicable only if the document's key requires user authentication.
+
+#### Receiver
+
+The [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md) instance.
+
+#### Return
+
+The default AndroidKeystoreKeyUnlockData for the given DocumentId if the document requires user authentication, otherwise `null`.
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| documentId | The DocumentId of the document. |
 
 #### See also
 
@@ -39,5 +69,23 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea |
-| NoSuchElementException | if the document is not found by the DocumentId |
+| NoSuchElementException | if the document is not found by the DocumentId. |
+| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea. |
+
+[androidJvm]\
+fun [getDefaultKeyUnlockData](get-default-key-unlock-data.md)(secureArea: SecureArea, keyAlias: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): AndroidKeystoreKeyUnlockData?
+
+Returns the default AndroidKeystoreKeyUnlockData for the given SecureArea and [keyAlias](get-default-key-unlock-data.md) if the [secureArea](get-default-key-unlock-data.md) is an instance of AndroidKeystoreSecureArea.
+
+#### Return
+
+The default AndroidKeystoreKeyUnlockData if the [secureArea](get-default-key-unlock-data.md) is an instance of AndroidKeystoreSecureArea, otherwise `null`.
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| secureArea | The SecureArea instance. |
+| keyAlias | The key alias. |

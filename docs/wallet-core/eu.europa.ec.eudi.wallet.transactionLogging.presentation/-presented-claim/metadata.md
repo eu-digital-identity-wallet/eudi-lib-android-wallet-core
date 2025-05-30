@@ -3,4 +3,4 @@
 # metadata
 
 [androidJvm]\
-val [metadata](metadata.md): DocumentMetaData.Claim?
+val [metadata](metadata.md): IssuerMetadata.Claim?
