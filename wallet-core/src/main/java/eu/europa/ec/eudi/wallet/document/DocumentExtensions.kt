@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,10 +27,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
-import org.multipaz.securearea.AndroidKeystoreKeyInfo
 import org.multipaz.securearea.AndroidKeystoreKeyUnlockData
 import org.multipaz.securearea.AndroidKeystoreSecureArea
-import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.UserAuthenticationType
 import java.security.SecureRandom
@@ -54,19 +52,34 @@ object DocumentExtensions {
     @get:JvmName("getDefaultKeyUnlockData")
     @get:Throws(IllegalStateException::class)
     @get:JvmStatic
-    @Deprecated("Use getDefaultKeyUnlockData(secureArea: SecureArea, keyAlias: String) instead")
+    @Deprecated("Use getDefaultKeyUnlockData(document) instead")
     val Document.DefaultKeyUnlockData: AndroidKeystoreKeyUnlockData?
-        get() = when (val ki = keyInfo) {
-            is AndroidKeystoreKeyInfo -> ki.takeIf { it.isUserAuthenticationRequired }
-                ?.let {
-                    AndroidKeystoreKeyUnlockData(
-                        secureArea as AndroidKeystoreSecureArea,
-                        keyAlias
-                    )
-                }
-
-            else -> throw IllegalStateException("Document is not managed by AndroidKeystoreSecureArea")
+        get() = runBlocking {
+            when (this@DefaultKeyUnlockData) {
+                is IssuedDocument -> getDefaultKeyUnlockData(this@DefaultKeyUnlockData)
+                else -> null
+            }
         }
+
+    /**
+     * Returns the default [AndroidKeystoreKeyUnlockData] for the given [IssuedDocument].
+     * The key unlock data is retrieved based on the document's associated credential.
+     *
+     * @param document The [IssuedDocument] for which to retrieve key unlock data.
+     * @return The [AndroidKeystoreKeyUnlockData] for the document if it requires user authentication, otherwise `null`.
+     * @throws IllegalStateException if the document is not managed by [AndroidKeystoreSecureArea].
+     * @see AndroidKeystoreKeyUnlockData
+     * @see IssuedDocument
+     */
+    suspend fun getDefaultKeyUnlockData(document: IssuedDocument): AndroidKeystoreKeyUnlockData? {
+        return document.findCredential()?.let { credential ->
+            val secureArea = credential.secureArea
+            require(secureArea is AndroidKeystoreSecureArea) {
+                "Document is not managed by AndroidKeystoreSecureArea"
+            }
+            getDefaultKeyUnlockData(secureArea, credential.alias)
+        }
+    }
 
     /**
      * Returns the default [AndroidKeystoreKeyUnlockData] for the given [DocumentId].
@@ -87,11 +100,7 @@ object DocumentExtensions {
     fun EudiWallet.getDefaultKeyUnlockData(documentId: DocumentId): AndroidKeystoreKeyUnlockData? {
         return when (val document = getDocumentById(documentId) as? IssuedDocument) {
             null -> throw NoSuchElementException("Document not found")
-            else -> runBlocking {
-                document.findCredential()?.let {
-                    getDefaultKeyUnlockData(it.secureArea, it.alias)
-                }
-            }
+            else -> runBlocking { getDefaultKeyUnlockData(document) }
         }
     }
 
@@ -104,7 +113,7 @@ object DocumentExtensions {
      */
     fun getDefaultKeyUnlockData(
         secureArea: SecureArea,
-        keyAlias: String
+        keyAlias: String,
     ): AndroidKeystoreKeyUnlockData? {
         return (secureArea as? AndroidKeystoreSecureArea)?.let {
             AndroidKeystoreKeyUnlockData(it, keyAlias)
@@ -138,7 +147,7 @@ object DocumentExtensions {
         attestationChallenge: ByteArray? = null,
         numberOfCredentials: Int = 1,
         credentialPolicy: CreateDocumentSettings.CredentialPolicy = RotateUse,
-        configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null
+        configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
     ): CreateDocumentSettings {
         return runBlocking {
             doGetDefaultCreateDocumentSettings(
@@ -255,8 +264,9 @@ object DocumentExtensions {
     @JvmStatic
     @JvmName("getCredentialPolicy")
     fun CreateDocumentSettings.CredentialPolicy.Companion.from(
-        isoPolicy: MsoMdocPolicy?
+        isoPolicy: MsoMdocPolicy?,
     ): CreateDocumentSettings.CredentialPolicy {
         return if (isoPolicy?.oneTimeUse == true) OneTimeUse else RotateUse
     }
 }
+
