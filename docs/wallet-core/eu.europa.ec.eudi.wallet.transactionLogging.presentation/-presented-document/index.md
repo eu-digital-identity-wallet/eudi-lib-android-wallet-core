@@ -3,7 +3,7 @@
 # PresentedDocument
 
 [androidJvm]\
-data class [PresentedDocument](index.md)(val format: DocumentFormat, val metadata: DocumentMetaData?, val claims: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedClaim](../-presented-claim/index.md)&gt;)
+data class [PresentedDocument](index.md)(val format: DocumentFormat, val metadata: IssuerMetadata?, val claims: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedClaim](../-presented-claim/index.md)&gt;)
 
 Data class representing a presented document in a presentation transaction log.
 
@@ -11,7 +11,7 @@ Data class representing a presented document in a presentation transaction log.
 
 | | |
 |---|---|
-| [PresentedDocument](-presented-document.md) | [androidJvm]<br>constructor(format: DocumentFormat, metadata: DocumentMetaData?, claims: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedClaim](../-presented-claim/index.md)&gt;) |
+| [PresentedDocument](-presented-document.md) | [androidJvm]<br>constructor(format: DocumentFormat, metadata: IssuerMetadata?, claims: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedClaim](../-presented-claim/index.md)&gt;) |
 
 ## Properties
 
@@ -19,4 +19,4 @@ Data class representing a presented document in a presentation transaction log.
 |---|---|
 | [claims](claims.md) | [androidJvm]<br>val [claims](claims.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedClaim](../-presented-claim/index.md)&gt;<br>The list of claims associated with the document. |
 | [format](format.md) | [androidJvm]<br>val [format](format.md): DocumentFormat<br>The format of the document. |
-| [metadata](metadata.md) | [androidJvm]<br>val [metadata](metadata.md): DocumentMetaData?<br>The metadata associated with the document. |
+| [metadata](metadata.md) | [androidJvm]<br>val [metadata](metadata.md): IssuerMetadata?<br>The metadata associated with the document. |

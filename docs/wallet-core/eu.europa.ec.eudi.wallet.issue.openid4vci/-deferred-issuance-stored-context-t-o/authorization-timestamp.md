@@ -4,6 +4,6 @@
 
 [androidJvm]\
 
-@SerialName(value = &quot;authorization_timestamGrantTO.fromGrant(grant)p&quot;)
+@SerialName(value = &quot;authorization_timestamp&quot;)
 
 val [authorizationTimestamp](authorization-timestamp.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html)

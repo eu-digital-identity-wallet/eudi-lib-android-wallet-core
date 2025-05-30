@@ -3,13 +3,13 @@
 # findClaimMetadataForSdJwtVc
 
 [androidJvm]\
-fun [findClaimMetadataForSdJwtVc](find-claim-metadata-for-sd-jwt-vc.md)(path: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;, metadata: DocumentMetaData?): DocumentMetaData.Claim?
+fun [findClaimMetadataForSdJwtVc](find-claim-metadata-for-sd-jwt-vc.md)(path: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;, metadata: IssuerMetadata?): IssuerMetadata.Claim?
 
-Function to find the claim metadata from the path and metadata It takes the path as a list of strings and metadata and iterates DocumentMetaData.claims to find the claim metadata
+Function to find the claim metadata from the path and metadata It takes the path as a list of strings and metadata and iterates IssuerMetadata.claims to find the claim metadata
 
 #### Return
 
-the claim metadata as a DocumentMetaData.Claim object
+the claim metadata as a IssuerMetadata.Claim object
 
 #### Parameters
 

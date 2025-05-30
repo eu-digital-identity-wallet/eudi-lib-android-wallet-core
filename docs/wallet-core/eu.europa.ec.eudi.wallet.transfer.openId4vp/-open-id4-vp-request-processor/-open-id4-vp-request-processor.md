@@ -4,3 +4,11 @@
 
 [androidJvm]\
 constructor(documentManager: DocumentManager, readerTrustStore: ReaderTrustStore?)
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| documentManager | Manages document retrieval and processing |

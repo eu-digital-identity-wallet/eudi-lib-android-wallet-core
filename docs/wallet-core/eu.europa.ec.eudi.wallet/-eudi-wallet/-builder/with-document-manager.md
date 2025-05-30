@@ -5,7 +5,7 @@
 [androidJvm]\
 fun [withDocumentManager](with-document-manager.md)(documentManager: DocumentManager): &lt;Error class: unknown class&gt;
 
-Configure with the given DocumentManager to use. If not set, the default document manager will be used which is DocumentManagerImpl configured with the provided [storageEngine](storage-engine.md) and [secureAreas](secure-areas.md) if they are set.
+Configure with the given DocumentManager to use. If not set, the default document manager will be used which is DocumentManagerImpl configured with the provided storageEngine and [secureAreas](secure-areas.md) if they are set.
 
 #### Return
 

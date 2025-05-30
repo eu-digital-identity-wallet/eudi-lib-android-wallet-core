@@ -26,4 +26,4 @@ Represents an offered document part of an [Offer](../index.md).
 
 | Name | Summary |
 |---|---|
-| [extractDocumentMetaData](../../../eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/extract-document-meta-data.md) | [androidJvm]<br>fun [Offer.OfferedDocument](index.md).[extractDocumentMetaData](../../../eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/extract-document-meta-data.md)(): DocumentMetaData |
+| [extractIssuerMetadata](../../../eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/extract-issuer-metadata.md) | [androidJvm]<br>fun [Offer.OfferedDocument](index.md).[extractIssuerMetadata](../../../eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/extract-issuer-metadata.md)(): IssuerMetadata |
