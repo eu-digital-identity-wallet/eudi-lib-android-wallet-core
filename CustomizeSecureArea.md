@@ -7,18 +7,18 @@ interfaces. This document details the process of integrating custom key manageme
 
 To enable custom key management, you must implement the following interfaces and classes:
 
-1. The `com.android.identity.securearea.SecureArea` interface abstracts the underlying secure area
+1. The `org.multipaz.securearea.SecureArea` interface abstracts the underlying secure area
    responsible for creating key material and other security-related objects used in identity
    documents. Authentication may be required to access a key, which is managed through the
-   `com.android.identity.securearea.KeyLockedException` and
-   `com.android.identity.securearea.KeyUnlockData` types. Applications must implement
+   `org.multipaz.securearea.KeyLockedException` and
+   `org.multipaz.securearea.KeyUnlockData` types. Applications must implement
    SecureArea-specific mechanisms to handle the necessary authentication.
-2. The `com.android.identity.securearea.CreateKeySettings` class serves as the base for key creation
+2. The `org.multipaz.securearea.CreateKeySettings` class serves as the base for key creation
    settings. It is compatible with any SecureArea implementation, though most implementations will
    provide their own versions with additional, specific settings.
-3. The `com.android.identity.securearea.KeyUnlockData` interface provides the information necessary
+3. The `org.multipaz.securearea.KeyUnlockData` interface provides the information necessary
    to operate on a key that requires unlocking.
-4. The `com.android.identity.securearea.KeyInfo` class contains details about a key. Specific
+4. The `org.multipaz.securearea.KeyInfo` class contains details about a key. Specific
    SecureArea implementations may extend this class to include additional implementation-specific
    key information.
 
@@ -70,9 +70,7 @@ the [EudiWallet documentation](https://github.com/eu-digital-identity-wallet/eud
 using the following code:
 
 ```kotlin
-val mySecureArea = wallet.secureAreaRepository.implementations
-    .filterIsInstance<MySecureArea>()
-    .first()
+val mySecureArea = wallet.secureAreaRepository.getImplementation(MySecureArea.IDENTIFIER)
 ```
 
 ### How to use custom key management with OpenId4VCI
@@ -98,60 +96,61 @@ the custom `MySecureArea` implementation:
 
 ```kotlin
 val onIssueEvent = OnIssueEvent { event ->
-    when (event) {
-        is IssueEvent.DocumentRequiresCreateSettings -> {
-            // triggered when creating a document for a given offered document
-            val offeredDocument = event.offeredDocument
-            // create the createDocumentSettings for the document
-            // using custom implementation MySecureArea for keys
-            val mySecureArea = wallet.secureAreaRepository.implementations
-                .filterIsInstance<MySecureArea>()
-                .first()
-            val createDocumentSettings = CreateDocumentSettings(
-                // set the identifier of the desired secure area
-                secureAreaIdentifier = mySecureArea.identifier,
-                // set the CreateKeySettings for the key based on the secure area
-                createKeySettings = MyCreateKeySettings(
-                    // set custom settings for creating the key
-                    // with MySecureArea implementation
-                )
+   when (event) {
+      is IssueEvent.DocumentRequiresCreateSettings -> {
+         // triggered when creating a document for a given offered document
+         val offeredDocument = event.offeredDocument
+         // create the createDocumentSettings for the document
+         // using custom implementation MySecureArea for keys
+
+         val createDocumentSettings = CreateDocumentSettings(
+            // set the identifier of the desired secure area
+            secureAreaIdentifier = MySecureArea.IDENTIFIER,
+            // set the CreateKeySettings for the key based on the secure area
+            createKeySettings = MyCreateKeySettings(
+               // set custom settings for creating the key
+               // with MySecureArea implementation
             )
-            // resume the issuance process with the createDocumentSettings
-            event.resume(createDocumentSettings)
-            // or cancel the issuance process
-            event.cancel("User canceled the issuance process")
-        }
-        is IssueEvent.DocumentRequiresUserAuth -> {
-            // triggered when user authentication is required to issue a document
-            // Holds the document object that requires user authentication
-            // and the algorithm that is going to be used for signing the proof of possession,
-            // as well as methods for resuming the issuance process or canceling it
+         )
+         // resume the issuance process with the createDocumentSettings
+         event.resume(createDocumentSettings)
+         // or cancel the issuance process
+         event.cancel("User canceled the issuance process")
+      }
+      is IssueEvent.DocumentRequiresUserAuth -> {
+         // triggered when user authentication is required to issue a document
+         // Holds the document object that requires user authentication
+         // and the algorithm that is going to be used for signing the proof of possession,
+         // as well as methods for resuming the issuance process or canceling it
 
-            // Document and signing algorithm are provided 
-            // to use if required for creating the keyUnlockData
-            val signingAlgorithm = event.signingAlgorithm
-            val document = event.document
+         // Document and signing algorithm are provided
+         // to use if required for creating the keyUnlockData
+         val signingAlgorithm = event.signingAlgorithm
+         val document = event.document
 
-            //
-            // --> show prompt if needed to unlock the key <--
-            //
+         //
+         // --> show prompt if needed to unlock the key <--
+         //
 
-            // create the keyUnlockData to unlock the key.
-            val keyUnlockData = MyKeyUnlockData(
-                // set the extra information for the key unlock data
-                // e.g. password, biometric data, authorization tokens etc.
+         // create the keyUnlockData to unlock each key.
+         val keyUnlockData = event.keysRequireAuth.entries.associate { (keyAlias, secureArea) ->
+            keyAlias to MyKeyUnlockData(
+               // set the extra information for the key unlock data
+               // e.g. password, biometric data, authorization tokens etc.
             )
-            // to resume the issuance process, after authenticating user,  call
-            // resume with the keyUnlockData
-            event.resume(keyUnlockData)
+         }
 
-            // or cancel the issuance process by calling cancel method
-            event.cancel("User canceled the issuance process")
-        }
-        else -> {
-            // handling rest of issuing events
-        }
-    }
+         // to resume the issuance process, after authenticating user,  call
+         // resume with the keyUnlockData
+         event.resume(keyUnlockData)
+
+         // or cancel the issuance process by calling cancel method
+         event.cancel("User canceled the issuance process")
+      }
+      else -> {
+         // handling rest of issuing events
+      }
+   }
 }
 ```
 
@@ -205,38 +204,39 @@ fun showRequestedDocuments() {
  *
  * @param selectedDocuments A map of selected documents and the selected items to disclose
  */
-fun discloseDocuments(selectedDocuments: Map<IssuedDocument, List<DocItem>>) {
-    val disclosedDocuments = DisclosedDocuments(
-        selectedDocuments.map { (document, docItems) ->
+suspend fun discloseDocuments(selectedDocuments: Map<IssuedDocument, List<DocItem>>) {
+   val disclosedDocuments = DisclosedDocuments(
+      selectedDocuments.map { (document, docItems) ->
 
-            // should block until the user has unlock the key to sign the response
+         // should block until the user has unlock the key to sign the response
 
-            // One can use information from document to determine how to
-            // create the MyKeyUnlockData object, such as:
+         // One can use information from document to determine how to
+         // create the MyKeyUnlockData object, such as:
 
-            val secureArea = document.secureArea as MySecureArea
-            val keyAlias = document.keyAlias
-            val keyInfo = document.keyInfo as MyKeyInfo
+         val credential = document.findCredential()!!
+         val secureArea = credential.secureArea as MySecureArea
+         val keyAlias = credential.alias
+         val keyInfo = credential.secureArea.getKeyInfo(credential.alias) as MyKeyInfo
 
-            //
-            // --> show prompt if needed to unlock the key <--
-            //
+         //
+         // --> show prompt if needed to unlock the key <--
+         //
 
-            // create and return the keyUnlockData to unlock the key of the document
-            val keyUnlockData = MyKeyUnlockData(
-                // set the extra information for the key unlock data
-                // e.g. password, biometric data, authorization tokens etc.
-            )
+         // create and return the keyUnlockData to unlock the key of the document
+         val keyUnlockData = MyKeyUnlockData(
+            // set the extra information for the key unlock data
+            // e.g. password, biometric data, authorization tokens etc.
+         )
 
-            DisclosedDocument(
-                documentId = document.id,
-                disclosedItems = docItems,
-                keyUnlockData = keyUnlockData
-            )
-        })
+         DisclosedDocument(
+            documentId = document.id,
+            disclosedItems = docItems,
+            keyUnlockData = keyUnlockData
+         )
+      })
 
-    val response = processedRequest.generateResponse(disclosedDocuments).getOrThrow()
-    wallet.sendResponse(response)
+   val response = processedRequest.generateResponse(disclosedDocuments).getOrThrow()
+   wallet.sendResponse(response)
 }
 
 /**
