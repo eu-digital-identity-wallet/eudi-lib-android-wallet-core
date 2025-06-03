@@ -230,6 +230,8 @@ sealed interface ClientIdScheme {
     data object X509SanDns : ClientIdScheme
 
     data object X509SanUri : ClientIdScheme
+
+    data object RedirectUri: ClientIdScheme
 }
 
 /**
