@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.Preregistered
+import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.RedirectUri
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.X509SanDns
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.X509SanUri
 import eu.europa.ec.eudi.openid4vp.VPConfiguration
@@ -156,6 +157,8 @@ internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: Openid4VpX509Certifica
                 ClientIdScheme.X509SanDns -> X509SanDns(trust)
 
                 ClientIdScheme.X509SanUri -> X509SanUri(trust)
+
+                ClientIdScheme.RedirectUri -> RedirectUri
             }
         },
         vpConfiguration = VPConfiguration(
