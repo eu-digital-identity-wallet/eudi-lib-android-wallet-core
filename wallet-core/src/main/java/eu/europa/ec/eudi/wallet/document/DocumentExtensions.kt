@@ -16,13 +16,11 @@
 
 package eu.europa.ec.eudi.wallet.document
 
-import eu.europa.ec.eudi.openid4vci.BatchCredentialIssuance
-import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
-import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy.OneTimeUse
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy.RotateUse
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
@@ -62,15 +60,29 @@ object DocumentExtensions {
         }
 
     /**
+     * Returns the default [AndroidKeystoreKeyUnlockData] for the [IssuedDocument].
+     * The default key unlock data is based on the [IssuedDocument.findCredential]
+     *
+     * @receiver The [IssuedDocument] instance.
+     * @return The default [AndroidKeystoreKeyUnlockData] for the [IssuedDocument] if it requires user authentication, otherwise `null`.
+     * @see getDefaultKeyUnlockData
+     * @throws IllegalArgumentException if the document is not managed by [AndroidKeystoreSecureArea].
+     */
+    suspend fun IssuedDocument.getDefaultKeyUnlockData(): AndroidKeystoreKeyUnlockData? {
+        return getDefaultKeyUnlockData(this)
+    }
+
+    /**
      * Returns the default [AndroidKeystoreKeyUnlockData] for the given [IssuedDocument].
      * The key unlock data is retrieved based on the document's associated credential.
      *
      * @param document The [IssuedDocument] for which to retrieve key unlock data.
      * @return The [AndroidKeystoreKeyUnlockData] for the document if it requires user authentication, otherwise `null`.
-     * @throws IllegalStateException if the document is not managed by [AndroidKeystoreSecureArea].
+     * @throws IllegalArgumentException if the document is not managed by [AndroidKeystoreSecureArea].
      * @see AndroidKeystoreKeyUnlockData
      * @see IssuedDocument
      */
+    @JvmName("getDefaultKeyUnlockDataForDocument")
     suspend fun getDefaultKeyUnlockData(document: IssuedDocument): AndroidKeystoreKeyUnlockData? {
         return document.findCredential()?.let { credential ->
             val secureArea = credential.secureArea
@@ -149,15 +161,13 @@ object DocumentExtensions {
         credentialPolicy: CreateDocumentSettings.CredentialPolicy = RotateUse,
         configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
     ): CreateDocumentSettings {
-        return runBlocking {
-            doGetDefaultCreateDocumentSettings(
-                eudiWallet = this@getDefaultCreateDocumentSettings,
-                attestationChallenge = attestationChallenge,
-                configure = configure,
-                numberOfCredentials = numberOfCredentials,
-                credentialPolicy = credentialPolicy,
-            )
-        }
+        return doGetDefaultCreateDocumentSettings(
+            eudiWallet = this@getDefaultCreateDocumentSettings,
+            attestationChallenge = attestationChallenge,
+            configure = configure,
+            numberOfCredentials = numberOfCredentials,
+            credentialPolicy = credentialPolicy,
+        )
     }
 
     /**
@@ -175,34 +185,18 @@ object DocumentExtensions {
      */
     @JvmOverloads
     @JvmStatic
-    suspend fun EudiWallet.getDefaultCreateDocumentSettings(
+    fun EudiWallet.getDefaultCreateDocumentSettings(
         offeredDocument: Offer.OfferedDocument,
         attestationChallenge: ByteArray? = null,
         configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
     ): CreateDocumentSettings {
-        val batchCredentialIssuanceSize =
-            when (val batch = offeredDocument.offer.issuerMetadata.batchCredentialIssuance) {
-                is BatchCredentialIssuance.Supported -> batch.batchSize
-                else -> 1
-            }
-
-
-        val policy = when (val configuration = offeredDocument.configuration) {
-            is MsoMdocCredential -> configuration.isoPolicy
-            else -> null
-        }
-        val credentialPolicy = CreateDocumentSettings.CredentialPolicy.from(policy)
-        // Ensure the number of credentials does not exceed the issuer's supported batch size.
-        val numberOfCredentials = (policy?.batchSize ?: 1)
-            .takeIf { it <= batchCredentialIssuanceSize }
-            ?: batchCredentialIssuanceSize
 
         return doGetDefaultCreateDocumentSettings(
             eudiWallet = this@getDefaultCreateDocumentSettings,
             attestationChallenge = attestationChallenge,
             configure = configure,
-            numberOfCredentials = numberOfCredentials,
-            credentialPolicy = credentialPolicy
+            numberOfCredentials = offeredDocument.numberOfCredentials,
+            credentialPolicy = offeredDocument.credentialPolicy
         )
     }
 
@@ -217,7 +211,7 @@ object DocumentExtensions {
      * @return Configured [CreateDocumentSettings].
      * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
      */
-    private suspend fun doGetDefaultCreateDocumentSettings(
+    private fun doGetDefaultCreateDocumentSettings(
         eudiWallet: EudiWallet,
         attestationChallenge: ByteArray? = null,
         configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
@@ -251,22 +245,6 @@ object DocumentExtensions {
             numberOfCredentials = numberOfCredentials,
             credentialPolicy = credentialPolicy
         )
-    }
-
-    /**
-     * Converts an [MsoMdocPolicy] to a [CreateDocumentSettings.CredentialPolicy].
-     * If the [isoPolicy] indicates one-time use, [OneTimeUse] is returned. Otherwise, [RotateUse] is returned.
-     *
-     * @receiver The companion object of [CreateDocumentSettings.CredentialPolicy].
-     * @param isoPolicy The [MsoMdocPolicy] to convert. Can be `null`.
-     * @return The corresponding [CreateDocumentSettings.CredentialPolicy].
-     */
-    @JvmStatic
-    @JvmName("getCredentialPolicy")
-    fun CreateDocumentSettings.CredentialPolicy.Companion.from(
-        isoPolicy: MsoMdocPolicy?,
-    ): CreateDocumentSettings.CredentialPolicy {
-        return if (isoPolicy?.oneTimeUse == true) OneTimeUse else RotateUse
     }
 }
 
