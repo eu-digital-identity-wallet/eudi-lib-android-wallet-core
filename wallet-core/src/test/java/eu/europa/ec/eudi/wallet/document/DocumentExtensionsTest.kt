@@ -274,7 +274,7 @@ class DocumentExtensionsTest {
         val result = getDefaultKeyUnlockData(issuedDocument)
 
         assertIs<AndroidKeystoreKeyUnlockData>(result)
-        assertEquals(androidKeystoreSecureArea, result?.secureArea)
-        assertEquals(credentialAlias, result?.alias)
+        assertEquals(androidKeystoreSecureArea, result.secureArea)
+        assertEquals(credentialAlias, result.alias)
     }
 }
