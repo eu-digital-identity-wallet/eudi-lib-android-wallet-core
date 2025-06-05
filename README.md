@@ -290,6 +290,9 @@ requireNotNull(issuedDocument)
 // Get the number of valid credentials for the document
 val numberOfValidCredentials = issuedDocument.credentialsCount()
 
+// Get the initial number of credentials for the document
+val initialNumberOfCredentials = issuedDocument.initialCredentialsCount()
+
 // Get a list of all valid credentials for the document
 val validCredentials = issuedDocument.getCredentials()
 
@@ -368,7 +371,7 @@ if (document != null) {
 }
 ```
 
-For more details on document management, see the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.0/README.md).
+For more details on document management, see the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.1/README.md).
 
 ##### Document Status Resolution Configuration
 
