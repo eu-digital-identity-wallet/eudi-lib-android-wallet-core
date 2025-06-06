@@ -20,13 +20,16 @@ import android.content.Context
 import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import kotlinx.io.bytestring.ByteString
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
+import org.multipaz.securearea.AndroidKeystoreSecureArea
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
@@ -68,7 +71,15 @@ class EudiWalletTest {
 
         val result = wallet.loadMdocSampleDocuments(
             sampleData = sampleData,
-            createSettings = wallet.getDefaultCreateDocumentSettings()
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = AndroidKeystoreSecureArea.IDENTIFIER,
+                numberOfCredentials = 1,
+                credentialPolicy = CreateDocumentSettings.CredentialPolicy.RotateUse,
+                createKeySettings = AndroidKeystoreCreateKeySettings.Builder(
+                    attestationChallenge = ByteString("attestationChallenge".toByteArray())
+                ).build()
+
+            )
         )
 
         Assert.assertTrue(result.isSuccess)

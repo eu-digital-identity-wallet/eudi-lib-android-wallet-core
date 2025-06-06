@@ -31,7 +31,6 @@ import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.openid4vci.TxCode
 import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
-import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import io.mockk.every
@@ -159,24 +158,36 @@ class OfferTest {
     }
 
     @Test
-    fun `credentialPolicy returns OneTimeUse for MsoMdocCredential with oneTimeUse true`() {
+    fun `batchCredentialIssuanceSize returns supported batch size from issuer metadata`() {
         val offer = Offer(mockCredentialOffer)
         val offeredDocument =
             offer.offeredDocuments.find { it.configurationIdentifier == msoMdocCredentialId }!!
 
-        assertEquals(
-            CreateDocumentSettings.CredentialPolicy.OneTimeUse,
-            offeredDocument.credentialPolicy
-        )
+        assertEquals(3, offeredDocument.batchCredentialIssuanceSize)
     }
 
     @Test
-    fun `numberOfCredentials returns minimum of batchSize and batchCredentialIssuanceSize`() {
-        val offer = Offer(mockCredentialOffer)
-        val offeredDocument =
-            offer.offeredDocuments.find { it.configurationIdentifier == msoMdocCredentialId }!!
+    fun `batchCredentialIssuanceSize returns 1 when batch credential issuance is not supported`() {
+        // Create a new relaxed mock for this specific test
+        val localMetadata = mockk<CredentialIssuerMetadata>(relaxed = true)
+        every { localMetadata.credentialIssuerIdentifier.value.value.host } returns "test.host"
+        every { localMetadata.credentialConfigurationsSupported } returns mapOf(
+            msoMdocCredentialId to mockMsoMdocCredential
+        )
+        every { localMetadata.batchCredentialIssuance } returns BatchCredentialIssuance.NotSupported
 
-        // Since isoPolicy.batchSize = 2 and batchCredentialIssuance.batchSize = 3, it should return 2
-        assertEquals(2, offeredDocument.numberOfCredentials)
+        val localCredentialOffer = mockk<CredentialOffer>(relaxed = true)
+        every { localCredentialOffer.credentialIssuerMetadata } returns localMetadata
+        every { localCredentialOffer.credentialConfigurationIdentifiers } returns listOf(msoMdocCredentialId)
+        every { localCredentialOffer.grants } returns Grants.PreAuthorizedCode(
+            preAuthorizedCode = "code",
+            txCode = txCode,
+            authorizationServer = null
+        )
+
+        val offer = Offer(localCredentialOffer)
+        val offeredDocument = offer.offeredDocuments.first()
+
+        assertEquals(1, offeredDocument.batchCredentialIssuanceSize)
     }
 }

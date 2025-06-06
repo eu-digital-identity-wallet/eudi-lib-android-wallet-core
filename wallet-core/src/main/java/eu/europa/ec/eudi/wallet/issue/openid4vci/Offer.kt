@@ -24,13 +24,9 @@ import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.openid4vci.TxCode
-import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
-import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy.OneTimeUse
-import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy.RotateUse
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import kotlin.math.min
 
 /**
  * Represents an offer of credentials from an issuer.
@@ -62,8 +58,7 @@ data class Offer(
      * @property configurationIdentifier credential configuration identifier
      * @property configuration credential configuration
      * @property documentFormat document format
-     * @property credentialPolicy credential policy by the issuer
-     * @property numberOfCredentials number of credentials by the issuer
+     * @property batchCredentialIssuanceSize batch credential issuance size
      */
     data class OfferedDocument(
         val offer: Offer,
@@ -81,22 +76,11 @@ data class Offer(
             }
 
         /**
-         * Returns the credential policy based on the issuer metadata.
+         * Returns the batch credential issuance size based on the issuer metadata.
+         * If the issuer does not support batch credential issuance, returns 1.
          */
-        val credentialPolicy: CreateDocumentSettings.CredentialPolicy
-            get() = if (policy?.oneTimeUse == true) OneTimeUse else RotateUse
-
-        /**
-         * Returns the number of credentials based on the issuer metadata.
-         */
-        val numberOfCredentials: Int
-            get() = min(policy?.batchSize ?: 1, batchCredentialIssuanceSize)
-
-
-        private val batchCredentialIssuanceSize =
-            (offer.issuerMetadata.batchCredentialIssuance as? BatchCredentialIssuance.Supported)
+        val batchCredentialIssuanceSize
+            get() = (offer.issuerMetadata.batchCredentialIssuance as? BatchCredentialIssuance.Supported)
                 ?.batchSize ?: 1
-
-        private val policy = (configuration as? MsoMdocCredential)?.isoPolicy
     }
 }

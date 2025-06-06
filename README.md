@@ -559,11 +559,30 @@ val onIssueEvent = OnIssueEvent { event ->
 
         is IssueEvent.DocumentRequiresCreateSettings -> {
             // Need to provide settings for document creation
-            val offeredDocument = event.offeredDocument
-            val createSettings = wallet.getDefaultCreateDocumentSettings(offeredDocument)
+            // Create document settings can be varied depending on the document type
+            
+            val format = event.offeredDocument.documentFormat
+            val isEuPid = when(format) {
+                is MsoMdocFormat -> format.docType == "eu.europa.ec.eudi.pid.1"
+                is SdJwtVcFormat -> format.vct == "urn:eudi:pid:1"
+                else -> false
+            }
+            val createDocumentSettings = when {
+                isEuPid -> eudiWallet.getDefaultCreateDocumentSettings(
+                    offeredDocument = event.offeredDocument,
+                    numberOfCredentials = 5,
+                    credentialPolicy = CreateDocumentSettings.CredentialPolicy.OneTimeUse
+                )
 
+
+                else -> eudiWallet.getDefaultCreateDocumentSettings(
+                    offeredDocument = event.offeredDocument,
+                    numberOfCredentials = 1,
+                    credentialPolicy = CreateDocumentSettings.CredentialPolicy.RotateUse
+                )
+            }
             // Resume with settings
-            event.resume(createSettings)
+            event.resume(createDocumentSettings)
 
             // Or cancel
             // event.cancel("User cancelled")
