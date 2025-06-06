@@ -4,3 +4,5 @@
 
 [androidJvm]\
 val [documentFormat](document-format.md): DocumentFormat?
+
+Returns the document format based on the credential configuration.

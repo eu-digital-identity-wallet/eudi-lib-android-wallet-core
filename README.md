@@ -290,6 +290,9 @@ requireNotNull(issuedDocument)
 // Get the number of valid credentials for the document
 val numberOfValidCredentials = issuedDocument.credentialsCount()
 
+// Get the initial number of credentials for the document
+val initialNumberOfCredentials = issuedDocument.initialCredentialsCount()
+
 // Get a list of all valid credentials for the document
 val validCredentials = issuedDocument.getCredentials()
 
@@ -368,7 +371,7 @@ if (document != null) {
 }
 ```
 
-For more details on document management, see the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.0/README.md).
+For more details on document management, see the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.1/README.md).
 
 ##### Document Status Resolution Configuration
 
@@ -556,11 +559,30 @@ val onIssueEvent = OnIssueEvent { event ->
 
         is IssueEvent.DocumentRequiresCreateSettings -> {
             // Need to provide settings for document creation
-            val offeredDocument = event.offeredDocument
-            val createSettings = wallet.getDefaultCreateDocumentSettings(offeredDocument)
+            // Create document settings can be varied depending on the document type
+            
+            val format = event.offeredDocument.documentFormat
+            val isEuPid = when(format) {
+                is MsoMdocFormat -> format.docType == "eu.europa.ec.eudi.pid.1"
+                is SdJwtVcFormat -> format.vct == "urn:eudi:pid:1"
+                else -> false
+            }
+            val createDocumentSettings = when {
+                isEuPid -> eudiWallet.getDefaultCreateDocumentSettings(
+                    offeredDocument = event.offeredDocument,
+                    numberOfCredentials = 5,
+                    credentialPolicy = CreateDocumentSettings.CredentialPolicy.OneTimeUse
+                )
 
+
+                else -> eudiWallet.getDefaultCreateDocumentSettings(
+                    offeredDocument = event.offeredDocument,
+                    numberOfCredentials = 1,
+                    credentialPolicy = CreateDocumentSettings.CredentialPolicy.RotateUse
+                )
+            }
             // Resume with settings
-            event.resume(createSettings)
+            event.resume(createDocumentSettings)
 
             // Or cancel
             // event.cancel("User cancelled")
