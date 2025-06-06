@@ -3,6 +3,34 @@
 # getDefaultKeyUnlockData
 
 [androidJvm]\
+suspend fun IssuedDocument.[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(): AndroidKeystoreKeyUnlockData?
+
+Returns the default AndroidKeystoreKeyUnlockData for the IssuedDocument. The default key unlock data is based on the IssuedDocument.findCredential
+
+#### Receiver
+
+The IssuedDocument instance.
+
+#### Return
+
+The default AndroidKeystoreKeyUnlockData for the IssuedDocument if it requires user authentication, otherwise `null`.
+
+#### See also
+
+| |
+|---|
+| [DocumentExtensions.getDefaultKeyUnlockData](get-default-key-unlock-data.md) |
+
+#### Throws
+
+| | |
+|---|---|
+| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if the document is not managed by AndroidKeystoreSecureArea. |
+
+[androidJvm]\
+
+@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockDataForDocument&quot;)
+
 suspend fun [getDefaultKeyUnlockData](get-default-key-unlock-data.md)(document: IssuedDocument): AndroidKeystoreKeyUnlockData?
 
 Returns the default AndroidKeystoreKeyUnlockData for the given IssuedDocument. The key unlock data is retrieved based on the document's associated credential.
@@ -30,7 +58,7 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the document is not managed by AndroidKeystoreSecureArea. |
+| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if the document is not managed by AndroidKeystoreSecureArea. |
 
 [androidJvm]\
 

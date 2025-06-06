@@ -30,6 +30,7 @@ import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.UserAuthenticationType
 import java.security.SecureRandom
+import kotlin.math.min
 
 /**
  * Provides extension functions for [Document] and [EudiWallet] related to document management.
@@ -136,15 +137,23 @@ object DocumentExtensions {
      * Returns the default [CreateDocumentSettings] for the [EudiWallet] instance.
      * The default settings are based on the [EudiWalletConfig] and the presence of an available
      * [AndroidKeystoreSecureArea] implementation.
+     *
+     * The number of credentials in the returned settings is limited to the [Offer.OfferedDocument.batchCredentialIssuanceSize],
+     * ensuring compatibility with issuer capabilities.
+     *
      * The [attestationChallenge] is generated using a [SecureRandom] instance if not provided.
      * The [configure] lambda can be used to further customize the [AndroidKeystoreCreateKeySettings].
      *
      * @receiver The [EudiWallet] instance.
+     * @param offeredDocument The [Offer.OfferedDocument] for which to create the default settings.
+     *                        Used to determine the maximum number of credentials allowed.
      * @param attestationChallenge The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated.
-     * @param numberOfCredentials The number of credentials to pre-generate for the document. Defaults to 1.
+     * @param numberOfCredentials The number of credentials to pre-generate for the document.
+     *                           Will be limited to not exceed [Offer.OfferedDocument.batchCredentialIssuanceSize]. Defaults to 1.
      * @param credentialPolicy The policy for credential usage ([OneTimeUse] or [RotateUse]). Defaults to [RotateUse].
      * @param configure A lambda to further customize the [AndroidKeystoreCreateKeySettings].
-     * @return The default [CreateDocumentSettings].
+     *                 If not provided, settings will use values from [EudiWalletConfig].
+     * @return The default [CreateDocumentSettings] configured for the offered document.
      * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
      * @see AndroidKeystoreCreateKeySettings.Builder
      * @see AndroidKeystoreCreateKeySettings
@@ -156,68 +165,15 @@ object DocumentExtensions {
     @JvmOverloads
     @JvmStatic
     fun EudiWallet.getDefaultCreateDocumentSettings(
+        offeredDocument: Offer.OfferedDocument,
         attestationChallenge: ByteArray? = null,
         numberOfCredentials: Int = 1,
         credentialPolicy: CreateDocumentSettings.CredentialPolicy = RotateUse,
         configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
     ): CreateDocumentSettings {
-        return doGetDefaultCreateDocumentSettings(
-            eudiWallet = this@getDefaultCreateDocumentSettings,
-            attestationChallenge = attestationChallenge,
-            configure = configure,
-            numberOfCredentials = numberOfCredentials,
-            credentialPolicy = credentialPolicy,
-        )
-    }
-
-    /**
-     * Returns the default [CreateDocumentSettings] for the [EudiWallet] instance based on an [Offer.OfferedDocument].
-     * The settings are derived from the issuer metadata and the document configuration within the offer.
-     * The [attestationChallenge] is generated using a [SecureRandom] instance if not provided.
-     * The [configure] lambda can be used to further customize the [AndroidKeystoreCreateKeySettings].
-     *
-     * @receiver The [EudiWallet] instance.
-     * @param offeredDocument The [Offer.OfferedDocument] from which to derive settings.
-     * @param attestationChallenge The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated.
-     * @param configure A lambda to further customize the [AndroidKeystoreCreateKeySettings].
-     * @return The default [CreateDocumentSettings] tailored for the offered document.
-     * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
-     */
-    @JvmOverloads
-    @JvmStatic
-    fun EudiWallet.getDefaultCreateDocumentSettings(
-        offeredDocument: Offer.OfferedDocument,
-        attestationChallenge: ByteArray? = null,
-        configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
-    ): CreateDocumentSettings {
-
-        return doGetDefaultCreateDocumentSettings(
-            eudiWallet = this@getDefaultCreateDocumentSettings,
-            attestationChallenge = attestationChallenge,
-            configure = configure,
-            numberOfCredentials = offeredDocument.numberOfCredentials,
-            credentialPolicy = offeredDocument.credentialPolicy
-        )
-    }
-
-    /**
-     * Internal helper function to construct [CreateDocumentSettings].
-     *
-     * @param eudiWallet The [EudiWallet] instance.
-     * @param attestationChallenge Optional attestation challenge.
-     * @param configure Optional configuration lambda for [AndroidKeystoreCreateKeySettings.Builder].
-     * @param numberOfCredentials Number of credentials to pre-generate.
-     * @param credentialPolicy The credential usage policy.
-     * @return Configured [CreateDocumentSettings].
-     * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
-     */
-    private fun doGetDefaultCreateDocumentSettings(
-        eudiWallet: EudiWallet,
-        attestationChallenge: ByteArray? = null,
-        configure: (AndroidKeystoreCreateKeySettings.Builder.() -> Unit)? = null,
-        numberOfCredentials: Int,
-        credentialPolicy: CreateDocumentSettings.CredentialPolicy,
-    ): CreateDocumentSettings {
+        // ensure the number of credentials is not greater than the batch size
+        val numberOfCredentials =
+            min(numberOfCredentials, offeredDocument.batchCredentialIssuanceSize)
         val secureAreaIdentifier = AndroidKeystoreSecureArea.IDENTIFIER
         val attestationChallengeToUse =
             attestationChallenge ?: SecureRandom().let { secureRandom ->
@@ -227,10 +183,10 @@ object DocumentExtensions {
             AndroidKeystoreCreateKeySettings.Builder(ByteString(attestationChallengeToUse))
         val createKeySettings = when (configure) {
             null -> builder
-                .setUseStrongBox(eudiWallet.config.useStrongBoxForKeys)
+                .setUseStrongBox(config.useStrongBoxForKeys)
                 .setUserAuthenticationRequired(
-                    required = eudiWallet.config.userAuthenticationRequired,
-                    timeoutMillis = eudiWallet.config.userAuthenticationTimeout,
+                    required = config.userAuthenticationRequired,
+                    timeoutMillis = config.userAuthenticationTimeout,
                     userAuthenticationTypes = setOf(
                         UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC
                     )
