@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.DocumentManagerImpl
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
@@ -320,7 +319,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         fun build(): EudiWallet {
 
             val loggerToUse = (this@Builder.logger ?: Logger(config)).also {
-                IdentityLogger.setLogPrinter(LogPrinterImpl(it))
+                IdentityLogger.logPrinter = LogPrinterImpl(it)
             }
             initializeApplication(context.applicationContext)
             ensureStrongBoxIsSupported(loggerToUse)
@@ -372,7 +371,10 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             val openId4vpManager = config.openId4VpConfig?.let { openId4VpConfig ->
                 OpenId4VpManager(
                     config = openId4VpConfig,
-                    requestProcessor = RequestProcessorDispatcher(documentManager, readerTrustStore),
+                    requestProcessor = RequestProcessorDispatcher(
+                        documentManager,
+                        readerTrustStore
+                    ),
                     logger = loggerObj,
                     ktorHttpClientFactory = ktorHttpClientFactory
                 )
@@ -438,11 +440,10 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             secureAreas: List<SecureArea>? = null,
         ): DocumentManager {
             val storageToUse = storage ?: defaultStorage
-            val secureAreaRepository = SecureAreaRepository.build {
-                secureAreas?.forEach {
-                    add(it)
-                } ?: add(getDefaultSecureArea(storageToUse))
-            }
+            val secureAreaRepository = SecureAreaRepository.Builder().apply {
+                secureAreas?.forEach { add(it) }
+                    ?: add(getDefaultSecureArea(storageToUse))
+            }.build()
 
             return DocumentManager {
                 setStorage(storageToUse)
