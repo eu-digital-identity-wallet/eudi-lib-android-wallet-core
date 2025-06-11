@@ -16,53 +16,30 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
-import com.nimbusds.jose.jca.JCAContext
-import com.nimbusds.jose.jwk.AsymmetricJWK
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.util.Base64URL
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
-import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
-import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.PresentationQuery
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
-import eu.europa.ec.eudi.openid4vp.VerifierId
 import eu.europa.ec.eudi.openid4vp.VpContent
 import eu.europa.ec.eudi.prex.DescriptorMap
 import eu.europa.ec.eudi.prex.Id
 import eu.europa.ec.eudi.prex.InputDescriptorId
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationSubmission
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.present
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serialize
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serializeWithKeyBinding
-import eu.europa.ec.eudi.sdjwt.JwtAndClaims
-import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
-import eu.europa.ec.eudi.sdjwt.SdJwt
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
-import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
+import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForMsoMdoc
+import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForSdJwtVc
 import kotlinx.coroutines.runBlocking
-import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
-import org.multipaz.securearea.KeyUnlockData
-import java.util.Base64
-import java.util.Date
 import java.util.UUID
 
 class ProcessedGenericOpenId4VpRequest(
@@ -95,12 +72,14 @@ class ProcessedGenericOpenId4VpRequest(
                         )
                         val verifiablePresentation = when (document.format) {
                             is SdJwtVcFormat -> verifiablePresentationForSdJwtVc(
+                                resolvedRequestObject = resolvedRequestObject,
                                 document = document,
                                 disclosedDocument = disclosedDocument,
                                 signatureAlgorithm = signatureAlgorithm,
                             )
 
                             is MsoMdocFormat -> verifiablePresentationForMsoMdoc(
+                                documentManager = documentManager,
                                 sessionTranscript = resolvedRequestObject
                                     .getSessionTranscriptBytes(msoMdocNonce),
                                 disclosedDocument = disclosedDocument,
@@ -143,111 +122,24 @@ class ProcessedGenericOpenId4VpRequest(
             }
         }
     }
-
-    private fun verifiablePresentationForMsoMdoc(
-        disclosedDocument: DisclosedDocument,
-        requestedDocuments: RequestedDocuments,
-        sessionTranscript: ByteArray,
-        signatureAlgorithm: Algorithm,
-    ): VerifiablePresentation.Generic {
-        val deviceResponse = ProcessedDeviceRequest(
-            documentManager = documentManager,
-            sessionTranscript = sessionTranscript,
-            requestedDocuments = RequestedDocuments(requestedDocuments.filter { it.documentId == disclosedDocument.documentId })
-        ).generateResponse(
-            disclosedDocuments = DisclosedDocuments(disclosedDocument),
-            signatureAlgorithm = signatureAlgorithm
-        ).getOrThrow() as DeviceResponse
-
-        return VerifiablePresentation.Generic(
-            value = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(deviceResponse.deviceResponseBytes)
-        )
-    }
-
-    private suspend fun verifiablePresentationForSdJwtVc(
-        document: IssuedDocument,
-        disclosedDocument: DisclosedDocument,
-        signatureAlgorithm: Algorithm,
-    ): VerifiablePresentation.Generic {
-        return document.consumingCredential {
-            val unverifiedSdJwt = String(issuerProvidedData)
-            val issuedSdJwt = DefaultSdJwtOps
-                .unverifiedIssuanceFrom(unverifiedSdJwt)
-                .getOrThrow()
-
-            val query = disclosedDocument.disclosedItems
-                .filterIsInstance<SdJwtVcItem>()
-                .map { item ->
-                    ClaimPath(
-                        value = item.path.map { ClaimPathElement.Claim(it) }
-                    )
-                }.toSet()
-
-            if (query.isEmpty()) {
-                throw IllegalArgumentException("No claims to disclose")
-            }
-
-            val presentation = issuedSdJwt.present(query)
-                ?: throw IllegalArgumentException("Failed to create SD JWT VC presentation")
-
-            val containsCnf = issuedSdJwt.jwt.second["cnf"] != null
-
-            val serialized = if (containsCnf) {
-                presentation.serializeWithKeyBinding(
-                    credential = this, //credential
-                    keyUnlockData = disclosedDocument.keyUnlockData,
-                    clientId = resolvedRequestObject.client.id,
-                    nonce = resolvedRequestObject.nonce,
-                    signatureAlgorithm = signatureAlgorithm,
-                    issueDate = Date()
-                )
-            } else {
-                presentation.serialize()
-            }
-
-            VerifiablePresentation.Generic(serialized)
-        }.getOrThrow()
-    }
-
-
-    private suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
-        credential: SecureAreaBoundCredential,
-        keyUnlockData: KeyUnlockData?,
-        clientId: VerifierId,
-        nonce: String,
-        signatureAlgorithm: Algorithm,
-        issueDate: Date,
-    ): String {
-        val algorithm = JWSAlgorithm.parse((signatureAlgorithm).joseAlgorithmIdentifier)
-        val publicKey = credential.secureArea.getKeyInfo(credential.alias).publicKey
-        val buildKbJwt = NimbusSdJwtOps.kbJwtIssuer(
-            signer = object : JWSSigner {
-                override fun getJCAContext(): JCAContext = JCAContext()
-                override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
-                override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-                    val signature = runBlocking {
-                        credential.secureArea.sign(
-                            alias = credential.alias,
-                            dataToSign = signingInput,
-                            keyUnlockData = keyUnlockData
-                        )
-                    }
-                    return Base64URL.encode(signature.toJoseEncoded(algorithm))
-                }
-            },
-            signAlgorithm = algorithm,
-            publicKey = JWK.parseFromPEMEncodedObjects(publicKey.toPem()) as AsymmetricJWK
-        ) {
-            audience(clientId.clientId)
-            claim("nonce", nonce)
-            issueTime(issueDate)
-        }
-        return serializeWithKeyBinding(buildKbJwt).getOrThrow()
-    }
 }
 
+/**
+ * Constructs descriptor maps and collects document IDs based on the input descriptor map
+ * and the provided verifiable presentations.
+ *
+ * This function maps each verifiable presentation to its corresponding input descriptor ID,
+ * determines the format of the document, and creates a JSON path for the document within
+ * the presentation. The resulting descriptor maps and document IDs are returned as a pair.
+ *
+ * @param inputDescriptorMap A map where keys are input descriptor IDs and values are lists of document IDs.
+ * @param verifiablePresentations A list of pairs containing issued documents and their corresponding verifiable presentations.
+ * @return A pair containing:
+ *         - A list of `DescriptorMap` objects, each representing the mapping of a document to its descriptor.
+ *         - A list of `DocumentId` objects representing the IDs of the documents included in the descriptor maps.
+ * @throws IllegalArgumentException If no input descriptor is found for a document.
+ * @throws IllegalStateException If the JSON path creation fails.
+ */
 internal fun constructDescriptorsMap(
     inputDescriptorMap: Map<InputDescriptorId, List<DocumentId>>,
     verifiablePresentations: List<Pair<IssuedDocument, VerifiablePresentation.Generic>>,

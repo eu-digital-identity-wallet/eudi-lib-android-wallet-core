@@ -34,7 +34,6 @@ import eu.europa.ec.eudi.wallet.internal.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.util.CBOR.cborPrettyPrint
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -45,28 +44,46 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
-import org.bouncycastle.util.encoders.Hex.toHexString
 import java.util.concurrent.Executor
 
+/**
+ * Manages the OpenID4VP (OpenID for Verifiable Presentations) flow in the wallet.
+ *
+ * This class is responsible for configuring, initializing, and orchestrating the OpenID4VP
+ * protocol, including request processing, event listening, and HTTP client management.
+ * It acts as the main entry point for handling OpenID4VP requests and responses in the wallet.
+ *
+ * @property config The OpenID4VP configuration for the wallet.
+ * @property requestProcessor The dispatcher that routes requests to the appropriate processor.
+ * @property logger Optional logger for diagnostic output.
+ * @property listenersExecutor Optional executor for event listeners.
+ * @property ktorHttpClientFactory Optional factory for creating custom Ktor HTTP clients.
+ */
 class OpenId4VpManager(
     val config: OpenId4VpConfig,
-    val requestProcessor: OpenId4VpRequestProcessor,
+    val requestProcessor: RequestProcessorDispatcher,
     var logger: Logger? = null,
     var listenersExecutor: Executor? = null,
     val ktorHttpClientFactory: (() -> HttpClient)? = null,
 ) : TransferEvent.Listenable, ReaderTrustStoreAware {
 
+    /**
+     * The trust store used for verifying reader certificates. Delegates to the request processor.
+     */
     override var readerTrustStore: ReaderTrustStore?
         get() = requestProcessor.readerTrustStore
         set(value) {
             requestProcessor.readerTrustStore = value
         }
 
-
+    /**
+     * Lazy initialization of the SIOP OpenID4VP protocol handler with logging and content negotiation.
+     * Uses the configuration and trust anchor from the request processor.
+     */
     private val siopOpenId4Vp by lazy {
         SiopOpenId4Vp(
             siopOpenId4VPConfig = config.toSiopOpenId4VPConfig(
-                trust = requestProcessor.openid4VpX509CertificateTrustStore
+                trust = requestProcessor.openId4VpReaderTrust
             ),
             httpClientFactory = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
                 .wrappedWithLogging(logger)
@@ -74,24 +91,43 @@ class OpenId4VpManager(
         )
     }
 
-    private val exceptionHandler = CoroutineExceptionHandler { _, e ->
-        transferEventListeners.onTransferEvent(TransferEvent.Error(e))
-    }
-
+    /**
+     * List of listeners for transfer events (request received, response sent, errors, etc).
+     */
     private val transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
 
+    /**
+     * Registers a new transfer event listener.
+     */
     override fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferEventListeners.add(listener)
     }
 
+    /**
+     * Removes a transfer event listener.
+     */
     override fun removeTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferEventListeners.remove(listener)
     }
 
+    /**
+     * Removes all transfer event listeners.
+     */
     override fun removeAllTransferEventListeners() = apply {
         transferEventListeners.clear()
     }
 
+    /**
+     * Handles uncaught exceptions in coroutines by notifying all transfer event listeners.
+     */
+    private val exceptionHandler = CoroutineExceptionHandler { _, e ->
+        transferEventListeners.onTransferEvent(TransferEvent.Error(e))
+    }
+
+    /**
+     * Coroutine scope for running asynchronous operations (request resolution, response sending).
+     * Uses IO dispatcher, supervisor job, and the exception handler above.
+     */
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
     private var resolveRequestUriJob: Job? = null
     private var sendResponseJob: Job? = null
@@ -118,9 +154,7 @@ class OpenId4VpManager(
 
                         logger?.e(TAG, "Invalid resolution: ${resolution.error}")
                         transferEventListeners.onTransferEvent(
-                            TransferEvent.Error(
-                                resolution.error.asException()
-                            )
+                            TransferEvent.Error(resolution.error.asException())
                         )
                     }
 
@@ -137,13 +171,10 @@ class OpenId4VpManager(
                             }
 
                             is ResolvedRequestObject.SiopAuthentication,
-                            is ResolvedRequestObject.SiopOpenId4VPAuthentication,
-                                -> {
+                            is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
                                 logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
                                 transferEventListeners.onTransferEvent(
-                                    TransferEvent.Error(
-                                        IllegalArgumentException("Unsupported request type")
-                                    )
+                                    TransferEvent.Error(IllegalArgumentException("Unsupported request type"))
                                 )
                             }
                         }
@@ -181,8 +212,7 @@ class OpenId4VpManager(
                     "Resolved request object must be OpenId4VPAuthorization"
                 }
 
-                logResponse(response)
-
+                with(response) { logger?.debugPrint(TAG) }
 
                 when (val outcome = siopOpenId4Vp.dispatch(
                     request = response.resolvedRequestObject,
@@ -232,30 +262,6 @@ class OpenId4VpManager(
     fun stop() {
         logger?.d(TAG, "Stopping OpenId4VpManager")
         scope.coroutineContext.cancelChildren()
-    }
-
-    private fun logResponse(response: OpenId4VpResponse) {
-        when (response) {
-            is OpenId4VpResponse.DeviceResponse -> {
-                logger?.d(
-                    TAG,
-                    "Device Response to send (hex): ${toHexString(response.responseBytes)}"
-                )
-                logger?.d(
-                    TAG,
-                    "Device Response to send (cbor): ${cborPrettyPrint(response.responseBytes)}"
-                )
-                logger?.d(TAG, "VpContent: ${response.vpContent}")
-            }
-
-            is OpenId4VpResponse.GenericResponse -> {
-                logger?.d(
-                    TAG,
-                    "Generic Response to send: ${response.response.joinToString("\n")}"
-                )
-                logger?.d(TAG, "VpContent: ${response.vpContent}")
-            }
-        }
     }
 
     private fun List<TransferEvent.Listener>.onTransferEvent(
