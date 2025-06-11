@@ -37,7 +37,7 @@ import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestProcessor
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.RequestProcessorDispatcher
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import org.multipaz.context.initializeApplication
@@ -372,7 +372,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             val openId4vpManager = config.openId4VpConfig?.let { openId4VpConfig ->
                 OpenId4VpManager(
                     config = openId4VpConfig,
-                    requestProcessor = OpenId4VpRequestProcessor(documentManager, readerTrustStore),
+                    requestProcessor = RequestProcessorDispatcher(documentManager, readerTrustStore),
                     logger = loggerObj,
                     ktorHttpClientFactory = ktorHttpClientFactory
                 )

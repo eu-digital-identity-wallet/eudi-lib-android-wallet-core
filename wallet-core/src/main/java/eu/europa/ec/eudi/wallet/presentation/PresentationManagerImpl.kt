@@ -113,6 +113,8 @@ class PresentationManagerImpl @JvmOverloads constructor(
 
             is OpenId4VpResponse.GenericResponse -> openId4vpManager?.sendResponse(response)
 
+            is OpenId4VpResponse.DcqlGenericResponse -> openId4vpManager?.sendResponse(response)
+
             else -> throw IllegalStateException("Unable to determine the presentation mode")
         }
     }

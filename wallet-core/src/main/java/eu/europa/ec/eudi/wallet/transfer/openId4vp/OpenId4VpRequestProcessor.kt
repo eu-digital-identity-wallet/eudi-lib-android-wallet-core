@@ -32,7 +32,6 @@ import eu.europa.ec.eudi.prex.InputDescriptor
 import eu.europa.ec.eudi.prex.InputDescriptorId
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.internal.Openid4VpX509CertificateTrust
 import eu.europa.ec.eudi.wallet.internal.generateMdocGeneratedNonce
 import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import kotlinx.coroutines.runBlocking
@@ -51,20 +50,16 @@ import kotlinx.coroutines.runBlocking
  * - Extraction of requested document claims based on input descriptors
  *
  * @param documentManager Manages document retrieval and processing
- * @property readerTrustStore Provides trust information for verifying reader certificates
+ * @property openid4VpX509CertificateTrust X.509 certificate verification
  */
 class OpenId4VpRequestProcessor(
     private val documentManager: DocumentManager,
-    override var readerTrustStore: ReaderTrustStore?,
-) : RequestProcessor, ReaderTrustStoreAware {
+    var openid4VpX509CertificateTrust: OpenId4VpReaderTrust
+) : RequestProcessor {
 
     private val helper: DeviceRequestProcessor.Helper by lazy {
         DeviceRequestProcessor.Helper(documentManager)
     }
-
-    internal val openid4VpX509CertificateTrustStore: Openid4VpX509CertificateTrust
-            by lazy { Openid4VpX509CertificateTrust(readerTrustStore) }
-
     /**
      * Processes an OpenID4VP request and returns the appropriate processed request object.
      *
@@ -196,20 +191,7 @@ class OpenId4VpRequestProcessor(
         return DeviceRequestProcessor.RequestedMdocDocument(
             docType = descriptor.id.value.trim(),
             requested = requested,
-            readerAuthentication = {
-                openid4VpX509CertificateTrustStore.getTrustResult()
-                    ?.let { (chain, isTrusted) ->
-                        val readerCommonName =
-                            request.resolvedRequestObject.client.legalName() ?: ""
-                        ReaderAuth(
-                            readerAuth = byteArrayOf(0),
-                            readerSignIsValid = true,
-                            readerCertificatedIsTrusted = isTrusted,
-                            readerCertificateChain = chain,
-                            readerCommonName = readerCommonName
-                        )
-                    }
-            }
+            readerAuthentication = { getReaderAuthResult(request) }
         )
     }
 
@@ -253,22 +235,25 @@ class OpenId4VpRequestProcessor(
                     RequestedDocument(
                         documentId = doc.id,
                         requestedItems = requestedClaims,
-                        readerAuth =
-                            openid4VpX509CertificateTrustStore.getTrustResult()
-                                ?.let { (chain, isTrusted) ->
-                                    val readerCommonName =
-                                        request.resolvedRequestObject.client.legalName() ?: ""
-                                    ReaderAuth(
-                                        readerAuth = ByteArray(0),
-                                        readerSignIsValid = true,
-                                        readerCertificatedIsTrusted = isTrusted,
-                                        readerCertificateChain = chain,
-                                        readerCommonName = readerCommonName
-                                    )
-                                }
+                        readerAuth = getReaderAuthResult(request)
                     )
                 }
         )
+    }
+
+    private fun getReaderAuthResult(request: OpenId4VpRequest): ReaderAuth? {
+        return (openid4VpX509CertificateTrust.result as? ReaderTrustResult.Processed)
+            ?.let { (chain, isTrusted) ->
+                val readerCommonName =
+                    request.resolvedRequestObject.client.legalName() ?: ""
+                ReaderAuth(
+                    readerAuth = ByteArray(0),
+                    readerSignIsValid = true,
+                    readerCertificatedIsTrusted = isTrusted,
+                    readerCertificateChain = chain,
+                    readerCommonName = readerCommonName
+                )
+            }
     }
 }
 
