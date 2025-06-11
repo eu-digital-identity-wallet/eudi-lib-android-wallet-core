@@ -34,6 +34,8 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
 import io.mockk.mockk
 import org.bouncycastle.util.encoders.Hex
@@ -87,7 +89,7 @@ class Openid4VpUtilsTest {
 
     @Test
     fun testToSiopOpenId4VPConfig() {
-        val trust = Openid4VpX509CertificateTrust(null) // Assuming a default constructor or mock
+        val trust = OpenId4VpReaderTrustImpl(null) // Assuming a default constructor or mock
 
         val openId4VpConfig = OpenId4VpConfig.Builder()
             .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
