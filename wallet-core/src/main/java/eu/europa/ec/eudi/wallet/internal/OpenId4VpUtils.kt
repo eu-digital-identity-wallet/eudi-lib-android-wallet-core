@@ -58,7 +58,6 @@ import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VerifierId
 import eu.europa.ec.eudi.openid4vp.VpFormat
 import eu.europa.ec.eudi.openid4vp.VpFormats
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.present
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serialize
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serializeWithKeyBinding
@@ -69,6 +68,8 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.credential.CredentialIssuedData
+import eu.europa.ec.eudi.wallet.document.credential.getIssuedData
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
@@ -380,10 +381,9 @@ internal suspend fun verifiablePresentationForSdJwtVc(
     signatureAlgorithm: Algorithm,
 ): VerifiablePresentation.Generic {
     return document.consumingCredential {
-        val unverifiedSdJwt = String(issuerProvidedData)
-        val issuedSdJwt = DefaultSdJwtOps
-            .unverifiedIssuanceFrom(unverifiedSdJwt)
-            .getOrThrow()
+        val credentialIssuedData =
+            getIssuedData<CredentialIssuedData.SdJwtVc>()
+        val issuedSdJwt = credentialIssuedData.getOrThrow().issuedSdJwt
 
         val query = disclosedDocument.disclosedItems
             .filterIsInstance<SdJwtVcItem>()
