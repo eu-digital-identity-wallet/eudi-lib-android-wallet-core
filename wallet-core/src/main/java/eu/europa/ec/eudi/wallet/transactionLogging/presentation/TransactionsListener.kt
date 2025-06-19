@@ -18,11 +18,11 @@ package eu.europa.ec.eudi.wallet.transactionLogging.presentation
 
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 
 /**
  * Listener for transaction logging.
@@ -43,11 +43,26 @@ class TransactionsListener(
     /**
      * Resolver for document metadata
      */
-    internal val metadataResolver: (List<DocumentId>) -> List<String?> = { ids ->
-        ids.map {
-            documentManager.getDocumentById(it)?.issuerMetadata?.toJson()
+    internal val metadataResolver: (List<OpenId4VpResponse.RespondedDocument>) -> List<String> =
+        { respondedDocuments ->
+            respondedDocuments.map {
+                val metadata =
+                    documentManager.getDocumentById(it.documentId)?.issuerMetadata?.toJson()
+                when (it) {
+                    is OpenId4VpResponse.RespondedDocument.IndexBased -> TransactionLog.Metadata.IndexBased(
+                        issuerMetadata = metadata,
+                        format = it.format,
+                        index = it.index,
+                    ).toJson()
+
+                    is OpenId4VpResponse.RespondedDocument.QueryBased -> TransactionLog.Metadata.QueryBased(
+                        issuerMetadata = metadata,
+                        format = it.format,
+                        queryId = it.queryId
+                    ).toJson()
+                }
+            }
         }
-    }
 
     /**
      * Log builder for creating and updating transaction logs
@@ -120,6 +135,7 @@ class TransactionsListener(
 
             is TransferEvent.RequestReceived -> {
                 try {
+                    log = logBuilder.createEmptyPresentationLog()
                     log = logBuilder.withRequest(log, event.request)
                     log = logBuilder.withRelyingParty(log, event.processedRequest)
                 } catch (e: Throwable) {
@@ -130,8 +146,10 @@ class TransactionsListener(
 
             is TransferEvent.Error -> {
                 try {
-                    log = logBuilder.withError(log)
-                    transactionLogger.log(log)
+                    if (log.status != TransactionLog.Status.Completed) {
+                        log = logBuilder.withError(log)
+                        transactionLogger.log(log)
+                    }
                 } catch (e: Throwable) {
                     logError(e, "onTransferEvent: Error")
                 }

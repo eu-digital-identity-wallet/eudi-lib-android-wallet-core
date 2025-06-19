@@ -57,8 +57,8 @@ import org.multipaz.crypto.Algorithm
 class ProcessedDcqlRequest(
     val resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization,
     private val documentManager: DocumentManager,
-    private val queryMap: Map<QueryId, RequestedDocuments>,
-    requestedDocuments: RequestedDocuments = queryMap.values.flatMap { it }
+    private val queryMap: Map<QueryId, Pair<String, RequestedDocuments>>,
+    requestedDocuments: RequestedDocuments = queryMap.values.flatMap { it.second }
         .let { RequestedDocuments(it) },
     val msoMdocNonce: String,
 ) : RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
@@ -76,21 +76,25 @@ class ProcessedDcqlRequest(
     ): ResponseResult {
         val result = try {
 
-            // Ensure only one documentId per queryId is present in disclosedDocuments
-            // If multiple documentIds are present for the same queryId, throw an exception
-            ensureOnlyOneDocumentPerQueryId(disclosedDocuments)
-
-            val documentIds = mutableMapOf<QueryId, DocumentId>()
+            val respondedDocuments = mutableSetOf<OpenId4VpResponse.RespondedDocument>()
             val verifiablePresentations = queryMap
-                .mapNotNull { (queryId, requestedDocuments) ->
-                    // since we ensured only one documentId per queryId, we can use the first one
+                .mapNotNull { (queryId, requestedDocumentsFormatPair) ->
+                    val (format, requestedDocuments) = requestedDocumentsFormatPair
+                    // if multiple documents are disclosed for the same queryId, only one should be used
+                    // and the rest should be ignored. We pick the first document in the list.
                     val requestedDocument = requestedDocuments.first()
                     val disclosedDocument = disclosedDocuments.firstOrNull {
                         it.documentId == requestedDocument.documentId
                     }
                     disclosedDocument
                         ?.let { disclosedDocument ->
-                            documentIds[queryId] = requestedDocument.documentId
+                            respondedDocuments.add(
+                                OpenId4VpResponse.RespondedDocument.QueryBased(
+                                    documentId = requestedDocument.documentId,
+                                    format = format,
+                                    queryId = queryId.value,
+                                )
+                            )
                             queryId to runBlocking {
                                 vpFromRequestedDocuments(
                                     requestedDocument = requestedDocument,
@@ -106,15 +110,12 @@ class ProcessedDcqlRequest(
             )
             val consensus = Consensus.PositiveConsensus.VPTokenConsensus(vpContent)
 
-            val response = OpenId4VpResponse.DcqlGenericResponse(
+            val response = OpenId4VpResponse.DcqlResponse(
                 resolvedRequestObject = resolvedRequestObject,
                 consensus = consensus,
                 msoMdocNonce = msoMdocNonce,
-                response = verifiablePresentations
-                    .values
-                    .map { it.toString() }
-                    .toList(),
-                documentIds = documentIds
+                response = verifiablePresentations.mapValues { it.toString() },
+                respondedDocuments = respondedDocuments.toList()
             )
             ResponseResult.Success(response)
         } catch (e: Exception) {
@@ -160,28 +161,6 @@ class ProcessedDcqlRequest(
         }
         return vp
     }
-
-    /**
-     * Ensure only one documentId per queryId is present in disclosedDocuments
-     * @param disclosedDocuments
-     * @throws IllegalArgumentException if multiple documentIds are present for the same queryId
-     */
-    private fun ensureOnlyOneDocumentPerQueryId(disclosedDocuments: DisclosedDocuments) {
-        queryMap.forEach { (queryId, requestedDocuments) ->
-            val matchingDocumentIds = requestedDocuments
-                .map { it.documentId }
-                .filter { documentId -> disclosedDocuments.any { it.documentId == documentId } }
-            if (matchingDocumentIds.size > 1) {
-                throw MultipleDocumentsForQueryIdException(queryId, matchingDocumentIds)
-            }
-        }
-    }
 }
-
-class MultipleDocumentsForQueryIdException(
-    val queryId: QueryId,
-    val documentIds: List<DocumentId>,
-    message: String = "Multiple documentIds present for queryId $queryId in disclosedDocuments: $documentIds"
-) : IllegalArgumentException(message)
 
 
