@@ -55,7 +55,7 @@ open class BaseTest {
         try {
             dataItem = docData?.get(dataKey)
             println(
-                "--> value: ${
+                "--> issuerMetadata: ${
                     CborUtil.cborPrettyPrint(
                         dataItem!!
                     )

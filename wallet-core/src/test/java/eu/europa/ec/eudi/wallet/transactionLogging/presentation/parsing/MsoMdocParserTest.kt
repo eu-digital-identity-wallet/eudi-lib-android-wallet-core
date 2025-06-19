@@ -26,7 +26,7 @@ class MsoMdocParserTest {
     fun `test parceCbor`() {
         val data = getResourceAsByteArrayFromBase64Url("mso_mdoc_response.txt")
         val sessionTranscript = byteArrayOf(0)
-        val metadata = listOf<String?>(null)
+        val metadata = listOf<String>()
         val result = parseMsoMdoc(data, sessionTranscript, metadata)
         assertEquals(1, result.size)
         val presentedDocument = result.first()

@@ -17,8 +17,6 @@
 package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
 
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
-import eu.europa.ec.eudi.prex.DescriptorMap
-import eu.europa.ec.eudi.prex.PresentationSubmission
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
@@ -26,19 +24,20 @@ import eu.europa.ec.eudi.sdjwt.SdJwt
 import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.select
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
+import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionLogBuilder
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Base64
-
-typealias VpAndMetadata = Pair<VerifiablePresentation.Generic, String?>
 
 /**
  * Function to parse the Verifiable Presentation (VP) response.
@@ -46,108 +45,108 @@ typealias VpAndMetadata = Pair<VerifiablePresentation.Generic, String?>
  * It returns a list of PresentedDocument objects.
  *
  * @param rawResponse the raw response to parse
- * @param metadata optional metadata associated with the documents
+ * @param metadata metadata associated with the documents
  * @return a list of PresentedDocument objects
  */
 fun parseVp(
     rawResponse: ByteArray,
-    metadata: List<String?>?
+    metadata: List<String>,
 ): List<PresentedDocument> {
-
-    val parsedResponse = parseRawResponse(rawResponse) ?: return emptyList()
-
-    val (verifiablePresentations, presentationSubmission) = parsedResponse
-
-    if (presentationSubmission.descriptorMaps.size == 1) {
-        // this means that the response either contains on mso_mdoc response
-        // or one sd-jwt-vc document
-
-        val descriptorMap = presentationSubmission.descriptorMaps.first()
-        val verifiablePresentation = verifiablePresentations.first()
-        when (descriptorMap.format) {
-            "mso_mdoc" -> {
-                // this means that the response contains one mso_mdoc response
-                // we need to parse it and eagerly return the result
-                return parseMsoMdocFromVp(vp = verifiablePresentation, metadata = metadata)
-            }
-
-            "dc+sd-jwt", "vc+sd-jwt" -> {
-                // if we cannot get sd-jwt for the one and only verifiable presentation
-                // we need to return empty list since there is nothing else to parse
-                return parseVcSdJwt(
-                    vp = verifiablePresentation,
-                    // since we have only one document metadata should contain only one element
-                    metadata = metadata?.firstOrNull()
-                )
-                    ?.let { listOf(it) }
-                    ?: emptyList()
-            }
-
-            else -> {
-                // Not supported format
-                // eagerly return empty list
-                return emptyList()
-            }
+    val response = Json.decodeFromString<JsonObject>(String(rawResponse))
+    val type = response["type"]?.jsonPrimitive?.content
+    val parsedMetadata = metadata.map { TransactionLog.Metadata.fromJson(it) }
+    val presentedDocuments = when (type) {
+        TransactionLogBuilder.PRESENTATION_EXCHANGE -> {
+            response["verifiable_presentations"]
+                ?.jsonArray
+                ?.map { VerifiablePresentation.Generic(value = it.jsonPrimitive.content) }
+                ?.let { verifiablePresentations ->
+                    // check if there is only one vp but multiple metadata
+                    // indicating that vp contains multiple documents
+                    val vpWithManyDocs = verifiablePresentations.size == 1
+                            && parsedMetadata.all { it is TransactionLog.Metadata.IndexBased && it.format == FORMAT_MSO_MDOC }
+                    if (vpWithManyDocs) {
+                        verifiablePresentations.flatMap { parseMultiMsoMdocFromVp(it, metadata) }
+                    } else {
+                        parsePresentationExchange(
+                            verifiablePresentations,
+                            parsedMetadata.filterIsInstance<TransactionLog.Metadata.IndexBased>()
+                        )
+                    }
+                } ?: emptyList()
         }
 
-    } else {
-        // this means that the response contains more than one document
-        // we need to separate mso_mdoc and sd-jwt-vc documents
-        // and parse them separately
-        // at the end we need to merge the results
+        TransactionLogBuilder.DCQL -> {
+            response["verifiable_presentations"]
+                ?.jsonObject
+                ?.mapValues { VerifiablePresentation.Generic(value = it.value.jsonPrimitive.content) }
+                ?.let { verifiablePresentations ->
+                    parseDcql(
+                        verifiablePresentations,
+                        parsedMetadata.filterIsInstance<TransactionLog.Metadata.QueryBased>()
+                    )
+                } ?: emptyList()
+        }
 
-        // first we get the indices for each document from descriptor maps
-        val indicesByFormat = presentationSubmission.getResponseIndicesByFormat()
+        else -> emptyList<PresentedDocument>()
 
-        val verifiablePresentationsAndMetadataByFormat: Map<String, List<VpAndMetadata>> =
-            indicesByFormat.mapValues { (_, indices) ->
-                indices.map { Pair(verifiablePresentations[it], metadata?.getOrNull(it)) }
-            }
+    }
 
-        val presentedDocuments =
-            verifiablePresentationsAndMetadataByFormat.flatMap { (format, vpAndMetadata) ->
-                when (format) {
-                    "mso_mdoc" -> vpAndMetadata.flatMap { (vp, metadata) ->
-                        parseMsoMdocFromVp(vp, listOf(metadata))
-                    }
+    return presentedDocuments
+}
 
-                    "dc+sd-jwt", "vc+sd-jwt" -> vpAndMetadata.map { (vp, metadata) ->
-                        parseVcSdJwt(vp, metadata)
-                    }
-
-                    else -> emptyList()
+fun parsePresentationExchange(
+    verifiablePresentations: List<VerifiablePresentation.Generic>,
+    metadata: List<TransactionLog.Metadata.IndexBased>
+): List<PresentedDocument> {
+    return verifiablePresentations.mapIndexedNotNull { index, vp ->
+        metadata.find { it.index == index }
+            ?.let { m ->
+                when (m.format) {
+                    FORMAT_MSO_MDOC -> parseMsoMdocFromVp(vp, m)
+                    FORMAT_SD_JWT_VC -> parseVcSdJwt(vp, m)
+                    else -> null
                 }
-            }.filterNotNull()
-
-        return presentedDocuments
+            }
     }
 }
 
+fun parseDcql(
+    verifiablePresentations: Map<String, VerifiablePresentation.Generic>,
+    metadata: List<TransactionLog.Metadata.QueryBased>
+): List<PresentedDocument> {
+    return verifiablePresentations.mapNotNull { (queryId, vp) ->
+        metadata.find { it.queryId == queryId }
+            ?.let { m ->
+                when (m.format) {
+                    FORMAT_MSO_MDOC -> parseMsoMdocFromVp(vp, m)
+                    FORMAT_SD_JWT_VC -> parseVcSdJwt(vp, m)
+                    else -> null
+                }
+            }
+    }
+}
 
 /**
- * Function to parse the raw response of Vp.
- * It takes the raw response as a byte array and returns a pair of verifiable presentations and presentation submission.
- * @param rawResponse the raw response to parse
- * @return a pair of verifiable presentations and presentation submission or null if parsing fails
+ * Parses multiple mso_mdoc documents from a single Verifiable Presentation.
+ * This function extracts the mso_mdoc data from the verifiable presentation,
+ * decodes it from Base64, and then passes it to the parseMsoMdoc function.
+ *
+ * @param vp The generic Verifiable Presentation containing the mso_mdoc documents.
+ * @param metadata List of metadata strings associated with the documents.
+ * @return A list of PresentedDocument objects parsed from the mso_mdoc data.
  */
-fun parseRawResponse(rawResponse: ByteArray): Pair<List<VerifiablePresentation.Generic>, PresentationSubmission>? {
-    val decodedResponse = Json.decodeFromString<JsonObject>(String(rawResponse))
-    // get the verifiable presentations from the decoded response or return null
-    val verifiablePresentations: List<VerifiablePresentation.Generic> =
-        decodedResponse["verifiable_presentations"]
-            ?.jsonArray
-            ?.map {
-                VerifiablePresentation.Generic(value = it.jsonPrimitive.content)
-            } ?: return null
-    // get the presentation submission from the decoded response or return null
-    val presentationSubmission: PresentationSubmission =
-        decodedResponse["presentation_submission"]
-            ?.jsonObject
-            ?.let {
-                Json.decodeFromJsonElement(it)
-            } ?: return null
-
-    return Pair(verifiablePresentations, presentationSubmission)
+fun parseMultiMsoMdocFromVp(
+    vp: VerifiablePresentation.Generic,
+    metadata: List<String>
+): List<PresentedDocument> {
+    // but first we need to decode the verifiable presentation
+    val msoMdocResponse = Base64.getUrlDecoder().decode(vp.value)
+    return parseMsoMdoc(
+        rawResponse = msoMdocResponse,
+        sessionTranscript = null,
+        metadata = metadata
+    )
 }
 
 /**
@@ -156,22 +155,34 @@ fun parseRawResponse(rawResponse: ByteArray): Pair<List<VerifiablePresentation.G
  * decodes it from Base64, and then passes it to the parseMsoMdoc function.
  *
  * @param vp The generic Verifiable Presentation containing the mso_mdoc document.
- * @param metadata Optional list of metadata strings associated with the documents.
- * @return A list of PresentedDocument objects parsed from the mso_mdoc data.
+ * @param metadata List of metadata strings associated with the documents.
+ * @return A PresentedDocument objects parsed from the mso_mdoc data.
  */
 fun parseMsoMdocFromVp(
     vp: VerifiablePresentation.Generic,
-    metadata: List<String?>?
-): List<PresentedDocument> {
+    metadata: TransactionLog.Metadata
+): PresentedDocument? {
 
     // but first we need to decode the verifiable presentation
     val msoMdocResponse = Base64.getUrlDecoder().decode(vp.value)
+    // since only one document is being parsed, we can convert metadata from QueryBased to IndexBased
+    // and use the existing parseMsoMdoc function to parse the mso_mdoc document
+
+    val convertedMetadata = when (metadata) {
+        is TransactionLog.Metadata.QueryBased -> TransactionLog.Metadata.IndexBased(
+            index = 0,
+            format = metadata.format,
+            issuerMetadata = metadata.issuerMetadata
+        )
+
+        is TransactionLog.Metadata.IndexBased -> metadata
+    }.toJson()
 
     return parseMsoMdoc(
         rawResponse = msoMdocResponse,
         sessionTranscript = null,
-        metadata = metadata
-    )
+        metadata = listOf(convertedMetadata)
+    ).firstOrNull()
 }
 
 /**
@@ -186,7 +197,7 @@ fun parseMsoMdocFromVp(
  */
 fun parseVcSdJwt(
     vp: VerifiablePresentation.Generic,
-    metadata: String?
+    metadata: TransactionLog.Metadata
 ): PresentedDocument? {
     // get the sd-jwt from the verifiable presentation but before that
     // we need to remove the key binding from it due to limitations of the
@@ -199,7 +210,7 @@ fun parseVcSdJwt(
 
     val presentedDocument = getPresentedDocumentsFromClaims(
         claims = sdJwt.claims,
-        metadata = metadata?.let { IssuerMetadata.fromJson(it).getOrNull() }
+        metadata = metadata.issuerMetadata?.let { IssuerMetadata.fromJson(it).getOrNull() }
     )
 
     return presentedDocument
@@ -292,40 +303,6 @@ fun getPresentedDocumentsFromClaims(
     return presentedDocument
 }
 
-/**
- * Function to get the index from the path of the descriptor map
- * It takes the descriptor map to parse the path
- * and returns the index as an integer
- *
- * If the path is "$" it returns 0
- *
- * @param descriptorMap the descriptor map to parse
- * @return the index as an integer
- */
-fun getIndexFormPath(
-    descriptorMap: DescriptorMap,
-): Int {
-    return if (descriptorMap.path.value == "$") {
-        0
-    } else {
-        val regex = Regex("\\[(\\d+)]")
-        // parse $[(\d+)] with regex and extract the number
-        val matchResult = regex.find(descriptorMap.path.value)
-        matchResult?.groups?.get(1)?.value?.toInt() ?: 0
-    }
-}
-
-/**
- * Function to get the indices of the descriptor maps by format
- * It takes the presentation submission and returns a map of format to list of indices
- * @receiver presentationSubmission the presentation submission to parse
- * @return the map of format to list of indices
- */
-fun PresentationSubmission.getResponseIndicesByFormat(): Map<String, List<Int>> {
-    return descriptorMaps.groupBy { it.format }.mapValues { (_, maps) ->
-        maps.map(::getIndexFormPath)
-    }
-}
 
 /**
  * Function to find the claim metadata from the path and metadata
@@ -344,4 +321,3 @@ fun findClaimMetadataForSdJwtVc(
         it.path.size == path.size && it.path.zip(path).all { (a, b) -> a == b }
     }
 }
-

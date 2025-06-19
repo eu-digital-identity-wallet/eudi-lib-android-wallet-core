@@ -35,6 +35,7 @@ fun parsePresentationTransactionLog(transactionLog: TransactionLog): Presentatio
     requireNotNull(transactionLog.rawRequest) { "Transaction log raw request is null" }
     requireNotNull(transactionLog.rawResponse) { "Transaction log raw response is null" }
     requireNotNull(transactionLog.relyingParty) { "Transaction log relying party is null" }
+    requireNotNull(transactionLog.metadata) { "Transaction log metadata is null" }
 
     val presentedDocuments = when (transactionLog.dataFormat) {
         TransactionLog.DataFormat.Cbor -> {

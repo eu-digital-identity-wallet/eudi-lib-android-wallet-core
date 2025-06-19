@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestProcessor
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.RequestProcessorDispatcher
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -58,7 +59,7 @@ import kotlin.time.Duration.Companion.minutes
 class OpenId4VpManagerTest {
 
     val testDispatcher = UnconfinedTestDispatcher()
-    val requestProcessor = mockk<OpenId4VpRequestProcessor>(relaxed = true)
+    val requestProcessor = mockk<RequestProcessorDispatcher>(relaxed = true)
     val config = mockk<OpenId4VpConfig>(relaxed = true)
     val logger = Logger { record -> println(record) }
     lateinit var siopOpenId4Vp: SiopOpenId4Vp

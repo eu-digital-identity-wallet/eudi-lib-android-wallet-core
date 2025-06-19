@@ -126,7 +126,7 @@ class DcqlRequestProcessor(
                                 readerAuth = readerAuth
                             )
                         })
-                        credential.id to requestedDocuments
+                        credential.id to (format.value to requestedDocuments)
                     }
 
                     Format.SdJwtVc -> {
@@ -161,7 +161,7 @@ class DcqlRequestProcessor(
                             )
                         })
 
-                        credential.id to requestedDocuments
+                        credential.id to (format.value to requestedDocuments)
                     }
 
                     else -> throw IllegalArgumentException("Not supported format ${format.value}")

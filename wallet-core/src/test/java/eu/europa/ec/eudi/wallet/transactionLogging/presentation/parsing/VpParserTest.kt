@@ -18,17 +18,46 @@ package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
 
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class VpParserTest {
 
+    private val metadata = listOf(
+        TransactionLog.Metadata.IndexBased(
+            index = 0,
+            format = FORMAT_SD_JWT_VC,
+            issuerMetadata = IssuerMetadata(
+                documentConfigurationIdentifier = "urn:eu.europa.ec.eudi:pid:1",
+                display = emptyList(),
+                claims = emptyList(),
+                credentialIssuerIdentifier = "http://issuer.example.com",
+                issuerDisplay = null,
+            ).toJson()
+        ).toJson(),
+        TransactionLog.Metadata.IndexBased(
+            index = 1,
+            format = FORMAT_MSO_MDOC,
+            issuerMetadata = IssuerMetadata(
+                documentConfigurationIdentifier = "org.iso.18013.5.1.mDL",
+                display = emptyList(),
+                claims = emptyList(),
+                credentialIssuerIdentifier = "http://issuer.example.com",
+                issuerDisplay = null,
+            ).toJson()
+        ).toJson()
+
+    )
+
     @Test
     fun `test parseVp with only one mso_mdoc response containing on document`() {
-        val rawResponse = getResourceAsByteArrayFromBase64Url("vp_response_2.txt")
-        val result = parseVp(rawResponse, null)
+        val rawResponse = getResourceAsByteArray("vp_response_2.json")
+        val result = parseVp(rawResponse, metadata)
         assertEquals(2, result.size)
 
         val sdJwt = result.first { it.format is SdJwtVcFormat }
@@ -61,14 +90,4 @@ class VpParserTest {
         }
 
     }
-
-
-    @Test
-    fun parseRawResponse_withInvalidResponse_returnsNull() {
-        val rawResponse = "{}".toByteArray()
-        val result = parseRawResponse(rawResponse)
-        assertNull(result)
-    }
-
-
 }
