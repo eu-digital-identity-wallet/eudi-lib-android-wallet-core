@@ -28,6 +28,8 @@ import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -37,6 +39,8 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
+import kotlin.test.assertContentEquals
+import kotlin.test.assertIs
 
 class TransactionsListenerTest {
 
@@ -104,12 +108,38 @@ class TransactionsListenerTest {
         every { documentManager.getDocumentById(documentId2) } returns document2
 
         // Test
-        val result = listener.metadataResolver(listOf(documentId, documentId2))
+        val respondedDocuments = listOf(
+            OpenId4VpResponse.RespondedDocument.IndexBased(
+                index = 0,
+                format = FORMAT_MSO_MDOC,
+                documentId = documentId
+            ),
+            OpenId4VpResponse.RespondedDocument.IndexBased(
+                index = 1,
+                format = FORMAT_MSO_MDOC,
+                documentId = documentId2
+            )
+        )
+        val result = listener.metadataResolver(respondedDocuments)
 
         // Verify
         assertEquals(2, result.size)
-        assertEquals("{\"docType\":\"TestDoc\"}", result[0])
-        assertEquals("{\"docType\":\"TestDoc2\"}", result[1])
+        val expectedMetadata = listOf(
+            TransactionLog.Metadata.IndexBased(
+                index = 0,
+                format = FORMAT_MSO_MDOC,
+                issuerMetadata = "{\"docType\":\"TestDoc\"}",
+            ),
+            TransactionLog.Metadata.IndexBased(
+                index = 1,
+                format = FORMAT_MSO_MDOC,
+                issuerMetadata = "{\"docType\":\"TestDoc2\"}",
+            )
+        )
+        val metadata = result.map { TransactionLog.Metadata.fromJson(it) }
+        assertContentEquals(expectedMetadata, metadata)
+        assertEquals("{\"docType\":\"TestDoc\"}", metadata[0].issuerMetadata)
+        assertEquals("{\"docType\":\"TestDoc2\"}", metadata[1].issuerMetadata)
     }
 
     @Test
@@ -118,11 +148,20 @@ class TransactionsListenerTest {
         every { documentManager.getDocumentById(any()) } returns null
 
         // Test
-        val result = listener.metadataResolver(listOf(documentId))
+        val respondedDocuments = listOf(
+            OpenId4VpResponse.RespondedDocument.IndexBased(
+                index = 0,
+                format = FORMAT_MSO_MDOC,
+                documentId = documentId
+            )
+        )
+        val result = listener.metadataResolver(respondedDocuments)
 
         // Verify
         assertEquals(1, result.size)
-        assertNull(result[0])
+        val transactionLogMetadata = TransactionLog.Metadata.fromJson(result[0])
+        assertIs<TransactionLog.Metadata.IndexBased>(transactionLogMetadata)
+        assertNull(transactionLogMetadata.issuerMetadata)
     }
 
     @Test
@@ -130,7 +169,7 @@ class TransactionsListenerTest {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
         every { mockedLogBuilder.createEmptyPresentationLog() } returns emptyLog
-        
+
         // Set the mocked logBuilder
         listener.logBuilder = mockedLogBuilder
 
@@ -152,6 +191,7 @@ class TransactionsListenerTest {
         val logWithRequest = mockk<TransactionLog>()
         val logWithRelyingParty = mockk<TransactionLog>()
 
+        every { mockedLogBuilder.createEmptyPresentationLog() } returns emptyLog
         every { mockedLogBuilder.withRequest(any(), request) } returns logWithRequest
         every {
             mockedLogBuilder.withRelyingParty(
@@ -368,7 +408,7 @@ class TransactionsListenerTest {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
         val errorLog = mockk<TransactionLog>()
-        
+
         // Set status to Incomplete
         val incompleteLog = TransactionLog(
             timestamp = Instant.now().toEpochMilli(),
@@ -381,27 +421,27 @@ class TransactionsListenerTest {
             sessionTranscript = null,
             metadata = null
         )
-        
+
         every { mockedLogBuilder.withError(any()) } returns errorLog
-        
+
         // Set the mocked logBuilder and initial log
         listener.logBuilder = mockedLogBuilder
         listener.log = incompleteLog
-        
+
         // Test
         listener.logStopped()
-        
+
         // Verify log marked with error and logged
         verify(exactly = 1) { mockedLogBuilder.withError(incompleteLog) }
         verify(exactly = 1) { transactionLogger.log(errorLog) }
         assertEquals(errorLog, listener.log)
     }
-    
+
     @Test
     fun `logStopped does not log completed transactions`() {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
-        
+
         // Set status to Completed
         val completedLog = TransactionLog(
             timestamp = Instant.now().toEpochMilli(),
@@ -414,25 +454,25 @@ class TransactionsListenerTest {
             sessionTranscript = null,
             metadata = null
         )
-        
+
         // Set the mocked logBuilder and initial log
         listener.logBuilder = mockedLogBuilder
         listener.log = completedLog
-        
+
         // Test
         listener.logStopped()
-        
+
         // Verify no interactions with logBuilder or transactionLogger
         verify(exactly = 0) { mockedLogBuilder.withError(any()) }
         verify(exactly = 0) { transactionLogger.log(any()) }
         assertEquals(completedLog, listener.log)
     }
-    
+
     @Test
     fun `logStopped handles exceptions during error handling`() {
         // Setup
         val mockedLogBuilder = mockk<TransactionLogBuilder>()
-        
+
         // Set status to Incomplete
         val incompleteLog = TransactionLog(
             timestamp = Instant.now().toEpochMilli(),
@@ -445,34 +485,34 @@ class TransactionsListenerTest {
             sessionTranscript = null,
             metadata = null
         )
-        
+
         every { mockedLogBuilder.withError(any()) } throws RuntimeException("Error during stop")
-        
+
         // Set the mocked logBuilder and initial log
         listener.logBuilder = mockedLogBuilder
         listener.log = incompleteLog
-        
+
         // Test
         listener.logStopped()
-        
+
         // Verify logger called with error
-        verify(exactly = 1) { 
-            logger.log(match { 
-                it.level == Logger.LEVEL_ERROR && 
-                it.message == "Failed to log transaction" &&
-                it.sourceMethod == "onTransferEvent: Disconnected"
+        verify(exactly = 1) {
+            logger.log(match {
+                it.level == Logger.LEVEL_ERROR &&
+                        it.message == "Failed to log transaction" &&
+                        it.sourceMethod == "onTransferEvent: Disconnected"
             })
         }
     }
-    
+
     @Test
     fun `onTransferEvent with Disconnected event calls logStopped method`() {
         // Create a spy to verify the stop method is called
         val spyListener = spyk(listener)
-        
+
         // Test
         spyListener.onTransferEvent(TransferEvent.Disconnected)
-        
+
         // Verify stop is called
         verify(exactly = 1) { spyListener.logStopped() }
     }

@@ -90,7 +90,7 @@ class ProcessedGenericOpenId4VpRequest(
                         Pair(document, verifiablePresentation)
                     }
 
-                val (descriptorMaps, documentIds) = constructDescriptorsMap(
+                val (descriptorMaps, respondedDocuments) = constructDescriptorsMap(
                     inputDescriptorMap = inputDescriptorMap,
                     verifiablePresentations = verifiablePresentations
                 )
@@ -114,7 +114,7 @@ class ProcessedGenericOpenId4VpRequest(
                         response = verifiablePresentations
                             .map { it.second.toString() }
                             .toList(),
-                        documentIds = documentIds
+                        respondedDocuments = respondedDocuments
                     )
                 )
             } catch (e: Throwable) {
@@ -143,9 +143,9 @@ class ProcessedGenericOpenId4VpRequest(
 internal fun constructDescriptorsMap(
     inputDescriptorMap: Map<InputDescriptorId, List<DocumentId>>,
     verifiablePresentations: List<Pair<IssuedDocument, VerifiablePresentation.Generic>>,
-): Pair<List<DescriptorMap>, List<DocumentId>> {
+): Pair<List<DescriptorMap>, List<OpenId4VpResponse.RespondedDocument>> {
 
-    val documentIds = mutableListOf<DocumentId>()
+    val respondedDocuments = mutableListOf<OpenId4VpResponse.RespondedDocument>()
     val descriptorMaps = verifiablePresentations.mapIndexed { index, (document, _) ->
         // get the input descriptor id for the document
         // that is in the verifiable presentation
@@ -171,7 +171,13 @@ internal fun constructDescriptorsMap(
                 "$"
             }
         ) ?: throw IllegalStateException("Failed to create JsonPath")
-        documentIds.add(document.id)
+        respondedDocuments.add(
+            OpenId4VpResponse.RespondedDocument.IndexBased(
+                documentId = document.id,
+                format = format,
+                index = index
+            )
+        )
         // create the descriptor map
         DescriptorMap(
             id = inputDescriptorId,
@@ -180,7 +186,7 @@ internal fun constructDescriptorsMap(
         )
     }
 
-    return Pair(descriptorMaps, documentIds.toList())
+    return Pair(descriptorMaps, respondedDocuments.toList())
 }
 
 

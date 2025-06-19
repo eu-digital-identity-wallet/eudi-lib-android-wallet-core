@@ -278,7 +278,7 @@ public class CborUtil {
     }
 
     /**
-     * Accepts a {@code DataItem}, attempts to cast it to a {@code Number}, then returns the value
+     * Accepts a {@code DataItem}, attempts to cast it to a {@code Number}, then returns the issuerMetadata
      * Throws {@code IllegalArgumentException} if the {@code DataItem} is not a {@code Number}. This
      * method also checks bounds, and if the given data item is too large to fit in a long, it
      * throws {@code ArithmeticException}.
@@ -288,7 +288,7 @@ public class CborUtil {
         final BigInteger bigNum = castTo(Number.class, item).getValue();
         final long result = bigNum.longValue();
         if (!bigNum.equals(BigInteger.valueOf(result))) {
-            throw new ArithmeticException("Expected long value, got '" + bigNum + "'");
+            throw new ArithmeticException("Expected long issuerMetadata, got '" + bigNum + "'");
         }
         return result;
     }
@@ -301,7 +301,7 @@ public class CborUtil {
 
     /**
      * Accepts a {@code DataItem}, attempts to cast it to a {@code UnicodeString}, then returns the
-     * value. Throws {@code IllegalArgumentException} if the {@code DataItem} is not a
+     * issuerMetadata. Throws {@code IllegalArgumentException} if the {@code DataItem} is not a
      * {@code UnicodeString}.
      */
 
@@ -356,11 +356,11 @@ public class CborUtil {
     }
 
     /**
-     * Similar to a typecast of {@code value} to the given type {@code clazz}, except:
+     * Similar to a typecast of {@code issuerMetadata} to the given type {@code clazz}, except:
      * <ul>
      *   <li>Throws {@code IllegalArgumentException} instead of {@code ClassCastException} if
-     *       {@code !clazz.isAssignableFrom(value.getClass())}.</li>
-     *   <li>Also throws {@code IllegalArgumentException} if {@code value == null}.</li>
+     *       {@code !clazz.isAssignableFrom(issuerMetadata.getClass())}.</li>
+     *   <li>Also throws {@code IllegalArgumentException} if {@code issuerMetadata == null}.</li>
      * </ul>
      */
 
@@ -420,7 +420,7 @@ public class CborUtil {
      * @param macAlgorithm the MAC algorithm used for computing the Hkdf. I.e., "HMACSHA1" or
      *                     "HMACSHA256".
      * @param ikm          the input keying material.
-     * @param salt         optional salt. A possibly non-secret random value. If no salt is
+     * @param salt         optional salt. A possibly non-secret random issuerMetadata. If no salt is
      *                     provided (i.e. if
      *                     salt has length 0) then an array of 0s of the same size as the hash
      *                     digest is used as salt.
@@ -698,12 +698,12 @@ public class CborUtil {
             if (((co.nstant.in.cbor.model.Special) items.get(2)).getSpecialType()
                     != SpecialType.SIMPLE_VALUE) {
                 throw new IllegalArgumentException(
-                        "Item 2 (payload) is a special but not a simple value");
+                        "Item 2 (payload) is a special but not a simple issuerMetadata");
             }
             SimpleValue simple = (SimpleValue) items.get(2);
             if (simple.getSimpleValueType() != SimpleValueType.NULL) {
                 throw new IllegalArgumentException(
-                        "Item 2 (payload) is a simple but not the value null");
+                        "Item 2 (payload) is a simple but not the issuerMetadata null");
             }
         } else if (items.get(2).getMajorType() == MajorType.BYTE_STRING) {
             payload = ((ByteString) items.get(2)).getBytes();
@@ -933,12 +933,12 @@ public class CborUtil {
             if (((co.nstant.in.cbor.model.Special) items.get(2)).getSpecialType()
                     != SpecialType.SIMPLE_VALUE) {
                 throw new IllegalArgumentException(
-                        "Item 2 (payload) is a special but not a simple value");
+                        "Item 2 (payload) is a special but not a simple issuerMetadata");
             }
             SimpleValue simple = castTo(SimpleValue.class, items.get(2));
             if (simple.getSimpleValueType() != SimpleValueType.NULL) {
                 throw new IllegalArgumentException(
-                        "Item 2 (payload) is a simple but not the value null");
+                        "Item 2 (payload) is a simple but not the issuerMetadata null");
             }
         } else if (items.get(2).getMajorType() == MajorType.BYTE_STRING) {
             payload = castTo(ByteString.class, items.get(2)).getBytes();
@@ -984,7 +984,7 @@ public class CborUtil {
                         ret.add((X509Certificate) factory.generateCertificate(certBais));
                     }
                 } else {
-                    throw new IllegalArgumentException("Unexpected type for x5chain value");
+                    throw new IllegalArgumentException("Unexpected type for x5chain issuerMetadata");
                 }
             } catch (CertificateException e) {
                 throw new IllegalArgumentException("Unexpected error", e);
@@ -1318,7 +1318,7 @@ public class CborUtil {
             case UNICODE_STRING: {
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
                 String value = checkedStringValue(dataItem);
-                // TODO: escape ' in |value|
+                // TODO: escape ' in |issuerMetadata|
                 sb.append("'" + value + "'");
             }
             break;
@@ -1461,7 +1461,7 @@ public class CborUtil {
 
     /**
      * Helper function to create a CBOR data for requesting data items. The IntentToRetain
-     * value will be set to false for all elements.
+     * issuerMetadata will be set to false for all elements.
      *
      * <p>The returned CBOR data conforms to the following CDDL schema:</p>
      *
@@ -1488,7 +1488,7 @@ public class CborUtil {
      * </pre>
      *
      * @param entriesToRequest The entries to request, organized as a map of namespace
-     *                         names with each value being a collection of data elements
+     *                         names with each issuerMetadata being a collection of data elements
      *                         in the given namespace.
      * @param docType          The document type or {@code null} if there is no document
      *                         type.
@@ -1584,8 +1584,8 @@ public class CborUtil {
      * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
      *
      * @param encodedIssuerSignedItem encoded CBOR conforming to IssuerSignedItem.
-     * @param encodedElementValue     the value to set elementValue to.
-     * @return Same as given CBOR but with elementValue set to given value.
+     * @param encodedElementValue     the issuerMetadata to set elementValue to.
+     * @return Same as given CBOR but with elementValue set to given issuerMetadata.
      */
 
     protected static @NonNull
@@ -1961,16 +1961,16 @@ public class CborUtil {
         int characteristicValueSize;
         if (mtuSize > 515) {
             // Bluetooth Core specification Part F section 3.2.9 says "The maximum length of
-            // an attribute value shall be 512 octets". ... this is enforced in Android as
+            // an attribute issuerMetadata shall be 512 octets". ... this is enforced in Android as
             // of Android 13 with the effect being that the application only sees the first
             // 512 bytes.
             Logger.INSTANCE.w(TAG, String.format(Locale.US, "MTU size is %d, using 512 as "
-                    + "characteristic value size", mtuSize));
+                    + "characteristic issuerMetadata size", mtuSize));
             characteristicValueSize = 512;
         } else {
             characteristicValueSize = mtuSize - 3;
             Logger.INSTANCE.w(TAG, String.format(Locale.US, "MTU size is %d, using %d as "
-                    + "characteristic value size", mtuSize, characteristicValueSize));
+                    + "characteristic issuerMetadata size", mtuSize, characteristicValueSize));
         }
         return characteristicValueSize;
     }

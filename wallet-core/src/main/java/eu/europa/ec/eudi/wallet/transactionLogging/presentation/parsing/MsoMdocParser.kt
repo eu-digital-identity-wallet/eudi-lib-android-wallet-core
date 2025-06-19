@@ -18,9 +18,11 @@ package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
 
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import eu.europa.ec.eudi.wallet.util.CBOR
+import kotlinx.serialization.json.Json
 import org.multipaz.mdoc.response.DeviceResponseParser
 
 /**
@@ -34,7 +36,7 @@ import org.multipaz.mdoc.response.DeviceResponseParser
 fun parseMsoMdoc(
     rawResponse: ByteArray,
     sessionTranscript: ByteArray?,
-    metadata: List<String?>?
+    metadata: List<String>
 ): List<PresentedDocument> {
     // Parse the raw response using the DeviceResponseParser
     val parsed = DeviceResponseParser(
@@ -42,12 +44,19 @@ fun parseMsoMdoc(
         sessionTranscript ?: byteArrayOf(0)
     ).parse()
 
+    val parsedMetadata = metadata.map { TransactionLog.Metadata.fromJson(it) }
+
     // Convert metadata strings to IssuerMetaData objects
-    val issuerMetaData =
-        metadata?.mapNotNull { it?.let { IssuerMetadata.fromJson(it).getOrNull() } }
+
+    val issuerMetaData = parsedMetadata
+        .filterIsInstance<TransactionLog.Metadata.IndexBased>()
+        .associate { v ->
+            v.index to v.issuerMetadata?.let { IssuerMetadata.fromJson(it) }?.getOrNull()
+        }
 
     // Map parsed documents to PresentedDocument objects
     return parsed.documents.mapIndexed { index, doc ->
+        val currentIssuerMetadata = issuerMetaData[index]
         // Extract claims from the document
         val claims = doc.issuerNamespaces.flatMap { nameSpace ->
             doc.getIssuerEntryNames(nameSpace).map { elementIdentifier ->
@@ -56,7 +65,7 @@ fun parseMsoMdoc(
                     path = listOf(nameSpace, elementIdentifier),
                     value = CBOR.cborParse(data),
                     rawValue = data,
-                    metadata = issuerMetaData?.getOrNull(index)?.claims?.find {
+                    metadata = currentIssuerMetadata?.claims?.find {
                         it.path.size == 2 && it.path[0] == nameSpace && it.path[1] == elementIdentifier
                     }
                 )
@@ -65,7 +74,7 @@ fun parseMsoMdoc(
         // Create a PresentedDocument object
         PresentedDocument(
             format = MsoMdocFormat(docType = doc.docType),
-            metadata = issuerMetaData?.getOrNull(index),
+            metadata = currentIssuerMetadata,
             claims = claims
         )
     }

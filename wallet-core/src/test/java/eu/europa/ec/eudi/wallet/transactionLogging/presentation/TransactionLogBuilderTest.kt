@@ -28,6 +28,8 @@ import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpContent
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimPathElement
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimsQuery
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
 import eu.europa.ec.eudi.openid4vp.dcql.DCQL
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
@@ -39,8 +41,8 @@ import eu.europa.ec.eudi.prex.InputDescriptorId
 import eu.europa.ec.eudi.prex.JsonPath
 import eu.europa.ec.eudi.prex.PresentationDefinition
 import eu.europa.ec.eudi.prex.PresentationSubmission
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import io.mockk.every
@@ -56,7 +58,7 @@ import java.time.Instant
 
 class TransactionLogBuilderTest {
 
-    private lateinit var metadataResolver: (List<DocumentId>) -> List<String?>
+    private lateinit var metadataResolver: (List<OpenId4VpResponse.RespondedDocument>) -> List<String>
     private lateinit var builder: TransactionLogBuilder
 
     @Before
@@ -98,7 +100,7 @@ class TransactionLogBuilderTest {
     }
 
     @Test
-    fun `withRequest with OpenId4VpRequest updates log correctly`() {
+    fun `withRequest with PresentationDefinition updates log correctly`() {
         val initialLog = builder.createEmptyPresentationLog()
         val presentationDefinition = PresentationDefinition(
             id = Id("test-id"),
@@ -117,6 +119,52 @@ class TransactionLogBuilderTest {
         )
 
         val presentationQuery = PresentationQuery.ByPresentationDefinition(presentationDefinition)
+
+        val resolvedRequestObject = ResolvedRequestObject.OpenId4VPAuthorization(
+            client = mockk(),
+            responseMode = ResponseMode.DirectPostJwt(responseURI = mockk()),
+            presentationQuery = presentationQuery,
+            nonce = "test-nonce",
+            jarmRequirement = null,
+            vpFormats = null,
+            state = "test-state",
+            transactionData = null
+        )
+
+        val openId4VpRequest = mockk<OpenId4VpRequest> {
+            every { this@mockk.resolvedRequestObject } returns resolvedRequestObject
+        }
+
+        val updatedLog = builder.withRequest(initialLog, openId4VpRequest)
+
+        assertNotNull(updatedLog.rawRequest)
+        assertEquals(TransactionLog.Status.Incomplete, updatedLog.status)
+        assertTrue(updatedLog.timestamp >= initialLog.timestamp)
+    }
+
+    @Test
+    fun `withRequest with DigitalCredentialsQuery updates log correctly`() {
+        val initialLog = builder.createEmptyPresentationLog()
+        val dcql = DCQL(
+            credentials = listOf(
+                CredentialQuery.mdoc(
+                    id = QueryId("test-id"),
+                    claims = listOf(
+                        ClaimsQuery.mdoc(
+                            path = eu.europa.ec.eudi.openid4vp.dcql.ClaimPath(
+                                listOf(
+                                    ClaimPathElement.Claim("nameSpace"),
+                                    ClaimPathElement.Claim("elementIdentifier")
+                                )
+                            )
+
+                        )
+                    )
+                )
+            ),
+        )
+
+        val presentationQuery = PresentationQuery.ByDigitalCredentialsQuery(dcql)
 
         val resolvedRequestObject = ResolvedRequestObject.OpenId4VPAuthorization(
             client = mockk(),
@@ -179,37 +227,6 @@ class TransactionLogBuilderTest {
 
         val openId4VpRequest = mockk<OpenId4VpRequest> {
             every { resolvedRequestObject } returns unsupportedResolvedRequestObject
-        }
-
-        builder.withRequest(initialLog, openId4VpRequest)
-    }
-
-    @Test(expected = IllegalArgumentException::class)
-    fun `withRequest with OpenId4VpRequest but unsupported PresentationQuery throws exception`() {
-        val initialLog = builder.createEmptyPresentationLog()
-        val unsupportedPresentationQuery = PresentationQuery.ByDigitalCredentialsQuery(
-            value = DCQL(
-                credentials = listOf(
-                    CredentialQuery.mdoc(
-                        id = QueryId(value = "test-id")
-                    )
-                )
-            )
-        )
-
-        val resolvedRequestObject = ResolvedRequestObject.OpenId4VPAuthorization(
-            client = mockk(),
-            responseMode = ResponseMode.DirectPostJwt(responseURI = mockk()),
-            presentationQuery = unsupportedPresentationQuery,
-            nonce = "test-nonce",
-            jarmRequirement = null,
-            vpFormats = null,
-            state = "test-state",
-            transactionData = null
-        )
-
-        val openId4VpRequest = mockk<OpenId4VpRequest> {
-            every { this@mockk.resolvedRequestObject } returns resolvedRequestObject
         }
 
         builder.withRequest(initialLog, openId4VpRequest)
@@ -390,7 +407,13 @@ class TransactionLogBuilderTest {
 
         val openId4VpDeviceResponse = mockk<OpenId4VpResponse.DeviceResponse> {
             every { this@mockk.responseBytes } returns responseBytes
-            every { this@mockk.documentIds } returns documentIds
+            every { this@mockk.respondedDocuments } returns documentIds.mapIndexed { index, id ->
+                OpenId4VpResponse.RespondedDocument.IndexBased(
+                    index = index,
+                    documentId = id,
+                    format = FORMAT_MSO_MDOC
+                )
+            }
             every { this@mockk.sessionTranscript } returns sessionTranscript
         }
 
@@ -427,7 +450,13 @@ class TransactionLogBuilderTest {
             every { consensus } returns mockk {
                 every { vpContent } returns presentationExchange
             }
-            every { this@mockk.documentIds } returns documentIds
+            every { this@mockk.respondedDocuments } returns documentIds.mapIndexed { index, id ->
+                OpenId4VpResponse.RespondedDocument.IndexBased(
+                    index = index,
+                    documentId = id,
+                    format = FORMAT_MSO_MDOC
+                )
+            }
         }
 
         val updatedLog = builder.withResponse(initialLog, openId4VpGenericResponse)

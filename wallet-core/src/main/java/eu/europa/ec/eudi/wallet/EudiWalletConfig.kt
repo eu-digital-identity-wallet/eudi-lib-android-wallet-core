@@ -179,7 +179,7 @@ class EudiWalletConfig {
     var documentManagerIdentifier: String = DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
         private set
     var documentsStoragePath: String? = null
-        internal set // internal for setting the default value from the builder
+        internal set // internal for setting the default issuerMetadata from the builder
 
     /**
      * Configure the built-in document manager.
@@ -305,11 +305,11 @@ class EudiWalletConfig {
     }
 
     var userAuthenticationRequired: Boolean = false
-        internal set // internal for setting the default value from the builder
+        internal set // internal for setting the default issuerMetadata from the builder
     var userAuthenticationTimeout: Long = 0L
         private set
     var useStrongBoxForKeys: Boolean = true
-        internal set // internal for setting the default value from the builder
+        internal set // internal for setting the default issuerMetadata from the builder
 
     /**
      * Configure the document key creation. This allows to configure if user authentication is

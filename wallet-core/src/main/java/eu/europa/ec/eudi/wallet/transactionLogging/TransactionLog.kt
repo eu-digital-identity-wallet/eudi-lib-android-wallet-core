@@ -24,6 +24,8 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Status.Incompl
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Type.Issuance
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Type.Presentation
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Type.Signing
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 
 /**
@@ -33,14 +35,15 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.Type.Signing
  * @property status The status of the transaction.
  * @property type The type of the transaction.
  *
- * The folowing properties are optional and should be present in case of type [Type.Presentation]
+ * The following properties are optional and should be present in case of type [Type.Presentation]
  * @property relyingParty The relying party involved in the transaction.
  * @property rawRequest The raw request data.
  * @property rawResponse The raw response data.
  * @property dataFormat The format of the data (e.g., CBOR, JSON).
  * @property sessionTranscript The session transcript data.
- * @property metadata Additional metadata related to the transaction.
+ * @property metadata Additional metadata related to the transaction each item is a json-encoded [Metadata] object
  */
+@Serializable
 data class TransactionLog(
     val timestamp: Long,
     val status: Status,
@@ -50,7 +53,7 @@ data class TransactionLog(
     val rawResponse: ByteArray?,
     val dataFormat: DataFormat?,
     val sessionTranscript: ByteArray?,
-    val metadata: List<String?>?
+    val metadata: List<String>?
 ) {
     /**
      * Represents the status of the transaction.
@@ -59,6 +62,7 @@ data class TransactionLog(
      * - [Completed] indicates that the transaction is completed successfully.
      * - [Error] indicates that there was an error during the transaction.
      */
+    @Serializable
     enum class Status {
         Incomplete,
         Completed,
@@ -72,6 +76,7 @@ data class TransactionLog(
      * - [Issuance] indicates that the transaction is related to the issuance of documents.
      * - [Signing] indicates that the transaction is related to the signing of documents.
      */
+    @Serializable
     enum class Type {
         Presentation,
         Issuance,
@@ -88,6 +93,7 @@ data class TransactionLog(
      * @property certificateChain The certificate chain of the relying party.
      * @property readerAuth The reader authentication data.
      */
+    @Serializable
     data class RelyingParty(
         val name: String,
         val isVerified: Boolean,
@@ -101,9 +107,55 @@ data class TransactionLog(
      * - [Cbor] indicates that the data is in CBOR format.
      * - [Json] indicates that the data is in JSON format.
      */
+    @Serializable
     enum class DataFormat {
         Cbor,
         Json,
+    }
+
+    @Serializable
+    sealed interface Metadata {
+        val issuerMetadata: String?
+        val format: String
+
+
+        companion object {
+            val Json = Json {
+                classDiscriminator = "type"
+                ignoreUnknownKeys = true
+                allowStructuredMapKeys = true
+            }
+
+            fun fromJson(jsonStr: String): Metadata {
+                return Json.decodeFromString(jsonStr)
+            }
+        }
+
+        fun toJson(): String {
+            return Json.encodeToString(this)
+        }
+
+        @Serializable
+        data class IndexBased(
+            val index: Int,
+            override val format: String,
+            override val issuerMetadata: String?
+        ) : Metadata {
+            override fun toString(): String {
+                return issuerMetadata ?: ""
+            }
+        }
+
+        @Serializable
+        data class QueryBased(
+            val queryId: String,
+            override val format: String,
+            override val issuerMetadata: String?
+        ) : Metadata {
+            override fun toString(): String {
+                return issuerMetadata ?: ""
+            }
+        }
     }
 
     override fun equals(other: Any?): Boolean {

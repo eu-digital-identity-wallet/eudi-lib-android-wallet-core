@@ -27,9 +27,11 @@ import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpContent
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import java.time.Instant
 import java.util.Base64
@@ -45,7 +47,7 @@ import java.util.Base64
  * metadata strings (e.g., JSON representations).
  */
 class TransactionLogBuilder(
-    private val metadataResolver: (List<DocumentId>) -> List<String?>
+    private val metadataResolver: (List<OpenId4VpResponse.RespondedDocument>) -> List<String>?
 ) {
     /**
      * Creates an initial, empty [TransactionLog] for a presentation.
@@ -66,16 +68,16 @@ class TransactionLogBuilder(
         sessionTranscript = null,
         metadata = null
     )
-    
+
     /**
      * Updates the provided [TransactionLog] with information from a [Request].
      *
      * If the log's type is not [TransactionLog.Type.Presentation], it returns the log unchanged.
      * It handles different types of requests:
      * - [DeviceRequest]: Stores the raw request bytes.
-     * - [OpenId4VpRequest]: Extracts and stores the presentation definition from the resolved request object.
+     * - [OpenId4VpRequest]: Extracts and stores the presentation definition or digital credentials query from the resolved request object.
      *   Requires the resolved request to be [ResolvedRequestObject.OpenId4VPAuthorization] and
-     *   the presentation query to be [PresentationQuery.ByPresentationDefinition].
+     *   the presentation query to be either [PresentationQuery.ByPresentationDefinition] or [PresentationQuery.ByDigitalCredentialsQuery].
      * - Other request types: Marks the log status as [TransactionLog.Status.Error].
      *
      * The timestamp of the log is updated to the current time.
@@ -87,37 +89,41 @@ class TransactionLogBuilder(
      */
     fun withRequest(log: TransactionLog, request: Request): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
-        
+
         return when (request) {
             is DeviceRequest -> log.copy(
                 timestamp = Instant.now().toEpochMilli(),
                 rawRequest = request.deviceRequestBytes
             )
-            
+
             is OpenId4VpRequest -> {
                 val resolvedRequestObject = request.resolvedRequestObject
-                require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) { 
-                    "Only OpenId4VPAuthorization is supported" 
+                require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
+                    "Only OpenId4VPAuthorization is supported"
                 }
-                
+
                 val presentationQuery = resolvedRequestObject.presentationQuery
-                require(presentationQuery is PresentationQuery.ByPresentationDefinition) {
-                    "Only PresentationQuery.ByPresentationDefinition is supported"
-                }
-                
+                val rawRequest = when (presentationQuery) {
+                    is PresentationQuery.ByPresentationDefinition ->
+                        Json.encodeToString(presentationQuery.value)
+
+                    is PresentationQuery.ByDigitalCredentialsQuery ->
+                        Json.encodeToString(presentationQuery.value)
+                }.toByteArray()
+
                 log.copy(
                     timestamp = Instant.now().toEpochMilli(),
-                    rawRequest = Json.encodeToString(presentationQuery.value).toByteArray()
+                    rawRequest = rawRequest
                 )
             }
-            
+
             else -> log.copy(
                 timestamp = Instant.now().toEpochMilli(),
                 status = TransactionLog.Status.Error
             )
         }
     }
-    
+
     /**
      * Updates the provided [TransactionLog] with relying party information extracted
      * from a [RequestProcessor.ProcessedRequest].
@@ -138,7 +144,7 @@ class TransactionLogBuilder(
         processedRequest: RequestProcessor.ProcessedRequest
     ): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
-        
+
         val requestedDocuments = processedRequest.getOrNull()?.requestedDocuments ?: return log
         val readerAuth = requestedDocuments.firstNotNullOfOrNull { it.readerAuth }
 
@@ -149,7 +155,7 @@ class TransactionLogBuilder(
             ?: emptyList()
         val isVerified = readerAuth?.isVerified == true
         val readerAuthBytes = readerAuth?.readerAuth
-        
+
         return log.copy(
             timestamp = Instant.now().toEpochMilli(),
             relyingParty = TransactionLog.RelyingParty(
@@ -160,7 +166,7 @@ class TransactionLogBuilder(
             )
         )
     }
-    
+
     /**
      * Updates the provided [TransactionLog] with information from a [Response] and an optional [Throwable].
      *
@@ -190,35 +196,42 @@ class TransactionLogBuilder(
         error: Throwable? = null
     ): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
-        
+
         val updatedLog = when (response) {
             is DeviceResponse -> {
                 log.copy(
                     rawResponse = response.deviceResponseBytes,
                     dataFormat = TransactionLog.DataFormat.Cbor,
-                    metadata = metadataResolver(response.documentIds),
+                    metadata = metadataResolver(response.documentIds.mapIndexed { index, id ->
+                        OpenId4VpResponse.RespondedDocument.IndexBased(
+                            index = index,
+                            documentId = id,
+                            format = FORMAT_MSO_MDOC
+                        )
+                    }),
                     sessionTranscript = response.sessionTranscriptBytes
                 )
             }
-            
+
             is OpenId4VpResponse.DeviceResponse -> {
                 log.copy(
                     rawResponse = response.responseBytes,
                     dataFormat = TransactionLog.DataFormat.Cbor,
-                    metadata = metadataResolver(response.documentIds),
+                    metadata = metadataResolver(response.respondedDocuments),
                     sessionTranscript = response.sessionTranscript
                 )
             }
-            
+
             is OpenId4VpResponse.GenericResponse -> {
                 val presentationExchange = response.consensus.vpContent
                 require(presentationExchange is VpContent.PresentationExchange) {
                     "Only PresentationExchange is supported"
                 }
-                
+
                 log.copy(
                     rawResponse = Json.encodeToString(
                         mapOf(
+                            "type" to Json.encodeToJsonElement(PRESENTATION_EXCHANGE),
                             "verifiable_presentations" to Json.encodeToJsonElement(
                                 presentationExchange.verifiablePresentations
                                     .filterIsInstance<VerifiablePresentation.Generic>()
@@ -226,25 +239,48 @@ class TransactionLogBuilder(
                             ),
                             "presentation_submission" to Json.encodeToJsonElement(
                                 presentationExchange.presentationSubmission
-                            )
+                            ),
                         )
                     ).toByteArray(),
                     dataFormat = TransactionLog.DataFormat.Json,
-                    metadata = metadataResolver(response.documentIds)
+                    metadata = metadataResolver(response.respondedDocuments),
                 )
             }
-            
+
+            is OpenId4VpResponse.DcqlResponse -> {
+                val dcql = response.consensus.vpContent
+                require(dcql is VpContent.DCQL) {
+                    "Only DCQL is supported"
+                }
+                log.copy(
+                    rawResponse = Json.encodeToString(
+                        mapOf(
+                            "type" to Json.encodeToJsonElement(DCQL),
+                            "verifiable_presentations" to Json.encodeToJsonElement(
+                                dcql.verifiablePresentations
+                                    .filterValues { vp -> vp is VerifiablePresentation.Generic }
+                                    .map { (queryId, vp) ->
+                                        queryId.value to Json.encodeToJsonElement((vp as VerifiablePresentation.Generic).value)
+                                    }.toMap()
+                            ),
+                        )
+                    ).toByteArray(),
+                    dataFormat = TransactionLog.DataFormat.Json,
+                    metadata = metadataResolver(response.respondedDocuments),
+                )
+            }
+
             else -> throw IllegalArgumentException(
                 "Unsupported response type: ${response::class.simpleName}"
             )
         }
-        
+
         return updatedLog.copy(
             timestamp = Instant.now().toEpochMilli(),
             status = if (error == null) TransactionLog.Status.Completed else TransactionLog.Status.Error
         )
     }
-    
+
     /**
      * Updates the provided [TransactionLog] to indicate an error occurred.
      *
@@ -259,5 +295,9 @@ class TransactionLogBuilder(
             status = TransactionLog.Status.Error
         )
     }
-}
 
+    companion object {
+        const val PRESENTATION_EXCHANGE = "PresentationExchange"
+        const val DCQL = "DCQL"
+    }
+}

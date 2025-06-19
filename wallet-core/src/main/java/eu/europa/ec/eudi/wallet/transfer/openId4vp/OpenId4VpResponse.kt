@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.util.CBOR.cborPrettyPrint
+import kotlinx.serialization.Serializable
 import org.bouncycastle.util.encoders.Hex.toHexString
 
 /**
@@ -66,6 +67,15 @@ sealed interface OpenId4VpResponse : Response {
         get() = consensus.vpContent
 
     /**
+     * The list of responded documents.
+     * Can either be index-based or query-based.
+     *
+     * Indicates which documents were responded to the relying party
+     * and where each is positioned in the response.
+     */
+    val respondedDocuments: List<RespondedDocument>
+
+    /**
      * The encryption parameters for JARM, if required by the relying party.
      * Returns null if encryption is not required.
      */
@@ -99,9 +109,14 @@ sealed interface OpenId4VpResponse : Response {
         override val msoMdocNonce: String,
         val sessionTranscript: ByteArray,
         val responseBytes: DeviceResponseBytes,
-        val documentIds: List<DocumentId>,
+        override val respondedDocuments: List<RespondedDocument>
     ) : OpenId4VpResponse {
 
+        val documentIds: List<DocumentId>
+            get() = respondedDocuments
+                .filterIsInstance<RespondedDocument.IndexBased>()
+                .sortedBy { it.index }
+                .map { it.documentId }
 
         override fun Logger.debugPrint(tag: String) {
             d(tag, "Device Response (hex): ${toHexString(responseBytes)}")
@@ -120,6 +135,7 @@ sealed interface OpenId4VpResponse : Response {
             if (msoMdocNonce != other.msoMdocNonce) return false
             if (!sessionTranscript.contentEquals(other.sessionTranscript)) return false
             if (!responseBytes.contentEquals(other.responseBytes)) return false
+            if (respondedDocuments != other.respondedDocuments) return false
             if (documentIds != other.documentIds) return false
 
             return true
@@ -131,6 +147,7 @@ sealed interface OpenId4VpResponse : Response {
             result = 31 * result + msoMdocNonce.hashCode()
             result = 31 * result + sessionTranscript.contentHashCode()
             result = 31 * result + responseBytes.contentHashCode()
+            result = 31 * result + respondedDocuments.hashCode()
             result = 31 * result + documentIds.hashCode()
             return result
         }
@@ -147,8 +164,14 @@ sealed interface OpenId4VpResponse : Response {
         override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
         override val msoMdocNonce: String,
         val response: List<String>,
-        val documentIds: List<DocumentId>,
+        override val respondedDocuments: List<RespondedDocument>
     ) : OpenId4VpResponse {
+        val documentIds: List<DocumentId>
+            get() = respondedDocuments
+                .filterIsInstance<RespondedDocument.IndexBased>()
+                .sortedBy { it.index }
+                .map { it.documentId }
+
         override fun Logger.debugPrint(tag: String) {
             d(tag, "Generic Response: ${response.joinToString("\n")}")
             d(tag, "VpContent: $vpContent")
@@ -159,19 +182,42 @@ sealed interface OpenId4VpResponse : Response {
      * Response type for DCQL-based OpenID4VP presentations.
      *
      * @property response The list of verifiable presentation strings returned to the relying party.
-     * @property documentIds A map from query IDs to the document ID disclosed for each query.
+     * @property queryDescriptors a set of QueryDescriptor objects
      */
-    data class DcqlGenericResponse(
+    data class DcqlResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
         override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
         override val msoMdocNonce: String,
-        val response: List<String>,
-        val documentIds: Map<QueryId, DocumentId>,
+        val response: Map<QueryId, String>,
+        override val respondedDocuments: List<RespondedDocument>
     ) : OpenId4VpResponse {
         override fun Logger.debugPrint(tag: String) {
-            d(tag, "Generic Response: ${response.joinToString("\n")}")
+            val message = "DCQL Response: ${
+                response.map { (queryId, respStr) -> "$queryId: $respStr" }.joinToString("\n")
+            }"
+            d(tag, message)
             d(tag, "VpContent: $vpContent")
         }
+    }
+
+    @Serializable
+    sealed interface RespondedDocument {
+        val documentId: DocumentId
+        val format: String
+
+        @Serializable
+        data class IndexBased(
+            override val documentId: DocumentId,
+            override val format: String,
+            val index: Int
+        ) : RespondedDocument
+
+        @Serializable
+        data class QueryBased(
+            override val documentId: DocumentId,
+            override val format: String,
+            val queryId: String
+        ) : RespondedDocument
     }
 }
 
