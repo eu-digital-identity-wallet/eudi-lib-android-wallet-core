@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -171,7 +171,8 @@ class OpenId4VpManager(
                             }
 
                             is ResolvedRequestObject.SiopAuthentication,
-                            is ResolvedRequestObject.SiopOpenId4VPAuthentication -> {
+                            is ResolvedRequestObject.SiopOpenId4VPAuthentication,
+                                -> {
                                 logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
                                 transferEventListeners.onTransferEvent(
                                     TransferEvent.Error(IllegalArgumentException("Unsupported request type"))
@@ -212,7 +213,7 @@ class OpenId4VpManager(
                     "Resolved request object must be OpenId4VPAuthorization"
                 }
 
-                with(response) { logger?.debugPrint(TAG) }
+                logger?.let { response.debugLog(it, TAG) }
 
                 when (val outcome = siopOpenId4Vp.dispatch(
                     request = response.resolvedRequestObject,
