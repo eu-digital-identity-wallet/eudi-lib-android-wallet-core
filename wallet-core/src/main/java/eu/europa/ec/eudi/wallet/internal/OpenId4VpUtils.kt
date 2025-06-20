@@ -424,12 +424,20 @@ internal suspend fun verifiablePresentationForSdJwtVc(
 /**
  * Constructs a verifiable presentation for an MSO mdoc credential.
  *
- * @param documentManager The document manager for retrieving documents.
- * @param disclosedDocument The document with disclosed claims.
- * @param requestedDocuments The requested documents for the presentation.
- * @param sessionTranscript The session transcript bytes.
- * @param signatureAlgorithm The algorithm to use for signing.
- * @return The constructed [VerifiablePresentation.Generic].
+ * This function creates a verifiable presentation according to the ISO 18013-5 standard by:
+ * 1. Filtering the requested documents to include only the specified document
+ * 2. Generating a device response with the session transcript for cryptographic binding
+ * 3. Converting the binary CBOR-encoded device response to a base64url-encoded string
+ *
+ * The session transcript is critical as it binds the presentation to the specific request session.
+ *
+ * @param documentManager The document manager for retrieving the full document content and credentials
+ * @param disclosedDocument The document with specific claims that the user has consented to disclose
+ * @param requestedDocuments The complete set of documents requested by the verifier
+ * @param sessionTranscript The session transcript bytes that cryptographically bind the response to the request
+ * @param signatureAlgorithm The algorithm to use for digitally signing the presentation
+ * @return The constructed [VerifiablePresentation.Generic] containing the base64url-encoded device response
+ * @throws RuntimeException if the response generation fails
  */
 internal fun verifiablePresentationForMsoMdoc(
     documentManager: DocumentManager,
@@ -438,15 +446,20 @@ internal fun verifiablePresentationForMsoMdoc(
     sessionTranscript: ByteArray,
     signatureAlgorithm: Algorithm,
 ): VerifiablePresentation.Generic {
+    // Create a new RequestedDocuments instance containing only the document that was selected for disclosure
+    // This filters out any other documents that might have been in the original request
     val deviceResponse = ProcessedDeviceRequest(
         documentManager = documentManager,
-        sessionTranscript = sessionTranscript,
+        sessionTranscript = sessionTranscript,  // Bind the presentation to this specific session
         requestedDocuments = RequestedDocuments(requestedDocuments.filter { it.documentId == disclosedDocument.documentId })
     ).generateResponse(
+        // Create a response containing only the selected document with its disclosed claims
         disclosedDocuments = DisclosedDocuments(disclosedDocument),
-        signatureAlgorithm = signatureAlgorithm
-    ).getOrThrow() as DeviceResponse
+        signatureAlgorithm = signatureAlgorithm  // Use the specified algorithm to sign the response
+    ).getOrThrow() as DeviceResponse  // Unwrap the Result and cast to DeviceResponse type
 
+    // Convert the binary CBOR-encoded device response to a base64url-encoded string format
+    // suitable for transmission in JWT or JSON payload without padding characters
     return VerifiablePresentation.Generic(
         value = Base64.getUrlEncoder()
             .withoutPadding()

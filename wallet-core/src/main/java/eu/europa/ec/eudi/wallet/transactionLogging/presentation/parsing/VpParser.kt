@@ -166,7 +166,8 @@ fun parseMsoMdocFromVp(
     // but first we need to decode the verifiable presentation
     val msoMdocResponse = Base64.getUrlDecoder().decode(vp.value)
     // since only one document is being parsed, we can convert metadata from QueryBased to IndexBased
-    // and use the existing parseMsoMdoc function to parse the mso_mdoc document
+    // and use the existing parseMsoMdoc function to parse the mso_mdoc document and make sure that
+    // index is always 0
 
     val convertedMetadata = when (metadata) {
         is TransactionLog.Metadata.QueryBased -> TransactionLog.Metadata.IndexBased(
@@ -175,7 +176,7 @@ fun parseMsoMdocFromVp(
             issuerMetadata = metadata.issuerMetadata
         )
 
-        is TransactionLog.Metadata.IndexBased -> metadata
+        is TransactionLog.Metadata.IndexBased -> metadata.copy(index = 0)
     }.toJson()
 
     return parseMsoMdoc(
