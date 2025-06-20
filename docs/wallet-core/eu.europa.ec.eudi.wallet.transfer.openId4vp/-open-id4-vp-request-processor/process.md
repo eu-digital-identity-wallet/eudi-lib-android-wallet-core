@@ -5,18 +5,24 @@
 [androidJvm]\
 open override fun [process](process.md)(request: Request): RequestProcessor.ProcessedRequest
 
-Processes an OpenID4VP request and returns the appropriate processed request object.
+Processes an OpenID4VP request and generates an appropriate response processor.
 
-This method validates that the incoming request is an [OpenId4VpRequest](../-open-id4-vp-request/index.md) with a valid presentation definition, then processes it based on the requested document formats:
+This method determines the request type based on presentation requirements and produces a specialized processor for handling the credential disclosure flow:
 
-- 
-   For MSO_MDOC-only requests, returns a [ProcessedMsoMdocOpenId4VpRequest](../-processed-mso-mdoc-open-id4-vp-request/index.md)
-- 
-   For mixed format requests, returns a [ProcessedGenericOpenId4VpRequest](../-processed-generic-open-id4-vp-request/index.md) supporting both MSO_MDOC and SD-JWT VC formats
+1. 
+   Validates the request structure and authorization format
+2. 
+   Extracts presentation definitions and identifies requested document formats
+3. 
+   For MSO_MDOC-only requests, creates a specialized processor optimized for ISO 18013-5
+4. 
+   For mixed format requests, creates a generic processor supporting multiple formats
+5. 
+   Maps requested credential fields to available documents in the wallet
 
 #### Return
 
-A RequestProcessor.ProcessedRequest object containing the processed data
+A RequestProcessor.ProcessedRequest containing matched documents and response generators or RequestProcessor.ProcessedRequest.Failure if processing fails
 
 #### Parameters
 
@@ -24,10 +30,4 @@ androidJvm
 
 | | |
 |---|---|
-| request | The request to process, must be an [OpenId4VpRequest](../-open-id4-vp-request/index.md) instance |
-
-#### Throws
-
-| | |
-|---|---|
-| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if the request is not an [OpenId4VpRequest](../-open-id4-vp-request/index.md), lacks an OpenId4VPAuthorization,     uses an unsupported presentation format, or has no requested formats |
+| request | The incoming OpenID4VP request to process |

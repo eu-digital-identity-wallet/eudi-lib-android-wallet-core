@@ -25,7 +25,7 @@ androidJvm
 |---|---|
 | processedDeviceRequest | The device request that has been processed and is ready for response generation |
 | resolvedRequestObject | The resolved OpenID4VP request object containing presentation query information |
-| msoMdocNonce | A nonce value used for the MSO_MDOC protocol to prevent replay attacks |
+| msoMdocNonce | A nonce issuerMetadata used for the MSO_MDOC protocol to prevent replay attacks |
 
 ## Constructors
 
@@ -38,12 +38,12 @@ androidJvm
 | Name | Summary |
 |---|---|
 | [msoMdocNonce](mso-mdoc-nonce.md) | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
-| [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
+| [requestedDocuments](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
 | [generateResponse](generate-response.md) | [androidJvm]<br>open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult<br>Generates an OpenID4VP response from the disclosed documents. |
-| [getOrNull](index.md#1268647320%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrNull](index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success? |
-| [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success |
+| [getOrNull](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1268647320%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrNull](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success? |
+| [getOrThrow](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success |

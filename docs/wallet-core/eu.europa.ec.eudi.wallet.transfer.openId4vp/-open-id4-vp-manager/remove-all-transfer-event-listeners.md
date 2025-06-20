@@ -4,3 +4,5 @@
 
 [androidJvm]\
 open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): &lt;Error class: unknown class&gt;
+
+Removes all transfer event listeners.

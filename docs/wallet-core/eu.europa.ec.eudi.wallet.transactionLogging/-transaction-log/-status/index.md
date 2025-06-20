@@ -3,6 +3,8 @@
 # Status
 
 [androidJvm]\
+@Serializable
+
 enum [Status](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[TransactionLog.Status](index.md)&gt; 
 
 Represents the status of the transaction.

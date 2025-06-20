@@ -3,6 +3,8 @@
 # DataFormat
 
 [androidJvm]\
+@Serializable
+
 enum [DataFormat](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[TransactionLog.DataFormat](index.md)&gt; 
 
 Represents the format of the data in the [eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog.rawResponse](../raw-response.md)

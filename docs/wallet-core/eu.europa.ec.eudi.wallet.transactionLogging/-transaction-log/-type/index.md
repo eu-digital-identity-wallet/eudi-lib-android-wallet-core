@@ -3,6 +3,8 @@
 # Type
 
 [androidJvm]\
+@Serializable
+
 enum [Type](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[TransactionLog.Type](index.md)&gt; 
 
 Represents the type of the transaction.

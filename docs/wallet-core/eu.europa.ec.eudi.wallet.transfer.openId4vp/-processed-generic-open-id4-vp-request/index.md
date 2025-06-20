@@ -16,12 +16,12 @@ class [ProcessedGenericOpenId4VpRequest](index.md)(documentManager: DocumentMana
 | Name | Summary |
 |---|---|
 | [msoMdocNonce](mso-mdoc-nonce.md) | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
-| [requestedDocuments](../-processed-mso-mdoc-open-id4-vp-request/index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](../-processed-mso-mdoc-open-id4-vp-request/index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
+| [requestedDocuments](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
 | [generateResponse](generate-response.md) | [androidJvm]<br>open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult |
-| [getOrNull](../-processed-mso-mdoc-open-id4-vp-request/index.md#1268647320%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrNull](../-processed-mso-mdoc-open-id4-vp-request/index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success? |
-| [getOrThrow](../-processed-mso-mdoc-open-id4-vp-request/index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](../-processed-mso-mdoc-open-id4-vp-request/index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success |
+| [getOrNull](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1268647320%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrNull](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success? |
+| [getOrThrow](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-processed-dcql-request/index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success |
