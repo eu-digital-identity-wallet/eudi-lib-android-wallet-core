@@ -57,8 +57,8 @@ The library provides the following functionality:
 - Remote document presentation
     - [x] [OpenId4VP (draft 24)](https://openid.net/specs/openid-4-verifiable-presentations-1_0-24.html)
       document transfer
-        - [x] For pre-registered verifiers
-        - [x] Dynamic registration of verifiers
+        - [x] ClienID scheme: preregistered, x509_san_uri, x509_san_dns, redirect_uri
+        - [x] PresentationDefinition, DCQL
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
