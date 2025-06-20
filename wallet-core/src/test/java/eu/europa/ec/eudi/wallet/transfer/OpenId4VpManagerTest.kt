@@ -26,11 +26,12 @@ import eu.europa.ec.eudi.wallet.internal.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestProcessor
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.RequestProcessorDispatcher
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
@@ -61,7 +62,12 @@ class OpenId4VpManagerTest {
     val testDispatcher = UnconfinedTestDispatcher()
     val requestProcessor = mockk<RequestProcessorDispatcher>(relaxed = true)
     val config = mockk<OpenId4VpConfig>(relaxed = true)
-    val logger = Logger { record -> println(record) }
+    val logger = object : Logger {
+        override fun log(record: Logger.Record) {
+            println(record)
+        }
+
+    }
     lateinit var siopOpenId4Vp: SiopOpenId4Vp
 
     val listener = spyk(object : TransferEvent.Listener {
@@ -95,7 +101,7 @@ class OpenId4VpManagerTest {
     fun `test stop cancels resolveRequestUri coroutine`() = runTest(timeout = 1.minutes) {
         // Set up a latch to wait for the disconnected event
         val eventReceived = java.util.concurrent.CountDownLatch(1)
-        
+
         every { config.schemes } returns listOf("http")
 
         // Setup a long-running coroutine that we can cancel
@@ -122,25 +128,25 @@ class OpenId4VpManagerTest {
         // Start the long-running coroutine
         println("Starting resolveRequestUri")
         manager.resolveRequestUri("http://example.com")
-        
+
         // Ensure the coroutine has started
         testDispatcher.scheduler.advanceTimeBy(100)
         testDispatcher.scheduler.runCurrent()
-        
+
         // Now stop the manager, which should cancel the coroutine
         println("Stopping manager")
         manager.stop()
-        
+
         // Advance time to ensure cancellation processing completes
         testDispatcher.scheduler.advanceTimeBy(500)
         testDispatcher.scheduler.runCurrent()
-        
+
         // Wait for the event with timeout
         val received = eventReceived.await(3, java.util.concurrent.TimeUnit.SECONDS)
-        
+
         // Assert that we received the event
         assertTrue(received, "Disconnected event not received within timeout")
-        
+
         // Also verify with mockk for completeness
         verify(
             exactly = 1,
@@ -160,6 +166,7 @@ class OpenId4VpManagerTest {
             every { responseBytes } returns byteArrayOf()
             every { vpContent } returns mockk()
             every { encryptionParameters } returns encryptionParametersMock
+            every { debugLog(logger,any()) } just Runs
         }
         coEvery {
             siopOpenId4Vp.dispatch(
@@ -199,6 +206,7 @@ class OpenId4VpManagerTest {
                 every { responseBytes } returns byteArrayOf()
                 every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
+                every { debugLog(logger,any()) } just Runs
             }
             val exception = Exception("test")
             coEvery {
@@ -234,8 +242,9 @@ class OpenId4VpManagerTest {
                 every { responseBytes } returns byteArrayOf()
                 every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
+                every { debugLog(logger,any()) } just Runs
             }
-            
+
             // Mock dispatch to return RedirectURI outcome
             coEvery {
                 siopOpenId4Vp.dispatch(
@@ -251,10 +260,10 @@ class OpenId4VpManagerTest {
 
             // Execute
             manager.sendResponse(fakeResponse)
-            
+
             // Verify that ResponseSent event was emitted
-            verify(timeout = 1000) { 
-                listener.onTransferEvent(ofType(TransferEvent.ResponseSent::class)) 
+            verify(timeout = 1000) {
+                listener.onTransferEvent(ofType(TransferEvent.ResponseSent::class))
             }
         }
 
@@ -271,8 +280,9 @@ class OpenId4VpManagerTest {
                 every { responseBytes } returns byteArrayOf()
                 every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
+                every { debugLog(logger,any()) } just Runs
             }
-            
+
             // Mock dispatch to return VerifierResponse.Accepted with null redirectURI
             coEvery {
                 siopOpenId4Vp.dispatch(
@@ -288,10 +298,10 @@ class OpenId4VpManagerTest {
 
             // Execute
             manager.sendResponse(fakeResponse)
-            
+
             // Verify that ResponseSent event was emitted
-            verify(timeout = 1000) { 
-                listener.onTransferEvent(ofType(TransferEvent.ResponseSent::class)) 
+            verify(timeout = 1000) {
+                listener.onTransferEvent(ofType(TransferEvent.ResponseSent::class))
             }
         }
 
@@ -309,8 +319,9 @@ class OpenId4VpManagerTest {
                 every { responseBytes } returns byteArrayOf()
                 every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
+                every { debugLog(logger,any()) } just Runs
             }
-            
+
             // Mock dispatch to return VerifierResponse.Accepted with a redirectURI
             coEvery {
                 siopOpenId4Vp.dispatch(
@@ -326,10 +337,10 @@ class OpenId4VpManagerTest {
 
             // Execute
             manager.sendResponse(fakeResponse)
-            
+
             // Verify that Redirect event was emitted with the correct URI
-            verify(timeout = 1000) { 
-                listener.onTransferEvent(match { 
+            verify(timeout = 1000) {
+                listener.onTransferEvent(match {
                     it is TransferEvent.Redirect && it.redirectUri == redirectUri
                 })
             }
@@ -348,8 +359,9 @@ class OpenId4VpManagerTest {
                 every { responseBytes } returns byteArrayOf()
                 every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
+                every { debugLog(logger,any()) } just Runs
             }
-            
+
             // Mock dispatch to return VerifierResponse.Rejected
             coEvery {
                 siopOpenId4Vp.dispatch(
@@ -365,13 +377,13 @@ class OpenId4VpManagerTest {
 
             // Execute
             manager.sendResponse(fakeResponse)
-            
+
             // Verify that Error event was emitted with the correct exception type
-            verify(timeout = 1000) { 
+            verify(timeout = 1000) {
                 listener.onTransferEvent(match {
-                    it is TransferEvent.Error && 
-                    it.error is IllegalStateException && 
-                    it.error.message == "Verifier rejected the response"
+                    it is TransferEvent.Error &&
+                            it.error is IllegalStateException &&
+                            it.error.message == "Verifier rejected the response"
                 })
             }
         }

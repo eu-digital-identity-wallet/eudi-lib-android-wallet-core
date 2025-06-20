@@ -33,6 +33,6 @@ This class represents responses for ISO 18013-5 mobile driving license (mDL) for
 
 | Name | Summary |
 |---|---|
-| [debugPrint](debug-print.md) | [androidJvm]<br>open override fun [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md).[debugPrint](debug-print.md)(tag: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))<br>Prints detailed debug information about the device response. |
+| [debugLog](debug-log.md) | [androidJvm]<br>open override fun [debugLog](debug-log.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md), tag: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))<br>Prints detailed debug information about the device response. |
 | [equals](equals.md) | [androidJvm]<br>open operator override fun [equals](equals.md)(other: [Any](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-any/index.html)?): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) |
 | [hashCode](hash-code.md) | [androidJvm]<br>open override fun [hashCode](hash-code.md)(): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) |

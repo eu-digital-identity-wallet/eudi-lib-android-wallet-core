@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *
+ *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -95,11 +95,12 @@ sealed interface OpenId4VpResponse : Response {
         }
 
     /**
-     * Extension function for Logger that prints detailed debug information about the response.
+     * Prints detailed debug information about the response.
      *
+     * @param logger The Logger instance to use for logging
      * @param tag The tag to use for logging the response information
      */
-    fun Logger.debugPrint(tag: String)
+    fun debugLog(logger: Logger, tag: String)
 
     /**
      * Response type for device-based OpenID4VP presentations (e.g., MSO mdoc).
@@ -120,7 +121,7 @@ sealed interface OpenId4VpResponse : Response {
         override val msoMdocNonce: String,
         val sessionTranscript: ByteArray,
         val responseBytes: DeviceResponseBytes,
-        override val respondedDocuments: List<RespondedDocument>
+        override val respondedDocuments: List<RespondedDocument>,
     ) : OpenId4VpResponse {
 
         /**
@@ -143,10 +144,10 @@ sealed interface OpenId4VpResponse : Response {
          *
          * @param tag The tag to use for logging
          */
-        override fun Logger.debugPrint(tag: String) {
-            d(tag, "Device Response (hex): ${toHexString(responseBytes)}")
-            d(tag, "Device Response (cbor): ${cborPrettyPrint(responseBytes)}")
-            d(tag, "VpContent: $vpContent")
+        override fun debugLog(logger: Logger, tag: String) {
+            logger.d(tag, "Device Response (hex): ${toHexString(responseBytes)}")
+            logger.d(tag, "Device Response (cbor): ${cborPrettyPrint(responseBytes)}")
+            logger.d(tag, "VpContent: $vpContent")
         }
 
         override fun equals(other: Any?): Boolean {
@@ -196,7 +197,7 @@ sealed interface OpenId4VpResponse : Response {
         override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
         override val msoMdocNonce: String,
         val response: List<String>,
-        override val respondedDocuments: List<RespondedDocument>
+        override val respondedDocuments: List<RespondedDocument>,
     ) : OpenId4VpResponse {
         /**
          * The list of document IDs included in the response, sorted by their index.
@@ -213,9 +214,9 @@ sealed interface OpenId4VpResponse : Response {
          *
          * @param tag The tag to use for logging
          */
-        override fun Logger.debugPrint(tag: String) {
-            d(tag, "Generic Response: ${response.joinToString("\n")}")
-            d(tag, "VpContent: $vpContent")
+        override fun debugLog(logger: Logger, tag: String) {
+            logger.d(tag, "Generic Response: ${response.joinToString("\n")}")
+            logger.d(tag, "VpContent: $vpContent")
         }
     }
 
@@ -237,7 +238,7 @@ sealed interface OpenId4VpResponse : Response {
         override val consensus: Consensus.PositiveConsensus.VPTokenConsensus,
         override val msoMdocNonce: String,
         val response: Map<QueryId, String>,
-        override val respondedDocuments: List<RespondedDocument>
+        override val respondedDocuments: List<RespondedDocument>,
     ) : OpenId4VpResponse {
         /**
          * Prints detailed debug information about the DCQL response.
@@ -247,12 +248,12 @@ sealed interface OpenId4VpResponse : Response {
          *
          * @param tag The tag to use for logging
          */
-        override fun Logger.debugPrint(tag: String) {
+        override fun debugLog(logger: Logger, tag: String) {
             val message = "DCQL Response: ${
                 response.map { (queryId, respStr) -> "$queryId: $respStr" }.joinToString("\n")
             }"
-            d(tag, message)
-            d(tag, "VpContent: $vpContent")
+            logger.d(tag, message)
+            logger.d(tag, "VpContent: $vpContent")
         }
     }
 
@@ -288,7 +289,7 @@ sealed interface OpenId4VpResponse : Response {
         data class IndexBased(
             override val documentId: DocumentId,
             override val format: String,
-            val index: Int
+            val index: Int,
         ) : RespondedDocument
 
         /**
@@ -305,7 +306,7 @@ sealed interface OpenId4VpResponse : Response {
         data class QueryBased(
             override val documentId: DocumentId,
             override val format: String,
-            val queryId: String
+            val queryId: String,
         ) : RespondedDocument
     }
 }
