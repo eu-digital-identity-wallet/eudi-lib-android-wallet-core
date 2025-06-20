@@ -17,4 +17,5 @@
 | [eu.europa.ec.eudi.wallet.transactionLogging.presentation](wallet-core/eu.europa.ec.eudi.wallet.transactionLogging.presentation/index.md) |
 | [eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing](wallet-core/eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing/index.md) |
 | [eu.europa.ec.eudi.wallet.transfer.openId4vp](wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/index.md) |
+| [eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql](wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/index.md) |
 | [eu.europa.ec.eudi.wallet.util](wallet-core/eu.europa.ec.eudi.wallet.util/index.md) |

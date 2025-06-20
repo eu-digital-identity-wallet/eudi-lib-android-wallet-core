@@ -3,4 +3,4 @@
 # requestProcessor
 
 [androidJvm]\
-val [requestProcessor](request-processor.md): [OpenId4VpRequestProcessor](../-open-id4-vp-request-processor/index.md)
+val [requestProcessor](request-processor.md): [RequestProcessorDispatcher](../-request-processor-dispatcher/index.md)

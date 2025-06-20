@@ -4,3 +4,5 @@
 
 [androidJvm]\
 open val [vpContent](vp-content.md): VpContent
+
+The verifiable presentation content extracted from the consensus.

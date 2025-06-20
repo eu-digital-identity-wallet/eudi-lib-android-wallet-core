@@ -11,4 +11,4 @@ androidJvm
 
 | | |
 |---|---|
-| msoMdocNonce | A nonce value used for the MSO_MDOC protocol to prevent replay attacks |
+| msoMdocNonce | A nonce issuerMetadata used for the MSO_MDOC protocol to prevent replay attacks |

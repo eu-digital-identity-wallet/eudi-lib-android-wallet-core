@@ -4,3 +4,5 @@
 
 [androidJvm]\
 abstract val [consensus](consensus.md): Consensus.PositiveConsensus.VPTokenConsensus
+
+The consensus result containing the verifiable presentation token.

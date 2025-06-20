@@ -3,7 +3,7 @@
 # OpenId4VpRequestProcessor
 
 [androidJvm]\
-constructor(documentManager: DocumentManager, readerTrustStore: ReaderTrustStore?)
+constructor(documentManager: DocumentManager, openid4VpX509CertificateTrust: [OpenId4VpReaderTrust](../-open-id4-vp-reader-trust/index.md))
 
 #### Parameters
 
@@ -11,4 +11,4 @@ androidJvm
 
 | | |
 |---|---|
-| documentManager | Manages document retrieval and processing |
+| documentManager | Provides access to credentials stored in the wallet |

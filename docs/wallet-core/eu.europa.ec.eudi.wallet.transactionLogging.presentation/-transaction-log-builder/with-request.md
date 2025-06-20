@@ -12,7 +12,7 @@ If the log's type is not [TransactionLog.Type.Presentation](../../eu.europa.ec.e
 - 
    DeviceRequest: Stores the raw request bytes.
 - 
-   [OpenId4VpRequest](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-request/index.md): Extracts and stores the presentation definition from the resolved request object. Requires the resolved request to be ResolvedRequestObject.OpenId4VPAuthorization and the presentation query to be PresentationQuery.ByPresentationDefinition.
+   [OpenId4VpRequest](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-request/index.md): Extracts and stores the presentation definition or digital credentials query from the resolved request object. Requires the resolved request to be ResolvedRequestObject.OpenId4VPAuthorization and the presentation query to be either PresentationQuery.ByPresentationDefinition or PresentationQuery.ByDigitalCredentialsQuery.
 - 
    Other request types: Marks the log status as [TransactionLog.Status.Error](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/-status/-error/index.md).
 

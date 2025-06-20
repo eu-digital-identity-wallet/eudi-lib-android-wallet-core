@@ -4,3 +4,5 @@
 
 [androidJvm]\
 open override var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?
+
+The trust store used for verifying reader certificates. Delegates to the request processor.
