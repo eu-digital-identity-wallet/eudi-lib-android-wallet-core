@@ -94,14 +94,25 @@ sealed interface OpenId4VpResponse : Response {
             else -> null
         }
 
+    /**
+     * Extension function for Logger that prints detailed debug information about the response.
+     *
+     * @param tag The tag to use for logging the response information
+     */
     fun Logger.debugPrint(tag: String)
 
     /**
      * Response type for device-based OpenID4VP presentations (e.g., MSO mdoc).
      *
-     * @property sessionTranscript The session transcript bytes used in the device response.
-     * @property responseBytes The raw device response bytes.
-     * @property documentIds The list of document IDs included in the response.
+     * This class represents responses for ISO 18013-5 mobile driving license (mDL) formatted presentations
+     * and other device-based credential disclosures using the MSO mdoc format.
+     *
+     * @property resolvedRequestObject The original OpenID4VP request that was resolved and processed
+     * @property consensus The positive consensus containing the verifiable presentation token
+     * @property msoMdocNonce The nonce used for MSO mdoc presentations to ensure freshness
+     * @property sessionTranscript The session transcript bytes used in the device response for binding the presentation
+     * @property responseBytes The raw CBOR-encoded device response bytes to be transmitted to the verifier
+     * @property respondedDocuments List of documents included in this response with their metadata
      */
     data class DeviceResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
@@ -112,12 +123,26 @@ sealed interface OpenId4VpResponse : Response {
         override val respondedDocuments: List<RespondedDocument>
     ) : OpenId4VpResponse {
 
+        /**
+         * The list of document IDs included in the response, sorted by their index.
+         * This is derived from the [respondedDocuments] property, filtering for IndexBased documents.
+         */
         val documentIds: List<DocumentId>
             get() = respondedDocuments
                 .filterIsInstance<RespondedDocument.IndexBased>()
                 .sortedBy { it.index }
                 .map { it.documentId }
 
+        /**
+         * Prints detailed debug information about the device response.
+         *
+         * Outputs include:
+         * - The raw response bytes in hexadecimal format
+         * - The CBOR-pretty-printed response
+         * - The verifiable presentation content
+         *
+         * @param tag The tag to use for logging
+         */
         override fun Logger.debugPrint(tag: String) {
             d(tag, "Device Response (hex): ${toHexString(responseBytes)}")
             d(tag, "Device Response (cbor): ${cborPrettyPrint(responseBytes)}")
@@ -156,8 +181,15 @@ sealed interface OpenId4VpResponse : Response {
     /**
      * Generic response type for OpenID4VP presentations (non-DCQL).
      *
-     * @property response The list of verifiable presentation strings returned to the relying party.
-     * @property documentIds The list of document IDs included in the response.
+     * This class represents responses for verifiable presentation exchanges that use
+     * presentation exchange formats rather than DCQL, typically with formats like
+     * Presentation Exchange or SD-JWT VC.
+     *
+     * @property resolvedRequestObject The original OpenID4VP request that was resolved and processed
+     * @property consensus The positive consensus containing the verifiable presentation token
+     * @property msoMdocNonce The nonce used for MSO mdoc presentations (if applicable)
+     * @property response The list of verifiable presentation strings returned to the relying party
+     * @property respondedDocuments List of documents included in this response with their metadata
      */
     data class GenericResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
@@ -166,12 +198,21 @@ sealed interface OpenId4VpResponse : Response {
         val response: List<String>,
         override val respondedDocuments: List<RespondedDocument>
     ) : OpenId4VpResponse {
+        /**
+         * The list of document IDs included in the response, sorted by their index.
+         * This is derived from the [respondedDocuments] property, filtering for IndexBased documents.
+         */
         val documentIds: List<DocumentId>
             get() = respondedDocuments
                 .filterIsInstance<RespondedDocument.IndexBased>()
                 .sortedBy { it.index }
                 .map { it.documentId }
 
+        /**
+         * Prints detailed debug information about the generic response.
+         *
+         * @param tag The tag to use for logging
+         */
         override fun Logger.debugPrint(tag: String) {
             d(tag, "Generic Response: ${response.joinToString("\n")}")
             d(tag, "VpContent: $vpContent")
@@ -181,8 +222,15 @@ sealed interface OpenId4VpResponse : Response {
     /**
      * Response type for DCQL-based OpenID4VP presentations.
      *
-     * @property response The list of verifiable presentation strings returned to the relying party.
-     * @property queryDescriptors a set of QueryDescriptor objects
+     * This class represents responses for DCQL (Digital Credentials Query Language) format
+     * credential presentations, which include query-based document references and structured
+     * verification responses.
+     *
+     * @property resolvedRequestObject The original OpenID4VP request that was resolved and processed
+     * @property consensus The positive consensus containing the verifiable presentation token
+     * @property msoMdocNonce The nonce used for MSO mdoc presentations (if applicable)
+     * @property response Map of query IDs to their corresponding verifiable presentation strings
+     * @property respondedDocuments List of documents included in this response with their metadata
      */
     data class DcqlResponse(
         override val resolvedRequestObject: ResolvedRequestObject,
@@ -191,6 +239,14 @@ sealed interface OpenId4VpResponse : Response {
         val response: Map<QueryId, String>,
         override val respondedDocuments: List<RespondedDocument>
     ) : OpenId4VpResponse {
+        /**
+         * Prints detailed debug information about the DCQL response.
+         *
+         * Outputs a formatted list of query IDs and their corresponding responses,
+         * along with the verifiable presentation content.
+         *
+         * @param tag The tag to use for logging
+         */
         override fun Logger.debugPrint(tag: String) {
             val message = "DCQL Response: ${
                 response.map { (queryId, respStr) -> "$queryId: $respStr" }.joinToString("\n")
@@ -200,11 +256,34 @@ sealed interface OpenId4VpResponse : Response {
         }
     }
 
+    /**
+     * Interface representing a document that was included in an OpenID4VP response.
+     *
+     * This can be either index-based (positioned by index in the response) or
+     * query-based (associated with a specific query ID).
+     */
     @Serializable
     sealed interface RespondedDocument {
+        /**
+         * The identifier of the document that was responded
+         */
         val documentId: DocumentId
+
+        /**
+         * The format of the document (e.g., "mso_mdoc", "sd_jwt_vc")
+         */
         val format: String
 
+        /**
+         * Index-based representation of a responded document.
+         *
+         * Used when documents are positioned by index in the response,
+         * typically for device-based or presentation exchange responses.
+         *
+         * @property documentId The identifier of the document
+         * @property format The format of the document
+         * @property index The position of this document in the response array
+         */
         @Serializable
         data class IndexBased(
             override val documentId: DocumentId,
@@ -212,6 +291,16 @@ sealed interface OpenId4VpResponse : Response {
             val index: Int
         ) : RespondedDocument
 
+        /**
+         * Query-based representation of a responded document.
+         *
+         * Used when documents are associated with specific query IDs,
+         * typically for DCQL-based responses.
+         *
+         * @property documentId The identifier of the document
+         * @property format The format of the document
+         * @property queryId The query identifier this document responds to
+         */
         @Serializable
         data class QueryBased(
             override val documentId: DocumentId,
@@ -221,6 +310,16 @@ sealed interface OpenId4VpResponse : Response {
     }
 }
 
+/**
+ * Constructs encryption parameters for JARM responses based on the specified algorithm.
+ *
+ * For ECDH-ES family algorithms, this creates Diffie-Hellman parameters with the
+ * provided nonce as the Agreement PartyUInfo (APU).
+ *
+ * @param alg The JWE algorithm to use for encryption
+ * @param msoMdocNonce The nonce to use as the APU for Diffie-Hellman key agreement
+ * @return EncryptionParameters for the specified algorithm, or null if not supported
+ */
 private fun constructEncryptedParameters(
     alg: JWEAlgorithm,
     msoMdocNonce: String,

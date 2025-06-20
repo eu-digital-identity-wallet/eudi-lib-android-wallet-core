@@ -19,16 +19,12 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
-import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpContent
-import eu.europa.ec.eudi.openid4vp.dcql.QueryId
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -36,68 +32,85 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForMsoMdoc
 import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForSdJwtVc
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
 import kotlinx.coroutines.runBlocking
 import org.multipaz.crypto.Algorithm
 
 /**
  * Represents a processed DCQL (Digital Credentials Query Language) request for OpenID4VP flows.
  *
- * This class holds the resolved request object, document manager, and a mapping of query IDs to
- * requested documents. It is responsible for generating the response to a credential presentation
- * request, ensuring that only one document per query is disclosed, and constructing the appropriate
- * verifiable presentations for each credential format (MSO mdoc or SD-JWT VC).
+ * After a DCQL request has been processed by the [DcqlRequestProcessor], this class holds the results
+ * and is responsible for generating appropriate responses when the user selects which documents
+ * to disclose. It supports multiple document formats and ensures proper response formatting.
  *
- * @property resolvedRequestObject The resolved OpenID4VP authorization request.
- * @property documentManager The document manager used to retrieve and manage wallet documents.
- * @property queryMap Mapping from query IDs to the requested documents for each credential.
- * @property msoMdocNonce Nonce used for MSO mdoc presentations.
+ * This class:
+ * 1. Organizes requested documents by query ID and document format
+ * 2. Generates verifiable presentations for selected documents
+ * 3. Ensures only one document per query is disclosed (per protocol requirements)
+ * 4. Constructs properly formatted OpenID4VP responses
+ *
+ * @property resolvedRequestObject The parsed OpenID4VP authorization request with presentation query details
+ * @property documentManager Manager to access and handle wallet documents
+ * @property queryMap Mapping from query IDs to requested documents, organized by format
+ * @property msoMdocNonce Random nonce used for MSO mdoc format presentations for security
  */
 class ProcessedDcqlRequest(
     val resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization,
     private val documentManager: DocumentManager,
-    private val queryMap: Map<QueryId, Pair<String, RequestedDocuments>>,
-    requestedDocuments: RequestedDocuments = queryMap.values.flatMap { it.second }
-        .let { RequestedDocuments(it) },
+    private val queryMap: RequestedDocumentsByQueryId,
     val msoMdocNonce: String,
-) : RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
+) : RequestProcessor.ProcessedRequest.Success(RequestedDocuments(queryMap.flatMap { it.value.requestedDocuments })) {
     /**
-     * Generates a response for the disclosed documents, ensuring only one document per query ID is present.
+     * Generates an OpenID4VP response with verifiable presentations for the selected documents.
      *
-     * @param disclosedDocuments The documents disclosed by the user.
-     * @param signatureAlgorithm The algorithm to use for signing the response, if applicable.
-     * @return [ResponseResult] containing the constructed verifiable presentations or an error.
-     * @throws IllegalArgumentException if multiple documents are disclosed for the same query ID.
+     * This method creates appropriate verifiable presentations based on the document format:
+     * - For MSO mdoc format documents, it generates ISO 18013-5 compatible presentations
+     * - For SD-JWT VC format documents, it creates SD-JWT format verifiable presentations
+     *
+     * Important aspects:
+     * - Only one document per query ID is disclosed (if multiple are selected, only the first is used)
+     * - Each document is wrapped in its appropriate format-specific verifiable presentation
+     * - Documents are tracked with proper metadata for later transaction logging
+     *
+     * @param disclosedDocuments Documents selected by the user to disclose
+     * @param signatureAlgorithm Algorithm to use for signing the presentations
+     * @return [ResponseResult] with prepared response or error information
      */
     override fun generateResponse(
         disclosedDocuments: DisclosedDocuments,
         signatureAlgorithm: Algorithm?,
     ): ResponseResult {
         val result = try {
-
+            // Set to track all the documents that will be included in the response
             val respondedDocuments = mutableSetOf<OpenId4VpResponse.RespondedDocument>()
+
+            // Map each query to its corresponding verifiable presentation
             val verifiablePresentations = queryMap
-                .mapNotNull { (queryId, requestedDocumentsFormatPair) ->
-                    val (format, requestedDocuments) = requestedDocumentsFormatPair
-                    // if multiple documents are disclosed for the same queryId, only one should be used
-                    // and the rest should be ignored. We pick the first document in the list.
-                    val requestedDocument = requestedDocuments.first()
+                .mapNotNull { (queryId, requestedDocumentsByFormat) ->
+                    val (format, requestedDocuments) = requestedDocumentsByFormat
+                    // For each query, find the first disclosed document that matches the requested documents
+                    // This ensures only one document per query ID is disclosed
                     val disclosedDocument = disclosedDocuments.firstOrNull {
-                        it.documentId == requestedDocument.documentId
+                        it.documentId in requestedDocuments.map { it.documentId }
                     }
+
                     disclosedDocument
                         ?.let { disclosedDocument ->
+                            // Track this document for response metadata
                             respondedDocuments.add(
                                 OpenId4VpResponse.RespondedDocument.QueryBased(
-                                    documentId = requestedDocument.documentId,
+                                    documentId = disclosedDocument.documentId,
                                     format = format,
                                     queryId = queryId.value,
                                 )
                             )
+                            // Create verifiable presentation for this document based on its format
                             queryId to runBlocking {
                                 vpFromRequestedDocuments(
-                                    requestedDocument = requestedDocument,
+                                    format = format,
+                                    requestedDocuments = requestedDocuments,
                                     disclosedDocument = disclosedDocument,
                                     signatureAlgorithm = signatureAlgorithm ?: Algorithm.ESP256
                                 )
@@ -105,11 +118,13 @@ class ProcessedDcqlRequest(
                         }
                 }.toMap()
 
+            // Build the final response structure using DCQL content format
             val vpContent = VpContent.DCQL(
                 verifiablePresentations = verifiablePresentations
             )
             val consensus = Consensus.PositiveConsensus.VPTokenConsensus(vpContent)
 
+            // Construct the complete response object
             val response = OpenId4VpResponse.DcqlResponse(
                 resolvedRequestObject = resolvedRequestObject,
                 consensus = consensus,
@@ -119,25 +134,50 @@ class ProcessedDcqlRequest(
             )
             ResponseResult.Success(response)
         } catch (e: Exception) {
+            // Propagate any errors that occur during response generation
             ResponseResult.Failure(e)
         }
 
         return result
     }
 
+    /**
+     * Creates a format-specific verifiable presentation for a disclosed document.
+     *
+     * This method handles the conversion of different document formats into their
+     * corresponding verifiable presentation formats as defined by OpenID4VP specifications.
+     *
+     * @param format Document format identifier (MSO_MDOC or SD_JWT_VC)
+     * @param requestedDocuments The collection of all requested documents for this query
+     * @param disclosedDocument The specific document selected to disclose
+     * @param signatureAlgorithm The algorithm to use for signing the presentation
+     * @return A generic verifiable presentation containing the requested document data
+     * @throws IllegalArgumentException If document format doesn't match expected format or is unsupported
+     */
     private suspend fun vpFromRequestedDocuments(
-        requestedDocument: RequestedDocument,
+        format: String,
+        requestedDocuments: RequestedDocuments,
         disclosedDocument: DisclosedDocument,
         signatureAlgorithm: Algorithm
     ): VerifiablePresentation.Generic {
         val documentId = disclosedDocument.documentId
+        // Retrieve the full document from the document manager
         val document = documentManager.getDocumentById(documentId) as? IssuedDocument
         requireNotNull(document) { "Document with id $documentId not found" }
-        val requestedItems = requestedDocument.requestedItems
-        val vp = when (document.format) {
-            is MsoMdocFormat -> {
-                // if document format is mso_mdoc then requestedItems should be of type MsoMdocItem
-                require(requestedItems.all { it.key is MsoMdocItem })
+
+        // Determine the document format and ensure it matches expected format
+        val documentFormat = when (document.format) {
+            is MsoMdocFormat -> FORMAT_MSO_MDOC
+            is SdJwtVcFormat -> FORMAT_SD_JWT_VC
+        }
+        require(format == documentFormat) {
+            "Document with id $documentId is not of format $format"
+        }
+
+        // Generate the appropriate verifiable presentation based on format
+        val vp = when (format) {
+            FORMAT_MSO_MDOC -> {
+                // For MSO mdoc, include session transcript and handle devic engagement
                 verifiablePresentationForMsoMdoc(
                     documentManager = documentManager,
                     sessionTranscript = resolvedRequestObject
@@ -148,9 +188,8 @@ class ProcessedDcqlRequest(
                 )
             }
 
-            is SdJwtVcFormat -> {
-                // if document format is dc+sd-jwt then requestedItems should be of type SdJwtVcItem
-                require(requestedItems.all { it.key is SdJwtVcItem })
+            FORMAT_SD_JWT_VC -> {
+                // For SD-JWT, create presentation according to SD-JWT VC format
                 verifiablePresentationForSdJwtVc(
                     resolvedRequestObject = resolvedRequestObject,
                     document = document,
@@ -158,9 +197,9 @@ class ProcessedDcqlRequest(
                     signatureAlgorithm = signatureAlgorithm
                 )
             }
+
+            else -> throw IllegalArgumentException("Unsupported format: $format")
         }
         return vp
     }
 }
-
-
