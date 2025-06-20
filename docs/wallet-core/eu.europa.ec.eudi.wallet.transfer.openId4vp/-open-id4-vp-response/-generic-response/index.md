@@ -32,4 +32,4 @@ This class represents responses for verifiable presentation exchanges that use p
 
 | Name | Summary |
 |---|---|
-| [debugPrint](debug-print.md) | [androidJvm]<br>open override fun [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md).[debugPrint](debug-print.md)(tag: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))<br>Prints detailed debug information about the generic response. |
+| [debugLog](debug-log.md) | [androidJvm]<br>open override fun [debugLog](debug-log.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md), tag: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))<br>Prints detailed debug information about the generic response. |
