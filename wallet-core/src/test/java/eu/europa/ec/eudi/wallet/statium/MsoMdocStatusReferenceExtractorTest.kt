@@ -291,7 +291,7 @@ class MsoMdocStatusReferenceExtractorTest {
 
     private fun createMockCborMapWithoutStatus(): CBORObject {
         return CBORObject.NewMap()
-            .Add("other_field", "issuerMetadata")
+            .Add("other_field", "value")
     }
 
     private fun createMockCborMapWithMissingUri(statusIdx: Int): CBORObject {
