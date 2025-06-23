@@ -39,8 +39,8 @@ data class PresentedDocument(
  * Data class representing a presented claim in a presentation transaction log.
  *
  * @property path The path to the claim.
- * @property value The issuerMetadata of the claim.
- * @property rawValue The raw issuerMetadata of the claim.
+ * @property value The value of the claim.
+ * @property rawValue The raw value of the claim.
  * @property metadata The metadata associated with the claim.
  */
 data class PresentedClaim(

@@ -13,4 +13,4 @@ androidJvm
 |---|---|
 | processedDeviceRequest | The device request that has been processed and is ready for response generation |
 | resolvedRequestObject | The resolved OpenID4VP request object containing presentation query information |
-| msoMdocNonce | A nonce issuerMetadata used for the MSO_MDOC protocol to prevent replay attacks |
+| msoMdocNonce | A nonce value used for the MSO_MDOC protocol to prevent replay attacks |
