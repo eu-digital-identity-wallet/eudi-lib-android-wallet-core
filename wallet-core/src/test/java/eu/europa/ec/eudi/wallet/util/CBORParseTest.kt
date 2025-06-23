@@ -108,14 +108,14 @@ class CBORParseTest {
     fun cborParse_map_returnsMapOfParsedItems() {
         val map = Map()
         map.put(UnicodeString("key1"), UnsignedInteger(42))
-        map.put(UnicodeString("key2"), UnicodeString("issuerMetadata"))
+        map.put(UnicodeString("key2"), UnicodeString("value"))
         val encoded = CBOR.cborEncode(map)
         val result = CBOR.cborParse(encoded)
         assertTrue(result is kotlin.collections.Map<*, *>)
         val resultMap = result as kotlin.collections.Map<*, *>
         assertEquals(2, resultMap.size)
         assertEquals(42L, resultMap["key1"])
-        assertEquals("issuerMetadata", resultMap["key2"])
+        assertEquals("value", resultMap["key2"])
     }
 
     @Test
