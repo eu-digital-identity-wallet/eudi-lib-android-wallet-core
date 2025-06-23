@@ -49,7 +49,7 @@ import java.util.UUID
  *
  * @param processedDeviceRequest The device request that has been processed and is ready for response generation
  * @param resolvedRequestObject The resolved OpenID4VP request object containing presentation query information
- * @param msoMdocNonce A nonce issuerMetadata used for the MSO_MDOC protocol to prevent replay attacks
+ * @param msoMdocNonce A nonce value used for the MSO_MDOC protocol to prevent replay attacks
  */
 class ProcessedMsoMdocOpenId4VpRequest(
     private val processedDeviceRequest: ProcessedDeviceRequest,
