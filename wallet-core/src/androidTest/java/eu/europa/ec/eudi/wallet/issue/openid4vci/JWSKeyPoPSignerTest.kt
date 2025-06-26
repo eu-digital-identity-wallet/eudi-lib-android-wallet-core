@@ -79,9 +79,11 @@ class JWSProofSignerTest {
         documentManager = DocumentManager {
             setIdentifier(JWSProofSignerTest::class.simpleName!!)
             setStorage(this@JWSProofSignerTest.storage)
-            setSecureAreaRepository(SecureAreaRepository.build {
-                add(this@JWSProofSignerTest.secureArea)
-            })
+            setSecureAreaRepository(
+                SecureAreaRepository.Builder()
+                    .add(this@JWSProofSignerTest.secureArea)
+                    .build()
+            )
         }
     }
 

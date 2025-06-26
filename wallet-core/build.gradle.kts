@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import com.android.build.gradle.api.LibraryVariant
 import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
@@ -64,7 +63,7 @@ android {
     buildTypes {
         debug {
             enableUnitTestCoverage = true
-            enableAndroidTestCoverage = true
+            enableAndroidTestCoverage = false
         }
         release {
             isMinifyEnabled = false
@@ -105,8 +104,9 @@ android {
         }
     }
 
-    afterEvaluate {
-        libraryVariants.forEach { createJacocoTasks(it) }
+    androidComponents {
+        onVariants {
+            createJacocoTasks(it.name) }
     }
 }
 
@@ -305,30 +305,30 @@ val coverageExclusions = listOf(
 fun String.capitalize() =
     replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
-fun createJacocoTasks(variant: LibraryVariant) {
-    val testTaskName = "test${variant.name.capitalize()}UnitTest"
+fun createJacocoTasks(variantName: String) {
+    val testTaskName = "test${variantName.capitalize()}UnitTest"
     val taskName = "${testTaskName}Coverage"
-    val javaClasses = layout.buildDirectory.dir("intermediates/javac/${variant.name}")
+    val javaClasses = layout.buildDirectory.dir("intermediates/javac/${variantName}")
         .get().asFileTree.matching {
             exclude(coverageExclusions)
         }
-    val kotlinClasses = layout.buildDirectory.dir("tmp/kotlin-classes/${variant.name}")
+    val kotlinClasses = layout.buildDirectory.dir("tmp/kotlin-classes/${variantName}")
         .get().asFileTree.matching {
             exclude(coverageExclusions)
         }
     val sourceDirs = files(
         "$projectDir/src/main/java",
         "$projectDir/src/main/kotlin",
-        "$projectDir/src/${variant.name}/java",
-        "$projectDir/src/${variant.name}/kotlin"
+        "$projectDir/src/${variantName}/java",
+        "$projectDir/src/${variantName}/kotlin"
     )
     val executionDataVariant =
-        layout.buildDirectory.file("/outputs/unit_test_code_coverage/${variant.name}UnitTest/${testTaskName}.exec")
+        layout.buildDirectory.file("/outputs/unit_test_code_coverage/${variantName}UnitTest/${testTaskName}.exec")
             .get().asFile
 
     val reportTask = tasks.register<JacocoReport>(taskName) {
         group = "reporting"
-        description = "Generate Jacoco coverage reports for the ${variant.name} build."
+        description = "Generate Jacoco coverage reports for the $variantName build."
         dependsOn(testTaskName)
         reports {
             xml.required = true
@@ -349,7 +349,7 @@ fun createJacocoTasks(variant: LibraryVariant) {
     }
     tasks.register<JacocoCoverageVerification>("${testTaskName}CoverageVerification") {
         group = "reporting"
-        description = "Verifies Jacoco coverage for the ${variant.name} build."
+        description = "Verifies Jacoco coverage for the $variantName build."
         dependsOn(reportTask.name)
 
         violationRules {
