@@ -20,6 +20,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.openid4vci.BatchCredentialIssuance
 import eu.europa.ec.eudi.openid4vci.CredentialConfiguration
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Grants
@@ -76,7 +77,7 @@ class OfferTest {
         mockCredentialConfigurations = listOf(mockMsoMdocCredential, mockSdJwtVcCredential)
 
         mockCredentialIssuerMetadata = mockk<CredentialIssuerMetadata> {
-            every { credentialIssuerIdentifier.value.value.host } returns "test.host"
+            every { credentialIssuerIdentifier } returns CredentialIssuerId("https://test.host").getOrThrow()
             every { credentialConfigurationsSupported } returns mapOf(
                 msoMdocCredentialId to mockMsoMdocCredential,
                 sdJwtVcCredentialId to mockSdJwtVcCredential
@@ -170,7 +171,7 @@ class OfferTest {
     fun `batchCredentialIssuanceSize returns 1 when batch credential issuance is not supported`() {
         // Create a new relaxed mock for this specific test
         val localMetadata = mockk<CredentialIssuerMetadata>(relaxed = true)
-        every { localMetadata.credentialIssuerIdentifier.value.value.host } returns "test.host"
+        every { localMetadata.credentialIssuerIdentifier } returns CredentialIssuerId("https://test.host").getOrThrow()
         every { localMetadata.credentialConfigurationsSupported } returns mapOf(
             msoMdocCredentialId to mockMsoMdocCredential
         )
@@ -178,7 +179,9 @@ class OfferTest {
 
         val localCredentialOffer = mockk<CredentialOffer>(relaxed = true)
         every { localCredentialOffer.credentialIssuerMetadata } returns localMetadata
-        every { localCredentialOffer.credentialConfigurationIdentifiers } returns listOf(msoMdocCredentialId)
+        every { localCredentialOffer.credentialConfigurationIdentifiers } returns listOf(
+            msoMdocCredentialId
+        )
         every { localCredentialOffer.grants } returns Grants.PreAuthorizedCode(
             preAuthorizedCode = "code",
             txCode = txCode,
@@ -191,3 +194,4 @@ class OfferTest {
         assertEquals(1, offeredDocument.batchCredentialIssuanceSize)
     }
 }
+
