@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
@@ -77,7 +78,10 @@ internal class DefaultOpenId4VciManager(
 
     override suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata> {
         return CredentialIssuerId(config.issuerUrl).mapCatching {
-            CredentialIssuerMetadataResolver(httpClientFactory).resolve(it).getOrThrow()
+            CredentialIssuerMetadataResolver(httpClientFactory).resolve(
+                issuer = it,
+                policy = IssuerMetadataPolicy.IgnoreSigned
+            ).getOrThrow()
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
+import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import io.ktor.client.HttpClient
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -53,7 +54,12 @@ class OfferResolverTest {
         credentialOffer = mockk(relaxed = true)
         credentialOfferResolver = mockk()
         mockkObject(CredentialOfferRequestResolver.Companion)
-        every { CredentialOfferRequestResolver.Companion.invoke(any()) } returns credentialOfferResolver
+        every {
+            CredentialOfferRequestResolver.Companion.invoke(
+                ktorHttpClientFactory = any(),
+                issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned
+            )
+        } returns credentialOfferResolver
 
         offerResolver = OfferResolver(ktorHttpClientFactory)
     }
