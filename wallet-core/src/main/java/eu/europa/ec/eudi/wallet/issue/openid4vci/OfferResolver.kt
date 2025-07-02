@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
+import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import io.ktor.client.HttpClient
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -24,7 +25,10 @@ internal class OfferResolver(
     private val ktorHttpClientFactory: () -> HttpClient,
 ) {
     val resolver by lazy {
-        CredentialOfferRequestResolver(ktorHttpClientFactory)
+        CredentialOfferRequestResolver(
+            ktorHttpClientFactory = ktorHttpClientFactory,
+            issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned
+        )
     }
 
     @VisibleForTesting
