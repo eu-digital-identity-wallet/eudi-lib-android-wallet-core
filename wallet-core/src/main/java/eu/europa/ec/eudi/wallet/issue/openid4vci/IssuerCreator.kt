@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
 import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.KeyGenerationConfig
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.ParUsage
@@ -74,7 +75,11 @@ internal class IssuerCreator(
         return CredentialIssuerId(config.issuerUrl)
             .mapCatching { createIssuerId ->
                 ktorHttpClientFactory().use { client ->
-                    Issuer.metaData(client, createIssuerId)
+                    Issuer.metaData(
+                        httpClient = client,
+                        credentialIssuerId = createIssuerId,
+                        policy = IssuerMetadataPolicy.IgnoreSigned
+                    )
                 }
             }
             .mapCatching { (issuerMetadata, _) ->
