@@ -46,7 +46,7 @@ val POM_DESCRIPTION: String by project
 android {
     namespace = NAMESPACE
     group = GROUP
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26
@@ -134,6 +134,10 @@ dependencies {
 
     // Document status
     api(libs.eudi.lib.kmp.statium)
+
+    // Digital Credential API
+    implementation(libs.androidx.credentials.registry.provider)
+    implementation(libs.play.services.identity.credentials)
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)

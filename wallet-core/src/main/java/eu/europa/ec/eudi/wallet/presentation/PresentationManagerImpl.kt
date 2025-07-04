@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.presentation
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.credentials.provider.PendingIntentHandler
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
@@ -26,6 +27,9 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequest
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIResponse
 import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SEND_SESSION_TERMINATION_MESSAGE
 import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.USE_TRANSPORT_SPECIFIC_SESSION_TERMINATION
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
@@ -33,14 +37,15 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
- * Implementation of the [PresentationManager] interface based on the [TransferManager]
- * and [OpenId4VpManager] implementations.
+ * Implementation of the [PresentationManager] interface based on the [TransferManager],
+ * [OpenId4VpManager], [DCAPIManager] implementations.
  * @property nfcEngagementServiceClass the NFC engagement service class
  * @property readerTrustStore the reader trust store
  */
 class PresentationManagerImpl @JvmOverloads constructor(
     @VisibleForTesting internal val transferManager: TransferManager,
     @VisibleForTesting internal val openId4vpManager: OpenId4VpManager? = null,
+    @VisibleForTesting internal val dcapiManager: DCAPIManager? = null,
     override val nfcEngagementServiceClass: Class<out NfcEngagementService>? = null,
 ) : PresentationManager {
 
@@ -53,21 +58,25 @@ class PresentationManagerImpl @JvmOverloads constructor(
                 transferManager.readerTrustStore = value
             }
             openId4vpManager?.readerTrustStore = value
+            dcapiManager?.readerTrustStore = value
         }
 
     override fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.addTransferEventListener(listener)
         openId4vpManager?.addTransferEventListener(listener)
+        dcapiManager?.addTransferEventListener(listener)
     }
 
     override fun removeAllTransferEventListeners() = apply {
         transferManager.removeAllTransferEventListeners()
         openId4vpManager?.removeAllTransferEventListeners()
+        dcapiManager?.removeAllTransferEventListeners()
     }
 
     override fun removeTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.removeTransferEventListener(listener)
         openId4vpManager?.removeTransferEventListener(listener)
+        dcapiManager?.removeTransferEventListener(listener)
     }
 
     override fun startProximityPresentation() {
@@ -95,6 +104,16 @@ class PresentationManagerImpl @JvmOverloads constructor(
         })
     }
 
+    override fun startDCAPIPresentation(intent: Intent) {
+        dcapiManager?.let {
+            val request =
+                PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)
+            if (request != null) {
+                it.resolveRequest(DCAPIRequest(request))
+            }
+        } ?: throw IllegalStateException("DCAPIManager is not initialized, check the configuration")
+    }
+
     override fun enableNFCEngagement(
         activity: ComponentActivity,
     ) = apply {
@@ -114,6 +133,8 @@ class PresentationManagerImpl @JvmOverloads constructor(
             is OpenId4VpResponse.GenericResponse -> openId4vpManager?.sendResponse(response)
 
             is OpenId4VpResponse.DcqlResponse -> openId4vpManager?.sendResponse(response)
+
+            is DCAPIResponse -> dcapiManager?.sendResponse(response)
 
             else -> throw IllegalStateException("Unable to determine the presentation mode")
         }

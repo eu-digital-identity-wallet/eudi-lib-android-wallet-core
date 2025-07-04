@@ -22,6 +22,11 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.statium.Status
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIRegistration
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequestProcessor
+import eu.europa.ec.eudi.wallet.dcapi.DocumentManagerWithDCAPI
+import eu.europa.ec.eudi.wallet.dcapi.getDefaultPrivilegedUserAgents
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -173,6 +178,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
      * @property ktorHttpClientFactory the Ktor HTTP client factory to use if you want to provide a custom implementation
      * @property transactionLogger the transaction logger to use if you want to provide a custom implementation
      * @property documentStatusResolver the document status resolver to use if you want to provide a custom implementation
+     * @property dcapiRegistration the DCAPI registration to use if you want to provide a custom implementation, by default
+     * it will be [DCAPIIsoMdocRegistration] when the DCAPI is enabled in the configuration
      */
     class Builder(
         context: Context,
@@ -188,6 +195,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         var ktorHttpClientFactory: (() -> HttpClient)? = null
         var transactionLogger: TransactionLogger? = null
         var documentStatusResolver: DocumentStatusResolver? = null
+        var dcapiRegistration: DCAPIRegistration? = null
 
         /**
          * Configure with the given [SecureArea] implementations to use for documents' keys management.
@@ -292,6 +300,19 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         }
 
         /**
+         * Configure with the given [DCAPIRegistration] to use for registering credentials
+         * with the Digital Credential API (DCAPI).
+         * If not set, the default [DCAPIIsoMdocRegistration] will be used when the DCAPI is enabled
+         * in the configuration.
+         *
+         * @param dcapiRegistration the DCAPI registration
+         * @return this [Builder] instance
+         */
+        fun withDCAPIRegistration(dcapiRegistration: DCAPIRegistration) = apply {
+            this.dcapiRegistration = dcapiRegistration
+        }
+
+        /**
          * Build the [EudiWallet] instance
          *
          * The [EudiWallet] instance will be created based on the configuration provided in the [Builder] class.
@@ -325,8 +346,16 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             ensureStrongBoxIsSupported(loggerToUse)
             ensureUserAuthIsSupported(loggerToUse)
 
-            val documentManagerToUse =
-                documentManager ?: getDefaultDocumentManager(storage, secureAreas)
+            val documentManagerToUse = (documentManager ?: getDefaultDocumentManager(storage, secureAreas))
+                .let { defaultManager ->
+                    if (config.dcapiConfig?.enabled == true) {
+                        DocumentManagerWithDCAPI(
+                            delegate = defaultManager,
+                            dcapiRegistration = dcapiRegistration,
+                            logger = loggerToUse
+                        )
+                    } else defaultManager
+                }
 
             val readerTrustStoreToUse = readerTrustStore ?: defaultReaderTrustStore
 
@@ -379,10 +408,24 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                     ktorHttpClientFactory = ktorHttpClientFactory
                 )
             }
+            val dcapiManager = config.dcapiConfig?.takeIf { it.enabled }?.let { dcapiConfig ->
+                val privilegedAllowlist =
+                    dcapiConfig.privilegedAllowlist ?: context.getDefaultPrivilegedUserAgents()
+                DCAPIManager(
+                    DCAPIRequestProcessor(
+                        documentManager = documentManager,
+                        readerTrustStore = readerTrustStore,
+                        privilegedAllowlist = privilegedAllowlist,
+                        logger = loggerObj
+                    ),
+                    logger = loggerObj
+                )
+            }
             return PresentationManagerImpl(
                 transferManager = transferManager,
                 openId4vpManager = openId4vpManager,
-                nfcEngagementServiceClass = config.nfcEngagementServiceClass,
+                dcapiManager = dcapiManager,
+                nfcEngagementServiceClass = config.nfcEngagementServiceClass
             )
         }
 

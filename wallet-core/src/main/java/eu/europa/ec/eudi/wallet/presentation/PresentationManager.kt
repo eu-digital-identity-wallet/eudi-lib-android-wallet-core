@@ -92,6 +92,13 @@ interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware 
     fun stopRemotePresentation()
 
     /**
+     * Starts the DCAPI presentation.
+     * This method is used to start the DCAPI presentation flow.
+     * @param intent the intent that may contain the DCAPI request.
+     */
+    fun startDCAPIPresentation(intent: Intent)
+
+    /**
      * Send a response to verifier
      *
      * The response should be generated through the [eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor.ProcessedRequest.Success.generateResponse]
