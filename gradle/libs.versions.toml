@@ -1,4 +1,5 @@
 [versions]
+androidx-credentials-registry-provider = "1.0.0-alpha01"
 appcompat = "1.7.1"
 biometricKtx = "1.2.0-alpha05"
 bouncy-castle = "1.78.1"
@@ -10,7 +11,7 @@ dokka = "1.9.20"
 espresso-contrib = "3.6.1"
 espresso-core = "3.6.1"
 eudi-document-manager = "0.12.0"
-eudi-iso18013-data-transfer = "0.8.0"
+eudi-iso18013-data-transfer = "0.9.0-SNAPSHOT"
 eudi-lib-jvm-openid4vci-kt = "0.7.1"
 eudi-lib-jvm-siop-openid4vp-kt = "0.9.0"
 eudi-lib-jvm-sdjwt-kt = "0.10.0"
@@ -33,6 +34,7 @@ mockito-kotlin = "5.4.0"
 mockk = "1.14.4"
 multipaz = "0.92.0"
 nimbus-sdk = "11.20.1"
+play-services-identity-credentials = "16.0.0-alpha05"
 robolectric = "4.15.1"
 sonarqube = "6.2.0.5505"
 test-core = "1.6.1"
@@ -45,6 +47,7 @@ jetbrainsKotlinJvm = "2.2.0"
 testng = "7.11.0"
 
 [libraries]
+androidx-credentials-registry-provider = { module = "androidx.credentials.registry:registry-provider", version.ref = "androidx-credentials-registry-provider" }
 android-junit = { module = "androidx.test.ext:junit", version.ref = "junit-android" }
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 biometric-ktx = { group = "androidx.biometric", name = "biometric-ktx", version.ref = "biometricKtx" }
@@ -76,6 +79,7 @@ mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 multipaz-android = { module = "org.multipaz:multipaz-android", version.ref = "multipaz" }
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
+play-services-identity-credentials = { module = "com.google.android.gms:play-services-identity-credentials", version.ref = "play-services-identity-credentials" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-coreKtx = { module = "androidx.test:core-ktx", version.ref = "test-core" }

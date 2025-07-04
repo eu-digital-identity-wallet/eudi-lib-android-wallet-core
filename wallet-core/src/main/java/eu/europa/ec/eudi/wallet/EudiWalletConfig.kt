@@ -22,6 +22,7 @@ import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIConfig
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
@@ -89,11 +90,16 @@ import kotlin.time.Duration.Companion.minutes
  *             "mdoc-openid4vp"
  *         )
  *     }
+ *     .configureDCAPI {
+ *         withEnabled(true) // Enable DCAPI, by default it is disabled
+ *         withPrivilegedAllowlist("allowlist") // your own allowlist of privileged browsers/apps that you trust
+ *     }
  *
  * ```
  *
  * @property openId4VciConfig the OpenID4VCI configuration
  * @property openId4VpConfig the OpenID4VP configuration
+ * @property dcapiConfig the DCAPI configuration
  * @property documentManagerIdentifier the document manager identifier
  * @property documentsStoragePath the documents storage path
  * @property enableBlePeripheralMode whether to enable BLE peripheral mode
@@ -174,6 +180,38 @@ class EudiWalletConfig {
      */
     fun configureOpenId4Vp(openId4VpConfig: OpenId4VpConfig.Builder.() -> Unit) = apply {
         this.openId4VpConfig = OpenId4VpConfig.Builder().apply(openId4VpConfig).build()
+    }
+
+    /**
+     * Configuration for the Digital Credential.
+     */
+    var dcapiConfig: DCAPIConfig? = null
+        private set
+
+    /**
+     * Configure the DCAPI.
+     *
+     * @see DCAPIConfig
+     * @see DCAPIConfig.Builder
+     *
+     * @param dcapiConfig the DCAPI configuration
+     * @return the [EudiWalletConfig] instance
+     */
+    fun configureDCAPI(dcapiConfig: DCAPIConfig) = apply {
+        this.dcapiConfig = dcapiConfig
+    }
+
+    /**
+     * Configure the DCAPI using a [DCAPIConfig.Builder] as a lambda with receiver.
+     *
+     * @see DCAPIConfig
+     * @see DCAPIConfig.Builder
+     *
+     * @param dcapiConfig the DCAPI configuration lambda
+     * @return the [EudiWalletConfig] instance
+     */
+    fun configureDCAPI(dcapiConfig: DCAPIConfig.Builder.() -> Unit) = apply {
+        this.dcapiConfig = DCAPIConfig.Builder().apply(dcapiConfig).build()
     }
 
     var documentManagerIdentifier: String = DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
