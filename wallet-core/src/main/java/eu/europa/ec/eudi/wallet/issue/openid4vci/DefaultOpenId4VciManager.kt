@@ -42,6 +42,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
+import androidx.core.net.toUri
 
 /**
  * Default implementation of [OpenId4VciManager].
@@ -70,7 +71,7 @@ internal class DefaultOpenId4VciManager(
         OfferResolver(httpClientFactory)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(config, httpClientFactory)
+        IssuerCreator(config, httpClientFactory, logger)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         IssuerAuthorization(context, logger)
@@ -237,7 +238,7 @@ internal class DefaultOpenId4VciManager(
     override fun resumeWithAuthorization(uri: Uri) = issuerAuthorization.resumeFromUri(uri)
 
     override fun resumeWithAuthorization(uri: String) {
-        resumeWithAuthorization(Uri.parse(uri))
+        resumeWithAuthorization(uri.toUri())
     }
 
     /**
