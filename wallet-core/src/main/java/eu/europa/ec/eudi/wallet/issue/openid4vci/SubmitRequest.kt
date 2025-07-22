@@ -19,17 +19,16 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.ProofsSpecification
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import kotlinx.coroutines.runBlocking
-import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyUnlockData
 
 internal class SubmitRequest(
     val config: OpenId4VciManager.Config,
     val issuer: Issuer,
     authorizedRequest: AuthorizedRequest,
-    val algorithm: Algorithm = Algorithm.ESP256
 ) {
     var authorizedRequest: AuthorizedRequest = authorizedRequest
         private set
@@ -51,31 +50,29 @@ internal class SubmitRequest(
         keyUnlockData: Map<KeyAlias, KeyUnlockData?>? = null,
     ): Pair<List<String>, SubmissionOutcome> {
 
-        var proofSigners: List<JWSKeyPoPSigner>? = null
+        lateinit var proofSigner: BatchProofSigner
         return try {
             val payload = IssuanceRequestPayload.ConfigurationBased(
                 offeredDocument.configurationIdentifier
             )
-
-            proofSigners =
-                unsignedDocument.getPoPSigners().map { s ->
-                    JWSKeyPoPSigner(s, keyUnlockData?.get(s.keyAlias))
-                }
+            proofSigner = BatchProofSigner(unsignedDocument.getPoPSigners().toList(), keyUnlockData)
+            val proofSpec = ProofsSpecification.JwtProofs.NoKeyAttestation(
+                proofsSigner = proofSigner
+            )
             val (updatedAuthorizedRequest, outcome) = with(issuer) {
-                authorizedRequest.request(payload, proofSigners.map { it.popSigner })
+                authorizedRequest.request(payload, proofSpec)
             }.getOrThrow()
 
             this.authorizedRequest = updatedAuthorizedRequest
-            proofSigners.map { it.proofSigner.keyAlias } to outcome
+            proofSigner.signers.map { it.keyAlias } to outcome
         } catch (e: Throwable) {
 
-            val isUserAuthRequired = proofSigners?.any { it.keyLockedException != null } == true
+            val isUserAuthRequired = proofSigner.keyLockedException != null
             if (isUserAuthRequired) {
-                val keysAndSecureAreas = proofSigners
-                    .map { it.proofSigner }
+                val keysAndSecureAreas = proofSigner.signers
                     .associate { it.keyAlias to it.secureArea }
                 throw UserAuthRequiredException(
-                    signingAlgorithm = algorithm,
+                    signingAlgorithm = proofSigner.algorithm,
                     keysAndSecureAreas = keysAndSecureAreas,
                     resume = { keyUnlockData ->
                         runBlocking {

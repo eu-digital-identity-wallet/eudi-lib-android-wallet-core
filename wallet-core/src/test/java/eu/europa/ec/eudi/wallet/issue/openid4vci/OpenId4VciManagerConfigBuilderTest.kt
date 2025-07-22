@@ -20,7 +20,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.multipaz.crypto.Algorithm
 import kotlin.test.Test
+import kotlin.test.assertIs
 
 
 class OpenId4VciManagerConfigBuilderTest {
@@ -82,7 +84,8 @@ class OpenId4VciManagerConfigBuilderTest {
         assertEquals("https://issuer.example.com", config.issuerUrl)
         assertEquals("testClientId", config.clientId)
         assertEquals("app://redirect", config.authFlowRedirectionURI)
-        assertTrue(config.useDPoPIfSupported)
+        assertIs<OpenId4VciManager.Config.DPoPUsage.IfSupported>(config.dPoPUsage)
+        assertEquals(Algorithm.ESP256, config.dPoPUsage.algorithm)
     }
 
     @Test
@@ -91,10 +94,11 @@ class OpenId4VciManagerConfigBuilderTest {
             .withIssuerUrl("https://issuer.example.com")
             .withClientId("testClientId")
             .withAuthFlowRedirectionURI("app://redirect")
-            .withUseDPoPIfSupported(true)
+            .withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.IfSupported())
 
         val config = builder.build()
 
-        assertTrue(config.useDPoPIfSupported)
+        assertIs<OpenId4VciManager.Config.DPoPUsage.IfSupported>(config.dPoPUsage)
+        assertEquals(Algorithm.ESP256, config.dPoPUsage.algorithm)
     }
 }

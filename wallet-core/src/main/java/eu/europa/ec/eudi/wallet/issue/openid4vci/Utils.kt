@@ -33,6 +33,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractIssuerMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import org.bouncycastle.util.encoders.Hex
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcSignature
 import java.time.Instant
 import java.util.*
@@ -52,6 +54,40 @@ internal fun EcSignature.toJoseEncoded(jwsAlgorithm: JWSAlgorithm): ByteArray {
         toDerEncoded(), ECDSA.getSignatureByteArrayLength(jwsAlgorithm)
     )
 }
+
+/**
+ * Maps a Multipaz [Algorithm] to its corresponding Java Cryptography Architecture (JCA) algorithm name.
+ *
+ * This property is useful for interoperability with Java security providers that require
+ * standard JCA algorithm names for signature verification or key generation operations.
+ *
+ * @return The JCA standard algorithm name string for the given Multipaz algorithm, or null if
+ *         there is no corresponding JCA algorithm (e.g., for unsupported algorithms).
+ *
+ * Supported mappings:
+ * - ES256, ESP256, ESB256 → "SHA256withECDSA"
+ * - ES384, ESP384, ESB320, ESB384 → "SHA384withECDSA"
+ * - ES512, ESP512, ESB512 → "SHA512withECDSA"
+ * - EDDSA with ED25519 curve → "Ed25519"
+ * - EDDSA with ED448 curve → "Ed448"
+ * - ED25519 → "Ed25519"
+ * - ED448 → "Ed448"
+ */
+internal val Algorithm.javaAlgorithm: String?
+    get() = when (this) {
+        Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256 -> "SHA256withECDSA"
+        Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB320, Algorithm.ESB384 -> "SHA384withECDSA"
+        Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> "SHA512withECDSA"
+        Algorithm.EDDSA -> when (curve) {
+            EcCurve.ED25519 -> "Ed25519"
+            EcCurve.ED448 -> "Ed448"
+            else -> null
+        }
+
+        Algorithm.ED25519 -> "Ed25519"
+        Algorithm.ED448 -> "Ed448"
+        else -> null
+    }
 
 /**
  * Creates an issuance request for the given document type.
@@ -153,5 +189,3 @@ internal fun DocumentManager.storeIssuedDocument(
     }
     storeIssuedDocument(document, issuerProvidedData).kotlinResult.getOrThrow()
 }
-
-

@@ -31,7 +31,7 @@ class OpenId4VciManagerBuilderTest {
         issuerUrl = "https://issuer.example.com",
         clientId = "testClientId",
         authFlowRedirectionURI = "app://redirect",
-        useDPoPIfSupported = true,
+        dPoPUsage = OpenId4VciManager.Config.DPoPUsage.IfSupported(),
         parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
     )
 
