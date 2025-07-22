@@ -171,10 +171,12 @@ val config = EudiWalletConfig()
         withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
         withParUsage(OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED)
-        withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.IfSupported(
-            algorithm = Algorithm.ESP256 // this is the default value, that can be omitted
-        ))
-        // or withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.Disabled)
+        // Configure DPoP (Demonstrating Proof-of-Possession)
+        // By default, DPoP is enabled with DPopConfig.Default
+        // You can also provide a custom configuration or disable it
+        // withDPopConfig(DPopConfig.Default) // This is the default
+        // withDPopConfig(DPopConfig.Disabled) // To disable DPoP
+        // withDPopConfig(customDPopConfig) // To use custom configuration
     }
     // configuration for proximity presentation
     // the values below are the default values
@@ -304,7 +306,8 @@ The following snippet shows how to retrieve all documents:
 val documents = wallet.getDocuments()
 ```
 
-You can also retrieve documents based on a predicate. The following snippet shows how to retrieve documents of mso_mdoc format of a specific docType:
+You can also retrieve documents based on a predicate. The following snippet shows how to retrieve
+documents of mso_mdoc format of a specific docType:
 
 ```kotlin
 // Get documents filtered by a specific docType
@@ -319,8 +322,8 @@ val issuedDocuments = wallet.getDocuments { document ->
 
 // Combine multiple conditions
 val specificDocuments = wallet.getDocuments { document ->
-    document is IssuedDocument && 
-    (document.format as? SdJwtVcFormat)?.vct == "IdentityCredential" 
+    document is IssuedDocument &&
+            (document.format as? SdJwtVcFormat)?.vct == "IdentityCredential"
 }
 ```
 
@@ -386,9 +389,11 @@ try {
 
 #### Resolving document status
 
-The wallet-core library provides functionality to check the revocation status of documents. This is useful to verify if a document is still valid or has been revoked.
+The wallet-core library provides functionality to check the revocation status of documents. This is
+useful to verify if a document is still valid or has been revoked.
 
-To check the status of a document, you can use the `resolveStatusById` method on the `EudiWallet` instance:
+To check the status of a document, you can use the `resolveStatusById` method on the `EudiWallet`
+instance:
 
 ```kotlin
 // Get a document's ID
@@ -427,11 +432,14 @@ if (document != null) {
 }
 ```
 
-For more details on document management, see the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.1/README.md).
+For more details on document management, see
+the [Document Manager repository](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager/blob/v0.11.1/README.md).
 
 ##### Document Status Resolution Configuration
 
-By default, the library uses a built-in implementation of `DocumentStatusResolver` that works with token status lists as specified in various credential formats. The resolver supports both MSO MDOC and SD-JWT VC document formats.
+By default, the library uses a built-in implementation of `DocumentStatusResolver` that works with
+token status lists as specified in various credential formats. The resolver supports both MSO MDOC
+and SD-JWT VC document formats.
 
 ###### Basic Configuration
 
@@ -441,12 +449,13 @@ You can configure the default implementation using `EudiWalletConfig`:
 val config = EudiWalletConfig()
     // Configure a clock skew allowance (in minutes) for token verification
     .configureDocumentStatusResolver(clockSkewInMinutes = 5)
-    // ... other configurations
+// ... other configurations
 ```
 
 ###### Custom DocumentStatusResolver Implementation
 
-For more advanced customization, you can provide your own custom implementation of `DocumentStatusResolver` during wallet initialization:
+For more advanced customization, you can provide your own custom implementation of
+`DocumentStatusResolver` during wallet initialization:
 
 ```kotlin
 val wallet = EudiWallet(context, config) {
@@ -465,17 +474,17 @@ You can also create your own DocumentStatusResolver using the builder:
 val customResolver = DocumentStatusResolver {
     // Configure verification mechanism
     withVerifySignature(VerifyStatusListTokenSignature.x5c)
-    
+
     // Configure clock skew tolerance
     withAllowedClockSkew(Duration.minutes(5))
-    
+
     // Custom HTTP client factory
-    withKtorHttpClientFactory { 
-        HttpClient(CIO) { 
+    withKtorHttpClientFactory {
+        HttpClient(CIO) {
             // Custom client configuration 
-        } 
+        }
     }
-    
+
     // Custom status reference extractor if needed
     withExtractor(MyCustomStatusReferenceExtractor)
 }
@@ -507,7 +516,7 @@ val customConfig = OpenId4VciManager.Config.Builder()
     .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
     .withAuthFlowRedirectionURI("eudi-openid4ci://custom-authorize")
     .build()
-    
+
 val openId4VciManagerWithCustomConfig = wallet.createOpenId4VciManager(customConfig)
 
 // You can also provide a custom HTTP client factory
@@ -527,12 +536,18 @@ val openId4VciManagerWithCustomHttpClient = wallet.createOpenId4VciManager(
 
 The `createOpenId4VciManager` method can accept an optional `OpenId4VciManager.Config` parameter:
 
-1. If you provide a configuration parameter, that configuration will be used for the created manager instance.
-2. If you don't provide a configuration parameter, the method will attempt to use the configuration from `EudiWalletConfig.openId4VciConfig`.
-3. If neither are provided, the method will throw an `IllegalStateException` with a message indicating that you need to provide configuration either as a method parameter or in the `EudiWalletConfig`.
+1. If you provide a configuration parameter, that configuration will be used for the created manager
+   instance.
+2. If you don't provide a configuration parameter, the method will attempt to use the configuration
+   from `EudiWalletConfig.openId4VciConfig`.
+3. If neither are provided, the method will throw an `IllegalStateException` with a message
+   indicating that you need to provide configuration either as a method parameter or in the
+   `EudiWalletConfig`.
 
 This flexibility allows you to:
-- Use a single global configuration for all OpenId4VCI operations by configuring it once in `EudiWalletConfig`
+
+- Use a single global configuration for all OpenId4VCI operations by configuring it once in
+  `EudiWalletConfig`
 - Override the global configuration for specific operations by passing a custom configuration
 - Provide a custom HTTP client for specific operations while using the global configuration
 
@@ -540,7 +555,9 @@ This flexibility allows you to:
 
 The library provides the `OpenId4VciManager.resolveDocumentOffer` method that resolves the
 credential offer URI.
-The method returns the resolved [`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt) object that contains the offer's data. The offer's 
+The method returns the resolved [
+`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt) object that
+contains the offer's data. The offer's
 data can be displayed to the user.
 
 The following example shows how to resolve a credential offer:
@@ -618,9 +635,9 @@ val onIssueEvent = OnIssueEvent { event ->
         is IssueEvent.DocumentRequiresCreateSettings -> {
             // Need to provide settings for document creation
             // Create document settings can be varied depending on the document type
-            
+
             val format = event.offeredDocument.documentFormat
-            val isEuPid = when(format) {
+            val isEuPid = when (format) {
                 is MsoMdocFormat -> format.docType == "eu.europa.ec.eudi.pid.1"
                 is SdJwtVcFormat -> format.vct == "urn:eudi:pid:1"
                 else -> false
@@ -946,6 +963,90 @@ openId4VciManager.issueDeferredDocument(deferredDocument) { result ->
 }
 ```
 
+#### DPoP Support
+
+DPoP (Demonstrating Proof-of-Possession) is a security mechanism that cryptographically binds OAuth
+2.0 access tokens to keys, preventing token theft and replay attacks during credential issuance. The
+library provides flexible configuration options for DPoP, from simple default setup to fully
+customized implementations.
+
+##### Default DPoP Configuration
+
+By default, DPoP is enabled with `DPopConfig.Default`, which uses Android Keystore with secure
+defaults:
+
+```kotlin
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientId("client-id")
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        // DPoP is enabled by default with DPopConfig.Default
+        // No additional configuration needed
+    }
+```
+
+The default configuration automatically:
+
+- Creates keys in hardware-backed Android Keystore when available
+- Stores key metadata in the app's no-backup directory
+- Uses StrongBox if the device supports it
+- Negotiates the algorithm with the authorization server
+- Requires no user authentication for key usage
+
+##### Disabling DPoP
+
+If you need to disable DPoP (not recommended for production):
+
+```kotlin
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientId("client-id")
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        withDPopConfig(DPopConfig.Disabled)
+    }
+```
+
+##### Customizing DPoP Key Creation and Signing
+
+For advanced use cases, you can fully customize how DPoP keys are created and used with
+`DPopConfig.Custom`. This gives you control over:
+
+- The secure area used for key storage
+- Key creation settings per algorithm
+- User authentication requirements
+- Key unlock mechanisms
+
+**Example:**
+
+```kotlin
+val walletConfig = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.example.com")
+        withClientId("wallet-client")
+
+        // Custom DPoP configuration
+        withDPopConfig(
+            DPopConfig.Custom(
+                secureArea = myCustomSecureArea,
+                createKeySettings = { algorithm ->
+                    when (algorithm) {
+                        Algorithm.ES256 -> MyCreateKeySettings(
+                            useStrongBox = true,
+                            userAuthenticationRequired = true
+                        )
+                        else -> MyCreateKeySettings()
+                    }
+                },
+                keyUnlockData = { keyAlias ->
+                    MyKeyUnlockData(keyAlias)
+                }
+            )
+        )
+    }
+```
+
 ### Transfer documents
 
 The library supports the following 3 ways to transfer documents:
@@ -957,7 +1058,8 @@ The library supports the following 3 ways to transfer documents:
     - RestAPI using app link
 3. Document retrieval using OpenID4VP
 
-The transfer process is asynchronous. During the transfer, events are emitted that indicate the current
+The transfer process is asynchronous. During the transfer, events are emitted that indicate the
+current
 state of the transfer. The following events are emitted:
 
 1. `TransferEvent.QrEngagementReady`: The QR code is ready to be displayed. Get the QR code from
@@ -1322,11 +1424,14 @@ implementations.
 
 ### Transaction Logging
 
-The library supports logging transactions for auditing and analytics purposes. Currently, only presentation transactions (both proximity and remote) are supported by the library. Issuing transactions will be added in a future release.
+The library supports logging transactions for auditing and analytics purposes. Currently, only
+presentation transactions (both proximity and remote) are supported by the library. Issuing
+transactions will be added in a future release.
 
 #### Configuring Transaction Logger
 
-To enable transaction logging, you need to implement the `TransactionLogger` interface and provide it when initializing the `EudiWallet` instance:
+To enable transaction logging, you need to implement the `TransactionLogger` interface and provide
+it when initializing the `EudiWallet` instance:
 
 ```kotlin
 // Implement the TransactionLogger interface
@@ -1347,6 +1452,7 @@ val wallet = EudiWallet(context, config) {
 #### Working with Transaction Logs
 
 Transaction logs contain information about the presentation transaction, such as:
+
 - Timestamp of the transaction
 - Transaction status (Completed, Error, Incomplete)
 - Type of transaction (currently only Presentation is supported)
@@ -1364,18 +1470,18 @@ val transactionLog: TransactionLog = retrieveTransactionLog()
 if (transactionLog.type == TransactionLog.Type.Presentation) {
     // Parse the presentation transaction log
     val presentationLogResult = PresentationTransactionLog.fromTransactionLog(transactionLog)
-    
+
     presentationLogResult.onSuccess { presentationLog ->
         // Access the parsed information
         val timestamp = presentationLog.timestamp
         val status = presentationLog.status
         val relyingParty = presentationLog.relyingParty
-        
+
         // Access the presented documents and claims
         for (document in presentationLog.documents) {
             val format = document.format
             val metadata = document.metadata
-            
+
             // Access individual claims
             for (claim in document.claims) {
                 val path = claim.path
@@ -1384,14 +1490,15 @@ if (transactionLog.type == TransactionLog.Type.Presentation) {
             }
         }
     }
-    
+
     presentationLogResult.onFailure { error ->
         // Handle parsing error
     }
 }
 ```
 
-This parsed information can be used to display transaction history to the user, perform audits, or for any other analytical purposes.
+This parsed information can be used to display transaction history to the user, perform audits, or
+for any other analytical purposes.
 
 ## How to contribute
 
@@ -1419,4 +1526,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-`

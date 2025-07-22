@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import android.content.Context
 import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
@@ -37,6 +38,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.VctFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopSigner
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -48,6 +50,7 @@ import java.net.URI
  * Creates an [Issuer] from the given [Offer].
  */
 internal class IssuerCreator(
+    private val context: Context,
     private val config: OpenId4VciManager.Config,
     private val ktorHttpClientFactory: () -> HttpClient,
     private val walletProvider: WalletAttestationsProvider?,
@@ -190,14 +193,23 @@ internal class IssuerCreator(
                 ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
                 rsaConfig = RsaConfig(rcaKeySize = 2048)
             ),
-            dPoPSigner = when (dPoPUsage) {
-                OpenId4VciManager.Config.DPoPUsage.Disabled -> null
-
-                is OpenId4VciManager.Config.DPoPUsage.IfSupported -> {
-                    ensureDPoPAlgorithmSupported(authorizationServerMetadata, dPoPUsage)
-                    DPoPSigner(dPoPUsage.algorithm, logger).getOrNull()
-                }
-            },
+            dPoPSigner = DPopSigner.makeIfSupported(
+                context = context,
+                config = dpopConfig,
+                authorizationServerMetadata = authorizationServerMetadata,
+                logger = logger
+            )
+                .getOrElse {
+                    logger?.log(
+                        Logger.Record(
+                            level = Logger.Companion.LEVEL_DEBUG,
+                            message = "DPoP not supported: ${it.message}",
+                            sourceClassName = "eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator",
+                            sourceMethod = "toOpenId4VCIConfig"
+                        )
+                    )
+                    null
+                },
             parUsage = when (parUsage) {
                 OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
                 OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required
@@ -205,30 +217,5 @@ internal class IssuerCreator(
                 else -> ParUsage.IfSupported
             }
         )
-    }
-
-    /**
-     * Verifies that the specified DPoP algorithm is supported by the authorization server.
-     *
-     * @param dPoPUsage The DPoP usage configuration with the algorithm to check.
-     * @throws IllegalStateException if the specified algorithm is not supported by the issuer.
-     */
-    private fun ensureDPoPAlgorithmSupported(
-        authorizationServerMetadata: CIAuthorizationServerMetadata,
-        dPoPUsage: OpenId4VciManager.Config.DPoPUsage.IfSupported,
-    ) {
-        check(dPoPUsage.algorithm.joseAlgorithmIdentifier in authorizationServerMetadata.dPoPJWSAlgs.map { it.name }) {
-            "DPoP algorithm ${dPoPUsage.algorithm.joseAlgorithmIdentifier} is not supported by the issuer"
-                .also {
-                    logger?.log(
-                        Logger.Record(
-                            level = Logger.Companion.LEVEL_ERROR,
-                            message = it,
-                            sourceClassName = "eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator",
-                            sourceMethod = "ensureDPoPAlgorithmSupported"
-                        )
-                    )
-                }
-        }
     }
 }

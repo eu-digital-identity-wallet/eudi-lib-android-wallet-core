@@ -27,11 +27,11 @@ import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
-import org.multipaz.crypto.Algorithm
 import java.util.concurrent.Executor
 
 /**
@@ -368,11 +368,28 @@ interface OpenId4VciManager {
 
     /**
      * Configuration for the OpenId4Vci issuer
+     *
      * @property issuerUrl the issuer url
      * @property clientId the client id
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
      * @property authorizationHandler the handler for authorization requests. If null, uses [BrowserAuthorizationHandler]
-     * @property dPoPUsage flag that if set will enable the use of DPoP JWT
+     * @property dpopConfig The DPoP (Demonstrating Proof-of-Possession) configuration for credential issuance.
+     *           DPoP binds OAuth 2.0 access tokens to cryptographic keys to prevent token theft and replay attacks.
+     *
+     *           **Available options:**
+     *           - [DPopConfig.Default] - Uses Android Keystore with default settings (recommended)
+     *           - [DPopConfig.Custom] - Uses a custom secure area with custom key settings
+     *           - [DPopConfig.Disabled] - Disables DPoP (not recommended for production)
+     *
+     *           **Default:** [DPopConfig.Default]
+     *
+     *           When DPoP is enabled, the library will:
+     *           1. Check if the authorization server supports DPoP
+     *           2. Negotiate a signing algorithm supported by both server and secure area
+     *           3. Create a DPoP key in the secure area
+     *           4. Sign all token requests with DPoP proofs
+     *
+     *           @see DPopConfig for configuration options
      * @property parUsage if PAR should be used
      */
     data class Config @JvmOverloads constructor(
@@ -380,7 +397,7 @@ interface OpenId4VciManager {
         val clientAuthenticationType: ClientAuthenticationType,
         val authFlowRedirectionURI: String,
         val authorizationHandler: AuthorizationHandler? = null,
-        val dPoPUsage: DPoPUsage = DPoPUsage.IfSupported(),
+        val dpopConfig: DPopConfig = DPopConfig.Default,
         @ParUsage val parUsage: Int = IF_SUPPORTED,
     ) {
         /**
@@ -396,41 +413,6 @@ interface OpenId4VciManager {
                 const val IF_SUPPORTED = 2
                 const val REQUIRED = 4
                 const val NEVER = 0
-            }
-        }
-
-        /**
-         * Defines how Demonstration of Proof of Possession (DPoP) should be used during
-         * the OpenID4VCI issuance protocol.
-         *
-         * DPoP is a security mechanism that binds access tokens to a specific client by
-         * requiring the client to prove possession of a private key. This helps prevent
-         * token theft and misuse in OAuth 2.0 and OpenID Connect flows.
-         */
-        sealed interface DPoPUsage {
-            /**
-             * Disables the use of DPoP completely.
-             *
-             * Use this option when DPoP is not supported by the server or when
-             * using other token binding mechanisms.
-             */
-            data object Disabled : DPoPUsage
-
-            /**
-             * Enables DPoP if the server supports it, using the specified algorithm.
-             *
-             * @property algorithm The cryptographic algorithm to use for DPoP token signing.
-             *                     Defaults to ESP256 (ECDSA with P-256 curve and SHA-256).
-             * @throws [IllegalArgumentException] if the specified algorithm is not supported
-             *                     or is not a signing algorithm.
-             * @see [Algorithm.isSigning]
-             */
-            data class IfSupported(val algorithm: Algorithm = Algorithm.ESP256) : DPoPUsage {
-                init {
-                    require(algorithm.isSigning) {
-                        "Algorithm $algorithm is not a signing algorithm"
-                    }
-                }
             }
         }
 
@@ -450,7 +432,73 @@ interface OpenId4VciManager {
          * @property clientId the client id
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
          * @property authorizationHandler the handler for authorization requests. If null, uses [BrowserAuthorizationHandler]
-         * @property dPoPUsage flag that if set will enable the use of DPoP JWT
+         * @property dpopConfig The DPoP configuration for credential issuance.
+         *
+         *           **DPoP (Demonstrating Proof-of-Possession)** is a security mechanism that binds
+         *           access tokens to cryptographic keys, preventing token theft and replay attacks.
+         *
+         *           **Configuration Options:**
+         *
+         *           - **[DPopConfig.Default]** (Recommended): Uses Android Keystore with secure defaults
+         *             - Keys stored in hardware-backed Android Keystore when available
+         *             - Storage in app's no-backup directory
+         *             - StrongBox support if device supports it
+         *             - Algorithm automatically negotiated with authorization server
+         *
+         *           - **[DPopConfig.Custom]**: Full control over secure area and key settings
+         *             - Specify custom secure area (e.g., cloud-based HSM)
+         *             - Configure key creation settings per algorithm
+         *             - Optional user authentication (biometric/PIN) for key usage
+         *
+         *           - **[DPopConfig.Disabled]**: DPoP is not used (not recommended for production)
+         *             - Access tokens are not cryptographically bound
+         *             - More vulnerable to token theft and replay attacks
+         *
+         *           **Default value:** [DPopConfig.Default]
+         *
+         *           **Example - Using Default Configuration:**
+         *           ```kotlin
+         *           val config = Config.Builder()
+         *               .withIssuerUrl("https://issuer.com")
+         *               .withClientId("client-id")
+         *               .withAuthFlowRedirectionURI("app://callback")
+         *               // DPoP is enabled by default with DPopConfig.Default
+         *               .build()
+         *           ```
+         *
+         *           **Example - Using Custom Configuration:**
+         *           ```kotlin
+         *           val customDPopConfig = DPopConfig.Custom(
+         *               secureArea = mySecureArea,
+         *               createKeySettingsBuilder = { algorithm ->
+         *                   AndroidKeystoreCreateKeySettings.Builder(challenge)
+         *                       .setAlgorithm(algorithm)
+         *                       .setUserAuthenticationRequired(true, 30_000, setOf(
+         *                           UserAuthenticationType.BIOMETRIC
+         *                       ))
+         *                       .build()
+         *               }
+         *           )
+         *
+         *           val config = Config.Builder()
+         *               .withIssuerUrl("https://issuer.com")
+         *               .withClientId("client-id")
+         *               .withAuthFlowRedirectionURI("app://callback")
+         *               .withDPopConfig(customDPopConfig)
+         *               .build()
+         *           ```
+         *
+         *           **Example - Disabling DPoP:**
+         *           ```kotlin
+         *           val config = Config.Builder()
+         *               .withIssuerUrl("https://issuer.com")
+         *               .withClientId("client-id")
+         *               .withAuthFlowRedirectionURI("app://callback")
+         *               .withDPopConfig(DPopConfig.Disabled)
+         *               .build()
+         *           ```
+         *
+         *           @see DPopConfig for detailed configuration options
          * @property parUsage if PAR should be used
          */
         class Builder {
@@ -458,7 +506,7 @@ interface OpenId4VciManager {
             var clientAuthenticationType: ClientAuthenticationType? = null
             var authFlowRedirectionURI: String? = null
             var authorizationHandler: AuthorizationHandler? = null
-            var dPoPUsage: DPoPUsage = DPoPUsage.IfSupported()
+            var dpopConfig: DPopConfig = DPopConfig.Default
 
             @ParUsage
             var parUsage: Int = IF_SUPPORTED
@@ -503,12 +551,81 @@ interface OpenId4VciManager {
                 apply { this.authorizationHandler = authorizationHandler }
 
             /**
-             * Set the flag to enable the use of DPoP JWT
-             * @param dPoPUsage the DPoP usage
-             * @return this builder
+             * Sets the DPoP (Demonstrating Proof-of-Possession) configuration.
+             *
+             * DPoP is a security mechanism that cryptographically binds access tokens to keys,
+             * preventing token theft and replay attacks during credential issuance.
+             *
+             * ## How It Works
+             *
+             * When DPoP is enabled:
+             * 1. A cryptographic key pair is created in a secure area
+             * 2. For each token request, a DPoP proof JWT is generated and signed
+             * 3. The authorization server validates the proof and binds the token to the key
+             * 4. The same key must be used for all subsequent requests with that token
+             *
+             * ## Configuration Options
+             *
+             * **[DPopConfig.Default]** - Recommended for most applications:
+             * - Uses Android Keystore for secure key storage
+             * - Keys backed by hardware security when available
+             * - Algorithm negotiated automatically with the server
+             * - No user authentication required
+             *
+             * **[DPopConfig.Custom]** - For advanced use cases:
+             * - Custom secure area (e.g., cloud HSM, custom keystore)
+             * - Custom key creation settings per algorithm
+             * - Optional user authentication (biometric/PIN)
+             * - Full control over key lifecycle
+             *
+             * **[DPopConfig.Disabled]** - Not recommended for production:
+             * - No cryptographic binding of tokens
+             * - More vulnerable to token theft
+             * - Use only for testing or when server doesn't support DPoP
+             *
+             * ## Examples
+             *
+             * **Default configuration (recommended):**
+             * ```kotlin
+             * withDPopConfig(DPopConfig.Default)
+             * ```
+             *
+             * **Custom configuration with user authentication:**
+             * ```kotlin
+             * val customConfig = DPopConfig.Custom(
+             *     secureArea = AndroidKeystoreSecureArea.create(storage),
+             *     createKeySettingsBuilder = { algorithm ->
+             *         AndroidKeystoreCreateKeySettings.Builder(challenge)
+             *             .setAlgorithm(algorithm)
+             *             .setUserAuthenticationRequired(true, 30_000, setOf(
+             *                 UserAuthenticationType.BIOMETRIC
+             *             ))
+             *             .setUseStrongBox(true)
+             *             .build()
+             *     },
+             *     unlockKey = { keyAlias, secureArea ->
+             *         // Prompt for biometric authentication
+             *         biometricPrompt.authenticate()
+             *         keyUnlockData
+             *     }
+             * )
+             * withDPopConfig(customConfig)
+             * ```
+             *
+             * **Disable DPoP:**
+             * ```kotlin
+             * withDPopConfig(DPopConfig.Disabled)
+             * ```
+             *
+             * @param dpopConfig The DPoP configuration to use. Defaults to [DPopConfig.Default]
+             *        if not specified.
+             * @return This builder instance for method chaining
+             * @see DPopConfig for detailed configuration options
+             * @see DPopConfig.Default for default configuration details
+             * @see DPopConfig.Custom for custom configuration options
              */
-            fun withDPoPUsage(dPoPUsage: DPoPUsage) = apply {
-                this.dPoPUsage = dPoPUsage
+            fun withDPopConfig(dpopConfig: DPopConfig) = apply {
+                this.dpopConfig = dpopConfig
             }
 
             /**
@@ -531,11 +648,11 @@ interface OpenId4VciManager {
                 val authFlowRedirectionURI =
                     checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
                 return Config(
-                    issuerUrl = issuerUrl,
-                    authFlowRedirectionURI = authFlowRedirectionURI,
+                    issuerUrl = issuerUrl!!,
                     authorizationHandler = authorizationHandler,
                     clientAuthenticationType = clientAuthenticationType,
-                    dPoPUsage = dPoPUsage,
+                    authFlowRedirectionURI = authFlowRedirectionURI,
+                    dpopConfig = dpopConfig,
                     parUsage = parUsage
                 )
             }
