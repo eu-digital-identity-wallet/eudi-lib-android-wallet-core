@@ -36,8 +36,8 @@ import eu.europa.ec.eudi.openid4vci.DeferredIssuerConfig
 import eu.europa.ec.eudi.openid4vci.Grant
 import eu.europa.ec.eudi.openid4vci.IssuanceResponseEncryptionSpec
 import eu.europa.ec.eudi.openid4vci.Issuer
-import eu.europa.ec.eudi.openid4vci.PopSigner
 import eu.europa.ec.eudi.openid4vci.RefreshToken
+import eu.europa.ec.eudi.openid4vci.Signer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.openid4vci.TransactionId
 import kotlinx.serialization.InternalSerializationApi
@@ -306,7 +306,7 @@ data class DeferredIssuanceStoredContextTO(
 
     fun toDeferredIssuanceStoredContext(
         clock: Clock,
-        recreatePopSigner: ((String) -> PopSigner.Jwt)?,
+        recreatePopSigner: ((String) -> Signer<JWK>)?,
         recreateClientAttestationPodSigner: ((String) -> JWSSigner)?,
     ): DeferredIssuanceContext {
         return DeferredIssuanceContext(
