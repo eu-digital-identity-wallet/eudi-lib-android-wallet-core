@@ -167,7 +167,10 @@ val config = EudiWalletConfig()
         withClientId("client-id")
         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
         withParUsage(OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED)
-        withUseDPoPIfSupported(true)
+        withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.IfSupported(
+            algorithm = Algorithm.ESP256 // this is the default value, that can be omitted
+        ))
+        // or withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.Disabled)
     }
     // configuration for proximity presentation
     // the values below are the default values
