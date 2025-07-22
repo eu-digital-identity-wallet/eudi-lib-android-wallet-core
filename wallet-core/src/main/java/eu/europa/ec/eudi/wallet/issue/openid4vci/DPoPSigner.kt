@@ -24,6 +24,14 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 
+
+/**
+ * DPoP signer implementation using Multipaz library.
+ * Generates a new EC key pair for each instance.
+ *
+ * @property algorithm the signing algorithm to use
+ */
+@Deprecated("Use DPopSigner from dpop package")
 class DPoPSigner private constructor(val algorithm: Algorithm) : Signer<JWK> {
 
     private val privateKey: EcPrivateKey by lazy {

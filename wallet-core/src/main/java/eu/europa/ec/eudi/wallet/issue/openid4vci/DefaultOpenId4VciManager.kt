@@ -77,13 +77,7 @@ internal class DefaultOpenId4VciManager(
         OfferResolver(httpClientFactory)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(
-            config,
-            httpClientFactory,
-            walletProvider,
-            walletAttestationKeyManager,
-            logger
-        )
+        IssuerCreator(context, config, httpClientFactory, walletProvider, walletAttestationKeyManager, logger)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         val handler = config.authorizationHandler ?: BrowserAuthorizationHandler(context, logger)
@@ -228,8 +222,7 @@ internal class DefaultOpenId4VciManager(
                             ctx = deferredContext.issuanceContext,
                             httpClient = httpClientFactory(),
                             responseEncryptionKey = null // TODO handle encrypted responses
-                        )
-                            .getOrThrow()
+                        ).getOrThrow()
 
                         ProcessDeferredOutcome(
                             documentManager = documentManager,
