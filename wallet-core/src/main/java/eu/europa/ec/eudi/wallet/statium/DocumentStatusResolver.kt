@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 /**
