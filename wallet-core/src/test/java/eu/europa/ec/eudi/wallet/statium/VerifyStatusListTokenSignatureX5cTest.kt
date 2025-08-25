@@ -28,7 +28,6 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.statium.StatusListTokenFormat
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -44,6 +43,7 @@ import java.security.interfaces.ECPrivateKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
+import kotlin.time.Clock
 
 class VerifyStatusListTokenSignatureX5cTest {
 
