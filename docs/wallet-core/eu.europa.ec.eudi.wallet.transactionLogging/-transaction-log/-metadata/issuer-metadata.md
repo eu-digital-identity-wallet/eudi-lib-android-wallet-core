@@ -3,4 +3,4 @@
 # issuerMetadata
 
 [androidJvm]\
-abstract val [issuerMetadata](issuer-metadata.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)?
+val [issuerMetadata](issuer-metadata.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)?
