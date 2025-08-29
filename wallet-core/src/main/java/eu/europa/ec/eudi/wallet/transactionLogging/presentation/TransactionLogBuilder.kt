@@ -21,18 +21,14 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
-import eu.europa.ec.eudi.openid4vp.PresentationQuery
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
-import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
-import eu.europa.ec.eudi.openid4vp.VpContent
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequest
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIResponse
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
 import java.time.Instant
 import java.util.Base64
 
@@ -47,7 +43,7 @@ import java.util.Base64
  * metadata strings (e.g., JSON representations).
  */
 class TransactionLogBuilder(
-    private val metadataResolver: (List<OpenId4VpResponse.RespondedDocument>) -> List<String>?
+    private val metadataResolver: (Response) -> List<String>?,
 ) {
     /**
      * Creates an initial, empty [TransactionLog] for a presentation.
@@ -77,7 +73,6 @@ class TransactionLogBuilder(
      * - [DeviceRequest]: Stores the raw request bytes.
      * - [OpenId4VpRequest]: Extracts and stores the presentation definition or digital credentials query from the resolved request object.
      *   Requires the resolved request to be [ResolvedRequestObject.OpenId4VPAuthorization] and
-     *   the presentation query to be either [PresentationQuery.ByPresentationDefinition] or [PresentationQuery.ByDigitalCredentialsQuery].
      * - Other request types: Marks the log status as [TransactionLog.Status.Error].
      *
      * The timestamp of the log is updated to the current time.
@@ -101,19 +96,18 @@ class TransactionLogBuilder(
                 require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
                     "Only OpenId4VPAuthorization is supported"
                 }
-
-                val presentationQuery = resolvedRequestObject.presentationQuery
-                val rawRequest = when (presentationQuery) {
-                    is PresentationQuery.ByPresentationDefinition ->
-                        Json.encodeToString(presentationQuery.value)
-
-                    is PresentationQuery.ByDigitalCredentialsQuery ->
-                        Json.encodeToString(presentationQuery.value)
-                }.toByteArray()
+                val rawRequest = Json.encodeToString(resolvedRequestObject.query).toByteArray()
 
                 log.copy(
                     timestamp = Instant.now().toEpochMilli(),
                     rawRequest = rawRequest
+                )
+            }
+
+            is DCAPIRequest -> {
+                // TODO log dc api request
+                log.copy(
+                    timestamp = Instant.now().toEpochMilli(),
                 )
             }
 
@@ -141,7 +135,7 @@ class TransactionLogBuilder(
      */
     fun withRelyingParty(
         log: TransactionLog,
-        processedRequest: RequestProcessor.ProcessedRequest
+        processedRequest: RequestProcessor.ProcessedRequest,
     ): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
 
@@ -173,10 +167,8 @@ class TransactionLogBuilder(
      * If the log's type is not [TransactionLog.Type.Presentation], it returns the log unchanged.
      * It handles different types of responses:
      * - [DeviceResponse]: Stores raw response bytes, document metadata, session transcript, and sets format to CBOR.
-     * - [OpenId4VpResponse.DeviceResponse]: Similar to [DeviceResponse].
-     * - [OpenId4VpResponse.GenericResponse]: Stores a JSON representation of verifiable presentations
-     *   and presentation submission, document metadata, and sets format to JSON.
-     *   Requires the VP content to be [VpContent.PresentationExchange].
+     * - [OpenId4VpResponse]: Stores the VP token as a JSON string, document metadata, and sets format to JSON.
+     * - [DCAPIResponse]: Stores raw response bytes, document metadata, and sets format to CBOR.
      * - Other response types: Throws an [IllegalArgumentException].
      *
      * The log status is set to [TransactionLog.Status.Completed] if `error` is null,
@@ -187,13 +179,12 @@ class TransactionLogBuilder(
      * @param response The response object.
      * @param error An optional error that occurred during response processing.
      * @return An updated [TransactionLog] instance.
-     * @throws IllegalArgumentException if an unsupported response type is provided or
-     * if [OpenId4VpResponse.GenericResponse] does not contain [VpContent.PresentationExchange].
+     * @throws IllegalArgumentException if an unsupported response type is provided
      */
     fun withResponse(
         log: TransactionLog,
         response: Response,
-        error: Throwable? = null
+        error: Throwable? = null,
     ): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
 
@@ -202,71 +193,25 @@ class TransactionLogBuilder(
                 log.copy(
                     rawResponse = response.deviceResponseBytes,
                     dataFormat = TransactionLog.DataFormat.Cbor,
-                    metadata = metadataResolver(response.documentIds.mapIndexed { index, id ->
-                        OpenId4VpResponse.RespondedDocument.IndexBased(
-                            index = index,
-                            documentId = id,
-                            format = FORMAT_MSO_MDOC
-                        )
-                    }),
+                    metadata = metadataResolver(response),
                     sessionTranscript = response.sessionTranscriptBytes
                 )
             }
 
-            is OpenId4VpResponse.DeviceResponse -> {
+            is OpenId4VpResponse -> {
                 log.copy(
-                    rawResponse = response.responseBytes,
+                    rawResponse = VPTokenConsensusJson.encodeToString(response.vpToken)
+                        .toByteArray(),
+                    dataFormat = TransactionLog.DataFormat.Json,
+                    metadata = metadataResolver(response),
+                )
+            }
+
+            is DCAPIResponse -> {
+                log.copy(
+                    rawResponse = response.deviceResponseBytes,
                     dataFormat = TransactionLog.DataFormat.Cbor,
-                    metadata = metadataResolver(response.respondedDocuments),
-                    sessionTranscript = response.sessionTranscript
-                )
-            }
-
-            is OpenId4VpResponse.GenericResponse -> {
-                val presentationExchange = response.consensus.vpContent
-                require(presentationExchange is VpContent.PresentationExchange) {
-                    "Only PresentationExchange is supported"
-                }
-
-                log.copy(
-                    rawResponse = Json.encodeToString(
-                        mapOf(
-                            "type" to Json.encodeToJsonElement(PRESENTATION_EXCHANGE),
-                            "verifiable_presentations" to Json.encodeToJsonElement(
-                                presentationExchange.verifiablePresentations
-                                    .filterIsInstance<VerifiablePresentation.Generic>()
-                                    .map { Json.encodeToJsonElement(it.value) }
-                            ),
-                            "presentation_submission" to Json.encodeToJsonElement(
-                                presentationExchange.presentationSubmission
-                            ),
-                        )
-                    ).toByteArray(),
-                    dataFormat = TransactionLog.DataFormat.Json,
-                    metadata = metadataResolver(response.respondedDocuments),
-                )
-            }
-
-            is OpenId4VpResponse.DcqlResponse -> {
-                val dcql = response.consensus.vpContent
-                require(dcql is VpContent.DCQL) {
-                    "Only DCQL is supported"
-                }
-                log.copy(
-                    rawResponse = Json.encodeToString(
-                        mapOf(
-                            "type" to Json.encodeToJsonElement(DCQL),
-                            "verifiable_presentations" to Json.encodeToJsonElement(
-                                dcql.verifiablePresentations
-                                    .filterValues { vp -> vp is VerifiablePresentation.Generic }
-                                    .map { (queryId, vp) ->
-                                        queryId.value to Json.encodeToJsonElement((vp as VerifiablePresentation.Generic).value)
-                                    }.toMap()
-                            ),
-                        )
-                    ).toByteArray(),
-                    dataFormat = TransactionLog.DataFormat.Json,
-                    metadata = metadataResolver(response.respondedDocuments),
+                    metadata = metadataResolver(response),
                 )
             }
 
@@ -296,8 +241,5 @@ class TransactionLogBuilder(
         )
     }
 
-    companion object {
-        const val PRESENTATION_EXCHANGE = "PresentationExchange"
-        const val DCQL = "DCQL"
-    }
+    companion object
 }

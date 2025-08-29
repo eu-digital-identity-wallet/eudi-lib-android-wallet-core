@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023-2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,6 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
-import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
 import io.ktor.client.plugins.logging.LogLevel
 import org.multipaz.crypto.Algorithm
 import java.net.URI
@@ -110,7 +109,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         fun withClientIdSchemes(vararg clientIdSchemes: ClientIdScheme) =
             apply { this.clientIdSchemes = clientIdSchemes.toList() }
 
-        lateinit var encryptionAlgorithms: List<EncryptionAlgorithm>
+        var encryptionAlgorithms: List<EncryptionAlgorithm> =
+            EncryptionAlgorithm.SUPPORTED_ENCRYPTION_ALGORITHMS
             private set
 
         /**
@@ -129,7 +129,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         fun withEncryptionAlgorithms(vararg encryptionAlgorithms: EncryptionAlgorithm) =
             withEncryptionAlgorithms(encryptionAlgorithms.toList())
 
-        lateinit var encryptionMethods: List<EncryptionMethod>
+        var encryptionMethods: List<EncryptionMethod> =
+            EncryptionMethod.SUPPORTED_ENCRYPTION_METHODS
             private set
 
         /**
@@ -198,12 +199,10 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             require(this::clientIdSchemes.isInitialized && clientIdSchemes.isNotEmpty()) { "OpenId4VpConfig: clientIdSchemes must be initialized with a not empty list" }
             require(this.clientIdSchemes.count { it is ClientIdScheme.Preregistered } <= 1) { "OpenId4VpConfig: clientIdSchemes must contain maximum one Preregistered item" }
             require(this.clientIdSchemes.count { it is ClientIdScheme.X509SanDns } <= 1) { "OpenId4VpConfig: clientIdSchemes must contain maximum one X509SanDns item" }
-            require(this.clientIdSchemes.count { it is ClientIdScheme.X509SanUri } <= 1) { "OpenId4VpConfig: clientIdSchemes must contain maximum one X509SanUri item" }
 
             require(this.schemes.isNotEmpty()) { "OpenId4VpConfig: schemes must be initialized with a not empty list" }
-
-            require(this::encryptionAlgorithms.isInitialized && encryptionAlgorithms.isNotEmpty()) { "OpenId4VpConfig: encryptionAlgorithms must be initialized with a not empty list" }
-            require(this::encryptionMethods.isInitialized && encryptionMethods.isNotEmpty()) { "OpenId4VpConfig: encryptionMethods must be initialized with a not empty list" }
+            require(encryptionAlgorithms.isNotEmpty()) { "OpenId4VpConfig: encryptionAlgorithms must be initialized with a not empty list" }
+            require(encryptionMethods.isNotEmpty()) { "OpenId4VpConfig: encryptionMethods must be initialized with a not empty list" }
 
             require(this.formats.isNotEmpty()) { "OpenId4VpConfig: formats must be initialized with a not empty list" }
             this.formats.groupBy { it.toString() }
@@ -229,9 +228,7 @@ sealed interface ClientIdScheme {
 
     data object X509SanDns : ClientIdScheme
 
-    data object X509SanUri : ClientIdScheme
-
-    data object RedirectUri: ClientIdScheme
+    data object RedirectUri : ClientIdScheme
 }
 
 /**
@@ -291,68 +288,29 @@ enum class JwsAlgorithm {
     Ed448;
 }
 
-sealed interface EncryptionAlgorithm {
+enum class EncryptionAlgorithm {
+    ECDH_ES,
+    ECDH_ES_A128KW,
+    ECDH_ES_A192KW,
+    ECDH_ES_A256KW;
 
-    val name: String
-
-    data object ECDH_ES : EncryptionAlgorithm {
-        override val name: String = "ECDH-ES"
-    }
-
-    data object ECDH_ES_A128KW : EncryptionAlgorithm {
-        override val name: String = "ECDH-ES+A128KW"
-    }
-
-    data object ECDH_ES_A192KW : EncryptionAlgorithm {
-        override val name: String = "ECDH-ES+A192KW"
-    }
-
-    data object ECDH_ES_A256KW : EncryptionAlgorithm {
-        override val name: String = "ECDH-ES+A256KW"
-    }
-
-    data object ECDH_1PU : EncryptionAlgorithm {
-        override val name: String = "ECDH-1PU"
-    }
-
-    data object ECDH_1PU_A128KW : EncryptionAlgorithm {
-        override val name: String = "ECDH-1PU+A128KW"
-    }
-
-    data object ECDH_1PU_A192KW : EncryptionAlgorithm {
-        override val name: String = "ECDH-1PU+A192KW"
-    }
-
-    data object ECDH_1PU_A256KW : EncryptionAlgorithm {
-        override val name: String = "ECDH-1PU+A256KW"
+    companion object {
+        val SUPPORTED_ENCRYPTION_ALGORITHMS = entries
     }
 }
 
-sealed interface EncryptionMethod {
+enum class EncryptionMethod {
+    A128CBC_HS256,
+    A192CBC_HS384,
+    A256CBC_HS512,
+    A128GCM,
+    A192GCM,
+    A256GCM,
+    A128CBC_HS256_DEPRECATED,
+    A256CBC_HS512_DEPRECATED,
+    XC20P;
 
-    val name: String
-
-    data object A128CBC_HS256 : EncryptionMethod {
-        override val name: String = "A128CBC-HS256"
-    }
-
-    data object A192CBC_HS384 : EncryptionMethod {
-        override val name: String = "A192CBC-HS384"
-    }
-
-    data object A256CBC_HS512 : EncryptionMethod {
-        override val name: String = "A256CBC-HS512"
-    }
-
-    data object A128GCM : EncryptionMethod {
-        override val name: String = "A128GCM"
-    }
-
-    data object A192GCM : EncryptionMethod {
-        override val name: String = "A192GCM"
-    }
-
-    data object A256GCM : EncryptionMethod {
-        override val name: String = "A256GCM"
+    companion object {
+        val SUPPORTED_ENCRYPTION_METHODS = entries
     }
 }
