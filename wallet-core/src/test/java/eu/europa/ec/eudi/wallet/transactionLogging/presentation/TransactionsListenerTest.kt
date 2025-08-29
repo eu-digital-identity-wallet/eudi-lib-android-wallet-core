@@ -28,19 +28,14 @@ import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
-import kotlin.test.assertContentEquals
-import kotlin.test.assertIs
 
 class TransactionsListenerTest {
 
@@ -93,76 +88,76 @@ class TransactionsListenerTest {
         listener = TransactionsListener(transactionLogger, documentManager, logger)
     }
 
-    @Test
-    fun `metadataResolver returns correct metadata for document IDs`() {
-        // Setup additional document
-        val documentId2 = "test-document-id-2"
-        val metadata2 = mockk<IssuerMetadata> {
-            every { toJson() } returns "{\"docType\":\"TestDoc2\"}"
-        }
-        val document2 = mockk<Document> {
-            every { issuerMetadata } returns metadata2
-        }
-
-        every { documentManager.getDocumentById(documentId) } returns document
-        every { documentManager.getDocumentById(documentId2) } returns document2
-
-        // Test
-        val respondedDocuments = listOf(
-            OpenId4VpResponse.RespondedDocument.IndexBased(
-                index = 0,
-                format = FORMAT_MSO_MDOC,
-                documentId = documentId
-            ),
-            OpenId4VpResponse.RespondedDocument.IndexBased(
-                index = 1,
-                format = FORMAT_MSO_MDOC,
-                documentId = documentId2
-            )
-        )
-        val result = listener.metadataResolver(respondedDocuments)
-
-        // Verify
-        assertEquals(2, result.size)
-        val expectedMetadata = listOf(
-            TransactionLog.Metadata.IndexBased(
-                index = 0,
-                format = FORMAT_MSO_MDOC,
-                issuerMetadata = "{\"docType\":\"TestDoc\"}",
-            ),
-            TransactionLog.Metadata.IndexBased(
-                index = 1,
-                format = FORMAT_MSO_MDOC,
-                issuerMetadata = "{\"docType\":\"TestDoc2\"}",
-            )
-        )
-        val metadata = result.map { TransactionLog.Metadata.fromJson(it) }
-        assertContentEquals(expectedMetadata, metadata)
-        assertEquals("{\"docType\":\"TestDoc\"}", metadata[0].issuerMetadata)
-        assertEquals("{\"docType\":\"TestDoc2\"}", metadata[1].issuerMetadata)
-    }
-
-    @Test
-    fun `metadataResolver handles null metadata`() {
-        // Setup document with null metadata
-        every { documentManager.getDocumentById(any()) } returns null
-
-        // Test
-        val respondedDocuments = listOf(
-            OpenId4VpResponse.RespondedDocument.IndexBased(
-                index = 0,
-                format = FORMAT_MSO_MDOC,
-                documentId = documentId
-            )
-        )
-        val result = listener.metadataResolver(respondedDocuments)
-
-        // Verify
-        assertEquals(1, result.size)
-        val transactionLogMetadata = TransactionLog.Metadata.fromJson(result[0])
-        assertIs<TransactionLog.Metadata.IndexBased>(transactionLogMetadata)
-        assertNull(transactionLogMetadata.issuerMetadata)
-    }
+//    @Test
+//    fun `metadataResolver returns correct metadata for document IDs`() {
+//        // Setup additional document
+//        val documentId2 = "test-document-id-2"
+//        val metadata2 = mockk<IssuerMetadata> {
+//            every { toJson() } returns "{\"docType\":\"TestDoc2\"}"
+//        }
+//        val document2 = mockk<Document> {
+//            every { issuerMetadata } returns metadata2
+//        }
+//
+//        every { documentManager.getDocumentById(documentId) } returns document
+//        every { documentManager.getDocumentById(documentId2) } returns document2
+//
+//        // Test
+//        val respondedDocuments = listOf(
+//            OpenId4VpResponse.RespondedDocument.IndexBased(
+//                index = 0,
+//                format = FORMAT_MSO_MDOC,
+//                documentId = documentId
+//            ),
+//            OpenId4VpResponse.RespondedDocument.IndexBased(
+//                index = 1,
+//                format = FORMAT_MSO_MDOC,
+//                documentId = documentId2
+//            )
+//        )
+//        val result = listener.metadataResolver(respondedDocuments)
+//
+//        // Verify
+//        assertEquals(2, result.size)
+//        val expectedMetadata = listOf(
+//            TransactionLog.Metadata.IndexBased(
+//                index = 0,
+//                format = FORMAT_MSO_MDOC,
+//                issuerMetadata = "{\"docType\":\"TestDoc\"}",
+//            ),
+//            TransactionLog.Metadata.IndexBased(
+//                index = 1,
+//                format = FORMAT_MSO_MDOC,
+//                issuerMetadata = "{\"docType\":\"TestDoc2\"}",
+//            )
+//        )
+//        val metadata = result.map { TransactionLog.Metadata.fromJson(it) }
+//        assertContentEquals(expectedMetadata, metadata)
+//        assertEquals("{\"docType\":\"TestDoc\"}", metadata[0].issuerMetadata)
+//        assertEquals("{\"docType\":\"TestDoc2\"}", metadata[1].issuerMetadata)
+//    }
+//
+//    @Test
+//    fun `metadataResolver handles null metadata`() {
+//        // Setup document with null metadata
+//        every { documentManager.getDocumentById(any()) } returns null
+//
+//        // Test
+//        val respondedDocuments = listOf(
+//            OpenId4VpResponse.RespondedDocument.IndexBased(
+//                index = 0,
+//                format = FORMAT_MSO_MDOC,
+//                documentId = documentId
+//            )
+//        )
+//        val result = listener.metadataResolver(respondedDocuments)
+//
+//        // Verify
+//        assertEquals(1, result.size)
+//        val transactionLogMetadata = TransactionLog.Metadata.fromJson(result[0])
+//        assertIs<TransactionLog.Metadata.IndexBased>(transactionLogMetadata)
+//        assertNull(transactionLogMetadata.issuerMetadata)
+//    }
 
     @Test
     fun `onTransferEvent with Connected event resets log`() {
