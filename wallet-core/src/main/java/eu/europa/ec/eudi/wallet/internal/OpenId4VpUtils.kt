@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023-2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,7 +27,6 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
-import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -43,21 +42,19 @@ import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
-import eu.europa.ec.eudi.openid4vp.JarmConfiguration
+import eu.europa.ec.eudi.openid4vp.CoseAlgorithm
+import eu.europa.ec.eudi.openid4vp.JarConfiguration
 import eu.europa.ec.eudi.openid4vp.JwkSetSource.ByReference
 import eu.europa.ec.eudi.openid4vp.PreregisteredClient
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.ResponseEncryptionConfiguration
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
-import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.Preregistered
-import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.RedirectUri
-import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.X509SanDns
-import eu.europa.ec.eudi.openid4vp.SupportedClientIdScheme.X509SanUri
+import eu.europa.ec.eudi.openid4vp.SupportedClientIdPrefix
 import eu.europa.ec.eudi.openid4vp.VPConfiguration
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VerifierId
-import eu.europa.ec.eudi.openid4vp.VpFormat
-import eu.europa.ec.eudi.openid4vp.VpFormats
+import eu.europa.ec.eudi.openid4vp.VpFormatsSupported
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.present
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serialize
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serializeWithKeyBinding
@@ -72,6 +69,8 @@ import eu.europa.ec.eudi.wallet.document.credential.CredentialIssuedData
 import eu.europa.ec.eudi.wallet.document.credential.getIssuedData
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
@@ -189,6 +188,41 @@ internal fun generateMdocGeneratedNonce(): String {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 }
 
+internal fun SiopOpenId4VPConfig.Companion.make(
+    config: OpenId4VpConfig,
+    trust: OpenId4VpReaderTrust
+): SiopOpenId4VPConfig {
+    val supportedClientIdPrefixes = config.clientIdSchemes.map { clientIdScheme ->
+        when (clientIdScheme) {
+            is ClientIdScheme.Preregistered -> SupportedClientIdPrefix.Preregistered(
+                clientIdScheme.preregisteredVerifiers.associate { verifier ->
+                    verifier.clientId to PreregisteredClient(
+                        clientId = verifier.clientId,
+                        legalName = verifier.legalName,
+                        jarConfig = verifier.jwsAlgorithm.nimbus to ByReference(verifier.jwkSetSource)
+
+                    )
+                }
+            )
+
+            ClientIdScheme.RedirectUri -> SupportedClientIdPrefix.RedirectUri
+            ClientIdScheme.X509SanDns -> SupportedClientIdPrefix.X509SanDns(trust = trust)
+        }
+    }
+    return SiopOpenId4VPConfig(
+        issuer = SelfIssued,
+        jarConfiguration = JarConfiguration.Default,
+        responseEncryptionConfiguration = ResponseEncryptionConfiguration.Supported(
+            supportedAlgorithms = config.encryptionAlgorithms.map { it.nimbus },
+            supportedMethods = config.encryptionMethods.map { it.nimbus }
+        ),
+        vpConfiguration = VPConfiguration(
+            vpFormatsSupported = config.formats.toVpFormats()
+        ),
+        supportedClientIdPrefixes = supportedClientIdPrefixes
+    )
+}
+
 /**
  * Converts an [OpenId4VpConfig] to a [SiopOpenId4VPConfig] using the provided trust anchor.
  *
@@ -196,38 +230,7 @@ internal fun generateMdocGeneratedNonce(): String {
  * @return The corresponding [SiopOpenId4VPConfig].
  */
 internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: OpenId4VpReaderTrust): SiopOpenId4VPConfig {
-    return SiopOpenId4VPConfig(
-        jarmConfiguration = JarmConfiguration.Encryption(
-            supportedAlgorithms = encryptionAlgorithms.map {
-                JWEAlgorithm.parse(it.name)
-            },
-            supportedMethods = encryptionMethods.map {
-                EncryptionMethod.parse(it.name)
-            },
-        ),
-        supportedClientIdSchemes = clientIdSchemes.map { clientIdScheme ->
-            when (clientIdScheme) {
-                is ClientIdScheme.Preregistered -> Preregistered(
-                    clientIdScheme.preregisteredVerifiers.associate { verifier ->
-                        verifier.clientId to PreregisteredClient(
-                            clientId = verifier.clientId,
-                            legalName = verifier.legalName,
-                            jarConfig = verifier.jwsAlgorithm.nimbus to ByReference(verifier.jwkSetSource)
-                        )
-                    }
-                )
-
-                ClientIdScheme.X509SanDns -> X509SanDns(trust)
-
-                ClientIdScheme.X509SanUri -> X509SanUri(trust)
-
-                ClientIdScheme.RedirectUri -> RedirectUri
-            }
-        },
-        vpConfiguration = VPConfiguration(
-            vpFormats = formats.toVpFormats()
-        )
-    )
+    return SiopOpenId4VPConfig.make(this, trust)
 }
 
 /**
@@ -261,21 +264,33 @@ internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBy
  * @receiver List of credential formats.
  * @return The corresponding [VpFormats] object.
  */
-internal fun List<Format>.toVpFormats(): VpFormats {
+internal fun List<Format>.toVpFormats(): VpFormatsSupported {
 
     val msoMdocVpFormat = firstOrNull { it == Format.MsoMdoc }
-        ?.let { VpFormat.MsoMdoc.ES256 }
-
-    val sdJwtVcVpFormat = filterIsInstance<Format.SdJwtVc>()
-        .firstOrNull()
         ?.let {
-            VpFormat.SdJwtVc(
-                sdJwtAlgorithms = it.sdJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) },
-                kbJwtAlgorithms = it.kbJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) }
+            VpFormatsSupported.MsoMdoc(
+                issuerAuthAlgorithms = listOf(
+                    CoseAlgorithm(Algorithm.ES256.coseAlgorithmIdentifier!!),
+                    CoseAlgorithm(Algorithm.ESP256.coseAlgorithmIdentifier!!),
+                ),
+                deviceAuthAlgorithms = listOf(
+                    CoseAlgorithm(Algorithm.ES256.coseAlgorithmIdentifier!!),
+                    CoseAlgorithm(Algorithm.ESP256.coseAlgorithmIdentifier!!),
+                )
             )
         }
 
-    return VpFormats(
+
+    val sdJwtVcVpFormat = filterIsInstance<Format.SdJwtVc>()
+        .firstOrNull()
+        ?.let { spec ->
+            VpFormatsSupported.SdJwtVc(
+                sdJwtAlgorithms = spec.sdJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) },
+                kbJwtAlgorithms = spec.kbJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) }
+            )
+        }
+
+    return VpFormatsSupported(
         sdJwtVc = sdJwtVcVpFormat,
         msoMdoc = msoMdocVpFormat
     )
@@ -315,6 +330,30 @@ internal val JwsAlgorithm.nimbus: JWSAlgorithm
         JwsAlgorithm.ES256K -> JWSAlgorithm.ES256K
         JwsAlgorithm.Ed448 -> JWSAlgorithm.Ed448
         JwsAlgorithm.Ed25519 -> JWSAlgorithm.Ed25519
+    }
+
+/**
+ * Extension property to convert an [EncryptionAlgorithm] to Nimbus [JWEAlgorithm].
+ */
+internal val EncryptionAlgorithm.nimbus: JWEAlgorithm
+    get() = when (this) {
+        EncryptionAlgorithm.ECDH_ES -> JWEAlgorithm.ECDH_ES
+        EncryptionAlgorithm.ECDH_ES_A128KW -> JWEAlgorithm.ECDH_ES_A128KW
+        EncryptionAlgorithm.ECDH_ES_A192KW -> JWEAlgorithm.ECDH_ES_A192KW
+        EncryptionAlgorithm.ECDH_ES_A256KW -> JWEAlgorithm.ECDH_ES_A256KW
+    }
+
+internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
+    get() = when (this) {
+        EncryptionMethod.A128CBC_HS256 -> com.nimbusds.jose.EncryptionMethod.A128CBC_HS256
+        EncryptionMethod.A192CBC_HS384 -> com.nimbusds.jose.EncryptionMethod.A192CBC_HS384
+        EncryptionMethod.A256CBC_HS512 -> com.nimbusds.jose.EncryptionMethod.A256CBC_HS512
+        EncryptionMethod.A128GCM -> com.nimbusds.jose.EncryptionMethod.A128GCM
+        EncryptionMethod.A192GCM -> com.nimbusds.jose.EncryptionMethod.A192GCM
+        EncryptionMethod.A256GCM -> com.nimbusds.jose.EncryptionMethod.A256GCM
+        EncryptionMethod.A128CBC_HS256_DEPRECATED -> com.nimbusds.jose.EncryptionMethod.A128CBC_HS256_DEPRECATED
+        EncryptionMethod.A256CBC_HS512_DEPRECATED -> com.nimbusds.jose.EncryptionMethod.A256CBC_HS512_DEPRECATED
+        EncryptionMethod.XC20P -> com.nimbusds.jose.EncryptionMethod.XC20P
     }
 
 /**

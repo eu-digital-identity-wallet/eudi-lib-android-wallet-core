@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,6 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
-import eu.europa.ec.eudi.openid4vp.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
@@ -34,7 +33,10 @@ import eu.europa.ec.eudi.wallet.internal.toSiopOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -61,7 +63,7 @@ import java.util.concurrent.Executor
  */
 class OpenId4VpManager(
     val config: OpenId4VpConfig,
-    val requestProcessor: RequestProcessorDispatcher,
+    val requestProcessor: DcqlRequestProcessor,
     var logger: Logger? = null,
     var listenersExecutor: Executor? = null,
     val ktorHttpClientFactory: (() -> HttpClient)? = null,
@@ -83,11 +85,12 @@ class OpenId4VpManager(
     private val siopOpenId4Vp by lazy {
         SiopOpenId4Vp(
             siopOpenId4VPConfig = config.toSiopOpenId4VPConfig(
-                trust = requestProcessor.openId4VpReaderTrust
+                trust = requestProcessor.openid4VpX509CertificateTrust
             ),
-            httpClientFactory = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
+            httpClient = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
                 .wrappedWithLogging(logger)
                 .wrappedWithContentNegotiation()
+                .invoke()
         )
     }
 
@@ -217,7 +220,7 @@ class OpenId4VpManager(
 
                 when (val outcome = siopOpenId4Vp.dispatch(
                     request = response.resolvedRequestObject,
-                    consensus = response.consensus,
+                    consensus = response.vpToken,
                     encryptionParameters = response.encryptionParameters,
                 )) {
                     is DispatchOutcome.RedirectURI -> {
@@ -274,5 +277,27 @@ class OpenId4VpManager(
 
     companion object {
         private const val TAG = "OpenId4VpManager"
+
+        private val DefaultHttpClientFactory: () -> HttpClient = {
+            HttpClient {
+                install(ContentNegotiation) { json() }
+                expectSuccess = true
+            }
+        }
+
+        /**
+         * Prints detailed debug information about the response.
+         *
+         * @param logger The Logger instance to use for logging
+         * @param tag The tag to use for logging the response information
+         */
+        private fun OpenId4VpResponse.debugLog(logger: Logger, tag: String) {
+            val message = "Response: ${
+                respondedDocuments.map { (queryId, respStr) -> "$queryId: $respStr" }
+                    .joinToString("\n")
+            }"
+            logger.d(tag, message)
+            logger.d(tag, "VpContent: ${vpToken.verifiablePresentations}")
+        }
     }
 }

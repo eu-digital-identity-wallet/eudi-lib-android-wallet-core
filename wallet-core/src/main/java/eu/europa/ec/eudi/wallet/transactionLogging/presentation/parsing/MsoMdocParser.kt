@@ -22,7 +22,6 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import eu.europa.ec.eudi.wallet.util.CBOR
-import kotlinx.serialization.json.Json
 import org.multipaz.mdoc.response.DeviceResponseParser
 
 /**
@@ -49,7 +48,6 @@ fun parseMsoMdoc(
     // Convert metadata strings to IssuerMetaData objects
 
     val issuerMetaData = parsedMetadata
-        .filterIsInstance<TransactionLog.Metadata.IndexBased>()
         .associate { v ->
             v.index to v.issuerMetadata?.let { IssuerMetadata.fromJson(it) }?.getOrNull()
         }

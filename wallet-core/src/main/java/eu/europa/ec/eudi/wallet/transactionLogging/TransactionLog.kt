@@ -114,14 +114,18 @@ data class TransactionLog(
     }
 
     @Serializable
-    sealed interface Metadata {
-        val issuerMetadata: String?
-        val format: String
-
+    data class Metadata(
+        val issuerMetadata: String?,
+        val format: String,
+        val index: Int,
+        val queryId: String? = null
+    ) {
+        override fun toString(): String {
+            return issuerMetadata ?: ""
+        }
 
         companion object {
             val Json = Json {
-                classDiscriminator = "type"
                 ignoreUnknownKeys = true
                 allowStructuredMapKeys = true
             }
@@ -133,28 +137,6 @@ data class TransactionLog(
 
         fun toJson(): String {
             return Json.encodeToString(this)
-        }
-
-        @Serializable
-        data class IndexBased(
-            val index: Int,
-            override val format: String,
-            override val issuerMetadata: String?
-        ) : Metadata {
-            override fun toString(): String {
-                return issuerMetadata ?: ""
-            }
-        }
-
-        @Serializable
-        data class QueryBased(
-            val queryId: String,
-            override val format: String,
-            override val issuerMetadata: String?
-        ) : Metadata {
-            override fun toString(): String {
-                return issuerMetadata ?: ""
-            }
         }
     }
 
