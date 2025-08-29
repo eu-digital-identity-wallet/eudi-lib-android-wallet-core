@@ -3,6 +3,6 @@
 # documentId
 
 [androidJvm]\
-abstract val [documentId](document-id.md): &lt;Error class: unknown class&gt;
+val [documentId](document-id.md): &lt;Error class: unknown class&gt;
 
-The identifier of the document that was responded
+The unique identifier of the document that was responded.

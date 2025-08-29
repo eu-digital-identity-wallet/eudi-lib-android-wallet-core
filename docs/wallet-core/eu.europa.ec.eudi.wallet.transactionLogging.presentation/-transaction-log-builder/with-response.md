@@ -12,9 +12,9 @@ If the log's type is not [TransactionLog.Type.Presentation](../../eu.europa.ec.e
 - 
    DeviceResponse: Stores raw response bytes, document metadata, session transcript, and sets format to CBOR.
 - 
-   [OpenId4VpResponse.DeviceResponse](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-response/-device-response/index.md): Similar to DeviceResponse.
+   [OpenId4VpResponse](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-response/index.md): Stores the VP token as a JSON string, document metadata, and sets format to JSON.
 - 
-   [OpenId4VpResponse.GenericResponse](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-response/-generic-response/index.md): Stores a JSON representation of verifiable presentations and presentation submission, document metadata, and sets format to JSON. Requires the VP content to be VpContent.PresentationExchange.
+   [DCAPIResponse](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-response/index.md): Stores raw response bytes, document metadata, and sets format to CBOR.
 - 
    Other response types: Throws an [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html).
 
@@ -38,4 +38,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if an unsupported response type is provided or if [OpenId4VpResponse.GenericResponse](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-response/-generic-response/index.md) does not contain VpContent.PresentationExchange. |
+| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if an unsupported response type is provided |

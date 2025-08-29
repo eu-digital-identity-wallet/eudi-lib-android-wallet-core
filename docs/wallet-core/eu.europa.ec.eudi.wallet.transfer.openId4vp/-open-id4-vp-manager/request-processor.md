@@ -3,4 +3,4 @@
 # requestProcessor
 
 [androidJvm]\
-val [requestProcessor](request-processor.md): [RequestProcessorDispatcher](../-request-processor-dispatcher/index.md)
+val [requestProcessor](request-processor.md): [DcqlRequestProcessor](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-dcql-request-processor/index.md)

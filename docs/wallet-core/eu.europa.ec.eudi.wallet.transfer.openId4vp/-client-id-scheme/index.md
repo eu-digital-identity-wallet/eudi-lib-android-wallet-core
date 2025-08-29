@@ -10,7 +10,6 @@ sealed interface [ClientIdScheme](index.md)
 |---|
 | [Preregistered](-preregistered/index.md) |
 | [X509SanDns](-x509-san-dns/index.md) |
-| [X509SanUri](-x509-san-uri/index.md) |
 | [RedirectUri](-redirect-uri/index.md) |
 
 ## Types
@@ -20,4 +19,3 @@ sealed interface [ClientIdScheme](index.md)
 | [Preregistered](-preregistered/index.md) | [androidJvm]<br>data class [Preregistered](-preregistered/index.md)(var preregisteredVerifiers: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../-preregistered-verifier/index.md)&gt;) : [ClientIdScheme](index.md) |
 | [RedirectUri](-redirect-uri/index.md) | [androidJvm]<br>data object [RedirectUri](-redirect-uri/index.md) : [ClientIdScheme](index.md) |
 | [X509SanDns](-x509-san-dns/index.md) | [androidJvm]<br>data object [X509SanDns](-x509-san-dns/index.md) : [ClientIdScheme](index.md) |
-| [X509SanUri](-x509-san-uri/index.md) | [androidJvm]<br>data object [X509SanUri](-x509-san-uri/index.md) : [ClientIdScheme](index.md) |
