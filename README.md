@@ -55,10 +55,10 @@ The library provides the following functionality:
         - [ ] NFC data transfer
         - [ ] Wifi-Aware data transfer
 - Remote document presentation
-    - [x] [OpenId4VP (draft 24)](https://openid.net/specs/openid-4-verifiable-presentations-1_0-24.html)
+    - [x] [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
       document transfer
-        - [x] ClienID scheme: preregistered, x509_san_uri, x509_san_dns, redirect_uri
-        - [x] PresentationDefinition, DCQL
+        - [x] ClienID scheme: preregistered, x509_san_dns, redirect_uri
+        - [x] DCQL
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -187,13 +187,6 @@ val config = EudiWalletConfig()
     )
     // configure the OpenId4Vp service
     .configureOpenId4Vp {
-        withEncryptionAlgorithms(
-            EncryptionAlgorithm.ECDH_ES
-        )
-        withEncryptionMethods(
-            EncryptionMethod.A128CBC_HS256,
-            EncryptionMethod.A256GCM
-        )
         withClientIdSchemes(
             ClientIdScheme.X509SanDns
         )
