@@ -5,6 +5,8 @@
 [androidJvm]\
 [A256GCM](index.md)
 
+AES-256 in Galois/Counter Mode (authenticated encryption)
+
 ## Properties
 
 | Name | Summary |

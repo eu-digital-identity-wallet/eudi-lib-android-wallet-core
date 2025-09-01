@@ -5,7 +5,35 @@
 [androidJvm]\
 class [Builder](index.md)
 
-Builder for OpenId4VciConfig.
+Builder for constructing [OpenId4VpConfig](../index.md) instances with validation and sensible defaults.
+
+This builder implements a fluent API pattern and provides comprehensive validation to ensure the resulting configuration is valid and consistent. It enforces business rules such as allowing only one instance of certain client ID schemes and ensuring required fields are populated.
+
+## Default Values:
+
+- 
+   **Encryption Algorithms**: All supported algorithms from [EncryptionAlgorithm.SUPPORTED_ENCRYPTION_ALGORITHMS](../../-encryption-algorithm/-companion/-s-u-p-p-o-r-t-e-d_-e-n-c-r-y-p-t-i-o-n_-a-l-g-o-r-i-t-h-m-s.md)
+- 
+   **Encryption Methods**: All supported methods from [EncryptionMethod.SUPPORTED_ENCRYPTION_METHODS](../../-encryption-method/-companion/-s-u-p-p-o-r-t-e-d_-e-n-c-r-y-p-t-i-o-n_-m-e-t-h-o-d-s.md)
+- 
+   **Schemes**: &quot;mdoc-openid4vp&quot;
+
+## Validation Rules:
+
+- 
+   Client ID schemes list cannot be empty and must be initialized
+- 
+   Maximum one [ClientIdScheme.Preregistered](../../-client-id-scheme/-preregistered/index.md) instance allowed
+- 
+   Maximum one [ClientIdScheme.X509SanDns](../../-client-id-scheme/-x509-san-dns/index.md) instance allowed
+- 
+   Schemes list cannot be empty
+- 
+   Encryption algorithms and methods lists cannot be empty
+- 
+   Formats list cannot be empty and cannot contain duplicate format types
+- 
+   SD-JWT VC formats must have non-empty algorithm lists
 
 ## Constructors
 
@@ -17,11 +45,11 @@ Builder for OpenId4VciConfig.
 
 | Name | Summary |
 |---|---|
-| [clientIdSchemes](client-id-schemes.md) | [androidJvm]<br>lateinit var [clientIdSchemes](client-id-schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../../-client-id-scheme/index.md)&gt;<br>list of [ClientIdScheme](../../-client-id-scheme/index.md) that defines the supported Client Identifier schemes |
-| [encryptionAlgorithms](encryption-algorithms.md) | [androidJvm]<br>var [encryptionAlgorithms](encryption-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionAlgorithm](../../-encryption-algorithm/index.md)&gt;<br>list of [EncryptionAlgorithm](../../-encryption-algorithm/index.md) that defines the supported encryption algorithms |
-| [encryptionMethods](encryption-methods.md) | [androidJvm]<br>var [encryptionMethods](encryption-methods.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;<br>list of [EncryptionMethod](../../-encryption-method/index.md) that defines the supported encryption methods |
-| [formats](formats.md) | [androidJvm]<br>lateinit var [formats](formats.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Format](../../-format/index.md)&gt;<br>the supported credential formats |
-| [schemes](schemes.md) | [androidJvm]<br>var [schemes](schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;<br>for OpenId4Vp. Optionally, you can set one or more schemes. By default, &quot;mdoc-openid4vp&quot; is used. |
+| [clientIdSchemes](client-id-schemes.md) | [androidJvm]<br>lateinit var [clientIdSchemes](client-id-schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../../-client-id-scheme/index.md)&gt;<br>List of supported client identifier schemes (must be initialized) |
+| [encryptionAlgorithms](encryption-algorithms.md) | [androidJvm]<br>var [encryptionAlgorithms](encryption-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionAlgorithm](../../-encryption-algorithm/index.md)&gt;<br>List of supported encryption algorithms (defaults to all supported) |
+| [encryptionMethods](encryption-methods.md) | [androidJvm]<br>var [encryptionMethods](encryption-methods.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;<br>List of supported encryption methods (defaults to all supported) |
+| [formats](formats.md) | [androidJvm]<br>lateinit var [formats](formats.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Format](../../-format/index.md)&gt;<br>List of supported credential formats (must be initialized) |
+| [schemes](schemes.md) | [androidJvm]<br>var [schemes](schemes.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;<br>List of URI schemes for OpenID4VP (defaults to &quot;mdoc-openid4vp&quot;) |
 
 ## Functions
 

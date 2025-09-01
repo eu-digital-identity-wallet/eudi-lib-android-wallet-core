@@ -5,6 +5,8 @@
 [androidJvm]\
 [ECDH_ES](index.md)
 
+Elliptic Curve Diffie-Hellman Ephemeral Static key agreement
+
 ## Properties
 
 | Name | Summary |

@@ -72,7 +72,6 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
@@ -190,7 +189,7 @@ internal fun generateMdocGeneratedNonce(): String {
 
 internal fun SiopOpenId4VPConfig.Companion.make(
     config: OpenId4VpConfig,
-    trust: OpenId4VpReaderTrust
+    trust: OpenId4VpReaderTrust,
 ): SiopOpenId4VPConfig {
     val supportedClientIdPrefixes = config.clientIdSchemes.map { clientIdScheme ->
         when (clientIdScheme) {
@@ -199,7 +198,9 @@ internal fun SiopOpenId4VPConfig.Companion.make(
                     verifier.clientId to PreregisteredClient(
                         clientId = verifier.clientId,
                         legalName = verifier.legalName,
-                        jarConfig = verifier.jwsAlgorithm.nimbus to ByReference(verifier.jwkSetSource)
+                        jarConfig = JWSAlgorithm.parse(verifier.jwsAlgorithm.joseAlgorithmIdentifier) to ByReference(
+                            verifier.jwkSetSource
+                        )
 
                     )
                 }
@@ -207,6 +208,7 @@ internal fun SiopOpenId4VPConfig.Companion.make(
 
             ClientIdScheme.RedirectUri -> SupportedClientIdPrefix.RedirectUri
             ClientIdScheme.X509SanDns -> SupportedClientIdPrefix.X509SanDns(trust = trust)
+            ClientIdScheme.X509Hash -> SupportedClientIdPrefix.X509Hash(trust = trust)
         }
     }
     return SiopOpenId4VPConfig(
@@ -266,17 +268,12 @@ internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBy
  */
 internal fun List<Format>.toVpFormats(): VpFormatsSupported {
 
-    val msoMdocVpFormat = firstOrNull { it == Format.MsoMdoc }
-        ?.let {
+    val msoMdocVpFormat = filterIsInstance<Format.MsoMdoc>()
+        .firstOrNull()
+        ?.let { spec ->
             VpFormatsSupported.MsoMdoc(
-                issuerAuthAlgorithms = listOf(
-                    CoseAlgorithm(Algorithm.ES256.coseAlgorithmIdentifier!!),
-                    CoseAlgorithm(Algorithm.ESP256.coseAlgorithmIdentifier!!),
-                ),
-                deviceAuthAlgorithms = listOf(
-                    CoseAlgorithm(Algorithm.ES256.coseAlgorithmIdentifier!!),
-                    CoseAlgorithm(Algorithm.ESP256.coseAlgorithmIdentifier!!),
-                )
+                issuerAuthAlgorithms = spec.issuerAuthAlgorithms.map { CoseAlgorithm(it.coseAlgorithmIdentifier!!) },
+                deviceAuthAlgorithms = spec.deviceAuthAlgorithms.map { CoseAlgorithm(it.coseAlgorithmIdentifier!!) }
             )
         }
 
@@ -285,8 +282,8 @@ internal fun List<Format>.toVpFormats(): VpFormatsSupported {
         .firstOrNull()
         ?.let { spec ->
             VpFormatsSupported.SdJwtVc(
-                sdJwtAlgorithms = spec.sdJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) },
-                kbJwtAlgorithms = spec.kbJwtAlgorithms.map { it.toJwsAlgorithm(JWSAlgorithm.ES256) }
+                sdJwtAlgorithms = spec.sdJwtAlgorithms.map { JWSAlgorithm.parse(it.joseAlgorithmIdentifier!!) },
+                kbJwtAlgorithms = spec.kbJwtAlgorithms.map { JWSAlgorithm.parse(it.joseAlgorithmIdentifier!!) }
             )
         }
 
@@ -295,42 +292,6 @@ internal fun List<Format>.toVpFormats(): VpFormatsSupported {
         msoMdoc = msoMdocVpFormat
     )
 }
-
-/**
- * Converts a [Algorithm] to a [JWSAlgorithm], falling back to a default if parsing fails.
- *
- * @receiver The algorithm to convert.
- * @param default The default JWSAlgorithm to use if parsing fails.
- * @return The corresponding [JWSAlgorithm].
- */
-internal fun Algorithm.toJwsAlgorithm(default: JWSAlgorithm): JWSAlgorithm = try {
-    JWSAlgorithm.parse(this.joseAlgorithmIdentifier)
-} catch (_: Throwable) {
-    default
-}
-
-/**
- * Extension property to convert a [JwsAlgorithm] to Nimbus [JWSAlgorithm].
- */
-internal val JwsAlgorithm.nimbus: JWSAlgorithm
-    get() = when (this) {
-        JwsAlgorithm.ES256 -> JWSAlgorithm.ES256
-        JwsAlgorithm.ES384 -> JWSAlgorithm.ES384
-        JwsAlgorithm.ES512 -> JWSAlgorithm.ES512
-        JwsAlgorithm.EdDSA -> JWSAlgorithm.EdDSA
-        JwsAlgorithm.HS256 -> JWSAlgorithm.HS256
-        JwsAlgorithm.HS384 -> JWSAlgorithm.HS384
-        JwsAlgorithm.HS512 -> JWSAlgorithm.HS512
-        JwsAlgorithm.PS256 -> JWSAlgorithm.PS256
-        JwsAlgorithm.PS384 -> JWSAlgorithm.PS384
-        JwsAlgorithm.PS512 -> JWSAlgorithm.PS512
-        JwsAlgorithm.RS256 -> JWSAlgorithm.RS256
-        JwsAlgorithm.RS384 -> JWSAlgorithm.RS384
-        JwsAlgorithm.RS512 -> JWSAlgorithm.RS512
-        JwsAlgorithm.ES256K -> JWSAlgorithm.ES256K
-        JwsAlgorithm.Ed448 -> JWSAlgorithm.Ed448
-        JwsAlgorithm.Ed25519 -> JWSAlgorithm.Ed25519
-    }
 
 /**
  * Extension property to convert an [EncryptionAlgorithm] to Nimbus [JWEAlgorithm].

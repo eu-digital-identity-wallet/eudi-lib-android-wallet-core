@@ -5,6 +5,8 @@
 [androidJvm]\
 [A128CBC_HS256](index.md)
 
+AES-128 in CBC mode with HMAC-SHA256 authentication
+
 ## Properties
 
 | Name | Summary |
