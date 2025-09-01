@@ -5,6 +5,8 @@
 [androidJvm]\
 [XC20P](index.md)
 
+ChaCha20-Poly1305 authenticated encryption
+
 ## Properties
 
 | Name | Summary |

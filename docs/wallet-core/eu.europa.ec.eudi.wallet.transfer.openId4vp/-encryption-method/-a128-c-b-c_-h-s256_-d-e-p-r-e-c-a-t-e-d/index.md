@@ -5,6 +5,8 @@
 [androidJvm]\
 [A128CBC_HS256_DEPRECATED](index.md)
 
+AES-128 in CBC mode with HMAC-SHA256 authentication (deprecated).
+
 ## Properties
 
 | Name | Summary |

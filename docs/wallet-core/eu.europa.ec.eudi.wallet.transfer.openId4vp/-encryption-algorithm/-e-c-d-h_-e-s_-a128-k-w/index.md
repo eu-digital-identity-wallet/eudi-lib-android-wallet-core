@@ -5,6 +5,8 @@
 [androidJvm]\
 [ECDH_ES_A128KW](index.md)
 
+ECDH-ES with AES-128 Key Wrap algorithm
+
 ## Properties
 
 | Name | Summary |

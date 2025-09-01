@@ -5,6 +5,8 @@
 [androidJvm]\
 [A192GCM](index.md)
 
+AES-192 in Galois/Counter Mode (authenticated encryption)
+
 ## Properties
 
 | Name | Summary |
