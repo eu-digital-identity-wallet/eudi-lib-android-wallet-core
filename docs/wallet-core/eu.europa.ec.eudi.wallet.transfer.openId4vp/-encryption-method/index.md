@@ -2,22 +2,55 @@
 
 # EncryptionMethod
 
-[androidJvm]\
-enum [EncryptionMethod](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[EncryptionMethod](index.md)&gt;
+enum [EncryptionMethod](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[EncryptionMethod](index.md)&gt; 
+
+Encryption method enumeration for OpenID4VP content encryption operations.
+
+This enum defines the supported symmetric encryption methods used for protecting the actual content (payload) in OpenID4VP communications. The methods include both authenticated encryption (AEAD) modes and traditional cipher modes with separate authentication.
+
+## Method Categories:
+
+- 
+   **AES-CBC + HMAC**: Combined cipher and MAC modes (A128CBC_HS256, A192CBC_HS384, A256CBC_HS512)
+- 
+   **AES-GCM**: Authenticated encryption modes (A128GCM, A192GCM, A256GCM)
+- 
+   **Deprecated**: Legacy methods for backward compatibility
+- 
+   **XC20P**: ChaCha20-Poly1305 authenticated encryption
+
+## Security Recommendations:
+
+- 
+   Prefer GCM modes for new implementations due to better performance and security
+- 
+   Avoid deprecated methods unless required for backward compatibility
+- 
+   XC20P provides good security with different performance characteristics than AES
+
+#### Since
+
+1.0.0
+
+#### See also
+
+| |
+|---|
+| [OpenId4VpConfig.encryptionMethods](../-open-id4-vp-config/encryption-methods.md) |
 
 ## Entries
 
 | | |
 |---|---|
-| [A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) | [androidJvm]<br>[A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) |
-| [A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) | [androidJvm]<br>[A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) |
-| [A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) | [androidJvm]<br>[A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) |
-| [A128GCM](-a128-g-c-m/index.md) | [androidJvm]<br>[A128GCM](-a128-g-c-m/index.md) |
-| [A192GCM](-a192-g-c-m/index.md) | [androidJvm]<br>[A192GCM](-a192-g-c-m/index.md) |
-| [A256GCM](-a256-g-c-m/index.md) | [androidJvm]<br>[A256GCM](-a256-g-c-m/index.md) |
-| [A128CBC_HS256_DEPRECATED](-a128-c-b-c_-h-s256_-d-e-p-r-e-c-a-t-e-d/index.md) | [androidJvm]<br>[A128CBC_HS256_DEPRECATED](-a128-c-b-c_-h-s256_-d-e-p-r-e-c-a-t-e-d/index.md) |
-| [A256CBC_HS512_DEPRECATED](-a256-c-b-c_-h-s512_-d-e-p-r-e-c-a-t-e-d/index.md) | [androidJvm]<br>[A256CBC_HS512_DEPRECATED](-a256-c-b-c_-h-s512_-d-e-p-r-e-c-a-t-e-d/index.md) |
-| [XC20P](-x-c20-p/index.md) | [androidJvm]<br>[XC20P](-x-c20-p/index.md) |
+| [A128CBC_HS256](-a128-c-b-c_-h-s256/index.md) | [androidJvm]<br>[A128CBC_HS256](-a128-c-b-c_-h-s256/index.md)<br>AES-128 in CBC mode with HMAC-SHA256 authentication |
+| [A192CBC_HS384](-a192-c-b-c_-h-s384/index.md) | [androidJvm]<br>[A192CBC_HS384](-a192-c-b-c_-h-s384/index.md)<br>AES-192 in CBC mode with HMAC-SHA384 authentication |
+| [A256CBC_HS512](-a256-c-b-c_-h-s512/index.md) | [androidJvm]<br>[A256CBC_HS512](-a256-c-b-c_-h-s512/index.md)<br>AES-256 in CBC mode with HMAC-SHA512 authentication |
+| [A128GCM](-a128-g-c-m/index.md) | [androidJvm]<br>[A128GCM](-a128-g-c-m/index.md)<br>AES-128 in Galois/Counter Mode (authenticated encryption) |
+| [A192GCM](-a192-g-c-m/index.md) | [androidJvm]<br>[A192GCM](-a192-g-c-m/index.md)<br>AES-192 in Galois/Counter Mode (authenticated encryption) |
+| [A256GCM](-a256-g-c-m/index.md) | [androidJvm]<br>[A256GCM](-a256-g-c-m/index.md)<br>AES-256 in Galois/Counter Mode (authenticated encryption) |
+| [A128CBC_HS256_DEPRECATED](-a128-c-b-c_-h-s256_-d-e-p-r-e-c-a-t-e-d/index.md) | [androidJvm]<br>[A128CBC_HS256_DEPRECATED](-a128-c-b-c_-h-s256_-d-e-p-r-e-c-a-t-e-d/index.md)<br>AES-128 in CBC mode with HMAC-SHA256 authentication (deprecated). |
+| [A256CBC_HS512_DEPRECATED](-a256-c-b-c_-h-s512_-d-e-p-r-e-c-a-t-e-d/index.md) | [androidJvm]<br>[A256CBC_HS512_DEPRECATED](-a256-c-b-c_-h-s512_-d-e-p-r-e-c-a-t-e-d/index.md)<br>AES-256 in CBC mode with HMAC-SHA512 authentication (deprecated). |
+| [XC20P](-x-c20-p/index.md) | [androidJvm]<br>[XC20P](-x-c20-p/index.md)<br>ChaCha20-Poly1305 authenticated encryption |
 
 ## Types
 

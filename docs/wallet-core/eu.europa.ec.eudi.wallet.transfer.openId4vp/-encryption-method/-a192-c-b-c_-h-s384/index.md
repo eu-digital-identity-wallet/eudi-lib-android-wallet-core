@@ -5,6 +5,8 @@
 [androidJvm]\
 [A192CBC_HS384](index.md)
 
+AES-192 in CBC mode with HMAC-SHA384 authentication
+
 ## Properties
 
 | Name | Summary |

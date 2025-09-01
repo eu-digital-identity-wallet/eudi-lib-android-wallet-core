@@ -69,7 +69,7 @@ class EudiWalletConfigTest {
                 )
                 withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
                 withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
-                withFormats(Format.MsoMdoc, Format.SdJwtVc.ES256)
+                withFormats(Format.MsoMdoc.ES256, Format.SdJwtVc.ES256)
             }
             configureDCAPI {
                 withEnabled(true)
