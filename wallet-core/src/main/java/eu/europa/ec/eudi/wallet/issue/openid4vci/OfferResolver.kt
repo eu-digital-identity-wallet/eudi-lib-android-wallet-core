@@ -26,7 +26,7 @@ internal class OfferResolver(
 ) {
     val resolver by lazy {
         CredentialOfferRequestResolver(
-            ktorHttpClientFactory = ktorHttpClientFactory,
+            httpClient = ktorHttpClientFactory(),
             issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned
         )
     }
