@@ -64,7 +64,7 @@ class DPoPSignerTest {
         val signer = DPoPSigner().getOrNull()
         assertNotNull(signer)
 
-        val signOperation = signer!!.authenticate()
+        val signOperation = signer!!.acquire()
 
         // Verify the sign operation was created successfully
         assertNotNull(signOperation)
@@ -86,7 +86,7 @@ class DPoPSignerTest {
         val signer = DPoPSigner().getOrNull()
         assertNotNull(signer)
 
-        val signOperation = signer!!.authenticate()
+        val signOperation = signer!!.acquire()
         val dataToSign = "test data".toByteArray()
 
         // The sign function should produce a signature without throwing
@@ -106,7 +106,7 @@ class DPoPSignerTest {
         val signer = DPoPSigner().getOrNull()
         assertNotNull(signer)
 
-        val signOperation = signer!!.authenticate()
+        val signOperation = signer!!.acquire()
 
         // The release function should not throw
         try {
@@ -133,8 +133,8 @@ class DPoPSignerTest {
         assertNotNull(signer1)
         assertNotNull(signer2)
 
-        val signOp1 = signer1!!.authenticate()
-        val signOp2 = signer2!!.authenticate()
+        val signOp1 = signer1!!.acquire()
+        val signOp2 = signer2!!.acquire()
 
         val jwk1 = signOp1.publicMaterial
         val jwk2 = signOp2.publicMaterial
@@ -157,8 +157,8 @@ class DPoPSignerTest {
         assertNotNull(signer1)
         assertNotNull(signer2)
 
-        val signOp1 = signer1!!.authenticate()
-        val signOp2 = signer2!!.authenticate()
+        val signOp1 = signer1!!.acquire()
+        val signOp2 = signer2!!.acquire()
 
         val dataToSign = "test data".toByteArray()
 
