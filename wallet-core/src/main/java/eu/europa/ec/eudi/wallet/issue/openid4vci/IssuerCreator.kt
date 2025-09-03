@@ -60,7 +60,7 @@ internal class IssuerCreator(
         return Issuer.make(
             config = config.toOpenId4VCIConfig(),
             credentialOffer = credentialOffer,
-            ktorHttpClientFactory = ktorHttpClientFactory
+            httpClient = ktorHttpClientFactory()
         ).getOrThrow()
     }
 
@@ -74,7 +74,7 @@ internal class IssuerCreator(
             config = config.toOpenId4VCIConfig(),
             credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow(),
             credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-            ktorHttpClientFactory = ktorHttpClientFactory
+            httpClient = ktorHttpClientFactory()
         ).getOrThrow()
     }
 
