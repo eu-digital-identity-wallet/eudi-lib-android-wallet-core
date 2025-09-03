@@ -22,11 +22,9 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
-import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
-import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -43,6 +41,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 import androidx.core.net.toUri
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
 /**
  * Default implementation of [OpenId4VciManager].
@@ -59,7 +61,7 @@ internal class DefaultOpenId4VciManager(
     private val documentManager: DocumentManager,
     var config: OpenId4VciManager.Config,
     var logger: Logger? = null,
-    var ktorHttpClientFactory: KtorHttpClientFactory? = null,
+    var ktorHttpClientFactory: (()-> HttpClient)? = null,
 ) : OpenId4VciManager {
 
     internal val httpClientFactory
@@ -79,7 +81,7 @@ internal class DefaultOpenId4VciManager(
 
     override suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata> {
         return CredentialIssuerId(config.issuerUrl).mapCatching {
-            CredentialIssuerMetadataResolver(httpClientFactory).resolve(
+            CredentialIssuerMetadataResolver(httpClientFactory()).resolve(
                 issuer = it,
                 policy = IssuerMetadataPolicy.IgnoreSigned
             ).getOrThrow()
@@ -194,7 +196,7 @@ internal class DefaultOpenId4VciManager(
                     else -> {
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
                             deferredContext.issuanceContext,
-                            httpClientFactory
+                            httpClientFactory()
                         )
                             .getOrThrow()
                         ProcessDeferredOutcome(
@@ -293,4 +295,19 @@ internal class DefaultOpenId4VciManager(
             )
         }
     }
+    companion object {
+        private val DefaultHttpClientFactory: ()-> HttpClient = {
+            HttpClient {
+                install(ContentNegotiation) {
+                    json(
+                        json = Json {
+                            ignoreUnknownKeys = true
+                            prettyPrint = true
+                        },
+                    )
+                }
+            }
+        }
+    }
+
 }
