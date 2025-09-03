@@ -49,14 +49,15 @@ class OfferResolverTest {
 
     @BeforeTest
     fun setUp() {
-        ktorHttpClientFactory = mockk(relaxed = true)
+        val httpClient = mockk<HttpClient>(relaxed = true)
+        ktorHttpClientFactory = { httpClient }
 
         credentialOffer = mockk(relaxed = true)
         credentialOfferResolver = mockk()
         mockkObject(CredentialOfferRequestResolver.Companion)
         every {
             CredentialOfferRequestResolver.Companion.invoke(
-                ktorHttpClientFactory = any(),
+                httpClient = httpClient,
                 issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned
             )
         } returns credentialOfferResolver
