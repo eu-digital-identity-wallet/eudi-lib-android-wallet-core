@@ -5,7 +5,7 @@
 [androidJvm]\
 @Serializable
 
-data class [QueryBased](index.md)(val documentId: DocumentId, val format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val queryId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : [OpenId4VpResponse.RespondedDocument](../index.md)
+data class [QueryBased](index.md)(val documentId: &lt;Error class: unknown class&gt;, val format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val queryId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : [OpenId4VpResponse.RespondedDocument](../index.md)
 
 Query-based representation of a responded document.
 
@@ -15,12 +15,12 @@ Used when documents are associated with specific query IDs, typically for DCQL-b
 
 | | |
 |---|---|
-| [QueryBased](-query-based.md) | [androidJvm]<br>constructor(documentId: DocumentId, format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), queryId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
+| [QueryBased](-query-based.md) | [androidJvm]<br>constructor(documentId: &lt;Error class: unknown class&gt;, format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), queryId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [documentId](document-id.md) | [androidJvm]<br>open override val [documentId](document-id.md): DocumentId<br>The identifier of the document |
+| [documentId](document-id.md) | [androidJvm]<br>open override val [documentId](document-id.md): &lt;Error class: unknown class&gt;<br>The identifier of the document |
 | [format](format.md) | [androidJvm]<br>open override val [format](format.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>The format of the document |
 | [queryId](query-id.md) | [androidJvm]<br>val [queryId](query-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>The query identifier this document responds to |

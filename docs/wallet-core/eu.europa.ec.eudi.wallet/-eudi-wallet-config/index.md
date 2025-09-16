@@ -60,6 +60,10 @@ val config = EudiWalletConfig()
             "mdoc-openid4vp"
         )
     }
+    .configureDCAPI {
+        withEnabled(true) // Enable DCAPI, by default it is disabled
+        withPrivilegedAllowlist("allowlist") // your own allowlist of privileged browsers/apps that you trust
+    }
 ```
 
 #### See also
@@ -85,6 +89,7 @@ val config = EudiWalletConfig()
 | Name | Summary |
 |---|---|
 | [clearBleCache](clear-ble-cache.md) | [androidJvm]<br>var [clearBleCache](clear-ble-cache.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html)<br>whether to clear the BLE cache |
+| [dcapiConfig](dcapi-config.md) | [androidJvm]<br>var [dcapiConfig](dcapi-config.md): [DCAPIConfig](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/index.md)?<br>Configuration for the Digital Credential. |
 | [documentManagerIdentifier](document-manager-identifier.md) | [androidJvm]<br>var [documentManagerIdentifier](document-manager-identifier.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>the document manager identifier |
 | [documentsStoragePath](documents-storage-path.md) | [androidJvm]<br>var [documentsStoragePath](documents-storage-path.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)?<br>the documents storage path |
 | [documentStatusResolverClockSkew](document-status-resolver-clock-skew.md) | [androidJvm]<br>var [documentStatusResolverClockSkew](document-status-resolver-clock-skew.md): [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html)<br>the clock skew for the document status resolver |
@@ -104,6 +109,7 @@ val config = EudiWalletConfig()
 
 | Name | Summary |
 |---|---|
+| [configureDCAPI](configure-d-c-a-p-i.md) | [androidJvm]<br>fun [configureDCAPI](configure-d-c-a-p-i.md)(dcapiConfig: [DCAPIConfig](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/index.md)): &lt;Error class: unknown class&gt;<br>Configure the DCAPI.<br>[androidJvm]<br>fun [configureDCAPI](configure-d-c-a-p-i.md)(dcapiConfig: [DCAPIConfig.Builder](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)): &lt;Error class: unknown class&gt;<br>Configure the DCAPI using a [DCAPIConfig.Builder](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/-builder/index.md) as a lambda with receiver. |
 | [configureDocumentKeyCreation](configure-document-key-creation.md) | [androidJvm]<br>fun [configureDocumentKeyCreation](configure-document-key-creation.md)(userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = false, userAuthenticationTimeout: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html) = 0, useStrongBoxForKeys: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = true): &lt;Error class: unknown class&gt;<br>Configure the document key creation. This allows to configure if user authentication is required to unlock key usage, the user authentication timeout and whether to use the strong box for keys. These values are used to create the eu.europa.ec.eudi.wallet.document.CreateDocumentSettings using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings](../../eu.europa.ec.eudi.wallet.document/-document-extensions/get-default-create-document-settings.md) method. |
 | [configureDocumentManager](configure-document-manager.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>fun [configureDocumentManager](configure-document-manager.md)(storagePath: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), identifier: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null): &lt;Error class: unknown class&gt;<br>Configure the built-in document manager. |
 | [configureDocumentStatusResolver](configure-document-status-resolver.md) | [androidJvm]<br>fun [configureDocumentStatusResolver](configure-document-status-resolver.md)(clockSkewInMinutes: [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html)): &lt;Error class: unknown class&gt;<br>Configure the document status resolver clock skew. This allows to configure the clock skew for the provided document status resolver. |

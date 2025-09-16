@@ -7,6 +7,7 @@
 | Name |
 |---|
 | [eu.europa.ec.eudi.wallet](wallet-core/eu.europa.ec.eudi.wallet/index.md) |
+| [eu.europa.ec.eudi.wallet.dcapi](wallet-core/eu.europa.ec.eudi.wallet.dcapi/index.md) |
 | [eu.europa.ec.eudi.wallet.document](wallet-core/eu.europa.ec.eudi.wallet.document/index.md) |
 | [eu.europa.ec.eudi.wallet.issue.openid4vci](wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/index.md) |
 | [eu.europa.ec.eudi.wallet.issue.openid4vci.transformations](wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci.transformations/index.md) |

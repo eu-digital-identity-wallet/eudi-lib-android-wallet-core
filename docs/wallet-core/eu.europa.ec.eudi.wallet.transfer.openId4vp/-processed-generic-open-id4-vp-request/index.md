@@ -3,13 +3,13 @@
 # ProcessedGenericOpenId4VpRequest
 
 [androidJvm]\
-class [ProcessedGenericOpenId4VpRequest](index.md)(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject, inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments, val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
+class [ProcessedGenericOpenId4VpRequest](index.md)(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject, inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;&lt;Error class: unknown class&gt;&gt;&gt;, requestedDocuments: RequestedDocuments, val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
 
 ## Constructors
 
 | | |
 |---|---|
-| [ProcessedGenericOpenId4VpRequest](-processed-generic-open-id4-vp-request.md) | [androidJvm]<br>constructor(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject, inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;&gt;, requestedDocuments: RequestedDocuments, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
+| [ProcessedGenericOpenId4VpRequest](-processed-generic-open-id4-vp-request.md) | [androidJvm]<br>constructor(documentManager: DocumentManager, resolvedRequestObject: ResolvedRequestObject, inputDescriptorMap: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;InputDescriptorId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;&lt;Error class: unknown class&gt;&gt;&gt;, requestedDocuments: RequestedDocuments, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
