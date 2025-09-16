@@ -3,4 +3,4 @@
 # responseBytes
 
 [androidJvm]\
-val [responseBytes](response-bytes.md): DeviceResponseBytes
+val [responseBytes](response-bytes.md): &lt;Error class: unknown class&gt;
