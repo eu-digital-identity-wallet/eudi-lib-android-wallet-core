@@ -22,9 +22,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
-import io.mockk.every
 import io.mockk.mockk
-import java.io.File
 import java.security.cert.X509Certificate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,6 +71,10 @@ class EudiWalletConfigTest {
                 withEncryptionMethods(listOf(EncryptionMethod.A128CBC_HS256))
                 withFormats(Format.MsoMdoc, Format.SdJwtVc.ES256)
             }
+            configureDCAPI {
+                withEnabled(true)
+                withPrivilegedAllowlist("{}")
+            }
         }
         assertEquals(2, config.readerTrustedCertificates?.size)
         assertEquals(readerCertificate1, config.readerTrustedCertificates?.get(0))
@@ -103,6 +105,9 @@ class EudiWalletConfigTest {
         assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
         assertEquals("client-id", config.openId4VciConfig?.clientId)
         assertEquals("eudi-openid4ci://authorize", config.openId4VciConfig?.authFlowRedirectionURI)
+
+        assertEquals(true, config.dcapiConfig?.enabled)
+        assertEquals("{}", config.dcapiConfig?.privilegedAllowlist)
     }
 
     @Test
@@ -115,6 +120,7 @@ class EudiWalletConfigTest {
         assertNull(config.readerTrustedCertificates)
         assertNull(config.openId4VpConfig)
         assertNull(config.openId4VciConfig)
+        assertNull(config.dcapiConfig)
     }
 
     @Test

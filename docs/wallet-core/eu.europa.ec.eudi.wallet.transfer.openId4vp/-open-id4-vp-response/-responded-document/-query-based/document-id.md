@@ -3,4 +3,4 @@
 # documentId
 
 [androidJvm]\
-open override val [documentId](document-id.md): DocumentId
+open override val [documentId](document-id.md): &lt;Error class: unknown class&gt;

@@ -3,4 +3,4 @@
 # issuedDocuments
 
 [androidJvm]\
-val [issuedDocuments](issued-documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;DocumentId&gt;
+val [issuedDocuments](issued-documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;&lt;Error class: unknown class&gt;&gt;
