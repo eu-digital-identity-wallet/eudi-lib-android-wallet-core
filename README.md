@@ -56,8 +56,7 @@ The library provides the following functionality:
         - [ ] Wifi-Aware data transfer
 - Remote document presentation
     - [x] [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
-      document transfer
-        - [x] ClienID scheme: preregistered, x509_san_dns, redirect_uri
+        - [x] ClienID scheme: preregistered, x509_san_dns, x509_hash, redirect_uri
         - [x] DCQL
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
