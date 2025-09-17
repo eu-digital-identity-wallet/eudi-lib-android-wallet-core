@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuth
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -23,7 +25,6 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.openid4vp.Format
-import eu.europa.ec.eudi.openid4vp.PresentationQuery
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
 import eu.europa.ec.eudi.openid4vp.dcql.metaMsoMdoc
@@ -38,6 +39,7 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.generateMdocGeneratedNonce
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
@@ -62,7 +64,16 @@ import kotlinx.coroutines.runBlocking
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
     var openid4VpX509CertificateTrust: OpenId4VpReaderTrust
-) : RequestProcessor {
+) : RequestProcessor, ReaderTrustStoreAware {
+
+    /**
+     * The trust store used for verifying reader certificates.
+     */
+    override var readerTrustStore: ReaderTrustStore?
+        get() = openid4VpX509CertificateTrust.readerTrustStore
+        set(value) {
+            openid4VpX509CertificateTrust.readerTrustStore = value
+        }
 
     /**
      * Processes an OpenID4VP request containing DCQL queries.
@@ -85,15 +96,8 @@ class DcqlRequestProcessor(
                 "Request must have be a OpenId4VPAuthorization"
             }
 
-            val presentationQuery = request.resolvedRequestObject.presentationQuery
-            require(presentationQuery is PresentationQuery.ByDigitalCredentialsQuery) {
-                "Not supported ${presentationQuery::class.java.simpleName}"
-            }
-            val dcql = presentationQuery.value
+            val dcql = request.resolvedRequestObject.query
             val credentials = dcql.credentials
-            requireNotNull(credentials) {
-                "No credentials are requested"
-            }
 
             val readerCommonName = request.resolvedRequestObject.client.legalName() ?: ""
             // Extract reader authentication/trust result if available
@@ -110,8 +114,7 @@ class DcqlRequestProcessor(
                 }
 
             // Process each credential in the query and match to available documents
-            val queryRequestedDocumentsMap = credentials
-                .filter { it.meta != null } // Skip credentials without metadata
+            val queryRequestedDocumentsMap = credentials.value
                 .associate { query ->
                     when (val format = query.format) {
                         Format.MsoMdoc -> {
@@ -134,7 +137,7 @@ class DcqlRequestProcessor(
                         Format.SdJwtVc -> {
                             // Handle SD-JWT VC format credentials
                             val vctValues = query.metaSdJwtVc!!.vctValues
-                            require(!vctValues.isNullOrEmpty()) {
+                            require(vctValues.isNotEmpty()) {
                                 "VctValues are missing or is empty for query with id ${query.id}"
                             }
                             val requestedDocuments =
@@ -202,7 +205,7 @@ class DcqlRequestProcessor(
                 // If no claims are specified, use all available claims in the document
                 requestedItems = requestedItems ?: (getAllClaimPathsFrom(
                     claims = document.data.claims.filterIsInstance<SdJwtVcClaim>(),
-                    rootPath = emptyList<String>()
+                    rootPath = emptyList()
                 ).associate { path -> SdJwtVcItem(path) to false }),
                 readerAuth = readerAuth
             )
@@ -361,5 +364,20 @@ class DcqlRequestProcessor(
         }
 
         return targetClaim
+    }
+
+    companion object {
+        operator fun invoke(
+            documentManager: DocumentManager,
+            readerTrustStore: ReaderTrustStore?
+        ): DcqlRequestProcessor {
+            val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
+                readerTrustStore = readerTrustStore
+            )
+            return DcqlRequestProcessor(
+                documentManager = documentManager,
+                openid4VpX509CertificateTrust = openId4VpReaderTrust,
+            )
+        }
     }
 }

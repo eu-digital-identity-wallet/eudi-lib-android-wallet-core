@@ -2,7 +2,7 @@
 
 # TransactionLogBuilder
 
-class [TransactionLogBuilder](index.md)(metadataResolver: ([List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-response/-responded-document/index.md)&gt;) -&gt; [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;?)
+class [TransactionLogBuilder](index.md)(metadataResolver: (Response) -&gt; [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;?)
 
 Builder class for creating and updating [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) objects for presentation events.
 
@@ -20,7 +20,7 @@ androidJvm
 
 | | |
 |---|---|
-| [TransactionLogBuilder](-transaction-log-builder.md) | [androidJvm]<br>constructor(metadataResolver: ([List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-response/-responded-document/index.md)&gt;) -&gt; [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;?) |
+| [TransactionLogBuilder](-transaction-log-builder.md) | [androidJvm]<br>constructor(metadataResolver: (Response) -&gt; [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;?) |
 
 ## Types
 

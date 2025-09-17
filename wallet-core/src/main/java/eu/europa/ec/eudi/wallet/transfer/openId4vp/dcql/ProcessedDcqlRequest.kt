@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,7 +24,8 @@ import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
-import eu.europa.ec.eudi.openid4vp.VpContent
+import eu.europa.ec.eudi.openid4vp.VerifiablePresentations
+import eu.europa.ec.eudi.openid4vp.dcql.QueryId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -84,53 +85,45 @@ class ProcessedDcqlRequest(
     ): ResponseResult {
         val result = try {
             // Set to track all the documents that will be included in the response
-            val respondedDocuments = mutableSetOf<OpenId4VpResponse.RespondedDocument>()
-
-            // Map each query to its corresponding verifiable presentation
-            val verifiablePresentations = queryMap
-                .mapNotNull { (queryId, requestedDocumentsByFormat) ->
-                    val (format, requestedDocuments) = requestedDocumentsByFormat
-                    // For each query, find the first disclosed document that matches the requested documents
-                    // This ensures only one document per query ID is disclosed
-                    val disclosedDocument = disclosedDocuments.firstOrNull {
-                        it.documentId in requestedDocuments.map { it.documentId }
-                    }
-
-                    disclosedDocument
-                        ?.let { disclosedDocument ->
-                            // Track this document for response metadata
-                            respondedDocuments.add(
-                                OpenId4VpResponse.RespondedDocument.QueryBased(
-                                    documentId = disclosedDocument.documentId,
-                                    format = format,
-                                    queryId = queryId.value,
-                                )
+            val respondedDocumentsMap =
+                mutableMapOf<QueryId, List<OpenId4VpResponse.RespondedDocument>>()
+            val verifiablePresentationsMap = mutableMapOf<QueryId, List<VerifiablePresentation>>()
+            queryMap.forEach { (queryId, requestedDocumentsByFormat) ->
+                val (format, requestedDocuments) = requestedDocumentsByFormat
+                val respondedDocuments = mutableListOf<OpenId4VpResponse.RespondedDocument>()
+                val verifiablePresentationsForQueryId = mutableListOf<VerifiablePresentation>()
+                disclosedDocuments
+                    .filter { disclosedDocument ->
+                        disclosedDocument.documentId in requestedDocuments.map { it.documentId }
+                    }.map { disclosedDocument ->
+                        val respondedDocument = OpenId4VpResponse.RespondedDocument(
+                            documentId = disclosedDocument.documentId,
+                            format = format,
+                        )
+                        respondedDocuments.add(respondedDocument)
+                        val verifiablePresentation = runBlocking {
+                            vpFromRequestedDocuments(
+                                format = format,
+                                requestedDocuments = requestedDocuments,
+                                disclosedDocument = disclosedDocument,
+                                signatureAlgorithm = signatureAlgorithm ?: Algorithm.ESP256
                             )
-                            // Create verifiable presentation for this document based on its format
-                            queryId to runBlocking {
-                                vpFromRequestedDocuments(
-                                    format = format,
-                                    requestedDocuments = requestedDocuments,
-                                    disclosedDocument = disclosedDocument,
-                                    signatureAlgorithm = signatureAlgorithm ?: Algorithm.ESP256
-                                )
-                            }
                         }
-                }.toMap()
+                        verifiablePresentationsForQueryId.add(verifiablePresentation)
+                    }
+                respondedDocumentsMap.put(queryId, respondedDocuments)
+                verifiablePresentationsMap.put(queryId, verifiablePresentationsForQueryId)
+            }
+            val verifiablePresentations = VerifiablePresentations(verifiablePresentationsMap)
 
-            // Build the final response structure using DCQL content format
-            val vpContent = VpContent.DCQL(
-                verifiablePresentations = verifiablePresentations
-            )
-            val consensus = Consensus.PositiveConsensus.VPTokenConsensus(vpContent)
+            val vpToken = Consensus.PositiveConsensus.VPTokenConsensus(verifiablePresentations)
 
             // Construct the complete response object
-            val response = OpenId4VpResponse.DcqlResponse(
+            val response = OpenId4VpResponse(
                 resolvedRequestObject = resolvedRequestObject,
-                consensus = consensus,
+                vpToken = vpToken,
                 msoMdocNonce = msoMdocNonce,
-                response = verifiablePresentations.mapValues { it.toString() },
-                respondedDocuments = respondedDocuments.toList()
+                respondedDocuments = respondedDocumentsMap.toMap()
             )
             ResponseResult.Success(response)
         } catch (e: Exception) {

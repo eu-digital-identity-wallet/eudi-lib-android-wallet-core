@@ -3,4 +3,4 @@
 # jwsAlgorithm
 
 [androidJvm]\
-var [jwsAlgorithm](jws-algorithm.md): [JwsAlgorithm](../-jws-algorithm/index.md)
+var [jwsAlgorithm](jws-algorithm.md): Algorithm

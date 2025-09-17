@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2023-2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,7 +41,7 @@ import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.RequestProcessorDispatcher
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import org.multipaz.context.initializeApplication
@@ -346,16 +346,17 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             ensureStrongBoxIsSupported(loggerToUse)
             ensureUserAuthIsSupported(loggerToUse)
 
-            val documentManagerToUse = (documentManager ?: getDefaultDocumentManager(storage, secureAreas))
-                .let { defaultManager ->
-                    if (config.dcapiConfig?.enabled == true) {
-                        DocumentManagerWithDCAPI(
-                            delegate = defaultManager,
-                            dcapiRegistration = dcapiRegistration,
-                            logger = loggerToUse
-                        )
-                    } else defaultManager
-                }
+            val documentManagerToUse =
+                (documentManager ?: getDefaultDocumentManager(storage, secureAreas))
+                    .let { defaultManager ->
+                        if (config.dcapiConfig?.enabled == true) {
+                            DocumentManagerWithDCAPI(
+                                delegate = defaultManager,
+                                dcapiRegistration = dcapiRegistration,
+                                logger = loggerToUse
+                            )
+                        } else defaultManager
+                    }
 
             val readerTrustStoreToUse = readerTrustStore ?: defaultReaderTrustStore
 
@@ -400,7 +401,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             val openId4vpManager = config.openId4VpConfig?.let { openId4VpConfig ->
                 OpenId4VpManager(
                     config = openId4VpConfig,
-                    requestProcessor = RequestProcessorDispatcher(
+                    requestProcessor = DcqlRequestProcessor(
                         documentManager,
                         readerTrustStore
                     ),

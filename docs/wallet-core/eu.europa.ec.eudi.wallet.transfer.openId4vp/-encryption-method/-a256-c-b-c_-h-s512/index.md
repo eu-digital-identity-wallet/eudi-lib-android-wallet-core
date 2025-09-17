@@ -3,10 +3,13 @@
 # A256CBC_HS512
 
 [androidJvm]\
-data object [A256CBC_HS512](index.md) : [EncryptionMethod](../index.md)
+[A256CBC_HS512](index.md)
+
+AES-256 in CBC mode with HMAC-SHA512 authentication
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [name](name.md) | [androidJvm]<br>open override val [name](name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [name](../-x-c20-p/index.md#-372974862%2FProperties%2F1615067946) | [androidJvm]<br>val [name](../-x-c20-p/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [ordinal](../-x-c20-p/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../-x-c20-p/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) |

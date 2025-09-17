@@ -18,10 +18,13 @@ package eu.europa.ec.eudi.wallet.transactionLogging.presentation
 
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
+import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIResponse
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 
 /**
@@ -43,26 +46,49 @@ class TransactionsListener(
     /**
      * Resolver for document metadata
      */
-    internal val metadataResolver: (List<OpenId4VpResponse.RespondedDocument>) -> List<String> =
-        { respondedDocuments ->
-            respondedDocuments.map {
-                val metadata =
-                    documentManager.getDocumentById(it.documentId)?.issuerMetadata?.toJson()
-                when (it) {
-                    is OpenId4VpResponse.RespondedDocument.IndexBased -> TransactionLog.Metadata.IndexBased(
-                        issuerMetadata = metadata,
-                        format = it.format,
-                        index = it.index,
-                    ).toJson()
+    internal val metadataResolver: (Response) -> List<String>? = { response ->
+        when (response) {
+            is DeviceResponse -> response.documentIds.mapIndexed { index, id ->
+                val issuerMetadata = documentManager.getDocumentById(id)
+                    ?.issuerMetadata
+                    ?.toJson()
+                TransactionLog.Metadata(
+                    issuerMetadata = issuerMetadata,
+                    format = FORMAT_MSO_MDOC,
+                    index = index,
+                    queryId = null,
+                ).toJson()
+            }
 
-                    is OpenId4VpResponse.RespondedDocument.QueryBased -> TransactionLog.Metadata.QueryBased(
-                        issuerMetadata = metadata,
-                        format = it.format,
-                        queryId = it.queryId
+            is OpenId4VpResponse -> response.respondedDocuments.flatMap { (queryId, documents) ->
+                documents.mapIndexed { index, document ->
+                    val issuerMetadata = documentManager.getDocumentById(document.documentId)
+                        ?.issuerMetadata
+                        ?.toJson()
+                    TransactionLog.Metadata(
+                        issuerMetadata = issuerMetadata,
+                        format = document.format,
+                        index = index,
+                        queryId = queryId.value,
                     ).toJson()
                 }
             }
+
+            is DCAPIResponse -> response.documentIds.mapIndexed { index, id ->
+                val issuerMetadata = documentManager.getDocumentById(id)
+                    ?.issuerMetadata
+                    ?.toJson()
+                TransactionLog.Metadata(
+                    issuerMetadata = issuerMetadata,
+                    format = FORMAT_MSO_MDOC,
+                    index = index,
+                    queryId = null,
+                ).toJson()
+            }
+
+            else -> null
         }
+    }
 
     /**
      * Log builder for creating and updating transaction logs

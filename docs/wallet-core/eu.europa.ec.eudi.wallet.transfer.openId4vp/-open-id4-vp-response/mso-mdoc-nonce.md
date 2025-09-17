@@ -3,6 +3,4 @@
 # msoMdocNonce
 
 [androidJvm]\
-abstract val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
-
-The nonce used for MSO mdoc presentations.
+val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)

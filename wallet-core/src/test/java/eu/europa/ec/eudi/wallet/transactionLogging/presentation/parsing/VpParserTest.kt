@@ -29,8 +29,9 @@ import kotlin.test.assertTrue
 class VpParserTest {
 
     private val metadata = listOf(
-        TransactionLog.Metadata.IndexBased(
+        TransactionLog.Metadata(
             index = 0,
+            queryId = "query-0",
             format = FORMAT_SD_JWT_VC,
             issuerMetadata = IssuerMetadata(
                 documentConfigurationIdentifier = "urn:eu.europa.ec.eudi:pid:1",
@@ -40,8 +41,9 @@ class VpParserTest {
                 issuerDisplay = null,
             ).toJson()
         ).toJson(),
-        TransactionLog.Metadata.IndexBased(
-            index = 1,
+        TransactionLog.Metadata(
+            index = 0,
+            queryId = "query-1",
             format = FORMAT_MSO_MDOC,
             issuerMetadata = IssuerMetadata(
                 documentConfigurationIdentifier = "org.iso.18013.5.1.mDL",

@@ -55,10 +55,9 @@ The library provides the following functionality:
         - [ ] NFC data transfer
         - [ ] Wifi-Aware data transfer
 - Remote document presentation
-    - [x] [OpenId4VP (draft 24)](https://openid.net/specs/openid-4-verifiable-presentations-1_0-24.html)
-      document transfer
-        - [x] ClienID scheme: preregistered, x509_san_uri, x509_san_dns, redirect_uri
-        - [x] PresentationDefinition, DCQL
+    - [x] [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
+        - [x] ClienID scheme: preregistered, x509_san_dns, x509_hash, redirect_uri
+        - [x] DCQL
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -112,7 +111,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.19.0"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.20.0-SNAPSHOT"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -187,13 +186,6 @@ val config = EudiWalletConfig()
     )
     // configure the OpenId4Vp service
     .configureOpenId4Vp {
-        withEncryptionAlgorithms(
-            EncryptionAlgorithm.ECDH_ES
-        )
-        withEncryptionMethods(
-            EncryptionMethod.A128CBC_HS256,
-            EncryptionMethod.A256GCM
-        )
         withClientIdSchemes(
             ClientIdScheme.X509SanDns
         )
@@ -203,7 +195,7 @@ val config = EudiWalletConfig()
             "mdoc-openid4vp"
         )
         withFormats(
-            Format.MsoMdoc,
+            Format.MsoMdoc.ES256,
             Format.SdJwtVc.ES256
         )
     }

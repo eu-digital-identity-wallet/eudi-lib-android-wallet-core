@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,11 +27,9 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.RequestProcessorDispatcher
-import io.mockk.Runs
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import io.mockk.coEvery
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
@@ -60,7 +58,7 @@ import kotlin.time.Duration.Companion.minutes
 class OpenId4VpManagerTest {
 
     val testDispatcher = UnconfinedTestDispatcher()
-    val requestProcessor = mockk<RequestProcessorDispatcher>(relaxed = true)
+    val requestProcessor = mockk<DcqlRequestProcessor>(relaxed = true)
     val config = mockk<OpenId4VpConfig>(relaxed = true)
     val logger = object : Logger {
         override fun log(record: Logger.Record) {
@@ -157,21 +155,18 @@ class OpenId4VpManagerTest {
     @Test
     fun `test stop cancels sendResponse coroutine`() = runTest(timeout = 1.minutes) {
 
-        val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
+        val mockVpToken = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
         val mockResolvedRequestObject = mockk<ResolvedRequestObject>()
         val encryptionParametersMock = mockk<EncryptionParameters>()
-        val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
-            every { consensus } returns mockConsensus
+        val fakeResponse = mockk<OpenId4VpResponse> {
+            every { vpToken } returns mockVpToken
             every { resolvedRequestObject } returns mockResolvedRequestObject
-            every { responseBytes } returns byteArrayOf()
-            every { vpContent } returns mockk()
             every { encryptionParameters } returns encryptionParametersMock
-            every { debugLog(logger,any()) } just Runs
         }
         coEvery {
             siopOpenId4Vp.dispatch(
                 request = mockResolvedRequestObject,
-                consensus = mockConsensus,
+                consensus = mockVpToken,
                 encryptionParameters = encryptionParametersMock
             )
         } coAnswers {
@@ -197,22 +192,22 @@ class OpenId4VpManagerTest {
     fun `when sendResponse throws inside coroutine exception is passed as event`() =
         runTest(timeout = 1.minutes) {
 
-            val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
+            val mockVpToken = mockk<Consensus.PositiveConsensus.VPTokenConsensus>() {
+                every { verifiablePresentations } returns mockk()
+            }
             val mockResolvedRequestObject = mockk<ResolvedRequestObject>()
             val encryptionParametersMock = mockk<EncryptionParameters>()
-            val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
-                every { consensus } returns mockConsensus
+            val fakeResponse = mockk<OpenId4VpResponse> {
+                every { vpToken } returns mockVpToken
                 every { resolvedRequestObject } returns mockResolvedRequestObject
-                every { responseBytes } returns byteArrayOf()
-                every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
-                every { debugLog(logger,any()) } just Runs
+                every { respondedDocuments } returns emptyMap()
             }
             val exception = Exception("test")
             coEvery {
                 siopOpenId4Vp.dispatch(
                     request = mockResolvedRequestObject,
-                    consensus = mockConsensus,
+                    consensus = mockVpToken,
                     encryptionParameters = encryptionParametersMock
                 )
             } throws exception
@@ -233,23 +228,23 @@ class OpenId4VpManagerTest {
     fun `when dispatch outcome is RedirectURI, ResponseSent event should be emitted`() =
         runTest {
             // Setup
-            val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
+            val mockVpToken = mockk<Consensus.PositiveConsensus.VPTokenConsensus>() {
+                every { verifiablePresentations } returns mockk()
+            }
             val mockResolvedRequestObject = mockk<ResolvedRequestObject.OpenId4VPAuthorization>()
             val encryptionParametersMock = mockk<EncryptionParameters>()
-            val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
-                every { consensus } returns mockConsensus
+            val fakeResponse = mockk<OpenId4VpResponse> {
+                every { vpToken } returns mockVpToken
                 every { resolvedRequestObject } returns mockResolvedRequestObject
-                every { responseBytes } returns byteArrayOf()
-                every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
-                every { debugLog(logger,any()) } just Runs
+                every { respondedDocuments } returns emptyMap()
             }
 
             // Mock dispatch to return RedirectURI outcome
             coEvery {
                 siopOpenId4Vp.dispatch(
                     request = mockResolvedRequestObject,
-                    consensus = mockConsensus,
+                    consensus = mockVpToken,
                     encryptionParameters = encryptionParametersMock
                 )
             } returns DispatchOutcome.RedirectURI(java.net.URI.create("https://example.com/redirect"))
@@ -271,23 +266,23 @@ class OpenId4VpManagerTest {
     fun `when dispatch outcome is VerifierResponse_Accepted with null redirectURI, ResponseSent event should be emitted`() =
         runTest {
             // Setup
-            val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
+            val mockVpToken = mockk<Consensus.PositiveConsensus.VPTokenConsensus>() {
+                every { verifiablePresentations } returns mockk()
+            }
             val mockResolvedRequestObject = mockk<ResolvedRequestObject.OpenId4VPAuthorization>()
             val encryptionParametersMock = mockk<EncryptionParameters>()
-            val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
-                every { consensus } returns mockConsensus
+            val fakeResponse = mockk<OpenId4VpResponse> {
+                every { vpToken } returns mockVpToken
                 every { resolvedRequestObject } returns mockResolvedRequestObject
-                every { responseBytes } returns byteArrayOf()
-                every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
-                every { debugLog(logger,any()) } just Runs
+                every { respondedDocuments } returns emptyMap()
             }
 
             // Mock dispatch to return VerifierResponse.Accepted with null redirectURI
             coEvery {
                 siopOpenId4Vp.dispatch(
                     request = mockResolvedRequestObject,
-                    consensus = mockConsensus,
+                    consensus = mockVpToken,
                     encryptionParameters = encryptionParametersMock
                 )
             } returns DispatchOutcome.VerifierResponse.Accepted(null)
@@ -309,24 +304,24 @@ class OpenId4VpManagerTest {
     fun `when dispatch outcome is VerifierResponse_Accepted with redirectURI, Redirect event should be emitted`() =
         runTest {
             // Setup
-            val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
+            val mockVpToken = mockk<Consensus.PositiveConsensus.VPTokenConsensus>() {
+                every { verifiablePresentations } returns mockk()
+            }
             val mockResolvedRequestObject = mockk<ResolvedRequestObject.OpenId4VPAuthorization>()
             val encryptionParametersMock = mockk<EncryptionParameters>()
             val redirectUri = java.net.URI.create("https://example.com/redirect")
-            val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
-                every { consensus } returns mockConsensus
+            val fakeResponse = mockk<OpenId4VpResponse> {
+                every { vpToken } returns mockVpToken
                 every { resolvedRequestObject } returns mockResolvedRequestObject
-                every { responseBytes } returns byteArrayOf()
-                every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
-                every { debugLog(logger,any()) } just Runs
+                every { respondedDocuments } returns emptyMap()
             }
 
             // Mock dispatch to return VerifierResponse.Accepted with a redirectURI
             coEvery {
                 siopOpenId4Vp.dispatch(
                     request = mockResolvedRequestObject,
-                    consensus = mockConsensus,
+                    consensus = mockVpToken,
                     encryptionParameters = encryptionParametersMock
                 )
             } returns DispatchOutcome.VerifierResponse.Accepted(redirectUri)
@@ -350,23 +345,23 @@ class OpenId4VpManagerTest {
     fun `when dispatch outcome is VerifierResponse_Rejected, Error event should be emitted`() =
         runTest {
             // Setup
-            val mockConsensus = mockk<Consensus.PositiveConsensus.VPTokenConsensus>()
+            val mockVpToken = mockk<Consensus.PositiveConsensus.VPTokenConsensus>() {
+                every { verifiablePresentations } returns mockk()
+            }
             val mockResolvedRequestObject = mockk<ResolvedRequestObject.OpenId4VPAuthorization>()
             val encryptionParametersMock = mockk<EncryptionParameters>()
-            val fakeResponse = mockk<OpenId4VpResponse.DeviceResponse> {
-                every { consensus } returns mockConsensus
+            val fakeResponse = mockk<OpenId4VpResponse> {
+                every { vpToken } returns mockVpToken
                 every { resolvedRequestObject } returns mockResolvedRequestObject
-                every { responseBytes } returns byteArrayOf()
-                every { vpContent } returns mockk()
                 every { encryptionParameters } returns encryptionParametersMock
-                every { debugLog(logger,any()) } just Runs
+                every { respondedDocuments } returns emptyMap()
             }
 
             // Mock dispatch to return VerifierResponse.Rejected
             coEvery {
                 siopOpenId4Vp.dispatch(
                     request = mockResolvedRequestObject,
-                    consensus = mockConsensus,
+                    consensus = mockVpToken,
                     encryptionParameters = encryptionParametersMock
                 )
             } returns DispatchOutcome.VerifierResponse.Rejected

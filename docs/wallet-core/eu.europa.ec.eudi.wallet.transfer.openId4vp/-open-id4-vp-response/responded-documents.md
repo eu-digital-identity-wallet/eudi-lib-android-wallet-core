@@ -3,8 +3,4 @@
 # respondedDocuments
 
 [androidJvm]\
-abstract val [respondedDocuments](responded-documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;
-
-The list of responded documents. Can either be index-based or query-based.
-
-Indicates which documents were responded to the relying party and where each is positioned in the response.
+val [respondedDocuments](responded-documents.md): [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;&gt;

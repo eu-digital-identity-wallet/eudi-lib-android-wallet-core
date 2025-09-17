@@ -3,6 +3,4 @@
 # resolvedRequestObject
 
 [androidJvm]\
-abstract val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject
-
-The resolved OpenID4VP request object.
+val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject
