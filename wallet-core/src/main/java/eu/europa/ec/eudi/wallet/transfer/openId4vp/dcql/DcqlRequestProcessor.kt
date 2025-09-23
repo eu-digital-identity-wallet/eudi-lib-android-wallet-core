@@ -151,7 +151,7 @@ class DcqlRequestProcessor(
 
                         else -> throw IllegalArgumentException("Not supported format ${format.value}")
                     }
-                }
+            }.filter { it.value.requestedDocuments.isNotEmpty() }
 
             // Create and return the processed request with all matched documents and a generated nonce
             return ProcessedDcqlRequest(
