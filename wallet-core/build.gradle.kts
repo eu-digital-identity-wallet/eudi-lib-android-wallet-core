@@ -108,6 +108,14 @@ android {
         onVariants {
             createJacocoTasks(it.name) }
     }
+
+    kotlinOptions {
+        jvmTarget = libs.versions.java.get()
+        freeCompilerArgs += listOf(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlin.time.ExperimentalTime",
+        )
+    }
 }
 
 dependencies {

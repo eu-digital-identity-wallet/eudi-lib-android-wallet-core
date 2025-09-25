@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import org.multipaz.mdoc.mso.StaticAuthDataParser
 
+
 /**
  * Implements [StatusReferenceExtractor] for MSO MDOC format.
  * Extracts the status reference from the issuerAuth data of the document.
@@ -54,6 +55,7 @@ object MsoMdocStatusReferenceExtractor : StatusReferenceExtractor {
      * @param document The issued document to parse.
      * @return The parsed MSO data as a [CBORObject].
      */
+
     internal suspend fun parseMso(document: IssuedDocument): CBORObject {
         require(document.format is MsoMdocFormat) {
             "Document format is not MsoMdocFormat"
