@@ -105,7 +105,7 @@ import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.SpecialType;
 import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 
 /**
  * Utility functions for cbor encoding/ decoding and other

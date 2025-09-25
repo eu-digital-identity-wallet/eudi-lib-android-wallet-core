@@ -29,6 +29,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+
 /**
  * Extracts the status reference from an SD-JWT VC.
  */
@@ -42,6 +43,7 @@ object SdJwtStatusReferenceExtractor : StatusReferenceExtractor {
      * @param document the issued document
      * @return the status reference
      */
+
     override suspend fun extractStatusReference(document: IssuedDocument): Result<StatusReference> {
         return runCatching {
             require(document.format is SdJwtVcFormat) {

@@ -21,15 +21,15 @@ import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.statium.StatusListTokenFormat
-import eu.europa.ec.eudi.statium.VerifyStatusListTokenSignature
-import kotlinx.datetime.Instant
+import eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
+import kotlin.time.Instant
 
 /**
  * Verifies the signature of a status list token using the x5c header.
  */
-class VerifyStatusListTokenSignatureX5c : VerifyStatusListTokenSignature {
+class VerifyStatusListTokenSignatureX5c : VerifyStatusListTokenJwtSignature {
 
     /**
      * Verifies the signature of a status list token.
@@ -40,16 +40,11 @@ class VerifyStatusListTokenSignatureX5c : VerifyStatusListTokenSignature {
      * @param at The time at which the verification is performed.
      * @return A [Result] success or failure.
      */
+    
     override suspend fun invoke(
         statusListToken: String,
-        format: StatusListTokenFormat,
         at: Instant,
     ): Result<Unit> = runCatching {
-        // only JWT format is supported
-        require(format == StatusListTokenFormat.JWT) {
-            "Unsupported format: $format"
-        }
-
         val signedJwt = SignedJWT.parse(statusListToken)
 
         val publicKey = signedJwt.header?.x509CertChain?.firstOrNull()?.let { cert ->
@@ -80,5 +75,5 @@ class SignatureVerificationError : IllegalStateException()
 /**
  * Companion object for [VerifyStatusListTokenSignature] to provide a x5c implementation.
  */
-val VerifyStatusListTokenSignature.Companion.x5c: VerifyStatusListTokenSignature
+val VerifyStatusListTokenJwtSignature.Companion.x5c: VerifyStatusListTokenJwtSignature
     get() = VerifyStatusListTokenSignatureX5c()
