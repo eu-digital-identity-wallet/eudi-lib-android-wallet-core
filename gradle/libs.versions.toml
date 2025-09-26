@@ -24,7 +24,6 @@ junit = "5.13.2"
 junit-android = "1.2.1"
 kotlin = "2.1.21"
 kotlin-coroutines-test = "1.8.1"
-kotlinx-datetime = "0.6.2"
 kotlinx-io = "0.7.0"
 ktor = "3.3.0"
 mavenPublish = "0.33.0"
@@ -68,7 +67,6 @@ json = { module = "org.json:json", version.ref = "json" }
 junit = { module = "junit:junit", version.ref = "junit" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 kotlin-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines-test" }
-kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-io-bytestring = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-bytestring", version.ref = "kotlinx-io" }
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
