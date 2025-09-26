@@ -147,7 +147,6 @@ dependencies {
     implementation(libs.androidx.credentials.registry.provider)
     implementation(libs.play.services.identity.credentials)
 
-    implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
     // CBOR
