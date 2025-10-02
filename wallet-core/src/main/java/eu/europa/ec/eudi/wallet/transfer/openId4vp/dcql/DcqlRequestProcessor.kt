@@ -63,7 +63,7 @@ import kotlinx.coroutines.runBlocking
  */
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
-    var openid4VpX509CertificateTrust: OpenId4VpReaderTrust
+    var openid4VpX509CertificateTrust: OpenId4VpReaderTrust,
 ) : RequestProcessor, ReaderTrustStoreAware {
 
     /**
@@ -84,6 +84,8 @@ class DcqlRequestProcessor(
      * 3. Processes each credential request in the query
      * 4. Identifies matching documents in the wallet for each request
      * 5. Maps requested claims to the document items
+     *
+     * Important! Currently credentials_sets and claim_sets are not supported.
      *
      * @param request The incoming presentation request
      * @return [ProcessedDcqlRequest] containing matched documents and requested items
@@ -151,7 +153,10 @@ class DcqlRequestProcessor(
 
                         else -> throw IllegalArgumentException("Not supported format ${format.value}")
                     }
-            }.filter { it.value.requestedDocuments.isNotEmpty() }
+                }.takeIf {
+                    // ensure that all queries have at least one matching document
+                    it.all { rd -> rd.value.requestedDocuments.isNotEmpty() }
+                } ?: emptyMap() // otherwise return an empty map
 
             // Create and return the processed request with all matched documents and a generated nonce
             return ProcessedDcqlRequest(
@@ -185,7 +190,7 @@ class DcqlRequestProcessor(
     private fun getSdJwtVcRequestedDocuments(
         query: CredentialQuery,
         vctValues: List<String>,
-        readerAuth: ReaderAuth?
+        readerAuth: ReaderAuth?,
     ): RequestedDocuments {
         // Map requested claims to SdJwtVcItems
         val requestedItems = query.claims?.associate { claim ->
@@ -233,7 +238,7 @@ class DcqlRequestProcessor(
     private fun getRequestedMsoMdocDocuments(
         docType: String,
         query: CredentialQuery,
-        readerAuth: ReaderAuth?
+        readerAuth: ReaderAuth?,
     ): RequestedDocuments {
         val documents =
             runBlocking { findDocumentsByFormat(format = MsoMdocFormat(docType)) }
@@ -288,7 +293,7 @@ class DcqlRequestProcessor(
      */
     private fun getAllClaimPathsFrom(
         claims: List<SdJwtVcClaim>,
-        rootPath: List<String>
+        rootPath: List<String>,
     ): List<List<String>> {
         // If the path is empty, return all paths from the root
         if (rootPath.isEmpty()) {
@@ -319,7 +324,7 @@ class DcqlRequestProcessor(
      */
     private fun collectAllPaths(
         claims: List<SdJwtVcClaim>,
-        basePath: List<String>
+        basePath: List<String>,
     ): List<List<String>> {
         val result = mutableListOf<List<String>>()
 
@@ -369,7 +374,7 @@ class DcqlRequestProcessor(
     companion object {
         operator fun invoke(
             documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore?
+            readerTrustStore: ReaderTrustStore?,
         ): DcqlRequestProcessor {
             val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
                 readerTrustStore = readerTrustStore
