@@ -27,37 +27,32 @@ graph TD
     F -->|SecureArea,Storage| A
 ```
 
-The library provides the following functionality:
+### Features
 
-- Document management
-    - [x] Documents' Key creation and management with Android Keystore by default
-    - [x] Support for custom SecureArea implementations
-    - [x] Support for multiple SecureArea implementations
-    - [x] Support for multiple credentials for the same document
-- Document issuance
-    - [x] Support
-      for [OpenId4VCI (draft 15)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-15.html)
-      document issuance
-        - [x] Authorization Code Flow
-        - [x] Pre-authorization Code Flow
-        - [x] Support for mso_mdoc format
-        - [x] Support for sd-jwt-vc format
-            - [x] Support credential offer
-            - [x] Support for DPoP JWT in authorization
-        - [x] Support for JWT proof types
-        - [x] Support for deferred issuing
-        - [x] Support for batch issuing
-- Proximity document presentation
-    - [x] Support for ISO-18013-5 device retrieval
-        - [x] QR device engagement
-        - [x] NFC device engagement
-        - [x] BLE data transfer
-        - [ ] NFC data transfer
-        - [ ] Wifi-Aware data transfer
-- Remote document presentation
-    - [x] [OpenID for Verifiable Presentations 1.0](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
-        - [x] ClienID scheme: preregistered, x509_san_dns, x509_hash, redirect_uri
-        - [x] DCQL
+The library supports the following features:
+
+| Category                   | Feature                                                                 | Status                                                                                 |
+|----------------------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                      |
+|                            | Custom Key Management implementation                                    | ✅ via imeplementation of SecureArea                                                    |
+|                            | Multiple Key Management implementations                                 | ✅                                                                                      |
+|                            | Support for Batch credentials per Document                              | ✅                                                                                      |
+| **Document Issuance**      | OpenId4VCI (draft 15) document issuance                                 |                                                                                        |
+|                            | Authorization Code Flow                                                 | ✅                                                                                      |
+|                            | Pre-authorization Code Flow                                             | ✅                                                                                      |
+|                            | DPoP JWT in authorization                                               | ✅                                                                                      |
+|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                            |
+|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                             |
+|                            | Proof                                                                   | ✅ JWT                                                                                  |
+|                            | Credential batch issuing                                                | ✅ multiple JWT proofs                                                                  |
+|                            | Deferred issuing                                                        | ✅                                                                                      |
+|                            | Notify credential issuer                                                | ❌                                                                                      |
+| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                        |
+|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                      |
+|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                 |
+| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                        |
+|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri        |
+|                            | DCQL                                                                    | ✅ simple queries   <br />❌ support for credential_sets  <br />❌ support for claim_sets |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
