@@ -155,10 +155,6 @@ class DcqlRequestProcessor(
                         else -> throw IllegalArgumentException("Not supported format ${format.value}")
                     }
                 }
-//                .takeIf {
-//                    // ensure that all queries have at least one matching document
-//                    it.all { rd -> rd.value.requestedDocuments.isNotEmpty() }
-//                } ?: emptyMap() // otherwise return an empty map
 
             // Get the IDs of credentials that were actually found in the wallet.
             val availableWalletCredentialIds = potentialMatchesMap
@@ -168,16 +164,18 @@ class DcqlRequestProcessor(
             // Instantiate the processor and use it to determine the final set of credential IDs
             // that satisfy the credential_sets rules.
             val processor = CredentialSetsMatcher()
-            val finalCredentials = processor.determineRequestedDocuments(
+            val processedCredentials = processor.determineRequestedDocuments(
                 credentials = credentials,
                 credentialSets = credentialSets,
                 availableWalletCredentialIds = availableWalletCredentialIds
             )
 
-            // Filter the potential matches to get the final map for the response.
-            // This enforces the all-or-nothing rule for required sets, as determined by the processor.
+            // Filter the potential matches to create the final selection of documents for presentation.
+            // This step executes the decision made by the DcqlProcessor. If the processor returned an empty map (because a
+            // 'required' credential set could not be satisfied), this filter will also produce an empty
+            // map, ensuring no documents are returned.
             val queryRequestedDocumentsMap = potentialMatchesMap
-                .filterKeys { it in finalCredentials.keys }
+                .filterKeys { it in processedCredentials.keys }
 
             // Create and return the processed request with all matched documents and a generated nonce
             return ProcessedDcqlRequest(

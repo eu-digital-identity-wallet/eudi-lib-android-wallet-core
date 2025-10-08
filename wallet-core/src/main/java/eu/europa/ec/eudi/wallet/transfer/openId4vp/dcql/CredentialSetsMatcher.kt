@@ -30,9 +30,19 @@ class CredentialSetsMatcher {
         // Create a lookup map for quick access to credential details by their ID.
         val credentialsMap = credentials.value.associateBy { it.id }
 
-        // The 'credential_sets' array is missing or empty
+        // The 'credential_sets' array is missing or empty.
+        // In this case, all credentials in the 'credentials' list are considered required.
         if (credentialSets == null || credentialSets.value.isEmpty()) {
-            return credentialsMap.filterKeys { it in availableWalletCredentialIds }
+            val allRequiredIds = credentialsMap.keys
+            // Check if the wallet has ALL the required credentials.
+            return if (availableWalletCredentialIds.containsAll(allRequiredIds)) {
+                // If yes, return all of them.
+                credentialsMap
+            } else {
+                // If the wallet is missing even one, return nothing.
+                println("Error: Wallet is missing some required credentials when credential_sets is not provided. Aborting.")
+                emptyMap()
+            }
         }
 
         // The 'credential_sets' array is present. Process the new logic.
