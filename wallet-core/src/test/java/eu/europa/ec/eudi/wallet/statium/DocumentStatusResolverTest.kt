@@ -60,7 +60,9 @@ class DocumentStatusResolverTest {
         mockDocument = mockk<IssuedDocument>()
         mockGetStatusListToken = mockk()
         mockGetStatus = mockk()
-        mockHttpClientFactory = mockk()
+        mockHttpClientFactory = {
+            mockk(relaxed = true)
+        }
 
         mockkObject(GetStatusListToken.Companion)
         mockkObject(GetStatus.Companion)
@@ -135,7 +137,7 @@ class DocumentStatusResolverTest {
         every {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                any(),
                 verifySignature,
                 any()   // allowedClockSkew
             )
@@ -166,7 +168,7 @@ class DocumentStatusResolverTest {
         verify(exactly = 1) {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                any(),
                 verifySignature,
                 0.minutes
             )
@@ -186,7 +188,7 @@ class DocumentStatusResolverTest {
         every {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                any(),
                 verifySignature,
                 any()   // allowedClockSkew
             )
@@ -217,7 +219,7 @@ class DocumentStatusResolverTest {
         verify(exactly = 1) {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                any(),
                 verifySignature,
                 customClockSkew
             )

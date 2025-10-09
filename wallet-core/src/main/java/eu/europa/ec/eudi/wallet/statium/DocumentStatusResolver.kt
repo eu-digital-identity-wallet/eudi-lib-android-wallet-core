@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 /**
@@ -158,12 +158,15 @@ class DocumentStatusResolverImpl(
         withContext(Dispatchers.IO) {
             val statusReference = extractor.extractStatusReference(document).getOrThrow()
 
-            val getStatusListToken = GetStatusListToken.usingJwt(
-                clock = Clock.System,
-                httpClientFactory = ktorHttpClientFactory,
-                verifyStatusListTokenSignature = verifySignature,
-                allowedClockSkew = allowedClockSkew,
-            )
+            val getStatusListToken = ktorHttpClientFactory().use { httpClient ->
+                GetStatusListToken.usingJwt(
+                    clock = Clock.System,
+                    httpClient = httpClient,
+                    verifyStatusListTokenSignature = verifySignature,
+                    allowedClockSkew = allowedClockSkew,
+                )
+            }
+
             with(GetStatus(getStatusListToken)) {
                 statusReference.currentStatus().getOrThrow()
             }
