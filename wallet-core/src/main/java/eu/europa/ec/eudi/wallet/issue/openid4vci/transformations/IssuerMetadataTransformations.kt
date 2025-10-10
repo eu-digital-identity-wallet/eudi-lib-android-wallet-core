@@ -25,9 +25,11 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.OfferedDocument
 
 fun OfferedDocument.extractIssuerMetadata(): IssuerMetadata {
 
-    val documentDisplay = this.configuration.display.map { it.toDocumentDisplay() }
+    val documentDisplay =
+        this.configuration.credentialMetadata?.display?.map { it.toDocumentDisplay() }
+            ?: emptyList()
 
-    val claims = configuration.claims?.map {
+    val claims = configuration.credentialMetadata?.claims?.map {
         it.toIssuerMetadataClaim()
     }
 

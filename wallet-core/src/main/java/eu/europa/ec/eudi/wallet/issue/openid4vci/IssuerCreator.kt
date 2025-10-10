@@ -23,11 +23,13 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
+import eu.europa.ec.eudi.openid4vci.EcConfig
+import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
-import eu.europa.ec.eudi.openid4vci.KeyGenerationConfig
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.ParUsage
+import eu.europa.ec.eudi.openid4vci.RsaConfig
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
@@ -175,8 +177,11 @@ internal class IssuerCreator(
         return OpenId4VCIConfig(
             clientId = clientId,
             authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
-            keyGenerationConfig = KeyGenerationConfig(Curve.P_256, 2048),
-            credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
+            encryptionSupportConfig = EncryptionSupportConfig(
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
+                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+                rsaConfig = RsaConfig(rcaKeySize = 2048)
+            ),
             dPoPSigner = when (dPoPUsage) {
                 OpenId4VciManager.Config.DPoPUsage.Disabled -> null
 
