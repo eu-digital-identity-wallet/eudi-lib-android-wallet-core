@@ -18,23 +18,21 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
-import com.nimbusds.jose.JWEAlgorithm
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.AuthorizedTransaction
-import eu.europa.ec.eudi.openid4vci.Client
 import eu.europa.ec.eudi.openid4vci.ClientAttestationJWT
 import eu.europa.ec.eudi.openid4vci.ClientAttestationPoPJWTSpec
+import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext
 import eu.europa.ec.eudi.openid4vci.DeferredIssuerConfig
+import eu.europa.ec.eudi.openid4vci.EncryptionSpec
 import eu.europa.ec.eudi.openid4vci.Grant
-import eu.europa.ec.eudi.openid4vci.IssuanceResponseEncryptionSpec
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.RefreshToken
 import eu.europa.ec.eudi.openid4vci.Signer
@@ -61,7 +59,6 @@ import java.net.URI
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import kotlin.time.toKotlinDuration
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -203,6 +200,7 @@ internal class DeferredIssuanceContextSerializer : KSerializer<DeferredIssuanceC
     }
 }
 
+
 //
 // Serialization
 //
@@ -252,7 +250,7 @@ data class AccessTokenTO(
                     is AccessToken.Bearer -> AccessTokenTypeTO.Bearer
                 },
                 accessToken = accessToken.accessToken,
-                expiresIn = accessToken.expiresIn?.seconds,
+                expiresIn = accessToken.expiresIn?.seconds
             )
         }
     }
@@ -288,15 +286,14 @@ data class DeferredIssuanceStoredContextTO(
     @Required @SerialName("credential_issuer") val credentialIssuerId: String,
     @Required @SerialName("client_id") val clientId: String,
     @SerialName("client_attestation_jwt") val clientAttestationJwt: String? = null,
-    @SerialName("client_attestation_pop_duration") val clientAttestationPopDuration: Long? = null,
-    @SerialName("client_attestation_pop_alg") val clientAttestationPopAlgorithm: String? = null,
-    @SerialName("client_attestation_pop_typ") val clientAttestationPopType: String? = null,
     @SerialName("client_attestation_pop_key_id") val clientAttestationPopKeyId: String? = null,
     @Required @SerialName("deferred_endpoint") val deferredEndpoint: String,
     @Required @SerialName("auth_server_id") val authServerId: String,
+    @SerialName("challenge_endpoint") val challengeEndpoint: String? = null,
     @Required @SerialName("token_endpoint") val tokenEndpoint: String,
+    @SerialName("credential_request_encryption_spec") val requestEncryptionSpec: JsonObject? = null,
+    @SerialName("credential_response_encryption_params") val responseEncryptionParams: JsonObject? = null,
     @SerialName("dpop_key_id") val dPoPSignerKid: String? = null,
-    @SerialName("credential_response_encryption_spec") val responseEncryptionSpec: JsonObject? = null,
     @SerialName("transaction_id") val transactionId: String,
     @SerialName("access_token") val accessToken: AccessTokenTO,
     @SerialName("refresh_token") val refreshToken: RefreshTokenTO? = null,
@@ -307,41 +304,32 @@ data class DeferredIssuanceStoredContextTO(
     fun toDeferredIssuanceStoredContext(
         clock: Clock,
         recreatePopSigner: ((String) -> Signer<JWK>)?,
-        recreateClientAttestationPodSigner: ((String) -> JWSSigner)?,
+        recreateClientAttestationPodSigner: ((String) -> Signer<JWK>)?,
     ): DeferredIssuanceContext {
         return DeferredIssuanceContext(
             config = DeferredIssuerConfig(
                 credentialIssuerId = CredentialIssuerId(credentialIssuerId).getOrThrow(),
                 clock = clock,
-                client =
-                    if (clientAttestationJwt == null) Client.Public(clientId)
+                clientAuthentication =
+                    if (clientAttestationJwt == null) ClientAuthentication.None(clientId)
                     else {
                         val jwt = runCatching {
                             ClientAttestationJWT(SignedJWT.parse(clientAttestationJwt))
                         }.getOrNull() ?: error("Invalid client attestation JWT")
-                        val poPJWTSpec = ClientAttestationPoPJWTSpec(
-                            signingAlgorithm = JWSAlgorithm.parse(
-                                checkNotNull(
-                                    clientAttestationPopAlgorithm
-                                )
-                            ),
-                            duration = Duration.ofSeconds(checkNotNull(clientAttestationPopDuration))
-                                .toKotlinDuration(),
-                            typ = checkNotNull(clientAttestationPopType),
-                            jwsSigner = checkNotNull(recreateClientAttestationPodSigner).invoke(
-                                checkNotNull(
-                                    clientAttestationPopKeyId,
-                                ),
-                            ),
-                        )
-
-                        Client.Attested(jwt, poPJWTSpec)
+                        val signer = clientAttestationPopKeyId?.let {
+                                keyId ->
+                            recreateClientAttestationPodSigner?.let { recreate -> recreate(keyId) }
+                        }
+                        val poPJWTSpec = ClientAttestationPoPJWTSpec(checkNotNull(signer))
+                        ClientAuthentication.AttestationBased(jwt, poPJWTSpec)
                     },
                 deferredEndpoint = URI(deferredEndpoint).toURL(),
-                authServerId = URI(authServerId).toURL(),
+                authorizationServerId = URI(authServerId).toURL(),
+                challengeEndpoint = challengeEndpoint?.let { URI.create(it).toURL() },
                 tokenEndpoint = URI(tokenEndpoint).toURL(),
+                requestEncryptionSpec = requestEncryptionSpec?.let { requestEncryption(it) },
+                responseEncryptionParams = responseEncryptionParams?.let { responseEncryptionParams(it) },
                 dPoPSigner = dPoPSignerKid?.let { requireNotNull(recreatePopSigner).invoke(it) },
-                responseEncryptionSpec = responseEncryptionSpec?.let { responseEncryption(it) },
             ),
             authorizedTransaction = AuthorizedTransaction(
                 authorizedRequest = AuthorizedRequest(
@@ -361,10 +349,10 @@ data class DeferredIssuanceStoredContextTO(
 
     companion object {
 
-        fun <A> Client.ifAttested(getter: Client.Attested.() -> A?): A? =
+        fun <A> ClientAuthentication.ifAttested(getter: ClientAuthentication.AttestationBased.() -> A?): A? =
             when (this) {
-                is Client.Attested -> getter()
-                is Client.Public -> null
+                is ClientAuthentication.AttestationBased -> getter()
+                is ClientAuthentication.None -> null
             }
 
         fun from(
@@ -375,64 +363,74 @@ data class DeferredIssuanceStoredContextTO(
             val authorizedTransaction = dCtx.authorizedTransaction
             return DeferredIssuanceStoredContextTO(
                 credentialIssuerId = dCtx.config.credentialIssuerId.toString(),
-                clientId = dCtx.config.client.id,
-                clientAttestationJwt = dCtx.config.client.ifAttested { attestationJWT.jwt.serialize() },
-                clientAttestationPopType = dCtx.config.client.ifAttested { popJwtSpec.typ },
-                clientAttestationPopDuration = dCtx.config.client.ifAttested { popJwtSpec.duration.inWholeSeconds },
-                clientAttestationPopAlgorithm = dCtx.config.client.ifAttested { popJwtSpec.signingAlgorithm.toJSONString() },
-                clientAttestationPopKeyId = dCtx.config.client.ifAttested {
-                    checkNotNull(
-                        clientAttestationPopKeyId
-                    )
-                },
+                clientId = dCtx.config.clientAuthentication.id,
+                clientAttestationJwt = dCtx.config.clientAuthentication.ifAttested { attestationJWT.jwt.serialize() },
+                clientAttestationPopKeyId = dCtx.config.clientAuthentication.ifAttested { checkNotNull(clientAttestationPopKeyId) },
                 deferredEndpoint = dCtx.config.deferredEndpoint.toString(),
-                authServerId = dCtx.config.authServerId.toString(),
+                authServerId = dCtx.config.authorizationServerId.toString(),
                 tokenEndpoint = dCtx.config.tokenEndpoint.toString(),
+                requestEncryptionSpec = dCtx.config.requestEncryptionSpec?.let { requestEncryptionSpecTO(it) },
+                responseEncryptionParams = dCtx.config.responseEncryptionParams?.let { responseEncryptionParamsTO(it) },
                 dPoPSignerKid = dPoPSignerKid,
-                responseEncryptionSpec = dCtx.config.responseEncryptionSpec?.let {
-                    responseEncryptionSpecTO(
-                        it
-                    )
-                },
                 transactionId = authorizedTransaction.transactionId.value,
                 accessToken = AccessTokenTO.from(authorizedTransaction.authorizedRequest.accessToken),
-                refreshToken = authorizedTransaction.authorizedRequest.refreshToken?.let {
-                    RefreshTokenTO.from(
-                        it
-                    )
-                },
+                refreshToken = authorizedTransaction.authorizedRequest.refreshToken?.let { RefreshTokenTO.from(it) },
                 authorizationTimestamp = authorizedTransaction.authorizedRequest.timestamp.epochSecond,
                 grant = GrantTO.fromGrant(authorizedTransaction.authorizedRequest.grant),
             )
         }
-
-        private fun responseEncryptionSpecTO(spec: IssuanceResponseEncryptionSpec): JsonObject {
-            val jwkJson = Json.parseToJsonElement(spec.jwk.toJSONString())
-            return buildJsonObject {
-                put("jwk", jwkJson)
-                put("algorithm", spec.algorithm.toString())
-                put("encryption_method", spec.encryptionMethod.toString())
-            }
-        }
-
-        private fun responseEncryption(specTO: JsonObject): IssuanceResponseEncryptionSpec =
-            IssuanceResponseEncryptionSpec(
-                jwk = run {
-                    val element = specTO["jwk"]
-                    require(element is JsonObject)
-                    JWK.parse(element.toString())
-                },
-                algorithm = run {
-                    val element = specTO["algorithm"]
-                    require(element is JsonPrimitive)
-                    JWEAlgorithm.parse(requireNotNull(element.contentOrNull))
-                },
-                encryptionMethod = run {
-                    val element = specTO["encryption_method"]
-                    require(element is JsonPrimitive)
-                    EncryptionMethod.parse(requireNotNull(element.contentOrNull))
-                },
-            )
     }
+}
+
+private fun requestEncryptionSpecTO(spec: EncryptionSpec): JsonObject {
+    val jwkJson = Json.parseToJsonElement(spec.recipientKey.toJSONString())
+    return buildJsonObject {
+        put("recipient_key", jwkJson)
+        put("encryption_method", spec.encryptionMethod.toString())
+        put("compression_algorithm", spec.compressionAlgorithm.toString())
+    }
+}
+
+private fun requestEncryption(specTO: JsonObject): EncryptionSpec =
+    EncryptionSpec(
+        recipientKey = run {
+            val element = specTO["recipient_key"]
+            require(element is JsonObject)
+            JWK.parse(element.toString())
+        },
+        encryptionMethod = run {
+            val element = specTO["encryption_method"]
+            require(element is JsonPrimitive)
+            EncryptionMethod.parse(requireNotNull(element.contentOrNull))
+        },
+        compressionAlgorithm = run {
+            val element = specTO["compression_algorithm"]
+            element?.let {
+                require(it is JsonPrimitive)
+                CompressionAlgorithm(requireNotNull(it.contentOrNull))
+            }
+        },
+    )
+
+private fun responseEncryptionParamsTO(params: Pair<EncryptionMethod, CompressionAlgorithm?>): JsonObject =
+    buildJsonObject {
+        put("encryption_method", params.first.toString())
+        put("compression_algorithm", params.second?.toString())
+    }
+
+private fun responseEncryptionParams(specTO: JsonObject): Pair<EncryptionMethod, CompressionAlgorithm?> {
+    val encryptionMethod = run {
+        val element = specTO["encryption_method"]
+        require(element is JsonPrimitive)
+        EncryptionMethod.parse(requireNotNull(element.contentOrNull))
+    }
+    val compressionAlgorithm = run {
+        val element = specTO["compression_algorithm"]
+        element?.let {
+            require(it is JsonPrimitive)
+            CompressionAlgorithm(requireNotNull(it.contentOrNull))
+        }
+    }
+    return encryptionMethod to compressionAlgorithm
 }
 
