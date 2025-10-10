@@ -58,9 +58,8 @@ class CredentialSetsMatcher {
                 // If a valid option is found, add its credentials to our results.
                 satisfyingDocs.addAll(satisfyingOption)
             } else {
-                // CRITICAL RULE: If even one required set cannot be satisfied,
+                // Even if only one required set cannot be satisfied,
                 // the wallet must not return any credentials at all.
-                println("Error: Cannot satisfy a required credential set. Aborting.")
                 return emptyMap()
             }
         }
