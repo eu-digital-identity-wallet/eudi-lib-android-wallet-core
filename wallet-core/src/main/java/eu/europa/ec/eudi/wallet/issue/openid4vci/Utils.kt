@@ -106,7 +106,9 @@ internal fun DocumentManager.createDocument(
 
     val documentName = offerOfferedDocument
         .configuration
-        .display.firstOrNull()?.name ?: run {
+        .credentialMetadata
+        ?.display
+        ?.firstOrNull()?.name ?: run {
         when (documentFormat) {
             is MsoMdocFormat -> documentFormat.docType
             is SdJwtVcFormat -> documentFormat.vct
