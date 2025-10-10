@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
@@ -35,16 +36,15 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.logging.Logger
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executor
-import androidx.core.net.toUri
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import java.util.concurrent.Executor
 
 /**
  * Default implementation of [OpenId4VciManager].
@@ -61,7 +61,7 @@ internal class DefaultOpenId4VciManager(
     private val documentManager: DocumentManager,
     var config: OpenId4VciManager.Config,
     var logger: Logger? = null,
-    var ktorHttpClientFactory: (()-> HttpClient)? = null,
+    var ktorHttpClientFactory: (() -> HttpClient)? = null,
 ) : OpenId4VciManager {
 
     internal val httpClientFactory
@@ -195,8 +195,9 @@ internal class DefaultOpenId4VciManager(
 
                     else -> {
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
-                            deferredContext.issuanceContext,
-                            httpClientFactory()
+                            ctx = deferredContext.issuanceContext,
+                            httpClient = httpClientFactory(),
+                            responseEncryptionKey = null // TODO handle encrypted responses
                         )
                             .getOrThrow()
                         ProcessDeferredOutcome(
@@ -295,8 +296,9 @@ internal class DefaultOpenId4VciManager(
             )
         }
     }
+
     companion object {
-        private val DefaultHttpClientFactory: ()-> HttpClient = {
+        private val DefaultHttpClientFactory: () -> HttpClient = {
             HttpClient {
                 install(ContentNegotiation) {
                     json(
