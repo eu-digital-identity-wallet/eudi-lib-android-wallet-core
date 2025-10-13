@@ -34,7 +34,7 @@ class DPoPSigner private constructor(val algorithm: Algorithm) : Signer<JWK> {
         ?: throw IllegalArgumentException("Unsupported algorithm: $algorithm")
 
     override suspend fun acquire(): SignOperation<JWK> {
-        val jwk = JWK.parse(privateKey.publicKey.toJwk())
+        val jwk = JWK.parse(privateKey.publicKey.toJwk().toString())
         return SignOperation(
             function = { input -> Crypto.sign(privateKey, algorithm, input).toDerEncoded() },
             publicMaterial = jwk

@@ -43,7 +43,7 @@ class BatchProofSigner(
 
     override suspend fun authenticate(): BatchSignOperation<JwtBindingKey> {
         return BatchSignOperation(signers.map { signer ->
-            val jwk = JWK.parse(signer.getKeyInfo().publicKey.toJwk())
+            val jwk = JWK.parse(signer.getKeyInfo().publicKey.toJwk().toString())
             val keyUnlockData = this.keyUnlockData?.get(signer.keyAlias)
             SignOperation(
                 function = { input ->
