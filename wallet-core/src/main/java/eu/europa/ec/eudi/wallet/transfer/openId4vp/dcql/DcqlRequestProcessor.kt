@@ -100,6 +100,7 @@ class DcqlRequestProcessor(
 
             val dcql = request.resolvedRequestObject.query
             val credentials = dcql.credentials
+            val credentialSets = dcql.credentialSets
 
             val readerCommonName = request.resolvedRequestObject.client.legalName() ?: ""
             // Extract reader authentication/trust result if available
@@ -116,7 +117,7 @@ class DcqlRequestProcessor(
                 }
 
             // Process each credential in the query and match to available documents
-            val queryRequestedDocumentsMap = credentials.value
+            val potentialMatchesMap = credentials.value
                 .associate { query ->
                     when (val format = query.format) {
                         Format.MsoMdoc -> {
@@ -153,10 +154,28 @@ class DcqlRequestProcessor(
 
                         else -> throw IllegalArgumentException("Not supported format ${format.value}")
                     }
-                }.takeIf {
-                    // ensure that all queries have at least one matching document
-                    it.all { rd -> rd.value.requestedDocuments.isNotEmpty() }
-                } ?: emptyMap() // otherwise return an empty map
+                }
+
+            // Get the IDs of credentials that were actually found in the wallet.
+            val availableWalletCredentialIds = potentialMatchesMap
+                .filterValues { it.requestedDocuments.isNotEmpty() }
+                .keys
+
+            // Instantiate the processor and use it to determine the final set of credential IDs
+            // that satisfy the credential_sets rules.
+            val processor = CredentialSetsMatcher()
+            val processedCredentials = processor.determineRequestedDocuments(
+                credentials = credentials,
+                credentialSets = credentialSets,
+                availableWalletCredentialIds = availableWalletCredentialIds
+            )
+
+            // Filter the potential matches to create the final selection of documents for presentation.
+            // This step executes the decision made by the DcqlProcessor. If the processor returned an empty map (because a
+            // 'required' credential set could not be satisfied), this filter will also produce an empty
+            // map, ensuring no documents are returned.
+            val queryRequestedDocumentsMap = potentialMatchesMap
+                .filterKeys { it in processedCredentials.keys }
 
             // Create and return the processed request with all matched documents and a generated nonce
             return ProcessedDcqlRequest(
