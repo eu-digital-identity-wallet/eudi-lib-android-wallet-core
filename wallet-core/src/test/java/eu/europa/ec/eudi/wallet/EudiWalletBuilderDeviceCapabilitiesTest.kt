@@ -25,6 +25,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(value = Parameterized::class)
 class EudiWalletBuilderDeviceCapabilitiesTest(
@@ -56,7 +57,7 @@ class EudiWalletBuilderDeviceCapabilitiesTest(
         val config = EudiWalletConfig()
             .configureDocumentKeyCreation(
                 userAuthenticationRequired = configUserAuthenticationRequired,
-                userAuthenticationTimeout = 30_000L,
+                userAuthenticationTimeout = 30000.milliseconds,
                 useStrongBoxForKeys = configUseStrongBoxForKeys
             )
 

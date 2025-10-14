@@ -31,6 +31,7 @@ import org.junit.runner.RunWith
 import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(AndroidJUnit4::class)
 class EudiWalletTest {
@@ -65,7 +66,7 @@ class EudiWalletTest {
             )
             .configureDocumentKeyCreation(
                 userAuthenticationRequired = true,
-                userAuthenticationTimeout = 30_000L,
+                userAuthenticationTimeout = 30_000.milliseconds,
                 useStrongBoxForKeys = true,
             )
 
