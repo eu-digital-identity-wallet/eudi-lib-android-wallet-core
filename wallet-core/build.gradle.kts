@@ -31,11 +31,7 @@ plugins {
     alias(libs.plugins.dependencycheck)
     alias(libs.plugins.sonarqube)
     alias(libs.plugins.maven.publish)
-    jacoco
-}
-
-jacoco {
-    toolVersion = libs.versions.jacoco.get()
+    alias(libs.plugins.kover)
 }
 
 val NAMESPACE: String by project
@@ -102,11 +98,6 @@ android {
         singleVariant("release") {
             withSourcesJar()
         }
-    }
-
-    androidComponents {
-        onVariants {
-            createJacocoTasks(it.name) }
     }
 
     kotlinOptions {
@@ -268,8 +259,6 @@ afterEvaluate {
     }
 }
 
-// Jacoco Tasks
-
 val coverageExclusions = listOf(
     "**/databinding/*Binding.*",
     "**/R.class",
@@ -315,64 +304,3 @@ val coverageExclusions = listOf(
 
 fun String.capitalize() =
     replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-
-fun createJacocoTasks(variantName: String) {
-    val testTaskName = "test${variantName.capitalize()}UnitTest"
-    val taskName = "${testTaskName}Coverage"
-    val javaClasses = layout.buildDirectory.dir("intermediates/javac/${variantName}")
-        .get().asFileTree.matching {
-            exclude(coverageExclusions)
-        }
-    val kotlinClasses = layout.buildDirectory.dir("tmp/kotlin-classes/${variantName}")
-        .get().asFileTree.matching {
-            exclude(coverageExclusions)
-        }
-    val sourceDirs = files(
-        "$projectDir/src/main/java",
-        "$projectDir/src/main/kotlin",
-        "$projectDir/src/${variantName}/java",
-        "$projectDir/src/${variantName}/kotlin"
-    )
-    val executionDataVariant =
-        layout.buildDirectory.file("/outputs/unit_test_code_coverage/${variantName}UnitTest/${testTaskName}.exec")
-            .get().asFile
-
-    val reportTask = tasks.register<JacocoReport>(taskName) {
-        group = "reporting"
-        description = "Generate Jacoco coverage reports for the $variantName build."
-        dependsOn(testTaskName)
-        reports {
-            xml.required = true
-            html.required = true
-        }
-        sourceDirectories.setFrom(sourceDirs)
-        classDirectories.setFrom(javaClasses, kotlinClasses)
-        executionData.setFrom(executionDataVariant)
-
-        doLast {
-            layout.buildDirectory.file("reports/jacoco/${taskName}/html/index.html")
-                .get()
-                .asFile
-                .readText()
-                .let { Regex("Total[^%]*>(\\d?\\d?\\d?%)").find(it) }
-                ?.let { println("Test coverage: ${it.groupValues[1]}") }
-        }
-    }
-    tasks.register<JacocoCoverageVerification>("${testTaskName}CoverageVerification") {
-        group = "reporting"
-        description = "Verifies Jacoco coverage for the $variantName build."
-        dependsOn(reportTask.name)
-
-        violationRules {
-            rule {
-                limit {
-                    minimum = 80.toBigDecimal()
-                }
-            }
-        }
-
-        classDirectories.setFrom(kotlinClasses, javaClasses)
-        sourceDirectories.setFrom(sourceDirs)
-        executionData.setFrom("${layout.buildDirectory.get()}$executionDataVariant")
-    }
-}

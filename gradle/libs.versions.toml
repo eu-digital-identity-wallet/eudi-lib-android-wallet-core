@@ -10,14 +10,13 @@ dependencycheck = "12.1.3"
 dokka = "1.9.20"
 espresso-contrib = "3.6.1"
 espresso-core = "3.6.1"
-eudi-document-manager = "0.12.0"
+eudi-document-manager = "0.13.0-SNAPSHOT"
 eudi-iso18013-data-transfer = "0.9.0"
 eudi-lib-jvm-openid4vci-kt = "0.7.1"
 eudi-lib-jvm-siop-openid4vp-kt = "0.11.0"
 eudi-lib-jvm-sdjwt-kt = "0.10.0"
 eudi-lib-kmp-statium = "0.4.0"
 gradle-plugin = "8.13.0"
-jacoco = "0.8.12"
 java = "17"
 json = "20250517"
 junit = "5.13.2"
@@ -44,6 +43,7 @@ coreKtx = "1.16.0"
 material = "1.12.0"
 jetbrainsKotlinJvm = "2.2.0"
 testng = "7.11.0"
+kover = "0.9.1"
 
 [libraries]
 androidx-credentials-registry-provider = { module = "androidx.credentials.registry:registry-provider", version.ref = "androidx-credentials-registry-provider" }
@@ -98,3 +98,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
