@@ -37,7 +37,7 @@ The library supports the following features:
 |                            | Custom Key Management implementation                                    | ✅ via imeplementation of SecureArea                                                    |
 |                            | Multiple Key Management implementations                                 | ✅                                                                                      |
 |                            | Support for Batch credentials per Document                              | ✅                                                                                      |
-| **Document Issuance**      | OpenId4VCI (draft 15) document issuance                                 |                                                                                        |
+| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                        |
 |                            | Authorization Code Flow                                                 | ✅                                                                                      |
 |                            | Pre-authorization Code Flow                                             | ✅                                                                                      |
 |                            | DPoP JWT in authorization                                               | ✅                                                                                      |
