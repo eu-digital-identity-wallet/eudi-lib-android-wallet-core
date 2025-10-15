@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.openid4vci.ClaimPath
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Display
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
@@ -79,32 +80,34 @@ class IssuerMetadataTransformationsTest {
             isoCredentialCurvesSupported = listOf(),
             isoPolicy = MsoMdocPolicy(oneTimeUse = true, batchSize = 10),
             proofTypesSupported = ProofTypesSupported.Empty,
-            display = listOf(
-                Display(
-                    name = "Example Display",
-                    locale = Locale.forLanguageTag("en"),
-                    logo = Display.Logo(
-                        uri = URI("https://example.com/logo.png"),
-                        alternativeText = "Example Logo"
-                    ),
-                    description = "A description",
-                    backgroundColor = "#FFFFFF",
-                    textColor = "#000000"
-                )
-            ),
             docType = "exampleDocType",
-            claims = listOf(
-                Claim(
-                    path = ClaimPath.claim("namespace1").claim("claim1"),
-                    mandatory = true,
-                    display = listOf(
-                        Claim.Display(
-                            name = "Claim 1 Display",
-                            locale = Locale.forLanguageTag("en")
+            credentialMetadata = CredentialMetadata(
+                display = listOf(
+                    Display(
+                        name = "Example Display",
+                        locale = Locale.forLanguageTag("en"),
+                        logo = Display.Logo(
+                            uri = URI("https://example.com/logo.png"),
+                            alternativeText = "Example Logo"
+                        ),
+                        description = "A description",
+                        backgroundColor = "#FFFFFF",
+                        textColor = "#000000"
+                    )
+                ),
+                claims = listOf(
+                    Claim(
+                        path = ClaimPath.claim("namespace1").claim("claim1"),
+                        mandatory = true,
+                        display = listOf(
+                            Claim.Display(
+                                name = "Claim 1 Display",
+                                locale = Locale.forLanguageTag("en")
+                            )
                         )
                     )
-                )
 
+                )
             )
         )
         val offeredDocument = OfferedDocument(
@@ -161,24 +164,27 @@ class IssuerMetadataTransformationsTest {
             cryptographicBindingMethodsSupported = listOf(),
             credentialSigningAlgorithmsSupported = listOf("RS256"),
             proofTypesSupported = ProofTypesSupported.Empty,
-            display = listOf(
-                Display(
-                    name = "Example SdJwt Display",
-                    locale = Locale.forLanguageTag("fr"),
-                    description = "French description",
-                    backgroundColor = "#EEEEEE",
-                    textColor = "#111111"
-                )
-            ),
             type = "exampleType",
-            claims = listOf(
-                Claim(
-                    path = ClaimPath.claim("claim2"),
-                    mandatory = false,
-                    display = listOf(
-                        Claim.Display(
-                            name = "Claim 2 Display",
-                            locale = Locale.forLanguageTag("fr")
+            credentialMetadata = CredentialMetadata(
+                display = listOf(
+                    Display(
+                        name = "Example SdJwt Display",
+                        locale = Locale.forLanguageTag("fr"),
+                        description = "French description",
+                        backgroundColor = "#EEEEEE",
+                        textColor = "#111111"
+                    )
+                ),
+
+                claims = listOf(
+                    Claim(
+                        path = ClaimPath.claim("claim2"),
+                        mandatory = false,
+                        display = listOf(
+                            Claim.Display(
+                                name = "Claim 2 Display",
+                                locale = Locale.forLanguageTag("fr")
+                            )
                         )
                     )
                 )
@@ -234,8 +240,10 @@ class IssuerMetadataTransformationsTest {
             cryptographicBindingMethodsSupported = listOf(),
             credentialSigningAlgorithmsSupported = listOf("RS256"),
             proofTypesSupported = ProofTypesSupported.Empty,
-            display = emptyList(),
             type = "exampleType",
+            credentialMetadata = CredentialMetadata(
+                display = emptyList(),
+            )
         )
 
         val expectedMetaData = IssuerMetadata(
