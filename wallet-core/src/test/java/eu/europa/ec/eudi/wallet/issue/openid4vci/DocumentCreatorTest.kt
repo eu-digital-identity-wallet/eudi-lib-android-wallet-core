@@ -44,8 +44,10 @@ class DocumentCreatorTest {
         val documentFormatMock = MsoMdocFormat(docType = docTypeMock)
         val credentialConfigurationMock = mockk<MsoMdocCredential> {
             every { docType } returns docTypeMock
-            every { claims } returns emptyList()
-            every { display } returns emptyList()
+            every { credentialMetadata } returns mockk {
+                every { claims } returns emptyList()
+                every { display } returns emptyList()
+            }
         }
         val configurationIdentifiers = listOf(
             CredentialConfigurationIdentifier("id")
