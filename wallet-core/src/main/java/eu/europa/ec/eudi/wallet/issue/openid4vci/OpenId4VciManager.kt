@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsa
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.HttpClient
+import org.multipaz.crypto.Algorithm
 import java.util.concurrent.Executor
 
 /**
@@ -277,14 +278,14 @@ interface OpenId4VciManager {
      * @property issuerUrl the issuer url
      * @property clientId the client id
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
-     * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
+     * @property dPoPUsage flag that if set will enable the use of DPoP JWT
      * @property parUsage if PAR should be used
      */
     data class Config @JvmOverloads constructor(
         val issuerUrl: String,
         val clientId: String,
         val authFlowRedirectionURI: String,
-        val useDPoPIfSupported: Boolean = true,
+        val dPoPUsage: DPoPUsage = DPoPUsage.IfSupported(),
         @ParUsage val parUsage: Int = IF_SUPPORTED,
     ) {
         /**
@@ -303,6 +304,41 @@ interface OpenId4VciManager {
             }
         }
 
+        /**
+         * Defines how Demonstration of Proof of Possession (DPoP) should be used during
+         * the OpenID4VCI issuance protocol.
+         *
+         * DPoP is a security mechanism that binds access tokens to a specific client by
+         * requiring the client to prove possession of a private key. This helps prevent
+         * token theft and misuse in OAuth 2.0 and OpenID Connect flows.
+         */
+        sealed interface DPoPUsage {
+            /**
+             * Disables the use of DPoP completely.
+             *
+             * Use this option when DPoP is not supported by the server or when
+             * using other token binding mechanisms.
+             */
+            data object Disabled : DPoPUsage
+
+            /**
+             * Enables DPoP if the server supports it, using the specified algorithm.
+             *
+             * @property algorithm The cryptographic algorithm to use for DPoP token signing.
+             *                     Defaults to ESP256 (ECDSA with P-256 curve and SHA-256).
+             * @throws [IllegalArgumentException] if the specified algorithm is not supported
+             *                     or is not a signing algorithm.
+             * @see [Algorithm.isSigning]
+             */
+            data class IfSupported(val algorithm: Algorithm = Algorithm.ESP256) : DPoPUsage {
+                init {
+                    require(algorithm.isSigning) {
+                        "Algorithm $algorithm is not a signing algorithm"
+                    }
+                }
+            }
+        }
+
         companion object {
             /**
              * Create a [Config] instance
@@ -318,14 +354,14 @@ interface OpenId4VciManager {
          * @property issuerUrl the issuer url
          * @property clientId the client id
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
-         * @property useDPoPIfSupported flag that if set will enable the use of DPoP JWT
+         * @property dPoPUsage flag that if set will enable the use of DPoP JWT
          * @property parUsage if PAR should be used
          */
         class Builder {
             var issuerUrl: String? = null
             var clientId: String? = null
             var authFlowRedirectionURI: String? = null
-            var useDPoPIfSupported: Boolean = true
+            var dPoPUsage: DPoPUsage = DPoPUsage.IfSupported()
 
             @ParUsage
             var parUsage: Int = IF_SUPPORTED
@@ -354,11 +390,11 @@ interface OpenId4VciManager {
 
             /**
              * Set the flag to enable the use of DPoP JWT
-             * @param useDPoPIfSupported the flag
+             * @param dPoPUsage the DPoP usage
              * @return this builder
              */
-            fun withUseDPoPIfSupported(useDPoPIfSupported: Boolean) = apply {
-                this.useDPoPIfSupported = useDPoPIfSupported
+            fun withDPoPUsage(dPoPUsage: DPoPUsage) = apply {
+                this.dPoPUsage = dPoPUsage
             }
 
             /**
@@ -382,7 +418,7 @@ interface OpenId4VciManager {
                     issuerUrl = issuerUrl!!,
                     clientId = clientId!!,
                     authFlowRedirectionURI = authFlowRedirectionURI!!,
-                    useDPoPIfSupported = useDPoPIfSupported,
+                    dPoPUsage = dPoPUsage,
                     parUsage = parUsage
                 )
             }
