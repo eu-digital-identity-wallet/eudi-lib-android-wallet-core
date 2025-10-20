@@ -91,9 +91,9 @@ object MsoMdocStatusReferenceExtractor : StatusReferenceExtractor {
             "MSO is not a CBOR map"
         }
 
-        val statusList = mso.get(STATUS).get(STATUS_LIST)
-        val uri = statusList.get(URI).AsString()
-        val idx = statusList.get(IDX).AsInt32()
+        val statusList = mso[STATUS][STATUS_LIST]
+        val uri = statusList[URI].AsString()
+        val idx = statusList[IDX].AsInt32()
 
         return StatusReference(
             uri = uri,
