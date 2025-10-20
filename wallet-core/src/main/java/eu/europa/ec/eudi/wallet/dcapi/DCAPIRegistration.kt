@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.util.encoders.Hex
@@ -51,11 +52,12 @@ import java.net.URL
 class DCAPIIsoMdocRegistration(
     private val context: Context,
     private val documentManager: DocumentManager,
-    private var logger: Logger? = null
+    private var logger: Logger? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): DCAPIRegistration {
 
     override suspend fun registerCredentials() {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 val issuedMsoMdocDocuments =
                     documentManager.getDocuments().filterIsInstance<IssuedDocument>()
@@ -152,7 +154,7 @@ class DCAPIIsoMdocRegistration(
         return credentialBytes
     }
 
-    private suspend fun getLogo(url: URL): ByteArray? = withContext(Dispatchers.IO) {
+    private suspend fun getLogo(url: URL): ByteArray? = withContext(ioDispatcher) {
         try {
             (url.openConnection() as? HttpURLConnection)?.run {
                 connectTimeout = 5_000
