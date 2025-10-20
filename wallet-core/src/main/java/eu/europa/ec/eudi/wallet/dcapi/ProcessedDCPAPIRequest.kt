@@ -72,10 +72,10 @@ class ProcessedDCPAPIRequest(
             val json = JSONObject(option.requestJson)
             val firstRequest = json.getJSONArray(REQUESTS).getJSONObject(0)
 
-            val protocol = firstRequest.get(PROTOCOL) as String
+            val protocol = firstRequest[PROTOCOL] as String
             require(protocol == DC_API_PROTOCOL_ORG_ISO_MDOC) { "Unsupported protocol: $protocol" }
 
-            val data = firstRequest.get(DATA) as JSONObject
+            val data = firstRequest[DATA] as JSONObject
             val request = JSONObject(data.toString())
             val encryptionInfoBase64 = request.getString(ENCRYPTION_INFO)
 
@@ -86,7 +86,7 @@ class ProcessedDCPAPIRequest(
             }
             val recipientPublicKey =
                 Cbor.decode(
-                    encryptionInfo.get(1).get(RECIPIENT_PUBLIC_KEY).EncodeToBytes()
+                    encryptionInfo[1][RECIPIENT_PUBLIC_KEY].EncodeToBytes()
                 ).asCoseKey.ecPublicKey
 
             val deviceResponse = processedDeviceRequest.generateResponse(
