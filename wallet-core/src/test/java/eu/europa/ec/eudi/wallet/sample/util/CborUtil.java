@@ -1526,42 +1526,36 @@ public class CborUtil {
         if (octetString == null) {
             return null;
         }
-        ASN1InputStream asn1InputStream = null;
-        try {
-            asn1InputStream = new ASN1InputStream(octetString);
+
+        try (ASN1InputStream asn1InputStream = new ASN1InputStream(octetString)) {
             byte[] cborBytes = ((ASN1OctetString) asn1InputStream.readObject()).getOctets();
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(cborBytes);
-            List<DataItem> dataItems = new CborDecoder(bais).decode();
-            if (dataItems.size() != 1) {
-                throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(cborBytes)) {
+                List<DataItem> dataItems = new CborDecoder(bais).decode();
+                if (dataItems.size() != 1) {
+                    throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
+                }
+                Array array = castTo(Array.class, dataItems.get(0));
+                List<DataItem> items = array.getDataItems();
+                if (items.size() < 2) {
+                    throw new IllegalArgumentException(
+                            "Expected at least 2 array items, found " + items.size());
+                }
+                String id = checkedStringValue(items.get(0));
+                if (!id.equals("ProofOfBinding")) {
+                    throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
+                }
+                byte[] popSha256 = castTo(ByteString.class, items.get(1)).getBytes();
+                if (popSha256.length != 32) {
+                    throw new IllegalArgumentException(
+                            "Expected bstr to be 32 bytes, it is " + popSha256.length);
+                }
+                return popSha256;
             }
-            Array array = castTo(Array.class, dataItems.get(0));
-            List<DataItem> items = array.getDataItems();
-            if (items.size() < 2) {
-                throw new IllegalArgumentException(
-                        "Expected at least 2 array items, found " + items.size());
-            }
-            String id = checkedStringValue(items.get(0));
-            if (!id.equals("ProofOfBinding")) {
-                throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
-            }
-            byte[] popSha256 = castTo(ByteString.class, items.get(1)).getBytes();
-            if (popSha256.length != 32) {
-                throw new IllegalArgumentException(
-                        "Expected bstr to be 32 bytes, it is " + popSha256.length);
-            }
-            return popSha256;
         } catch (IOException e) {
             throw new IllegalArgumentException("Error decoding extension data", e);
         } catch (CborException e) {
             throw new IllegalArgumentException("Error decoding data", e);
-        } finally {
-            try {
-                if (null != asn1InputStream) asn1InputStream.close();
-            } catch (IOException e) {
-                // Ignore
-            }
         }
     }
 
