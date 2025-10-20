@@ -127,116 +127,116 @@ object CBOR {
      * @param indent The current indentation level.
      * @param dataItem The [DataItem] to pretty print.
      */
-    @JvmStatic
     private fun cborPrettyPrintDataItem(
         sb: StringBuilder, indent: Int,
         dataItem: DataItem,
     ) {
-        val indentBuilder = StringBuilder()
-        for (n in 0 until indent) {
-            indentBuilder.append(' ')
+        sb.append(cborBuildPrintString(indent, dataItem))
+    }
+
+    private val cborFloatFormatter =
+        DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH)).apply {
+            maximumFractionDigits = 340
         }
-        val indentString = indentBuilder.toString()
-        if (dataItem.hasTag()) {
-            sb.append(String.format(Locale.US, "tag %d ", dataItem.tag.value))
+
+    /**
+     * Recursively builds and returns a pretty-printed string for a DataItem.
+     * This is the main dispatcher.
+     */
+    private fun cborBuildPrintString(indent: Int, dataItem: DataItem): String {
+        val tagString = if (dataItem.hasTag()) {
+            String.format(Locale.US, "tag %d ", dataItem.tag.value)
+        } else {
+            ""
         }
-        @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
-        when (dataItem.majorType) {
-            MajorType.INVALID -> sb.append("<invalid>")
-            MajorType.UNSIGNED_INTEGER -> {
-                val value = (dataItem as UnsignedInteger).value
-                sb.append(value)
-            }
-            MajorType.NEGATIVE_INTEGER -> {
-                val value: BigInteger = (dataItem as NegativeInteger).value
-                sb.append(value)
-            }
-            MajorType.BYTE_STRING -> {
-                val value = (dataItem as ByteString).bytes
-                sb.append("[")
-                for ((count, b) in value.withIndex()) {
-                    if (count > 0) {
-                        sb.append(", ")
-                    }
-                    sb.append(String.format("0x%02x", b))
-                }
-                sb.append("]")
-            }
-            MajorType.UNICODE_STRING -> {
-                val value = (dataItem as UnicodeString).string
-                sb.append("'$value'")
-            }
-            MajorType.ARRAY -> {
-                val items = (dataItem as Array).dataItems
-                if (items.size == 0) {
-                    sb.append("[]")
-                } else if (cborAreAllDataItemsNonCompound(items)) {
-                    sb.append("[")
-                    for ((count, item) in items.withIndex()) {
-                        cborPrettyPrintDataItem(sb, indent, item)
-                        if (count + 1 < items.size) {
-                            sb.append(", ")
-                        }
-                    }
-                    sb.append("]")
-                } else {
-                    sb.append("[\n$indentString")
-                    for ((count, item) in items.withIndex()) {
-                        sb.append("  ")
-                        cborPrettyPrintDataItem(sb, indent + 2, item)
-                        if (count + 1 < items.size) {
-                            sb.append(",")
-                        }
-                        sb.append("\n$indentString")
-                    }
-                    sb.append("]")
-                }
-            }
-            MajorType.MAP -> {
-                val keys = (dataItem as Map).keys
-                if (keys.isEmpty()) {
-                    sb.append("{}")
-                } else {
-                    sb.append("{\n$indentString")
-                    for ((count, key) in keys.withIndex()) {
-                        sb.append("  ")
-                        val value = dataItem[key]
-                        cborPrettyPrintDataItem(sb, indent + 2, key)
-                        sb.append(" : ")
-                        cborPrettyPrintDataItem(sb, indent + 2, value)
-                        if (count + 1 < keys.size) {
-                            sb.append(",")
-                        }
-                        sb.append("\n$indentString")
-                    }
-                    sb.append("}")
-                }
-            }
+
+        val cborString = when (dataItem.majorType) {
+            MajorType.INVALID -> "<invalid>"
+            MajorType.UNSIGNED_INTEGER -> (dataItem as UnsignedInteger).value.toString()
+            MajorType.NEGATIVE_INTEGER -> (dataItem as NegativeInteger).value.toString()
+            MajorType.UNICODE_STRING -> "'${(dataItem as UnicodeString).string}'"
             MajorType.TAG -> throw IllegalStateException("Semantic tag data item not expected")
-            MajorType.SPECIAL -> when (dataItem) {
-                is SimpleValue -> {
-                    @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
-                    when (dataItem.simpleValueType) {
-                        SimpleValueType.FALSE -> sb.append("false")
-                        SimpleValueType.TRUE -> sb.append("true")
-                        SimpleValueType.NULL -> sb.append("null")
-                        SimpleValueType.UNDEFINED -> sb.append("undefined")
-                        SimpleValueType.RESERVED -> sb.append("reserved")
-                        SimpleValueType.UNALLOCATED -> sb.append("unallocated")
-                    }
-                }
-                is DoublePrecisionFloat -> {
-                    val df = DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
-                    df.maximumFractionDigits = 340
-                    sb.append(df.format(dataItem.value))
-                }
-                is AbstractFloat -> {
-                    val df = DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
-                    df.maximumFractionDigits = 340
-                    sb.append(df.format(dataItem.value.toDouble()))
-                }
-                else -> sb.append("break")
+
+            MajorType.BYTE_STRING -> cborPrintByteString(dataItem as ByteString)
+            MajorType.ARRAY -> cborPrintArray(indent, dataItem as Array)
+            MajorType.MAP -> cborPrintMap(indent, dataItem as Map)
+            MajorType.SPECIAL -> cborPrintSpecial(dataItem)
+        }
+
+        return tagString + cborString
+    }
+
+    /**
+     * Handles Byte Strings.
+     */
+    private fun cborPrintByteString(dataItem: ByteString): String {
+        return dataItem.bytes.joinToString(prefix = "[", separator = ", ", postfix = "]") { b -> // +1
+            String.format("0x%02x", b)
+        }
+    }
+
+    /**
+     * Handles Arrays (your biggest complexity source).
+     */
+    private fun cborPrintArray(indent: Int, dataItem: Array): String {
+        val items = dataItem.dataItems
+        if (items.isEmpty()) return "[]"
+
+        val indentString = " ".repeat(indent)
+
+        return if (cborAreAllDataItemsNonCompound(items)) {
+            // All simple: Print on one line
+            items.joinToString(prefix = "[", separator = ", ", postfix = "]") { item ->
+                cborBuildPrintString(indent, item)
             }
+        } else {
+            items.joinToString(
+                prefix = "[\n$indentString  ",
+                separator = ",\n$indentString  ",
+                postfix = "\n$indentString]"
+            ) { item ->
+                cborBuildPrintString(indent + 2, item)
+            }
+        }
+    }
+
+    /**
+     * Handles Maps
+     */
+    private fun cborPrintMap(indent: Int, dataItem: Map): String {
+        val keys = dataItem.keys
+        if (keys.isEmpty()) return "{}"
+
+        val indentString = " ".repeat(indent)
+
+        return keys.joinToString(
+            prefix = "{\n$indentString  ",
+            separator = ",\n$indentString  ",
+            postfix = "\n$indentString}"
+        ) { key ->
+            val value = dataItem[key]
+            val keyString = cborBuildPrintString(indent + 2, key)
+            val valueString = cborBuildPrintString(indent + 2, value)
+            "$keyString : $valueString"
+        }
+    }
+
+    /**
+     * Handles Special types.
+     */
+    private fun cborPrintSpecial(dataItem: DataItem): String {
+        return when (dataItem) { // +1
+            is SimpleValue -> when (dataItem.simpleValueType) { // +2
+                SimpleValueType.FALSE -> "false"
+                SimpleValueType.TRUE -> "true"
+                SimpleValueType.NULL -> "null"
+                SimpleValueType.UNDEFINED -> "undefined"
+                SimpleValueType.RESERVED -> "reserved"
+                SimpleValueType.UNALLOCATED -> "unallocated"
+            }
+            is DoublePrecisionFloat -> cborFloatFormatter.format(dataItem.value)
+            is AbstractFloat -> cborFloatFormatter.format(dataItem.value.toDouble())
+            else -> "break"
         }
     }
 
