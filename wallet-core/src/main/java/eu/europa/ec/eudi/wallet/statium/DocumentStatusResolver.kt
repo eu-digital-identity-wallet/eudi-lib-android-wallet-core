@@ -31,6 +31,7 @@ import kotlin.time.Duration
 /**
  * Interface for resolving the status of a document
  */
+@Suppress("kotlin:S6517")
 interface DocumentStatusResolver {
 
     /**
