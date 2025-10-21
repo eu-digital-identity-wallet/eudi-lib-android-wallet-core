@@ -50,7 +50,7 @@ class OpenId4VpResponse(
      */
     val encryptionParameters: EncryptionParameters?
         get() = resolvedRequestObject.responseEncryptionSpecification
-            ?.let { spec ->
+            ?.let { _ ->
                 EncryptionParameters.DiffieHellman(apu = Base64URL.encode(msoMdocNonce))
             }
 

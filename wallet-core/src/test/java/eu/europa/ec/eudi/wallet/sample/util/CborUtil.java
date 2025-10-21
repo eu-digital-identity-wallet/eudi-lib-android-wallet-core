@@ -1694,6 +1694,7 @@ public class CborUtil {
     }
 
 
+    @SuppressWarnings("java:S125")
     protected static @NonNull
     X509Certificate signPublicKeyWithPrivateKey(@NonNull String keyToSignAlias,
                                                 @NonNull String keyToSignWithAlias) {
