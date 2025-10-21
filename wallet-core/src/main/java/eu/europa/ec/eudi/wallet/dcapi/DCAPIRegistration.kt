@@ -185,6 +185,6 @@ class DCAPIIsoMdocRegistration(
     }
 }
 
-interface DCAPIRegistration {
+fun interface DCAPIRegistration {
     suspend fun registerCredentials()
 }
