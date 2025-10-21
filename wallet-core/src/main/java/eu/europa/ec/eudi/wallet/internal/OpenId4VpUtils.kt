@@ -394,9 +394,7 @@ internal suspend fun verifiablePresentationForSdJwtVc(
             }.toSet()
 
         // Check that at least one claim is disclosed, otherwise throw an error
-        if (query.isEmpty()) {
-            throw IllegalArgumentException("No claims to disclose")
-        }
+        require(!(query.isEmpty())) { "No claims to disclose" }
 
         val presentation = issuedSdJwt.present(query)
             ?: throw IllegalArgumentException("Failed to create SD JWT VC presentation")

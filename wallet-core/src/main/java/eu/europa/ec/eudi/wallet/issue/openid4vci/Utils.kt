@@ -158,11 +158,7 @@ internal inline fun <reified V : OpenId4VciResult> OpenId4VciManager.OnResult<V>
 internal val DeferredIssuanceContext.hasExpired: Boolean
     get() = with(authorizedTransaction.authorizedRequest) {
         val now = Instant.now()
-        if (accessToken.isExpired(timestamp, now)) {
-            return null == refreshToken
-        } else {
-            return false
-        }
+        accessToken.isExpired(timestamp, now) && (refreshToken == null)
     }
 
 @JvmSynthetic
