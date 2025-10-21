@@ -16,11 +16,10 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
-import org.multipaz.crypto.Algorithm
 import kotlin.test.Test
 import kotlin.test.assertIs
 
@@ -84,8 +83,7 @@ class OpenId4VciManagerConfigBuilderTest {
         assertEquals("https://issuer.example.com", config.issuerUrl)
         assertEquals(OpenId4VciManager.ClientAuthenticationType.AttestationBased, config.clientAuthenticationType)
         assertEquals("app://redirect", config.authFlowRedirectionURI)
-        assertIs<OpenId4VciManager.Config.DPoPUsage.IfSupported>(config.dPoPUsage)
-        assertEquals(Algorithm.ESP256, config.dPoPUsage.algorithm)
+        assertIs<DPopConfig.Default>(config.dpopConfig)
     }
 
     @Test
@@ -94,11 +92,10 @@ class OpenId4VciManagerConfigBuilderTest {
             .withIssuerUrl("https://issuer.example.com")
             .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
             .withAuthFlowRedirectionURI("app://redirect")
-            .withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.IfSupported())
+            .withDPopConfig(DPopConfig.Disabled)
 
         val config = builder.build()
 
-        assertIs<OpenId4VciManager.Config.DPoPUsage.IfSupported>(config.dPoPUsage)
-        assertEquals(Algorithm.ESP256, config.dPoPUsage.algorithm)
+        assertIs<DPopConfig.Disabled>(config.dpopConfig)
     }
 }
