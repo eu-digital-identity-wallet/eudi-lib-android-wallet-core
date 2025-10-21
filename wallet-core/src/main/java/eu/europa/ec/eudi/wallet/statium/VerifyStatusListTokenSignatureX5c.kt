@@ -54,9 +54,7 @@ class VerifyStatusListTokenSignatureX5c : VerifyStatusListTokenJwtSignature {
         val verifier = when (publicKey) {
             is ECPublicKey -> ECDSAVerifier(publicKey)
             is RSAPublicKey -> RSASSAVerifier(publicKey)
-            else -> throw IllegalStateException(
-                "Unsupported public key type: ${publicKey.javaClass.name}"
-            )
+            else -> error("Unsupported public key type: ${publicKey.javaClass.name}")
         }
 
         val isVerified = signedJwt.verify(verifier)
