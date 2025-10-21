@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.statium.GetStatusListToken
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.statium.StatusIndex
 import eu.europa.ec.eudi.statium.StatusReference
-import eu.europa.ec.eudi.statium.VerifyStatusListTokenSignature
+import eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import io.ktor.client.HttpClient
 import io.mockk.coEvery
@@ -49,7 +49,7 @@ class DocumentStatusResolverTest {
         uri = "https://example.com/status",
         index = StatusIndex(22)
     )
-    private val verifySignature = VerifyStatusListTokenSignature { _, _, _ ->
+    private val verifySignature = VerifyStatusListTokenJwtSignature { _, _ ->
         Result.success(Unit)
     }
     private lateinit var mockHttpClientFactory: () -> HttpClient
@@ -110,7 +110,7 @@ class DocumentStatusResolverTest {
     @Test
     fun `companion object creates resolver with custom parameters`() {
         // Given
-        val customVerifySignature = VerifyStatusListTokenSignature { _, _, _ ->
+        val customVerifySignature = VerifyStatusListTokenJwtSignature { _, _ ->
             Result.success(Unit)
         }
 
@@ -135,7 +135,7 @@ class DocumentStatusResolverTest {
         every {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                mockHttpClientFactory(),
                 verifySignature,
                 any()   // allowedClockSkew
             )
@@ -166,7 +166,7 @@ class DocumentStatusResolverTest {
         verify(exactly = 1) {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                mockHttpClientFactory(),
                 verifySignature,
                 0.minutes
             )
@@ -186,7 +186,7 @@ class DocumentStatusResolverTest {
         every {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                mockHttpClientFactory(),
                 verifySignature,
                 any()   // allowedClockSkew
             )
@@ -217,7 +217,7 @@ class DocumentStatusResolverTest {
         verify(exactly = 1) {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory,
+                mockHttpClientFactory(),
                 verifySignature,
                 customClockSkew
             )

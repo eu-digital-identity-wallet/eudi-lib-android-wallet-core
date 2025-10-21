@@ -16,7 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.statium
 
-import eu.europa.ec.eudi.statium.VerifyStatusListTokenSignature
+import eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature
 import io.ktor.client.HttpClient
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.minutes
 
 class DocumentStatusResolverBuilderTest {
 
-    private lateinit var mockVerifySignature: VerifyStatusListTokenSignature
+    private lateinit var mockVerifySignature: VerifyStatusListTokenJwtSignature
     private lateinit var mockHttpClient: HttpClient
     private lateinit var mockHttpClientFactory: () -> HttpClient
     private lateinit var mockExtractor: StatusReferenceExtractor
@@ -48,7 +48,7 @@ class DocumentStatusResolverBuilderTest {
         val builder = DocumentStatusResolver.Builder()
 
         // Assert default values
-        assertEquals(VerifyStatusListTokenSignature.x5c::class, builder.verifySignature::class)
+        assertEquals(VerifyStatusListTokenJwtSignature.x5c::class, builder.verifySignature::class)
         assertEquals(Duration.ZERO, builder.allowedClockSkew)
         assertEquals(DefaultStatusReferenceExtractor, builder.extractor)
     }

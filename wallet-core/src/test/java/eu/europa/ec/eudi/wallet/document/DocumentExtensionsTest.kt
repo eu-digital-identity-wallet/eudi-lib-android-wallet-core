@@ -41,6 +41,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
+import kotlin.time.Duration.Companion.milliseconds
 
 class DocumentExtensionsTest {
 
@@ -162,7 +163,7 @@ class DocumentExtensionsTest {
         val eudiWalletConfig = EudiWalletConfig()
             .configureDocumentKeyCreation(
                 userAuthenticationRequired = true,
-                userAuthenticationTimeout = 1000,
+                userAuthenticationTimeout = 1000.milliseconds,
                 useStrongBoxForKeys = true,
             )
 
@@ -197,7 +198,7 @@ class DocumentExtensionsTest {
         assertEquals(eudiWalletConfig.useStrongBoxForKeys, createKeySettings.useStrongBox)
         assertEquals(
             eudiWalletConfig.userAuthenticationTimeout,
-            createKeySettings.userAuthenticationTimeoutMillis
+            createKeySettings.userAuthenticationTimeout
         )
     }
 
@@ -288,7 +289,7 @@ class DocumentExtensionsTest {
         ) {
             setUserAuthenticationRequired(
                 required = true,
-                timeoutMillis = 1000,
+                timeout = 1000.milliseconds,
                 userAuthenticationTypes = setOf(
                     UserAuthenticationType.LSKF,
                     UserAuthenticationType.BIOMETRIC

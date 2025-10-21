@@ -19,12 +19,12 @@ package eu.europa.ec.eudi.wallet.statium
 import eu.europa.ec.eudi.statium.GetStatus
 import eu.europa.ec.eudi.statium.GetStatusListToken
 import eu.europa.ec.eudi.statium.Status
-import eu.europa.ec.eudi.statium.VerifyStatusListTokenSignature
+import eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 /**
@@ -50,7 +50,7 @@ interface DocumentStatusResolver {
          * @param allowedClockSkew the allowed clock skew for the verification
          */
         operator fun invoke(
-            verifySignature: VerifyStatusListTokenSignature = VerifyStatusListTokenSignature.x5c,
+            verifySignature: VerifyStatusListTokenJwtSignature = VerifyStatusListTokenJwtSignature.x5c,
             ktorHttpClientFactory: () -> HttpClient = { HttpClient() },
             allowedClockSkew: Duration = Duration.ZERO,
         ): DocumentStatusResolver {
@@ -76,14 +76,14 @@ interface DocumentStatusResolver {
      * Builder for [DocumentStatusResolver]
      * It allows to set the parameters for the resolver it builds a [DocumentStatusResolverImpl]
      *
-     * @property verifySignature a function to verify the status list token signature; default is [VerifyStatusListTokenSignature.x5c]
+     * @property verifySignature a function to verify the status list token signature; default is [VerifyStatusListTokenJwtSignature.x5c]
      * @property ktorHttpClientFactory a factory function to create an [HttpClient]; default is [HttpClient]
      * @property allowedClockSkew the allowed clock skew for the verification; default is [Duration.ZERO]
      * @property extractor an instance of [StatusReferenceExtractor] to extract the status reference from the document; default is [DefaultStatusReferenceExtractor]
      */
     class Builder {
 
-        var verifySignature: VerifyStatusListTokenSignature = VerifyStatusListTokenSignature.x5c
+        var verifySignature: VerifyStatusListTokenJwtSignature = VerifyStatusListTokenJwtSignature.x5c
         var ktorHttpClientFactory: () -> HttpClient = { HttpClient() }
         var allowedClockSkew: Duration = Duration.ZERO
         var extractor: StatusReferenceExtractor = DefaultStatusReferenceExtractor
@@ -93,7 +93,7 @@ interface DocumentStatusResolver {
          * @param verifySignature a function to verify the status list token signature
          * @return the builder instance
          */
-        fun withVerifySignature(verifySignature: VerifyStatusListTokenSignature) = apply {
+        fun withVerifySignature(verifySignature: VerifyStatusListTokenJwtSignature) = apply {
             this.verifySignature = verifySignature
         }
 
@@ -147,7 +147,7 @@ interface DocumentStatusResolver {
  * @param extractor an instance of [StatusReferenceExtractor] to extract the status reference from the document
  */
 class DocumentStatusResolverImpl(
-    internal val verifySignature: VerifyStatusListTokenSignature,
+    internal val verifySignature: VerifyStatusListTokenJwtSignature,
     internal val allowedClockSkew: Duration,
     internal val ktorHttpClientFactory: () -> HttpClient,
     internal val extractor: StatusReferenceExtractor = DefaultStatusReferenceExtractor,
@@ -160,7 +160,7 @@ class DocumentStatusResolverImpl(
 
             val getStatusListToken = GetStatusListToken.usingJwt(
                 clock = Clock.System,
-                httpClientFactory = ktorHttpClientFactory,
+                httpClient = ktorHttpClientFactory(),
                 verifyStatusListTokenSignature = verifySignature,
                 allowedClockSkew = allowedClockSkew,
             )

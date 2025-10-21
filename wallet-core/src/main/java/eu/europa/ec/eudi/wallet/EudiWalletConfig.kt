@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -344,7 +345,7 @@ class EudiWalletConfig {
 
     var userAuthenticationRequired: Boolean = false
         internal set // internal for setting the default value from the builder
-    var userAuthenticationTimeout: Long = 0L
+    var userAuthenticationTimeout: Duration = 0.milliseconds
         private set
     var useStrongBoxForKeys: Boolean = true
         internal set // internal for setting the default value from the builder
@@ -374,7 +375,7 @@ class EudiWalletConfig {
      */
     fun configureDocumentKeyCreation(
         userAuthenticationRequired: Boolean = false,
-        userAuthenticationTimeout: Long = 0L,
+        userAuthenticationTimeout: Duration = 0.milliseconds,
         useStrongBoxForKeys: Boolean = true,
     ) = apply {
         this.userAuthenticationRequired = userAuthenticationRequired
@@ -382,7 +383,7 @@ class EudiWalletConfig {
         this.useStrongBoxForKeys = useStrongBoxForKeys
 
         if (this.userAuthenticationRequired) {
-            require(this.userAuthenticationTimeout >= 0) { "User authentication timeout must be equal or greater than 0" }
+            require(this.userAuthenticationTimeout >= 0.milliseconds) { "User authentication timeout must be equal or greater than 0" }
         }
     }
 
