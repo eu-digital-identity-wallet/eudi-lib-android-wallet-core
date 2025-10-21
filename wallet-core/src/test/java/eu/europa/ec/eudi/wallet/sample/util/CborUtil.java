@@ -911,8 +911,7 @@ public class CborUtil {
             throw new IllegalArgumentException("ByteString is not tagged with tag 24");
         }
         byte[] encodedCbor = itemByteString.getBytes();
-        DataItem embeddedItem = cborDecode(encodedCbor);
-        return embeddedItem;
+        return cborDecode(encodedCbor);
     }
 
     /**
@@ -1009,7 +1008,7 @@ public class CborUtil {
         ECPoint w = ecKey.getW();
         byte[] x = sec1EncodeFieldElementAsOctetString(32, w.getAffineX());
         byte[] y = sec1EncodeFieldElementAsOctetString(32, w.getAffineY());
-        DataItem item = new CborBuilder()
+        return new CborBuilder()
                 .addMap()
                 .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
                 .put(COSE_KEY_EC2_CRV, COSE_KEY_EC2_CRV_P256)
@@ -1017,7 +1016,6 @@ public class CborUtil {
                 .put(COSE_KEY_EC2_Y, y)
                 .end()
                 .build().get(0);
-        return item;
     }
 
 
@@ -1185,8 +1183,7 @@ public class CborUtil {
             ECPoint ecPoint = new ECPoint(x, y);
             ECPublicKeySpec keySpec = new ECPublicKeySpec(ecPoint, ecParameters);
             KeyFactory kf = KeyFactory.getInstance("EC");
-            ECPublicKey ecPublicKey = (ECPublicKey) kf.generatePublic(keySpec);
-            return ecPublicKey;
+            return (ECPublicKey) kf.generatePublic(keySpec);
 
         } catch (NoSuchAlgorithmException
                  | InvalidParameterSpecException
@@ -1214,8 +1211,7 @@ public class CborUtil {
             byte[] info = new byte[]{'E', 'M', 'a', 'c', 'K', 'e', 'y'};
             byte[] derivedKey = computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
 
-            SecretKey secretKey = new SecretKeySpec(derivedKey, "");
-            return secretKey;
+            return new SecretKeySpec(derivedKey, "");
         } catch (InvalidKeyException
                  | NoSuchAlgorithmException e) {
             throw new IllegalStateException("Error performing key agreement", e);
@@ -1626,8 +1622,7 @@ public class CborUtil {
             ECPoint ecPoint = new ECPoint(x, y);
             ECPublicKeySpec keySpec = new ECPublicKeySpec(ecPoint, ecParameters);
             KeyFactory kf = KeyFactory.getInstance("EC");
-            ECPublicKey ecPublicKey = (ECPublicKey) kf.generatePublic(keySpec);
-            return ecPublicKey;
+            return (ECPublicKey) kf.generatePublic(keySpec);
         } catch (NoSuchAlgorithmException
                  | InvalidParameterSpecException
                  | InvalidKeySpecException e) {
@@ -1784,8 +1779,7 @@ public class CborUtil {
 
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             ByteArrayInputStream bais = new ByteArrayInputStream(resultingCertBytes);
-            X509Certificate result = (X509Certificate) cf.generateCertificate(bais);
-            return result;
+            return (X509Certificate) cf.generateCertificate(bais);
         } catch (IOException
                  | InvalidKeyException
                  | KeyStoreException
