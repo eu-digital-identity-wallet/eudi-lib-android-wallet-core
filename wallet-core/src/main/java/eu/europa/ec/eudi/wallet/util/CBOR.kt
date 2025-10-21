@@ -108,7 +108,7 @@ object CBOR {
     fun cborPrettyPrint(encodedBytes: ByteArray): String =
         ByteArrayInputStream(encodedBytes).use { bais ->
             val dataItems = try {
-                CborDecoder(bais).decode()
+                CborDecoder(bais).decode().toList()
             } catch (e: CborException) {
                 throw IllegalStateException(e)
             }
@@ -179,7 +179,7 @@ object CBOR {
      * Handles Arrays (your biggest complexity source).
      */
     private fun cborPrintArray(indent: Int, dataItem: Array): String {
-        val items = dataItem.dataItems
+        val items = dataItem.dataItems?.toList() ?: emptyList()
         if (items.isEmpty()) return "[]"
 
         val indentString = " ".repeat(indent)
