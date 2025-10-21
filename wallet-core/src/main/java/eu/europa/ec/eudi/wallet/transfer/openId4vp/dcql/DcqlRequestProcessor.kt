@@ -122,7 +122,7 @@ class DcqlRequestProcessor(
                     when (val format = query.format) {
                         Format.MsoMdoc -> {
                             // Handle MSO mdoc format credentials
-                            val docTypeValue = query.metaMsoMdoc!!.doctypeValue
+                            val docTypeValue = query.metaMsoMdoc?.doctypeValue
                             requireNotNull(docTypeValue) {
                                 "DocType is missing for query with id ${query.id}"
                             }
