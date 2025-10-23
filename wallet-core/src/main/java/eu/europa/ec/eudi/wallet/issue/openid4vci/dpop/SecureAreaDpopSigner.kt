@@ -2,12 +2,12 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci.dpop
 
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.openid4vci.SignOperation
+import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.javaAlgorithm
+import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.runBlocking
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyInfo
-import org.multipaz.securearea.KeyUnlockData
-import org.multipaz.securearea.SecureArea
 
 /**
  * Secure area-based implementation of [DPopSigner] for OpenID4VCI credential issuance.
@@ -35,26 +35,28 @@ import org.multipaz.securearea.SecureArea
  * instantiated directly by application code.
  *
  * ```kotlin
+ * // With default configuration (recommended)
+ * val signer = DPopSigner.makeIfSupported(
+ *     context = context,
+ *     config = DPopConfig.Default,
+ *     authorizationServerMetadata = metadata
+ * ).getOrThrow()
+ *
+ * // With custom secure area
  * val signer = DPopSigner.makeIfSupported(
  *     context = context,
  *     config = DPopConfig.Custom(
  *         secureArea = mySecureArea,
- *         createKeySettingsBuilder = { algorithm ->
- *             AndroidKeystoreCreateKeySettings.Builder(challenge)
+ *         createKeySettingsBuilder = { algorithms ->
+ *             val algorithm = algorithms.firstOrNull { it.isSigning }
+ *                 ?: throw IllegalStateException("No signing algorithm available")
+ *             MyKeySettings.Builder()
  *                 .setAlgorithm(algorithm)
- *                 .setUserAuthenticationRequired(true, 30_000, setOf(
- *                     UserAuthenticationType.BIOMETRIC
- *                 ))
  *                 .build()
- *         },
- *         unlockKey = { keyAlias, secureArea ->
- *             // Provide unlock data for authenticated keys
- *             biometricPrompt.authenticate()
- *             keyUnlockData
  *         }
  *     ),
  *     authorizationServerMetadata = metadata
- * ).getOrThrow() as SecureAreaDpopSigner
+ * ).getOrThrow()
  *
  * // Use the signer
  * val signOperation = signer.acquire()
@@ -62,36 +64,19 @@ import org.multipaz.securearea.SecureArea
  * signer.release(signOperation)
  * ```
  *
- * @property config The DPoP configuration containing the secure area and key settings builder.
- *           This configuration determines where keys are stored and how they are protected.
- * @property algorithm The cryptographic algorithm used for DPoP signing (e.g., ES256, ES384, ES512).
- *           This algorithm is selected during [DPopSigner.makeIfSupported] based on compatibility
- *           between the authorization server's supported algorithms and the secure area's capabilities.
- * @property unlockKey A suspend function that provides [KeyUnlockData] for unlocking the DPoP key
- *           when performing signing operations. This function is invoked each time a signature
- *           is created via [acquire].
- *
- *           **Default:** Returns null (no authentication required)
- *
- *           **Parameters:**
- *           - `keyAlias`: The alias of the DPoP key in the secure area
- *           - `secureArea`: The secure area containing the key
- *
- *           **Returns:** [KeyUnlockData] if user authentication is required, or null otherwise
- *
- *           **Example with biometric authentication:**
- *           ```kotlin
- *           unlockKey = { keyAlias, secureArea ->
- *               val cryptoObject = createCryptoObject(keyAlias)
- *               biometricPrompt.authenticate(cryptoObject)
- *               AndroidKeystoreKeyUnlockData(cryptoObject)
- *           }
- *           ```
- * @property keyInfo Information about the DPoP key created in the secure area.
- *           Contains the key alias, algorithm, and public key. This is populated
- *           during initialization and is accessible for inspection.
+ * @property config The DPoP configuration containing the secure area, key settings builder,
+ *           and key unlock data provider. This configuration determines where keys are stored,
+ *           how they are protected, and how they are unlocked for signing operations.
+ * @param algorithms The list of cryptographic algorithms supported by both the authorization
+ *           server and the secure area (e.g., ES256, ES384, ES512). This list is passed to the
+ *           configuration's [DPopConfig.Custom.createKeySettingsBuilder] to create the key with
+ *           an appropriate algorithm. The list is determined during [DPopSigner.makeIfSupported]
+ *           based on compatibility between the server and secure area.
+ * @param logger Optional logger for debugging and tracking DPoP key creation and signing operations.
  *
  * @constructor Creates a new DPoP signer with a key in the specified secure area.
+ *              A DPoP key is created immediately during construction using the provided
+ *              algorithms and configuration settings.
  *              **Note:** This constructor is typically called by [DPopSigner.makeIfSupported]
  *              and should not be invoked directly by application code.
  *
@@ -101,8 +86,8 @@ import org.multipaz.securearea.SecureArea
  */
 class SecureAreaDpopSigner(
     val config: DPopConfig.Custom,
-    private val algorithm: Algorithm,
-    private val unlockKey: suspend (keyAlias: String, secureArea: SecureArea) -> KeyUnlockData? = { _, _ -> null }
+    private val algorithms: List<Algorithm>,
+    private val logger: Logger? = null,
 ) : DPopSigner {
 
     private val secureArea = config.secureArea
@@ -111,16 +96,22 @@ class SecureAreaDpopSigner(
      * Information about the DPoP key created in the secure area.
      *
      * This property is initialized during object construction by creating a new key
-     * using the algorithm and key settings from the configuration. The key is created
+     * using the algorithms and key settings from the configuration. The configuration's
+     * [DPopConfig.Custom.createKeySettingsBuilder] function receives the list of supported
+     * algorithms and selects an appropriate one for key creation. The key is created
      * synchronously using [runBlocking] to ensure it's available immediately.
      *
      * The [KeyInfo] contains:
      * - **alias**: The unique identifier for the key in the secure area
-     * - **algorithm**: The cryptographic algorithm used (matches the [algorithm] property)
+     * - **algorithm**: The cryptographic algorithm selected by the configuration's builder
      * - **publicKey**: The public key material in EC format
      */
     val keyInfo: KeyInfo = runBlocking {
-        val createKeySettings = config.createKeySettingsBuilder(algorithm)
+        val createKeySettings = config.createKeySettingsBuilder(algorithms)
+        logger?.d(
+            TAG,
+            "Creating DPoP key of algorithm: ${createKeySettings.algorithm.joseAlgorithmIdentifier}"
+        )
         secureArea.createKey(null, createKeySettings)
     }
 
@@ -129,7 +120,8 @@ class SecureAreaDpopSigner(
      *
      * This property provides the Java Security API algorithm name (e.g., "SHA256withECDSA"
      * for ES256) that corresponds to the DPoP signing algorithm. The value is derived
-     * from the [keyInfo] and is used internally by the OpenID4VCI library.
+     * from the algorithm used to create the key in [keyInfo] and is used internally
+     * by the OpenID4VCI library.
      *
      * @throws IllegalArgumentException if the key's algorithm is not a signing algorithm
      *         or doesn't have a corresponding Java algorithm identifier
@@ -154,15 +146,15 @@ class SecureAreaDpopSigner(
      * ## Signing Process
      *
      * When the signing function is invoked:
-     * 1. The [unlockKey] callback is called to obtain unlock data (if required)
+     * 1. The [DPopConfig.Custom.keyUnlockDataProvider] callback is called to obtain unlock data (if required)
      * 2. The secure area signs the input data using the private key
      * 3. The signature is returned in DER-encoded format
      *
      * ## User Authentication
      *
      * If the key requires user authentication (configured via [DPopConfig.Custom.createKeySettingsBuilder]),
-     * the [unlockKey] function must prompt the user (e.g., via biometric prompt) and provide
-     * the unlock data before signing can proceed.
+     * the [DPopConfig.Custom.keyUnlockDataProvider] function must prompt the user (e.g., via biometric prompt)
+     * and provide the unlock data before signing can proceed.
      *
      * ## Example
      *
@@ -181,13 +173,11 @@ class SecureAreaDpopSigner(
      */
     override suspend fun acquire(): SignOperation<JWK> {
         val jwk = JWK.parse(
-            keyInfo.publicKey.toJwk(
-                // todo add attestations
-            ).toString()
+            keyInfo.publicKey.toJwk().toString()
         )
         return SignOperation(
             function = { input ->
-                val keyUnlockData = unlockKey(keyInfo.alias, secureArea)
+                val keyUnlockData = config.keyUnlockDataProvider(keyInfo.alias, secureArea)
                 secureArea.sign(keyInfo.alias, input, keyUnlockData).toDerEncoded()
             },
             publicMaterial = jwk
@@ -209,5 +199,9 @@ class SecureAreaDpopSigner(
      */
     override suspend fun release(signOperation: SignOperation<JWK>?) {
         // Nothing to release - key persists in secure area
+    }
+
+    companion object {
+        private const val TAG = "SecureAreaDpopSigner"
     }
 }

@@ -162,6 +162,7 @@ dependencies {
 
     androidTestImplementation(libs.android.junit)
     androidTestImplementation(libs.mockito.android)
+    androidTestImplementation(libs.kotlin.coroutines.test)
     androidTestImplementation(libs.test.core)
     androidTestImplementation(libs.test.runner)
     androidTestImplementation(libs.test.rules)

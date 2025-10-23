@@ -1,21 +1,4 @@
-/*
- * Copyright (c) 2024-2025 European Commission
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
-package eu.europa.ec.eudi.wallet.issue.openid4vci
+package eu.europa.ec.eudi.wallet.issue.openid4vci.transformations
 
 import eu.europa.ec.eudi.openid4vci.Claim
 import eu.europa.ec.eudi.openid4vci.ClaimPath
@@ -30,8 +13,7 @@ import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
-import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer.OfferedDocument
-import eu.europa.ec.eudi.wallet.issue.openid4vci.transformations.extractIssuerMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Before
@@ -57,7 +39,7 @@ class IssuerMetadataTransformationsTest {
             every { display } returns emptyList()
         }
 
-        val credentialIssuerIdentifier = CredentialIssuerId.invoke(dummyIssuerUrl).getOrThrow()
+        val credentialIssuerIdentifier = CredentialIssuerId.Companion.invoke(dummyIssuerUrl).getOrThrow()
 
         mockCredentialOffer = CredentialOffer(
             credentialIssuerIdentifier = credentialIssuerIdentifier,
@@ -79,7 +61,7 @@ class IssuerMetadataTransformationsTest {
             isoCredentialSigningAlgorithmsSupported = listOf(),
             isoCredentialCurvesSupported = listOf(),
             isoPolicy = MsoMdocPolicy(oneTimeUse = true, batchSize = 10),
-            proofTypesSupported = ProofTypesSupported.Empty,
+            proofTypesSupported = ProofTypesSupported.Companion.Empty,
             docType = "exampleDocType",
             credentialMetadata = CredentialMetadata(
                 display = listOf(
@@ -97,7 +79,7 @@ class IssuerMetadataTransformationsTest {
                 ),
                 claims = listOf(
                     Claim(
-                        path = ClaimPath.claim("namespace1").claim("claim1"),
+                        path = ClaimPath.Companion.claim("namespace1").claim("claim1"),
                         mandatory = true,
                         display = listOf(
                             Claim.Display(
@@ -110,7 +92,7 @@ class IssuerMetadataTransformationsTest {
                 )
             )
         )
-        val offeredDocument = OfferedDocument(
+        val offeredDocument = Offer.OfferedDocument(
             offer = dummyOffer,
             configurationIdentifier = CredentialConfigurationIdentifier(dummyDocumentId),
             configuration = inputCredential,
@@ -163,7 +145,7 @@ class IssuerMetadataTransformationsTest {
             scope = "exampleScope",
             cryptographicBindingMethodsSupported = listOf(),
             credentialSigningAlgorithmsSupported = listOf("RS256"),
-            proofTypesSupported = ProofTypesSupported.Empty,
+            proofTypesSupported = ProofTypesSupported.Companion.Empty,
             type = "exampleType",
             credentialMetadata = CredentialMetadata(
                 display = listOf(
@@ -178,7 +160,7 @@ class IssuerMetadataTransformationsTest {
 
                 claims = listOf(
                     Claim(
-                        path = ClaimPath.claim("claim2"),
+                        path = ClaimPath.Companion.claim("claim2"),
                         mandatory = false,
                         display = listOf(
                             Claim.Display(
@@ -191,7 +173,7 @@ class IssuerMetadataTransformationsTest {
             )
         )
 
-        val offeredDocument = OfferedDocument(
+        val offeredDocument = Offer.OfferedDocument(
             offer = dummyOffer,
             configurationIdentifier = CredentialConfigurationIdentifier(dummyDocumentId),
             configuration = inputCredential,
@@ -239,7 +221,7 @@ class IssuerMetadataTransformationsTest {
             scope = "exampleScope",
             cryptographicBindingMethodsSupported = listOf(),
             credentialSigningAlgorithmsSupported = listOf("RS256"),
-            proofTypesSupported = ProofTypesSupported.Empty,
+            proofTypesSupported = ProofTypesSupported.Companion.Empty,
             type = "exampleType",
             credentialMetadata = CredentialMetadata(
                 display = emptyList(),
@@ -254,7 +236,7 @@ class IssuerMetadataTransformationsTest {
             documentConfigurationIdentifier = dummyDocumentId
         )
 
-        val offeredDocument = OfferedDocument(
+        val offeredDocument = Offer.OfferedDocument(
             offer = dummyOffer,
             configurationIdentifier = CredentialConfigurationIdentifier(dummyDocumentId),
             configuration = credentialWithNoClaims,
