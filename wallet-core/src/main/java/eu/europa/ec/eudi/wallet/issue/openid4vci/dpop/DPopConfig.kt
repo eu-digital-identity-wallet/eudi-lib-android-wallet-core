@@ -1,6 +1,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci.dpop
 
-import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig.Default.make
+import java.io.File
+import java.security.SecureRandom
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.context.initializeApplication
 import org.multipaz.crypto.Algorithm
@@ -11,8 +12,7 @@ import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.UserAuthenticationType
 import org.multipaz.storage.android.AndroidStorage
-import java.io.File
-import java.security.SecureRandom
+import kotlin.time.Duration
 
 /**
  * Configuration for DPoP (Demonstrating Proof-of-Possession) in OpenID4VCI credential issuance.
@@ -39,8 +39,8 @@ import java.security.SecureRandom
  * // Use custom secure area
  * val config = DPopConfig.Custom(
  *     secureArea = mySecureArea,
- *     createKeySettingsBuilder = { algorithm ->
- *         MyCreateKeySettings(algorithm)
+ *     createKeySettingsBuilder = { algorithms ->
+ *         MyCreateKeySettings(algorithms.first())
  *     }
  * )
  * ```
@@ -98,6 +98,7 @@ sealed interface DPopConfig {
          * - StrongBox support if the device supports it
          * - Random attestation challenge if not provided
          * - Key settings builder that creates keys with the negotiated algorithm
+         * - Key unlock data provider set to [KeyUnlockDataProvider.None] (no unlock required)
          *
          * @param context The Android context for initializing storage and secure area
          * @param attestationChallenge Optional 16-byte challenge for key attestation.
@@ -120,19 +121,21 @@ sealed interface DPopConfig {
 
             return Custom(
                 secureArea = secureArea,
-                createKeySettingsBuilder = { algorithm ->
-                    require(algorithm.isSigning) { "Algorithm must be a signing algorithm" }
+                createKeySettingsBuilder = { algorithms ->
+                    val algorithm = algorithms.firstOrNull { it.isSigning }
+                    requireNotNull(algorithm) { "No suitable signing algorithm found for dPop" }
                     AndroidKeystoreCreateKeySettings.Builder(attestationChallengeBytes)
                         .setAlgorithm(algorithm)
                         .setUserAuthenticationRequired(
-                            false, 0, setOf(
+                            false, Duration.ZERO, setOf(
                                 UserAuthenticationType.BIOMETRIC,
                                 UserAuthenticationType.LSKF
                             )
                         )
                         .setUseStrongBox(capabilities.strongBoxSupported)
                         .build()
-                }
+                },
+                keyUnlockDataProvider = KeyUnlockDataProvider.None
             )
         }
     }
@@ -141,23 +144,25 @@ sealed interface DPopConfig {
      * Custom DPoP configuration using a specific secure area.
      *
      * This configuration allows full control over how DPoP keys are created and stored.
-     * The algorithm for key creation is automatically selected based on what both the
+     * The algorithms for key creation are automatically selected based on what both the
      * authorization server and the secure area support.
      *
      * ## How It Works
      *
      * 1. The library checks the authorization server's supported DPoP algorithms
-     * 2. It finds the first algorithm supported by both server and [secureArea]
-     * 3. The matched algorithm is passed to [createKeySettingsBuilder]
-     * 4. A DPoP key is created using the returned settings
-     * 5. The key is used to sign all DPoP proofs during issuance
+     * 2. It finds all algorithms supported by both server and [secureArea]
+     * 3. The list of matched algorithms is passed to [createKeySettingsBuilder]
+     * 4. Your builder function selects an appropriate algorithm from the list
+     * 5. A DPoP key is created using the returned settings
+     * 6. The key is used to sign all DPoP proofs during issuance
      *
      * ## Example with Custom Secure Area
      *
      * ```kotlin
      * val customConfig = DPopConfig.Custom(
      *     secureArea = myCloudSecureArea,
-     *     createKeySettingsBuilder = { algorithm ->
+     *     createKeySettingsBuilder = { algorithms ->
+     *         val algorithm = algorithms.first() // Select the first supported algorithm
      *         CloudKeySettings.Builder()
      *             .setAlgorithm(algorithm)
      *             .setKeyName("dpop_key")
@@ -172,7 +177,10 @@ sealed interface DPopConfig {
      * ```kotlin
      * val androidConfig = DPopConfig.Custom(
      *     secureArea = AndroidKeystoreSecureArea.create(storage),
-     *     createKeySettingsBuilder = { algorithm ->
+     *     createKeySettingsBuilder = { algorithms ->
+     *         // Select the first signing algorithm from the list
+     *         val algorithm = algorithms.firstOrNull { it.isSigning }
+     *             ?: throw IllegalStateException("No signing algorithm available")
      *         AndroidKeystoreCreateKeySettings.Builder(attestationChallenge)
      *             .setAlgorithm(algorithm) // e.g., ES256, ES384, ES512
      *             .setUserAuthenticationRequired(true, 30_000, setOf(
@@ -184,56 +192,100 @@ sealed interface DPopConfig {
      * )
      * ```
      *
-     * ## Example with User Authentication
-     *
-     * ```kotlin
-     * val authConfig = DPopConfig.Custom(
-     *     secureArea = AndroidKeystoreSecureArea.create(storage),
-     *     createKeySettingsBuilder = { algorithm ->
-     *         AndroidKeystoreCreateKeySettings.Builder(attestationChallenge)
-     *             .setAlgorithm(algorithm)
-     *             .setUserAuthenticationRequired(true, 30_000, setOf(
-     *                 UserAuthenticationType.BIOMETRIC
-     *             ))
-     *             .build()
-     *     },
-     *     unlockKey = { keyAlias, secureArea ->
-     *         // Prompt user for biometric authentication
-     *         val cryptoObject = createCryptoObjectForKey(keyAlias, secureArea)
-     *         biometricPrompt.authenticate(cryptoObject)
-     *         // Return the unlock data after successful authentication
-     *         AndroidKeystoreKeyUnlockData(cryptoObject)
-     *     }
-     * )
-     * ```
-     *
      * @property secureArea The secure area where DPoP keys are stored and managed.
      *           Must support at least one signing algorithm (e.g., ES256, ES384, ES512).
-     * @property createKeySettingsBuilder A function that creates [CreateKeySettings] for a given
-     *           [Algorithm]. The algorithm parameter is the one negotiated between the server
-     *           and secure area capabilities. This function must return valid settings for
+     * @property createKeySettingsBuilder A function that creates [CreateKeySettings] from a list of
+     *           supported algorithms. The algorithms parameter contains all algorithms that are
+     *           supported by both the authorization server and the secure area. Your implementation
+     *           should select an appropriate algorithm from this list and return valid settings for
      *           creating a key with that algorithm.
-     * @property unlockKey A suspend function that provides [KeyUnlockData] for unlocking the DPoP key
-     *           when performing signing operations. This is invoked each time a DPoP proof needs to
-     *           be signed. The function receives the key alias and secure area as parameters and should
-     *           return the appropriate unlock data, or null if no unlock is required.
+     * @property keyUnlockDataProvider A [KeyUnlockDataProvider] that provides [KeyUnlockData] for unlocking
+     *           the DPoP key when performing signing operations. This is invoked each time a DPoP proof
+     *           needs to be signed. The provider receives the key alias and secure area as parameters
+     *           and should return the appropriate unlock data, or null if no unlock is required.
      *
-     *           **Default behavior:** Returns null (no unlock data required).
+     *           **Default value:** [KeyUnlockDataProvider.None] - Returns null (no unlock data required).
      *
      *           **When to customize:** Provide a custom implementation when your keys require user
-     *           authentication (e.g., biometric or PIN). The function should prompt the user for
+     *           authentication (e.g., biometric or PIN). The provider should prompt the user for
      *           authentication and return the unlock data upon successful authentication.
      *
-     *           **Parameters:**
-     *           - `keyAlias`: The alias of the DPoP key that needs to be unlocked
-     *           - `secureArea`: The secure area containing the key
-     *
-     *           **Returns:** [KeyUnlockData] if authentication is required and successful, or null
-     *           if no authentication is needed.
+     *           **Example with custom provider:**
+     *           ```kotlin
+     *           val config = DPopConfig.Custom(
+     *               secureArea = mySecureArea,
+     *               createKeySettingsBuilder = { algorithms -> /* ... */ },
+     *               keyUnlockDataProvider = KeyUnlockDataProvider { keyAlias, secureArea ->
+     *                   // Prompt user for biometric authentication
+     *                   promptForBiometric()?.let { authResult ->
+     *                       AndroidKeystoreKeyUnlockData(authResult.cryptoObject)
+     *                   }
+     *               }
+     *           )
+     *           ```
      */
     data class Custom(
         val secureArea: SecureArea,
-        val createKeySettingsBuilder: (Algorithm) -> CreateKeySettings,
-        val unlockKey: suspend (keyAlias: String, secureArea: SecureArea) -> KeyUnlockData? = { _, _ -> null }
+        val createKeySettingsBuilder: (List<Algorithm>) -> CreateKeySettings,
+        val keyUnlockDataProvider: KeyUnlockDataProvider = KeyUnlockDataProvider.None
     ) : DPopConfig
+}
+
+/**
+ * Functional interface for providing unlock data for DPoP keys stored in a secure area.
+ *
+ * This interface is used to obtain [KeyUnlockData] when a DPoP key needs to be accessed
+ * for signing operations. Implementations can provide user authentication (e.g., biometric
+ * or PIN) when required by the key's security settings.
+ *
+ * ## Usage
+ *
+ * The provider is invoked each time a DPoP proof JWT needs to be signed. If the key
+ * requires user authentication, the implementation should:
+ * 1. Prompt the user for authentication (e.g., show biometric prompt)
+ * 2. Wait for successful authentication
+ * 3. Return the unlock data obtained from the authentication result
+ * 4. Return null if no authentication is required
+ *
+ * ## Predefined Providers
+ *
+ * - [None] - Returns null, suitable for keys that don't require authentication
+ *
+ * ## Examples
+ *
+ * ```kotlin
+ * // No authentication required
+ * val provider = KeyUnlockDataProvider.None
+ *
+ * // Custom authentication with biometric prompt
+ * val provider = KeyUnlockDataProvider { keyAlias, secureArea ->
+ *     withContext(Dispatchers.Main) {
+ *         val promptInfo = BiometricPrompt.PromptInfo.Builder()
+ *             .setTitle("Authenticate for DPoP")
+ *             .setSubtitle("Sign credential request")
+ *             .setNegativeButtonText("Cancel")
+ *             .build()
+ *
+ *         val result = showBiometricPrompt(promptInfo)
+ *         result?.let { AndroidKeystoreKeyUnlockData(it.cryptoObject) }
+ *     }
+ * }
+ *
+ * // Use in configuration
+ * val config = DPopConfig.Custom(
+ *     secureArea = secureArea,
+ *     createKeySettingsBuilder = { algorithms -> /* ... */ },
+ *     keyUnlockDataProvider = provider
+ * )
+ * ```
+ *
+ * @see KeyUnlockData
+ * @see DPopConfig.Custom
+ */
+fun interface KeyUnlockDataProvider {
+    suspend operator fun invoke(keyAlias: String, secureArea: SecureArea): KeyUnlockData?
+
+    companion object {
+        val None = KeyUnlockDataProvider { _, _ -> null }
+    }
 }

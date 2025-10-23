@@ -23,7 +23,7 @@ import eu.europa.ec.eudi.wallet.logging.Logger
  *
  * ## Creating a DPoP Signer
  *
- * Use the [makeIfSupported] factory method to create a DPoP signer:
+ * Use the [eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopSigner.Companion.makeIfSupported] factory method to create a DPoP signer:
  *
  * ```kotlin
  * val result = DPopSigner.makeIfSupported(
@@ -59,14 +59,15 @@ interface DPopSigner : Signer<JWK> {
          *    - If [DPopConfig.Default], creates default Android Keystore configuration
          *    - If [DPopConfig.Custom], uses the provided configuration
          *
-         * 2. **Algorithm Negotiation**: Finds a common signing algorithm
+         * 2. **Algorithm Negotiation**: Finds common signing algorithms
          *    - Retrieves signing algorithms supported by the secure area
          *    - Compares with algorithms advertised by the authorization server
-         *    - Selects the first matching algorithm
+         *    - Collects all matching algorithms into a list
          *
-         * 3. **Key Creation**: Creates a DPoP key using the matched algorithm
+         * 3. **Signer Creation**: Creates a DPoP signer with the matched algorithms
          *    - Uses the secure area from the configuration
-         *    - Applies key settings from the configuration's builder
+         *    - Passes the list of matched algorithms to the signer
+         *    - The signer will use the configuration's builder to create keys as needed
          *    - Returns a configured [SecureAreaDpopSigner]
          *
          * ## Success Conditions
@@ -96,10 +97,11 @@ interface DPopSigner : Signer<JWK> {
          * // With custom configuration
          * val customConfig = DPopConfig.Custom(
          *     secureArea = mySecureArea,
-         *     createKeySettingsBuilder = { algorithm ->
+         *     createKeySettingsBuilder = { algorithms ->
+         *         val algorithm = algorithms.first()
          *         MyKeySettings(algorithm)
          *     },
-         *     unlockKey = { keyAlias, secureArea ->
+         *     keyUnlockDataProvider = { keyAlias, secureArea ->
          *         // Provide unlock data if needed
          *         null
          *     }
@@ -122,14 +124,14 @@ interface DPopSigner : Signer<JWK> {
          * @param authorizationServerMetadata The authorization server's metadata obtained from
          *        the OpenID4VCI issuer. Must contain the `dpop_signing_alg_values_supported`
          *        field with at least one algorithm
-         * @param logger Optional logger for debugging. If provided, logs the matched algorithm
-         *        at DEBUG level when a match is found
+         * @param logger Optional logger for debugging. If provided, it's passed to the
+         *        [SecureAreaDpopSigner] to log DPoP key creation details
          * @return A [Result] containing:
          *         - [Result.success] with a [DPopSigner] instance if DPoP is supported
          *         - [Result.failure] with [IllegalStateException] if DPoP is disabled,
          *           not supported by the server, or no common algorithm is found
          */
-        suspend fun makeIfSupported(
+        internal suspend fun makeIfSupported(
             context: Context,
             config: DPopConfig,
             authorizationServerMetadata: CIAuthorizationServerMetadata,
@@ -143,33 +145,32 @@ interface DPopSigner : Signer<JWK> {
             }
 
             val supportedAlgorithms = config.secureArea.supportedAlgorithms
+                .filter { it.joseAlgorithmIdentifier != null }
                 .filter { it.isSigning }
                 .associateBy { it.joseAlgorithmIdentifier }
 
             val serverAlgorithms = authorizationServerMetadata.dPoPJWSAlgs
+                ?.map { it.name }
+                ?.toList()
 
-            check(serverAlgorithms.isNullOrEmpty().not()) {
-                "Authorization server metadata does not contain any algorithms for DPoP"
+            requireNotNull(serverAlgorithms) {
+                "Authorization server metadata does not contain dpop_signing_alg_values_supported field"
+            }
+            require(serverAlgorithms.isNotEmpty()) {
+                "Authorization server does not support DPoP: dpop_signing_alg_values_supported is empty"
             }
 
-            val matchedAlgorithm = serverAlgorithms
-                .firstNotNullOfOrNull { jwsAlg ->
-                    supportedAlgorithms[jwsAlg.name]
-                }
-                ?: throw IllegalStateException(
-                    "No supported algorithm found for DPoP. Server algorithms: $serverAlgorithms, " +
-                            "supported algorithms: ${supportedAlgorithms.keys}"
-                )
-            logger?.log(
-                Logger.Record(
-                    level = Logger.Companion.LEVEL_DEBUG,
-                    message = "Matched DPoP algorithm: $matchedAlgorithm",
-                    sourceMethod = this::makeIfSupported.name,
-                    sourceClassName = this::class.simpleName
-                )
-            )
+            val matchedAlgorithms = supportedAlgorithms
+                .filterKeys { it in serverAlgorithms }
+                .values
+                .toList()
 
-            SecureAreaDpopSigner(config, matchedAlgorithm, config.unlockKey)
+            require(matchedAlgorithms.isNotEmpty()) {
+                "No common algorithm found for DPoP. Server algorithms: $serverAlgorithms, " +
+                        "supported algorithms: ${supportedAlgorithms.keys}"
+            }
+
+            SecureAreaDpopSigner(config, matchedAlgorithms, logger)
 
         }
     }
