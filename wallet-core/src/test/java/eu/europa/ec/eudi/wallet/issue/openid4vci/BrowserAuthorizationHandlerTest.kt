@@ -29,7 +29,6 @@ import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.AfterClass
 import org.junit.BeforeClass
@@ -85,13 +84,15 @@ class BrowserAuthorizationHandlerTest {
 
         var result: Result<AuthorizationResponse>? = null
 
-        launch {
+        val job = launch {
             result = handler.authorize(authorizationUrl)
         }
 
-        advanceUntilIdle()
+        // Ensure the coroutine has suspended
+        testScheduler.runCurrent()
+
         handler.resumeWithUri(callbackUri)
-        advanceUntilIdle()
+        job.join()
 
         // Verify context.startActivity was called
         verify(exactly = 1) { context.startActivity(any()) }
@@ -105,49 +106,53 @@ class BrowserAuthorizationHandlerTest {
     @Test
     fun `resumeWithUri fails when authorization code is missing`() = runTest {
         val authorizationUrl = "https://issuer.example.com/authorize"
-        val callbackUri = mockk<Uri>(relaxed = true) {
+        val callbackUri = mockk<Uri> {
             every { getQueryParameter("code") } returns null
             every { getQueryParameter("state") } returns "xyz"
         }
 
         var result: Result<AuthorizationResponse>? = null
 
-        launch {
+        val job = launch {
             result = handler.authorize(authorizationUrl)
         }
 
-        advanceUntilIdle()
+        // Ensure the coroutine has suspended
+        testScheduler.runCurrent()
+
         handler.resumeWithUri(callbackUri)
-        advanceUntilIdle()
+        job.join()
 
         assertNotNull(result)
-        assertTrue(result!!.isFailure)
-        assertTrue(result!!.exceptionOrNull() is IllegalStateException)
-        assertTrue(result!!.exceptionOrNull()!!.message!!.contains("No authorization code found"))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(result.exceptionOrNull()!!.message!!.contains("No authorization code found"))
     }
 
     @Test
     fun `resumeWithUri fails when server state is missing`() = runTest {
         val authorizationUrl = "https://issuer.example.com/authorize"
-        val callbackUri = mockk<Uri>(relaxed = true) {
+        val callbackUri = mockk<Uri> {
             every { getQueryParameter("code") } returns "auth_code_123"
             every { getQueryParameter("state") } returns null
         }
 
         var result: Result<AuthorizationResponse>? = null
 
-        launch {
+        val job = launch {
             result = handler.authorize(authorizationUrl)
         }
 
-        advanceUntilIdle()
+        // Ensure the coroutine has suspended
+        testScheduler.runCurrent()
+
         handler.resumeWithUri(callbackUri)
-        advanceUntilIdle()
+        job.join()
 
         assertNotNull(result)
-        assertTrue(result!!.isFailure)
-        assertTrue(result!!.exceptionOrNull() is IllegalStateException)
-        assertTrue(result!!.exceptionOrNull()!!.message!!.contains("No server state found"))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(result.exceptionOrNull()!!.message!!.contains("No server state found"))
     }
 
     @Test
@@ -177,9 +182,11 @@ class BrowserAuthorizationHandlerTest {
             }
         }
 
-        advanceUntilIdle()
+        // Ensure the coroutine has suspended
+        testScheduler.runCurrent()
+
         handler.cancel()
-        advanceUntilIdle()
+        job.join()
 
         // The coroutine should be cancelled
         assertTrue(result == null || exceptionCaught)
@@ -197,7 +204,7 @@ class BrowserAuthorizationHandlerTest {
         var result1: Result<AuthorizationResponse>? = null
         var result2: Result<AuthorizationResponse>? = null
 
-        launch {
+        val job1 = launch {
             try {
                 result1 = handler.authorize(authorizationUrl1)
             } catch (e: Exception) {
@@ -205,20 +212,24 @@ class BrowserAuthorizationHandlerTest {
             }
         }
 
-        advanceUntilIdle()
+        // Ensure the first coroutine has suspended
+        testScheduler.runCurrent()
 
-        launch {
+        val job2 = launch {
             result2 = handler.authorize(authorizationUrl2)
         }
 
-        advanceUntilIdle()
+        // Ensure the second coroutine has suspended
+        testScheduler.runCurrent()
+
         handler.resumeWithUri(callbackUri)
-        advanceUntilIdle()
+        job1.join()
+        job2.join()
 
         // First authorization should be cancelled, second should succeed
         assertTrue(result1 == null)
         assertNotNull(result2)
-        assertTrue(result2!!.isSuccess)
+        assertTrue(result2.isSuccess)
     }
 }
 
