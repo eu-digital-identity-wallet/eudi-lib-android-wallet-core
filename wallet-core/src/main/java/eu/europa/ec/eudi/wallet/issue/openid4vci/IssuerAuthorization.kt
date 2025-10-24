@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,56 +16,44 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import android.content.Context
-import android.content.Intent
-import android.content.Intent.ACTION_VIEW
 import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.AuthorizationCode
-import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.concurrent.CancellationException
-import kotlin.coroutines.resume
 
 /**
  * Authorizes an [Issuer] and provides the authorization code.
- * @property continuation The continuation for the authorization.
+ * @property authorizationHandler The handler for authorization requests
  */
 internal class IssuerAuthorization(
-    private val context: Context,
+    private val authorizationHandler: AuthorizationHandler,
     private val logger: Logger? = null,
 ) {
-
-    var continuation: CancellableContinuation<Result<Response>>? = null
 
     /**
      * Authorizes the given [Issuer] and returns the authorized request.
      * If txCode is provided, it will be used to authorize the issuer,
-     * otherwise the browser will be opened for user authorization
+     * otherwise the authorization handler will be used for user authorization
      * @param issuer The issuer to authorize.
      * @param txCode The pre-authorization code.
      */
     suspend fun authorize(issuer: Issuer, txCode: String?): AuthorizedRequest {
-        close() // close any previous suspensions
         return with(issuer) {
             when {
                 isPreAuthorized() -> authorizeWithPreAuthorizationCode(txCode)
 
                 else -> {
                     val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
-                    val authResponse =
-                        openBrowserForAuthorization(prepareAuthorizationCodeRequest).getOrThrow()
+                    val authorizationUrl = prepareAuthorizationCodeRequest.authorizationCodeURL.value.toString()
+                    val authResponse = authorizationHandler.authorize(authorizationUrl).getOrThrow()
                     prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
                         AuthorizationCode(authResponse.authorizationCode),
                         authResponse.serverState
                     )
-
                 }
             }.getOrThrow()
         }
@@ -73,64 +61,23 @@ internal class IssuerAuthorization(
 
     /**
      * Resumes the authorization from the given [Uri].
+     * This method delegates to the [BrowserAuthorizationHandler] if it's being used.
+     * @throws IllegalStateException if the authorization handler is not a [BrowserAuthorizationHandler]
      */
     fun resumeFromUri(uri: Uri) {
         logger?.d(TAG, "IssuerAuthorization.resumeFromUri($uri)")
-        continuation?.let { cont ->
-            try {
-                uri.getQueryParameter("code")?.let { authorizationCode ->
-                    uri.getQueryParameter("state")?.let { serverState ->
-                        cont.resume(Result.success(Response(authorizationCode, serverState)))
-                    } ?: "No server state found".let { msg ->
-                        val exception = IllegalStateException(msg)
-                        logger?.e(TAG, "resumeFromUri: $msg", exception)
-                        cont.resume(Result.failure(exception))
-                    }
-                } ?: "No authorization code found".let { msg ->
-                    val exception = IllegalStateException(msg)
-                    logger?.e(TAG, "resumeFromUri: $msg", exception)
-                    cont.resume(Result.failure(exception))
-                }
-            } catch (e: Throwable) {
-                logger?.e(TAG, "resumeFromUri: ${e.message}", e)
-                cont.resume(Result.failure(e))
+        when (authorizationHandler) {
+            is BrowserAuthorizationHandler -> authorizationHandler.resumeWithUri(uri)
+            else -> {
+                val exception = IllegalStateException(
+                    "resumeFromUri is only supported with BrowserAuthorizationHandler. " +
+                            "Custom authorization handlers should manage their own flow."
+                )
+                logger?.e(TAG, "IssuerAuthorization.resumeFromUri failed", exception)
+                throw exception
             }
-        } ?: run {
-            val exception = IllegalStateException("No suspended authorization found")
-            logger?.e(TAG, "IssuerAuthorization.resumeFromUri failed", exception)
-            throw exception
-        }
-
-    }
-
-    /**
-     * Cancels the continuation.
-     */
-    fun close() {
-        continuation?.cancel(
-            cause = CancellationException("Authorization was cancelled")
-        )
-        continuation = null
-    }
-
-    /**
-     * Opens a browser for authorization.
-     * @param prepareAuthorizationCodeRequest The prepared authorization request.
-     * @return The authorization response wrapped in a [Result].
-     */
-    suspend fun openBrowserForAuthorization(prepareAuthorizationCodeRequest: AuthorizationRequestPrepared): Result<Response> {
-        val authorizationCodeUri =
-            Uri.parse(prepareAuthorizationCodeRequest.authorizationCodeURL.value.toString())
-        return suspendCancellableCoroutine { cont ->
-            continuation = cont
-            cont.invokeOnCancellation { continuation = null }
-            context.startActivity(Intent(ACTION_VIEW, authorizationCodeUri).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
         }
     }
-
-    data class Response(val authorizationCode: String, val serverState: String)
 
     companion object {
         /**

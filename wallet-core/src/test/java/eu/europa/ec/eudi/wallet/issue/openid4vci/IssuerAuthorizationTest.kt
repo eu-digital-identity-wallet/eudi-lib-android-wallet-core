@@ -31,21 +31,21 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
-import io.mockk.spyk
+import io.mockk.unmockkAll
 import io.mockk.verify
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.AfterClass
 import org.junit.BeforeClass
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.milliseconds
 
-
+@OptIn(ExperimentalCoroutinesApi::class)
 class IssuerAuthorizationTest {
 
     companion object {
@@ -65,6 +65,12 @@ class IssuerAuthorizationTest {
 
             context = mockk(relaxed = true)
             logger = mockk(relaxed = true)
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            unmockkAll()
         }
     }
 
@@ -96,30 +102,28 @@ class IssuerAuthorizationTest {
     }
 
     @Test
-    fun `authorize method when no preAuthorizedCode in offer and txCode is null calls openBrowserForAuthorization`() {
+    fun `authorize method when no preAuthorizedCode in offer and txCode is null calls authorization handler`() {
         every { issuer.credentialOffer } returns mockk(relaxed = true) {
             every { grants } returns mockk(relaxed = true) {
                 every { preAuthorizedCode() } returns null
             }
         }
-        val issuerAuthorization = spyk(IssuerAuthorization(context, logger))
+        val mockHandler = mockk<BrowserAuthorizationHandler>(relaxed = true)
+        coEvery { mockHandler.authorize(any()) } returns Result.success(
+            AuthorizationResponse("test_code", "test_state")
+        )
+        val issuerAuthorization = IssuerAuthorization(mockHandler, logger)
         runTest {
-            launch {
-                issuerAuthorization.authorize(issuer, null)
-            }
-            launch {
-                delay(500.milliseconds)
-                issuerAuthorization.close()
-            }
+            issuerAuthorization.authorize(issuer, null)
         }
         coVerify(exactly = 1) {
             issuer.prepareAuthorizationRequest()
-            issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
+            mockHandler.authorize(any())
         }
     }
 
     @Test
-    fun `authorize method when preAuthorizedCode in offer and passing txCode does not call openBrowserForAuthorization but calls authorizeWithPreAuthorizationCode`() {
+    fun `authorize method when preAuthorizedCode in offer and passing txCode does not call authorization handler but calls authorizeWithPreAuthorizationCode`() {
         every { issuer.credentialOffer } returns mockk(relaxed = true) {
             every { grants } returns mockk(relaxed = true) {
                 every { preAuthorizedCode() } returns mockk(relaxed = true) {
@@ -130,19 +134,14 @@ class IssuerAuthorizationTest {
                 }
             }
         }
-        val issuerAuthorization = spyk(IssuerAuthorization(context, logger))
+        val mockHandler = mockk<AuthorizationHandler>(relaxed = true)
+        val issuerAuthorization = IssuerAuthorization(mockHandler, logger)
         runTest {
-            launch {
-                issuerAuthorization.authorize(issuer, "1234")
-            }
-            launch {
-                delay(500.milliseconds)
-                issuerAuthorization.close()
-            }
+            issuerAuthorization.authorize(issuer, "1234")
         }
         coVerify(exactly = 0) {
             issuer.prepareAuthorizationRequest()
-            issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
+            mockHandler.authorize(any())
         }
         coVerify(exactly = 1) {
             issuer.authorizeWithPreAuthorizationCode("1234")
@@ -151,83 +150,79 @@ class IssuerAuthorizationTest {
 
     @Test
     fun `resumeFromUri resumes with success when authorization code and server state are present`() {
-
-        val issuerAuthorization = spyk(IssuerAuthorization(context, logger))
+        val browserHandler = BrowserAuthorizationHandler(context, logger)
+        val issuerAuthorization = IssuerAuthorization(browserHandler, logger)
         val uri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "testCode"
             every { getQueryParameter("state") } returns "testState"
         }
-        var result: Result<IssuerAuthorization.Response>? = null
+        var result: Result<AuthorizationResponse>? = null
         runTest {
             launch {
-                result =
-                    issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
+                result = browserHandler.authorize("https://test.com")
             }
 
-            launch {
-                delay(500.milliseconds)
-                issuerAuthorization.resumeFromUri(uri)
-            }
+            advanceUntilIdle()
+            issuerAuthorization.resumeFromUri(uri)
+            advanceUntilIdle()
         }
         assertNotNull(result)
         assertTrue(result!!.isSuccess)
         assertEquals("testCode", result.getOrNull()!!.authorizationCode)
         assertEquals("testState", result.getOrNull()!!.serverState)
         verify(exactly = 1) {
-            issuerAuthorization.resumeFromUri(uri)
+            uri.getQueryParameter("code")
+            uri.getQueryParameter("state")
         }
     }
 
     @Test
     fun `resumeFromUri resumes with failure when authorization code is missing`() {
-        val issuerAuthorization: IssuerAuthorization = spyk(IssuerAuthorization(context, logger))
+        val browserHandler = BrowserAuthorizationHandler(context, logger)
+        val issuerAuthorization = IssuerAuthorization(browserHandler, logger)
         val uri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns null
             every { getQueryParameter("state") } returns "testState"
         }
-        var result: Result<IssuerAuthorization.Response>? = null
+        var result: Result<AuthorizationResponse>? = null
         runTest {
             launch {
-                result =
-                    issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
+                result = browserHandler.authorize("https://test.com")
             }
 
-            launch {
-                delay(500.milliseconds)
-                issuerAuthorization.resumeFromUri(uri)
-            }
+            advanceUntilIdle()
+            issuerAuthorization.resumeFromUri(uri)
+            advanceUntilIdle()
         }
         assertNotNull(result)
         assertTrue(result!!.isFailure)
         verify(exactly = 1) {
-            issuerAuthorization.resumeFromUri(uri)
+            uri.getQueryParameter("code")
         }
     }
 
     @Test
     fun `resumeFromUri resumes with failure when server state is missing`() {
-        val issuerAuthorization: IssuerAuthorization = spyk(IssuerAuthorization(context, logger))
-        val uri = mockk<Uri> {
+        val browserHandler = BrowserAuthorizationHandler(context, logger)
+        val issuerAuthorization = IssuerAuthorization(browserHandler, logger)
+        val uri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "testCode"
             every { getQueryParameter("state") } returns null
         }
-        var result: Result<IssuerAuthorization.Response>? = null
+        var result: Result<AuthorizationResponse>? = null
         runTest {
-            launch(Dispatchers.Default) {
-                result =
-                    issuerAuthorization.openBrowserForAuthorization(preparedAuthorizationRequest)
+            launch {
+                result = browserHandler.authorize("https://test.com")
             }
 
-
-            launch(Dispatchers.Default) {
-                delay(500.milliseconds)
-                issuerAuthorization.resumeFromUri(uri)
-            }
+            advanceUntilIdle()
+            issuerAuthorization.resumeFromUri(uri)
+            advanceUntilIdle()
         }
         assertNotNull(result)
         assertTrue(result!!.isFailure)
         verify(exactly = 1) {
-            issuerAuthorization.resumeFromUri(uri)
+            uri.getQueryParameter("state")
         }
     }
 }
