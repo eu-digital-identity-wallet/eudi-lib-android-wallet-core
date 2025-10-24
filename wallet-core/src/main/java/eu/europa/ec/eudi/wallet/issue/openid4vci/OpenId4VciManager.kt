@@ -178,18 +178,36 @@ interface OpenId4VciManager {
 
 
     /**
-     * Resume the authorization flow after the user has been redirected back to the app
-     * @param uri the uri that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
+     * Resume the authorization flow after the user has been redirected back to the app.
      *
+     * **Note:** This method should only be called when using the default [BrowserAuthorizationHandler].
+     * If you are using a custom [AuthorizationHandler] implementation, you are responsible for
+     * providing the authorization code and state directly to your handler. Custom handlers should
+     * manage their own authorization flow completion without relying on this method.
+     *
+     * @param uri the uri that contains the authorization code and state parameters
+     * @throws [IllegalStateException] if no authorization request to resume or if a custom
+     *         [AuthorizationHandler] is being used
+     *
+     * @see [BrowserAuthorizationHandler]
+     * @see [AuthorizationHandler]
      */
     fun resumeWithAuthorization(uri: Uri)
 
     /**
-     * Resume the authorization flow after the user has been redirected back to the app
-     * @param uri the uri that contains the authorization code
-     * @throws [IllegalStateException] if no authorization request to resume
+     * Resume the authorization flow after the user has been redirected back to the app.
      *
+     * **Note:** This method should only be called when using the default [BrowserAuthorizationHandler].
+     * If you are using a custom [AuthorizationHandler] implementation, you are responsible for
+     * providing the authorization code and state directly to your handler. Custom handlers should
+     * manage their own authorization flow completion without relying on this method.
+     *
+     * @param uri the uri string that contains the authorization code and state parameters
+     * @throws [IllegalStateException] if no authorization request to resume or if a custom
+     *         [AuthorizationHandler] is being used
+     *
+     * @see [BrowserAuthorizationHandler]
+     * @see [AuthorizationHandler]
      */
     fun resumeWithAuthorization(uri: String)
 
@@ -353,6 +371,7 @@ interface OpenId4VciManager {
      * @property issuerUrl the issuer url
      * @property clientId the client id
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
+     * @property authorizationHandler the handler for authorization requests. If null, uses [BrowserAuthorizationHandler]
      * @property dPoPUsage flag that if set will enable the use of DPoP JWT
      * @property parUsage if PAR should be used
      */
@@ -360,6 +379,7 @@ interface OpenId4VciManager {
         val issuerUrl: String,
         val clientAuthenticationType: ClientAuthenticationType,
         val authFlowRedirectionURI: String,
+        val authorizationHandler: AuthorizationHandler? = null,
         val dPoPUsage: DPoPUsage = DPoPUsage.IfSupported(),
         @ParUsage val parUsage: Int = IF_SUPPORTED,
     ) {
@@ -429,6 +449,7 @@ interface OpenId4VciManager {
          * @property issuerUrl the issuer url
          * @property clientId the client id
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
+         * @property authorizationHandler the handler for authorization requests. If null, uses [BrowserAuthorizationHandler]
          * @property dPoPUsage flag that if set will enable the use of DPoP JWT
          * @property parUsage if PAR should be used
          */
@@ -436,6 +457,7 @@ interface OpenId4VciManager {
             var issuerUrl: String? = null
             var clientAuthenticationType: ClientAuthenticationType? = null
             var authFlowRedirectionURI: String? = null
+            var authorizationHandler: AuthorizationHandler? = null
             var dPoPUsage: DPoPUsage = DPoPUsage.IfSupported()
 
             @ParUsage
@@ -447,7 +469,6 @@ interface OpenId4VciManager {
              * @return this builder
              */
             fun withIssuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
-
 
             /**
              * Set the client authentication type
@@ -471,6 +492,15 @@ interface OpenId4VciManager {
              */
             fun withAuthFlowRedirectionURI(authFlowRedirectionURI: String) =
                 apply { this.authFlowRedirectionURI = authFlowRedirectionURI }
+
+            /**
+             * Set the authorization handler for handling authorization requests.
+             * If not set, [BrowserAuthorizationHandler] will be used by default.
+             * @param authorizationHandler the authorization handler
+             * @return this builder
+             */
+            fun withAuthorizationHandler(authorizationHandler: AuthorizationHandler) =
+                apply { this.authorizationHandler = authorizationHandler }
 
             /**
              * Set the flag to enable the use of DPoP JWT
@@ -502,8 +532,9 @@ interface OpenId4VciManager {
                     checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
                 return Config(
                     issuerUrl = issuerUrl,
-                    clientAuthenticationType = clientAuthenticationType,
                     authFlowRedirectionURI = authFlowRedirectionURI,
+                    authorizationHandler = authorizationHandler,
+                    clientAuthenticationType = clientAuthenticationType,
                     dPoPUsage = dPoPUsage,
                     parUsage = parUsage
                 )

@@ -808,6 +808,91 @@ class SomeActivity : AppCompatActivity() {
 }
 ```
 
+#### Customizing Authorization Handler
+
+By default, the library uses `BrowserAuthorizationHandler` which opens the system browser for user authorization during the authorization code flow. However, you can provide a custom authorization handler to implement alternative authorization flows, such as using an in-app WebView, a custom browser tab, or any other mechanism.
+
+##### Using the Default Browser Handler
+
+When no custom authorization handler is specified, the library automatically uses `BrowserAuthorizationHandler`. The `resumeWithAuthorization` method (shown in the previous section) should be used to complete the authorization flow.
+
+**Important**: The `resumeWithAuthorization` method should **only** be called when using the default `BrowserAuthorizationHandler`. Custom authorization handlers manage their own flow completion.
+
+##### Implementing a Custom Authorization Handler
+
+To implement a custom authorization handler, create a class that implements the `AuthorizationHandler` interface:
+
+```kotlin
+class CustomAuthorizationHandler : AuthorizationHandler {
+    
+    override suspend fun authorize(authorizationUrl: String): Result<AuthorizationResponse> {
+        // 1. Present the authorizationUrl to the user
+        //    (e.g., open WebView, Chrome Custom Tab, or other UI)
+        
+        // 2. Monitor for the redirect callback containing the authorization response
+        
+        // 3. Extract the authorization code and state from the callback URI
+        val authorizationCode = extractAuthorizationCode()
+        val serverState = extractServerState()
+        
+        // 4. Return the result
+        return if (authorizationCode != null && serverState != null) {
+            Result.success(AuthorizationResponse(authorizationCode, serverState))
+        } else {
+            Result.failure(IllegalStateException("Authorization failed or was cancelled"))
+        }
+    }
+    
+    private suspend fun extractAuthorizationCode(): String? {
+        // Implementation depends on your authorization mechanism
+        TODO("Extract authorization code from your authorization flow")
+    }
+    
+    private suspend fun extractServerState(): String? {
+        // Implementation depends on your authorization mechanism
+        TODO("Extract state parameter from your authorization flow")
+    }
+}
+```
+
+##### Configuring a Custom Authorization Handler
+
+To use a custom authorization handler, provide it when configuring OpenId4VCI:
+
+```kotlin
+// Create your custom handler
+val customAuthHandler = CustomAuthorizationHandler()
+
+// Configure during wallet initialization
+EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.example.com")
+        withClientId("client-id")
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        withAuthorizationHandler(customAuthHandler)
+    }
+
+// Or provide it when creating a specific OpenId4VciManager instance
+val customConfig = OpenId4VciManager.Config.Builder()
+    .withIssuerUrl("https://issuer.example.com")
+    .withClientId("client-id")
+    .withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+    .withAuthorizationHandler(customAuthHandler)
+    .build()
+
+val openId4VciManager = wallet.createOpenId4VciManager(customConfig)
+```
+
+**Important Notes**:
+- When using a custom `AuthorizationHandler`, you are responsible for:
+  - Presenting the authorization URL to the user
+  - Monitoring for the redirect URI callback
+  - Extracting the authorization code and state parameters from the callback
+  - Returning the `AuthorizationResponse` with the extracted values
+- Do **not** call `resumeWithAuthorization` when using a custom handler - your handler manages the complete flow
+- The `authorize` method is a suspending function that should only return when authorization is complete or has failed
+- Custom handlers enable use cases like in-app WebViews, Chrome Custom Tabs, or other custom authorization UIs
+
 #### Pre-Authorization code flow
 
 When Issuer supports the pre-authorization code flow, the resolved offer will also contain the
