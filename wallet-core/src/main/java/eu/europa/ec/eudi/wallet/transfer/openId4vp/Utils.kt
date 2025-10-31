@@ -22,6 +22,8 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Vct
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 
+
+
 @JvmSynthetic
 internal suspend fun DocumentManager.getValidIssuedDocumentById(documentId: DocumentId): IssuedDocument {
     return getDocumentById(documentId)
@@ -30,6 +32,7 @@ internal suspend fun DocumentManager.getValidIssuedDocumentById(documentId: Docu
         ?.takeIf { it.findCredential() != null }
         ?: throw IllegalArgumentException("Invalid document")
 }
+
 
 @JvmSynthetic
 internal suspend fun DocumentManager.getValidIssuedSdJwtVcDocuments(vct: Vct): List<IssuedDocument> {

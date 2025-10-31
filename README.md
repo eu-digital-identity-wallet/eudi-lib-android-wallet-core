@@ -37,7 +37,7 @@ The library supports the following features:
 |                            | Custom Key Management implementation                                    | ✅ via imeplementation of SecureArea                                                    |
 |                            | Multiple Key Management implementations                                 | ✅                                                                                      |
 |                            | Support for Batch credentials per Document                              | ✅                                                                                      |
-| **Document Issuance**      | OpenId4VCI (draft 15) document issuance                                 |                                                                                        |
+| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                        |
 |                            | Authorization Code Flow                                                 | ✅                                                                                      |
 |                            | Pre-authorization Code Flow                                             | ✅                                                                                      |
 |                            | DPoP JWT in authorization                                               | ✅                                                                                      |
@@ -106,7 +106,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.20.1-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.21.0-SNAPSHOT"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -167,7 +167,10 @@ val config = EudiWalletConfig()
         withClientId("client-id")
         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
         withParUsage(OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED)
-        withUseDPoPIfSupported(true)
+        withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.IfSupported(
+            algorithm = Algorithm.ESP256 // this is the default value, that can be omitted
+        ))
+        // or withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.Disabled)
     }
     // configuration for proximity presentation
     // the values below are the default values

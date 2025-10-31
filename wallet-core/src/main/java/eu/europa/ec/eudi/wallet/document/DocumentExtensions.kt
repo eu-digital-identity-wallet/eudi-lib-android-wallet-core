@@ -186,7 +186,7 @@ object DocumentExtensions {
                 .setUseStrongBox(config.useStrongBoxForKeys)
                 .setUserAuthenticationRequired(
                     required = config.userAuthenticationRequired,
-                    timeoutMillis = config.userAuthenticationTimeout,
+                    timeout = config.userAuthenticationTimeout,
                     userAuthenticationTypes = setOf(
                         UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC
                     )

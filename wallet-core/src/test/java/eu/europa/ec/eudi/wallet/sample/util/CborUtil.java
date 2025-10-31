@@ -105,7 +105,7 @@ import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.SpecialType;
 import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 
 /**
  * Utility functions for cbor encoding/ decoding and other
@@ -911,8 +911,7 @@ public class CborUtil {
             throw new IllegalArgumentException("ByteString is not tagged with tag 24");
         }
         byte[] encodedCbor = itemByteString.getBytes();
-        DataItem embeddedItem = cborDecode(encodedCbor);
-        return embeddedItem;
+        return cborDecode(encodedCbor);
     }
 
     /**
@@ -1009,7 +1008,7 @@ public class CborUtil {
         ECPoint w = ecKey.getW();
         byte[] x = sec1EncodeFieldElementAsOctetString(32, w.getAffineX());
         byte[] y = sec1EncodeFieldElementAsOctetString(32, w.getAffineY());
-        DataItem item = new CborBuilder()
+        return new CborBuilder()
                 .addMap()
                 .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
                 .put(COSE_KEY_EC2_CRV, COSE_KEY_EC2_CRV_P256)
@@ -1017,7 +1016,6 @@ public class CborUtil {
                 .put(COSE_KEY_EC2_Y, y)
                 .end()
                 .build().get(0);
-        return item;
     }
 
 
@@ -1185,8 +1183,7 @@ public class CborUtil {
             ECPoint ecPoint = new ECPoint(x, y);
             ECPublicKeySpec keySpec = new ECPublicKeySpec(ecPoint, ecParameters);
             KeyFactory kf = KeyFactory.getInstance("EC");
-            ECPublicKey ecPublicKey = (ECPublicKey) kf.generatePublic(keySpec);
-            return ecPublicKey;
+            return (ECPublicKey) kf.generatePublic(keySpec);
 
         } catch (NoSuchAlgorithmException
                  | InvalidParameterSpecException
@@ -1214,8 +1211,7 @@ public class CborUtil {
             byte[] info = new byte[]{'E', 'M', 'a', 'c', 'K', 'e', 'y'};
             byte[] derivedKey = computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
 
-            SecretKey secretKey = new SecretKeySpec(derivedKey, "");
-            return secretKey;
+            return new SecretKeySpec(derivedKey, "");
         } catch (InvalidKeyException
                  | NoSuchAlgorithmException e) {
             throw new IllegalStateException("Error performing key agreement", e);
@@ -1526,42 +1522,36 @@ public class CborUtil {
         if (octetString == null) {
             return null;
         }
-        ASN1InputStream asn1InputStream = null;
-        try {
-            asn1InputStream = new ASN1InputStream(octetString);
+
+        try (ASN1InputStream asn1InputStream = new ASN1InputStream(octetString)) {
             byte[] cborBytes = ((ASN1OctetString) asn1InputStream.readObject()).getOctets();
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(cborBytes);
-            List<DataItem> dataItems = new CborDecoder(bais).decode();
-            if (dataItems.size() != 1) {
-                throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(cborBytes)) {
+                List<DataItem> dataItems = new CborDecoder(bais).decode();
+                if (dataItems.size() != 1) {
+                    throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
+                }
+                Array array = castTo(Array.class, dataItems.get(0));
+                List<DataItem> items = array.getDataItems();
+                if (items.size() < 2) {
+                    throw new IllegalArgumentException(
+                            "Expected at least 2 array items, found " + items.size());
+                }
+                String id = checkedStringValue(items.get(0));
+                if (!id.equals("ProofOfBinding")) {
+                    throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
+                }
+                byte[] popSha256 = castTo(ByteString.class, items.get(1)).getBytes();
+                if (popSha256.length != 32) {
+                    throw new IllegalArgumentException(
+                            "Expected bstr to be 32 bytes, it is " + popSha256.length);
+                }
+                return popSha256;
             }
-            Array array = castTo(Array.class, dataItems.get(0));
-            List<DataItem> items = array.getDataItems();
-            if (items.size() < 2) {
-                throw new IllegalArgumentException(
-                        "Expected at least 2 array items, found " + items.size());
-            }
-            String id = checkedStringValue(items.get(0));
-            if (!id.equals("ProofOfBinding")) {
-                throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
-            }
-            byte[] popSha256 = castTo(ByteString.class, items.get(1)).getBytes();
-            if (popSha256.length != 32) {
-                throw new IllegalArgumentException(
-                        "Expected bstr to be 32 bytes, it is " + popSha256.length);
-            }
-            return popSha256;
         } catch (IOException e) {
             throw new IllegalArgumentException("Error decoding extension data", e);
         } catch (CborException e) {
             throw new IllegalArgumentException("Error decoding data", e);
-        } finally {
-            try {
-                if (null != asn1InputStream) asn1InputStream.close();
-            } catch (IOException e) {
-                // Ignore
-            }
         }
     }
 
@@ -1632,8 +1622,7 @@ public class CborUtil {
             ECPoint ecPoint = new ECPoint(x, y);
             ECPublicKeySpec keySpec = new ECPublicKeySpec(ecPoint, ecParameters);
             KeyFactory kf = KeyFactory.getInstance("EC");
-            ECPublicKey ecPublicKey = (ECPublicKey) kf.generatePublic(keySpec);
-            return ecPublicKey;
+            return (ECPublicKey) kf.generatePublic(keySpec);
         } catch (NoSuchAlgorithmException
                  | InvalidParameterSpecException
                  | InvalidKeySpecException e) {
@@ -1700,6 +1689,7 @@ public class CborUtil {
     }
 
 
+    @SuppressWarnings("java:S125")
     protected static @NonNull
     X509Certificate signPublicKeyWithPrivateKey(@NonNull String keyToSignAlias,
                                                 @NonNull String keyToSignWithAlias) {
@@ -1789,8 +1779,7 @@ public class CborUtil {
 
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             ByteArrayInputStream bais = new ByteArrayInputStream(resultingCertBytes);
-            X509Certificate result = (X509Certificate) cf.generateCertificate(bais);
-            return result;
+            return (X509Certificate) cf.generateCertificate(bais);
         } catch (IOException
                  | InvalidKeyException
                  | KeyStoreException

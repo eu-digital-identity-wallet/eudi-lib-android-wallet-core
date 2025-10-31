@@ -26,9 +26,7 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.util.Base64
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.statium.StatusListTokenFormat
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -44,6 +42,7 @@ import java.security.interfaces.ECPrivateKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
+import kotlin.time.Clock
 
 class VerifyStatusListTokenSignatureX5cTest {
 
@@ -80,7 +79,7 @@ class VerifyStatusListTokenSignatureX5cTest {
         val token = signedJWT.serialize()
 
         // Test verification
-        val result = verifier.invoke(token, StatusListTokenFormat.JWT, now)
+        val result = verifier.invoke(token,now)
         assertTrue(result.isSuccess)
     }
 
@@ -114,20 +113,8 @@ class VerifyStatusListTokenSignatureX5cTest {
         val token = signedJWT.serialize()
 
         // Test verification
-        val result = verifier.invoke(token, StatusListTokenFormat.JWT, now)
+        val result = verifier.invoke(token,  now)
         assertTrue(result.isSuccess)
-    }
-
-    @Test
-    fun `verify failure with unsupported format`() = runBlocking {
-        val result = verifier.invoke("token", StatusListTokenFormat.CWT, now)
-
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
-        assertEquals(
-            "Unsupported format: CWT",
-            result.exceptionOrNull()?.message
-        )
     }
 
     @Test
@@ -151,7 +138,7 @@ class VerifyStatusListTokenSignatureX5cTest {
         val token = signedJWT.serialize()
 
         // Test verification
-        val result = verifier.invoke(token, StatusListTokenFormat.JWT, now)
+        val result = verifier.invoke(token, now)
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IllegalStateException)
@@ -191,7 +178,7 @@ class VerifyStatusListTokenSignatureX5cTest {
         val token = signedJWT.serialize()
 
         // Test verification
-        val result = verifier.invoke(token, StatusListTokenFormat.JWT, now)
+        val result = verifier.invoke(token, now)
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SignatureVerificationError)
@@ -200,7 +187,7 @@ class VerifyStatusListTokenSignatureX5cTest {
     @Test
     fun `verify failure with malformed JWT`() = runBlocking {
         // Test with malformed JWT
-        val result = verifier.invoke("malformed.jwt.token", StatusListTokenFormat.JWT, now)
+        val result = verifier.invoke("malformed.jwt.token", now)
 
         assertTrue(result.isFailure)
     }

@@ -18,15 +18,14 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
-import eu.europa.ec.eudi.openid4vci.DefaultHttpClientFactory
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
-import eu.europa.ec.eudi.openid4vci.KtorHttpClientFactory
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -37,10 +36,14 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.logging.Logger
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.util.concurrent.Executor
 
 /**
@@ -58,7 +61,7 @@ internal class DefaultOpenId4VciManager(
     private val documentManager: DocumentManager,
     var config: OpenId4VciManager.Config,
     var logger: Logger? = null,
-    var ktorHttpClientFactory: KtorHttpClientFactory? = null,
+    var ktorHttpClientFactory: (() -> HttpClient)? = null,
 ) : OpenId4VciManager {
 
     internal val httpClientFactory
@@ -70,7 +73,7 @@ internal class DefaultOpenId4VciManager(
         OfferResolver(httpClientFactory)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(config, httpClientFactory)
+        IssuerCreator(config, httpClientFactory, logger)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         IssuerAuthorization(context, logger)
@@ -78,7 +81,7 @@ internal class DefaultOpenId4VciManager(
 
     override suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata> {
         return CredentialIssuerId(config.issuerUrl).mapCatching {
-            CredentialIssuerMetadataResolver(httpClientFactory).resolve(
+            CredentialIssuerMetadataResolver(httpClientFactory()).resolve(
                 issuer = it,
                 policy = IssuerMetadataPolicy.IgnoreSigned
             ).getOrThrow()
@@ -192,8 +195,9 @@ internal class DefaultOpenId4VciManager(
 
                     else -> {
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
-                            deferredContext.issuanceContext,
-                            httpClientFactory
+                            ctx = deferredContext.issuanceContext,
+                            httpClient = httpClientFactory(),
+                            responseEncryptionKey = null // TODO handle encrypted responses
                         )
                             .getOrThrow()
                         ProcessDeferredOutcome(
@@ -237,7 +241,7 @@ internal class DefaultOpenId4VciManager(
     override fun resumeWithAuthorization(uri: Uri) = issuerAuthorization.resumeFromUri(uri)
 
     override fun resumeWithAuthorization(uri: String) {
-        resumeWithAuthorization(Uri.parse(uri))
+        resumeWithAuthorization(uri.toUri())
     }
 
     /**
@@ -292,4 +296,20 @@ internal class DefaultOpenId4VciManager(
             )
         }
     }
+
+    companion object {
+        private val DefaultHttpClientFactory: () -> HttpClient = {
+            HttpClient {
+                install(ContentNegotiation) {
+                    json(
+                        json = Json {
+                            ignoreUnknownKeys = true
+                            prettyPrint = true
+                        },
+                    )
+                }
+            }
+        }
+    }
+
 }

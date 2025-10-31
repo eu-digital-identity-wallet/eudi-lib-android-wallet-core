@@ -22,7 +22,7 @@ package eu.europa.ec.eudi.wallet.transactionLogging
  * Implementations of this interface should log transactions to some persistent storage.
  * The storage can be a file, a database, or any other storage medium.
  */
-interface TransactionLogger {
+fun interface TransactionLogger {
     /**
      * Logs a transaction.
      * @param transaction The transaction to log.

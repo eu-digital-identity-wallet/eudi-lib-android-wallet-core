@@ -24,7 +24,7 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 /**
  * Interface for extracting revocation status data from documents
  */
-interface StatusReferenceExtractor {
+fun interface StatusReferenceExtractor {
     /**
      * Extracts revocation status data from the provided document
      * @param document The document to extract revocation status data from

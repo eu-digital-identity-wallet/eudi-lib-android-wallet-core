@@ -106,12 +106,12 @@ internal class DCAPIRequestProcessor(
         val option = this.credentialOptions[0] as GetDigitalCredentialOption
         val requestJson = JSONObject(option.requestJson)
         val firstRequest = requestJson.getJSONArray(REQUESTS).getJSONObject(0)
-        val protocol = firstRequest.get(PROTOCOL) as String
+        val protocol = firstRequest[PROTOCOL] as String
 
         require(protocol == DC_API_PROTOCOL_ORG_ISO_MDOC) { "Unsupported protocol: $protocol" }
 
-        val data = firstRequest.get(DATA) as JSONObject
-        val deviceRequestBase64 = data.get(DEVICE_REQUEST) as String
+        val data = firstRequest[DATA] as JSONObject
+        val deviceRequestBase64 = data[DEVICE_REQUEST] as String
         val encryptionInfoBase64 = data.getString(ENCRYPTION_INFO)
         val deviceRequestBytes = deviceRequestBase64.fromBase64()
         val sessionTranscriptBytes =

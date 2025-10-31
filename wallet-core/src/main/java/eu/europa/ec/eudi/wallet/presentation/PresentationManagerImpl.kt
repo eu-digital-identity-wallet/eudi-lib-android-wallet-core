@@ -93,7 +93,7 @@ class PresentationManagerImpl @JvmOverloads constructor(
             true == openId4vpManager?.config?.schemes?.contains(uri.scheme) ->
                 openId4vpManager.resolveRequestUri(uri.toString())
 
-            else -> throw IllegalStateException("Not supported scheme")
+            else -> error("Not supported scheme")
         }
     }
 
@@ -132,7 +132,7 @@ class PresentationManagerImpl @JvmOverloads constructor(
 
             is DCAPIResponse -> dcapiManager?.sendResponse(response)
 
-            else -> throw IllegalStateException("Unable to determine the presentation mode")
+            else -> error("Unable to determine the presentation mode")
         }
     }
 
