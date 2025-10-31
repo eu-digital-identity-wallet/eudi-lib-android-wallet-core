@@ -387,7 +387,9 @@ private fun requestEncryptionSpecTO(spec: EncryptionSpec): JsonObject {
     return buildJsonObject {
         put("recipient_key", jwkJson)
         put("encryption_method", spec.encryptionMethod.toString())
-        put("compression_algorithm", spec.compressionAlgorithm.toString())
+        spec.compressionAlgorithm?.let {
+            put("compression_algorithm", it.toString())
+        }
     }
 }
 
@@ -415,7 +417,9 @@ private fun requestEncryption(specTO: JsonObject): EncryptionSpec =
 private fun responseEncryptionParamsTO(params: Pair<EncryptionMethod, CompressionAlgorithm?>): JsonObject =
     buildJsonObject {
         put("encryption_method", params.first.toString())
-        put("compression_algorithm", params.second?.toString())
+        params.second?.let {
+            put("compression_algorithm", it.toString())
+        }
     }
 
 private fun responseEncryptionParams(specTO: JsonObject): Pair<EncryptionMethod, CompressionAlgorithm?> {
