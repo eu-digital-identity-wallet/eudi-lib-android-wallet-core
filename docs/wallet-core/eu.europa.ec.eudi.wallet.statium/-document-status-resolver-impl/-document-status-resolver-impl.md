@@ -3,7 +3,7 @@
 # DocumentStatusResolverImpl
 
 [androidJvm]\
-constructor(verifySignature: VerifyStatusListTokenSignature, allowedClockSkew: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html), ktorHttpClientFactory: () -&gt; HttpClient, extractor: [StatusReferenceExtractor](../-status-reference-extractor/index.md) = DefaultStatusReferenceExtractor)
+constructor(verifySignature: VerifyStatusListTokenJwtSignature, allowedClockSkew: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html), ktorHttpClientFactory: () -&gt; HttpClient, extractor: [StatusReferenceExtractor](../-status-reference-extractor/index.md) = DefaultStatusReferenceExtractor, ioDispatcher: CoroutineDispatcher = Dispatchers.IO)
 
 #### Parameters
 

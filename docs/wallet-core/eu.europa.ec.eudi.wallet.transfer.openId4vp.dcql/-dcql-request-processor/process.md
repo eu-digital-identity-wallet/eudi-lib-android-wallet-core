@@ -20,6 +20,8 @@ This method performs the following steps:
 5. 
    Maps requested claims to the document items
 
+Important! Currently credentials_sets and claim_sets are not supported.
+
 #### Return
 
 [ProcessedDcqlRequest](../-processed-dcql-request/index.md) containing matched documents and requested items

@@ -3,4 +3,4 @@
 # verifySignature
 
 [androidJvm]\
-var [verifySignature](verify-signature.md): VerifyStatusListTokenSignature
+var [verifySignature](verify-signature.md): VerifyStatusListTokenJwtSignature
