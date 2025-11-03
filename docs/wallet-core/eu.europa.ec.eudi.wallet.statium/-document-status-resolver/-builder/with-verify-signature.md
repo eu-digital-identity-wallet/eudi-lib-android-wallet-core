@@ -3,7 +3,7 @@
 # withVerifySignature
 
 [androidJvm]\
-fun [withVerifySignature](with-verify-signature.md)(verifySignature: VerifyStatusListTokenSignature): &lt;Error class: unknown class&gt;
+fun [withVerifySignature](with-verify-signature.md)(verifySignature: VerifyStatusListTokenJwtSignature): &lt;Error class: unknown class&gt;
 
 Sets the function to verify the status list token signature
 

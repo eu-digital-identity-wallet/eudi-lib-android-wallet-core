@@ -31,28 +31,28 @@ graph TD
 
 The library supports the following features:
 
-| Category                   | Feature                                                                 | Status                                                                                 |
-|----------------------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                      |
-|                            | Custom Key Management implementation                                    | ✅ via imeplementation of SecureArea                                                    |
-|                            | Multiple Key Management implementations                                 | ✅                                                                                      |
-|                            | Support for Batch credentials per Document                              | ✅                                                                                      |
-| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                        |
-|                            | Authorization Code Flow                                                 | ✅                                                                                      |
-|                            | Pre-authorization Code Flow                                             | ✅                                                                                      |
-|                            | DPoP JWT in authorization                                               | ✅                                                                                      |
-|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                            |
-|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                             |
-|                            | Proof                                                                   | ✅ JWT                                                                                  |
-|                            | Credential batch issuing                                                | ✅ multiple JWT proofs                                                                  |
-|                            | Deferred issuing                                                        | ✅                                                                                      |
-|                            | Notify credential issuer                                                | ❌                                                                                      |
-| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                        |
-|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                      |
-|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                 |
-| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                        |
-|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri        |
-|                            | DCQL                                                                    | ✅ simple queries   <br />❌ support for credential_sets  <br />❌ support for claim_sets |
+| Category                   | Feature                                                                 | Status                                                                                                                 |
+|----------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                      |
+|                            | Custom Key Management implementation                                    | ✅ via imeplementation of SecureArea                                                                                    |
+|                            | Multiple Key Management implementations                                 | ✅                                                                                                                      |
+|                            | Support for Batch credentials per Document                              | ✅                                                                                                                      |
+| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                        |
+|                            | Authorization Code Flow                                                 | ✅                                                                                                                      |
+|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                      |
+|                            | DPoP JWT in authorization                                               | ✅                                                                                                                      |
+|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
+|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                             |
+|                            | Proof                                                                   | ✅ JWT                                                                                                                  |
+|                            | Credential batch issuing                                                | ✅ multiple JWT proofs                                                                                                  |
+|                            | Deferred issuing                                                        | ✅                                                                                                                      |
+|                            | Notify credential issuer                                                | ❌                                                                                                                      |
+| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                        |
+|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                      |
+|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
+| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
+|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
+|                            | DCQL                                                                    | ✅ support for credential_sets  <br />❌ support for claim_sets <br /> ❌ multiple credentials in CredentialQuery ignored |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -106,7 +106,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.21.0-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.21.0"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -152,7 +152,7 @@ val config = EudiWalletConfig()
         // set userAuthenticationRequired to true to require user authentication
         userAuthenticationRequired = true,
         // set userAuthenticationTimeout to 30 seconds
-        userAuthenticationTimeout = 30_000L,
+        userAuthenticationTimeout = 30_000.milliseconds,
         // set useStrongBoxForKeys to true to use the the device's StrongBox if available
         // to store the keys
         useStrongBoxForKeys = true

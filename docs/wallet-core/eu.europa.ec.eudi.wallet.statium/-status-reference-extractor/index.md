@@ -2,7 +2,7 @@
 
 # StatusReferenceExtractor
 
-interface [StatusReferenceExtractor](index.md)
+fun interface [StatusReferenceExtractor](index.md)
 
 Interface for extracting revocation status data from documents
 

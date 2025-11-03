@@ -3,4 +3,4 @@
 # userAuthenticationTimeout
 
 [androidJvm]\
-var [userAuthenticationTimeout](user-authentication-timeout.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html)
+var [userAuthenticationTimeout](user-authentication-timeout.md): [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html)

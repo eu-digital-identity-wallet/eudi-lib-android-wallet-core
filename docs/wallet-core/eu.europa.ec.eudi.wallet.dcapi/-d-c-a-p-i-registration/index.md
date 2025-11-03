@@ -2,7 +2,7 @@
 
 # DCAPIRegistration
 
-interface [DCAPIRegistration](index.md)
+fun interface [DCAPIRegistration](index.md)
 
 #### Inheritors
 
