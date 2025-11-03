@@ -3,7 +3,7 @@
 # TransactionLogger
 
 [androidJvm]\
-interface [TransactionLogger](index.md)
+fun interface [TransactionLogger](index.md)
 
 A logger for transactions.
 

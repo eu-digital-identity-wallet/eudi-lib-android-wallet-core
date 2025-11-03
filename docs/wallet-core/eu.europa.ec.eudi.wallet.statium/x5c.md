@@ -3,6 +3,6 @@
 # x5c
 
 [androidJvm]\
-val VerifyStatusListTokenSignature.Companion.[x5c](x5c.md): VerifyStatusListTokenSignature
+val VerifyStatusListTokenJwtSignature.Companion.[x5c](x5c.md): VerifyStatusListTokenJwtSignature
 
 Companion object for VerifyStatusListTokenSignature to provide a x5c implementation.

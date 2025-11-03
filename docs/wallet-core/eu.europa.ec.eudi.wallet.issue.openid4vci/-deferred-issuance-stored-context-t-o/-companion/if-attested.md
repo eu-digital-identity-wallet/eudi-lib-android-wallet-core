@@ -3,4 +3,4 @@
 # ifAttested
 
 [androidJvm]\
-fun &lt;[A](if-attested.md)&gt; Client.[ifAttested](if-attested.md)(getter: Client.Attested.() -&gt; [A](if-attested.md)?): [A](if-attested.md)?
+fun &lt;[A](if-attested.md)&gt; ClientAuthentication.[ifAttested](if-attested.md)(getter: ClientAuthentication.AttestationBased.() -&gt; [A](if-attested.md)?): [A](if-attested.md)?
