@@ -63,7 +63,7 @@ class SerializersTest {
         )
     )
 
-    private val vpTokenConsensus = Consensus.PositiveConsensus.VPTokenConsensus(
+    private val vpTokenConsensus = Consensus.PositiveConsensus(
         verifiablePresentations = verifiablePresentations
     )
 
@@ -264,7 +264,7 @@ class SerializersTest {
     }
 
     @Test
-    fun `Integration test - full VPTokenConsensus round trip with multiple presentation types`() {
+    fun `Integration test - full PositiveConsensus round trip with multiple presentation types`() {
         val mixedPresentations = VerifiablePresentations(
             mapOf(
                 QueryId("mixed") to listOf(
@@ -281,7 +281,7 @@ class SerializersTest {
             )
         )
 
-        val consensus = Consensus.PositiveConsensus.VPTokenConsensus(
+        val consensus = Consensus.PositiveConsensus(
             verifiablePresentations = mixedPresentations
         )
 
@@ -324,7 +324,7 @@ class SerializersTest {
 
         // Deserialize using the contextual serializers
         val deserialized =
-            VPTokenConsensusJson.decodeFromString<Consensus.PositiveConsensus.VPTokenConsensus>(
+            VPTokenConsensusJson.decodeFromString<Consensus.PositiveConsensus>(
                 serialized
             )
 

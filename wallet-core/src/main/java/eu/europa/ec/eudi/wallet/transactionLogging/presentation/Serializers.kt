@@ -22,6 +22,7 @@
  * JSON serialization/deserialization capabilities for:
  * - VP Token consensus data
  * - Verifiable presentations collections
+ *
  * - Individual verifiable presentation objects
  */
 package eu.europa.ec.eudi.wallet.transactionLogging.presentation
@@ -52,7 +53,7 @@ import kotlinx.serialization.modules.SerializersModule
 
 
 val module = SerializersModule {
-    contextual(Consensus.PositiveConsensus.VPTokenConsensus::class, VPTokenConsensusSerializer)
+    contextual(Consensus.PositiveConsensus::class, VPTokenConsensusSerializer)
 }
 
 val VPTokenConsensusJson = Json {
@@ -61,16 +62,16 @@ val VPTokenConsensusJson = Json {
 }
 
 /**
- * Custom serializer for [Consensus.PositiveConsensus.VPTokenConsensus] objects.
+ * Custom serializer for [Consensus.PositiveConsensus] objects.
  *
  * This serializer handles the serialization and deserialization of VP Token consensus data,
  * which contains verifiable presentations that have been agreed upon during the consensus process.
  * The serializer delegates the actual presentations serialization to [VerifiablePresentationsSerializer].
  *
- * @see Consensus.PositiveConsensus.VPTokenConsensus
+ * @see Consensus.PositiveConsensus
  * @see VerifiablePresentationsSerializer
  */
-object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus.VPTokenConsensus> {
+object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus> {
 
     /**
      * Serial descriptor for the VPTokenConsensus structure.
@@ -81,12 +82,12 @@ object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus.VPTo
     }
 
     /**
-     * Serializes a [Consensus.PositiveConsensus.VPTokenConsensus] object to the encoder.
+     * Serializes a [Consensus.PositiveConsensus] object to the encoder.
      *
      * @param encoder The encoder to write the serialized data to
-     * @param value The VPTokenConsensus object to serialize
+     * @param value The PositiveConsensus object to serialize
      */
-    override fun serialize(encoder: Encoder, value: Consensus.PositiveConsensus.VPTokenConsensus) {
+    override fun serialize(encoder: Encoder, value: Consensus.PositiveConsensus) {
         encoder.encodeStructure(descriptor) {
             encodeSerializableElement(
                 descriptor,
@@ -98,13 +99,13 @@ object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus.VPTo
     }
 
     /**
-     * Deserializes a [Consensus.PositiveConsensus.VPTokenConsensus] object from the decoder.
+     * Deserializes a [Consensus.PositiveConsensus] object from the decoder.
      *
      * @param decoder The decoder to read the serialized data from
-     * @return The deserialized VPTokenConsensus object
+     * @return The deserialized PositiveConsensus object
      * @throws SerializationException if the required verifiablePresentations field is missing
      */
-    override fun deserialize(decoder: Decoder): Consensus.PositiveConsensus.VPTokenConsensus {
+    override fun deserialize(decoder: Decoder): Consensus.PositiveConsensus {
         return decoder.decodeStructure(descriptor) {
             var verifiablePresentations: VerifiablePresentations? = null
             while (true) {
@@ -118,7 +119,7 @@ object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus.VPTo
                     else -> error("Unexpected index: $index")
                 }
             }
-            Consensus.PositiveConsensus.VPTokenConsensus(
+            Consensus.PositiveConsensus(
                 verifiablePresentations = verifiablePresentations
                     ?: throw SerializationException("Missing verifiablePresentations")
             )

@@ -40,7 +40,7 @@ import kotlinx.serialization.Serializable
  */
 class OpenId4VpResponse(
     val resolvedRequestObject: ResolvedRequestObject,
-    val vpToken: Consensus.PositiveConsensus.VPTokenConsensus,
+    val vpToken: Consensus.PositiveConsensus,
     val msoMdocNonce: String,
     val respondedDocuments: Map<QueryId, List<RespondedDocument>>,
 ) : Response {

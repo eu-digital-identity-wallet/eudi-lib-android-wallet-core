@@ -94,9 +94,6 @@ class DcqlRequestProcessor(
         try {
             // Validate request type and structure
             require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
-            require(request.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
-                "Request must have be a OpenId4VPAuthorization"
-            }
 
             val dcql = request.resolvedRequestObject.query
             val credentials = dcql.credentials

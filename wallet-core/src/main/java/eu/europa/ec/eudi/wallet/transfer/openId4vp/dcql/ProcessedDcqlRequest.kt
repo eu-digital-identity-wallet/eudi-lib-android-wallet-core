@@ -58,7 +58,7 @@ import org.multipaz.crypto.Algorithm
  * @property msoMdocNonce Random nonce used for MSO mdoc format presentations for security
  */
 class ProcessedDcqlRequest(
-    val resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization,
+    val resolvedRequestObject: ResolvedRequestObject,
     private val documentManager: DocumentManager,
     private val queryMap: RequestedDocumentsByQueryId,
     val msoMdocNonce: String,
@@ -116,7 +116,7 @@ class ProcessedDcqlRequest(
             }
             val verifiablePresentations = VerifiablePresentations(verifiablePresentationsMap)
 
-            val vpToken = Consensus.PositiveConsensus.VPTokenConsensus(verifiablePresentations)
+            val vpToken = Consensus.PositiveConsensus(verifiablePresentations)
 
             // Construct the complete response object
             val response = OpenId4VpResponse(
