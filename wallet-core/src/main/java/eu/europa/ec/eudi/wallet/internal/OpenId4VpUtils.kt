@@ -45,11 +45,11 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceReques
 import eu.europa.ec.eudi.openid4vp.CoseAlgorithm
 import eu.europa.ec.eudi.openid4vp.JarConfiguration
 import eu.europa.ec.eudi.openid4vp.JwkSetSource.ByReference
+import eu.europa.ec.eudi.openid4vp.OpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.PreregisteredClient
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.ResponseEncryptionConfiguration
 import eu.europa.ec.eudi.openid4vp.ResponseMode
-import eu.europa.ec.eudi.openid4vp.SiopOpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdPrefix
 import eu.europa.ec.eudi.openid4vp.VPConfiguration
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
@@ -187,10 +187,10 @@ internal fun generateMdocGeneratedNonce(): String {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 }
 
-internal fun SiopOpenId4VPConfig.Companion.make(
+internal fun makeOpenId4VPConfig(
     config: OpenId4VpConfig,
     trust: OpenId4VpReaderTrust,
-): SiopOpenId4VPConfig {
+): OpenId4VPConfig {
     val supportedClientIdPrefixes = config.clientIdSchemes.map { clientIdScheme ->
         when (clientIdScheme) {
             is ClientIdScheme.Preregistered -> SupportedClientIdPrefix.Preregistered(
@@ -211,8 +211,8 @@ internal fun SiopOpenId4VPConfig.Companion.make(
             ClientIdScheme.X509Hash -> SupportedClientIdPrefix.X509Hash(trust = trust)
         }
     }
-    return SiopOpenId4VPConfig(
-        issuer = SelfIssued,
+    return OpenId4VPConfig(
+        issuer = OpenId4VPConfig.SelfIssued,
         jarConfiguration = JarConfiguration.Default,
         responseEncryptionConfiguration = ResponseEncryptionConfiguration.Supported(
             supportedAlgorithms = config.encryptionAlgorithms.map { it.nimbus },
@@ -226,22 +226,12 @@ internal fun SiopOpenId4VPConfig.Companion.make(
 }
 
 /**
- * Converts an [OpenId4VpConfig] to a [SiopOpenId4VPConfig] using the provided trust anchor.
- *
- * @param trust The trust anchor for reader verification.
- * @return The corresponding [SiopOpenId4VPConfig].
- */
-internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: OpenId4VpReaderTrust): SiopOpenId4VPConfig {
-    return SiopOpenId4VPConfig.make(this, trust)
-}
-
-/**
  * Extension function to get the session transcript bytes from a resolved OpenID4VP authorization request.
  *
  * @param mdocGeneratedNonce The generated nonce for mdoc.
  * @return The session transcript as a byte array.
  */
-internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBytes(
+internal fun ResolvedRequestObject.getSessionTranscriptBytes(
     mdocGeneratedNonce: String,
 ): SessionTranscriptBytes {
     val clientId = this.client.id.clientId
@@ -375,7 +365,7 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
  * @throws IllegalArgumentException if no claims are disclosed or presentation creation fails.
  */
 internal suspend fun verifiablePresentationForSdJwtVc(
-    resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization,
+    resolvedRequestObject: ResolvedRequestObject,
     document: IssuedDocument,
     disclosedDocument: DisclosedDocument,
     signatureAlgorithm: Algorithm,

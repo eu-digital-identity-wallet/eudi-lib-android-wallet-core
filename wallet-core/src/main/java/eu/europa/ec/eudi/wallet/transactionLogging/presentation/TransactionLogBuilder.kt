@@ -72,7 +72,7 @@ class TransactionLogBuilder(
      * It handles different types of requests:
      * - [DeviceRequest]: Stores the raw request bytes.
      * - [OpenId4VpRequest]: Extracts and stores the presentation definition or digital credentials query from the resolved request object.
-     *   Requires the resolved request to be [ResolvedRequestObject.OpenId4VPAuthorization] and
+     *   Requires the resolved request to be [ResolvedRequestObject] and
      * - Other request types: Marks the log status as [TransactionLog.Status.Error].
      *
      * The timestamp of the log is updated to the current time.
@@ -93,9 +93,6 @@ class TransactionLogBuilder(
 
             is OpenId4VpRequest -> {
                 val resolvedRequestObject = request.resolvedRequestObject
-                require(resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
-                    "Only OpenId4VPAuthorization is supported"
-                }
                 val rawRequest = Json.encodeToString(resolvedRequestObject.query).toByteArray()
 
                 log.copy(

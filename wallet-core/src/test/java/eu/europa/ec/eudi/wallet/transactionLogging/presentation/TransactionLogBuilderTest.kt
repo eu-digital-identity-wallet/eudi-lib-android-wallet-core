@@ -121,7 +121,7 @@ class TransactionLogBuilderTest {
             ),
         )
 
-        val resolvedRequestObject = ResolvedRequestObject.OpenId4VPAuthorization(
+        val resolvedRequestObject = ResolvedRequestObject(
             client = mockk(),
             responseMode = ResponseMode.DirectPostJwt(responseURI = mockk()),
             query = dcql,
@@ -174,18 +174,6 @@ class TransactionLogBuilderTest {
         val result = builder.withRequest(nonPresentationLog, deviceRequest)
 
         assertEquals(nonPresentationLog, result)
-    }
-
-    @Test(expected = IllegalArgumentException::class)
-    fun `withRequest with OpenId4VpRequest but unsupported RequestObject throws exception`() {
-        val initialLog = builder.createEmptyPresentationLog()
-        val unsupportedResolvedRequestObject = mockk<ResolvedRequestObject.SiopAuthentication>()
-
-        val openId4VpRequest = mockk<OpenId4VpRequest> {
-            every { resolvedRequestObject } returns unsupportedResolvedRequestObject
-        }
-
-        builder.withRequest(initialLog, openId4VpRequest)
     }
 
     @Test
@@ -364,7 +352,7 @@ class TransactionLogBuilderTest {
         )
         val queryId = QueryId("query1")
 
-        val vpTokenMock = Consensus.PositiveConsensus.VPTokenConsensus(
+        val vpTokenMock = Consensus.PositiveConsensus(
             verifiablePresentations = VerifiablePresentations(
                 mapOf(
                     queryId to listOf(

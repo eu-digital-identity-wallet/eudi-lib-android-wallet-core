@@ -82,7 +82,7 @@ class Openid4VpUtilsTest {
     }
 
     @Test
-    fun testToSiopOpenId4VPConfig() {
+    fun testToOpenId4VPConfig() {
         val trust = OpenId4VpReaderTrustImpl(null) // Assuming a default constructor or mock
 
 //        val openId4VpConfig = OpenId4VpConfig.Builder()
