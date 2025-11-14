@@ -48,14 +48,20 @@ import kotlin.test.assertEquals
  */
 
 const val ANNEX_B_OPENID4VP_HANDOVER =
-    "835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
+    "82714F70656E494434565048616E646F76657258209938DD416831B75E888E620AE1DA9EEE2B6626F6B82486AE1BC370992D128993"
 const val ANNEX_B_SESSION_TRANSCRIPT =
-    "83F6F6835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
+    "3F6F682714F70656E494434565048616E646F76657258209938DD416831B75E888E620AE1DA9EEE2B6626F6B82486AE1BC370992D128993"
+
+const val ANNEX_C_OPENID4VP_HANDOVER =
+    "82714F70656E494434565048616E646F766572582004A2490AD588BFE8CD5185937A2653DBACF78EDFA17C6F269F9F94385281FE81"
+const val ANNEX_C_SESSION_TRANSCRIPT =
+    "83F6F682714F70656E494434565048616E646F766572582004A2490AD588BFE8CD5185937A2653DBACF78EDFA17C6F269F9F94385281FE81"
 
 const val clientId = "example.com"
 const val responseUri = "https://example.com/12345/response"
 const val nonce = "abcdefgh1234567890"
 const val mdocGeneratedNonce = "1234567890abcdefgh"
+const val jwkThumbprint: String = "h71LdVmq7J0bIxzn-HYE9dBzj5Tmu-qJ5Ocfnvp3pqQ"
 
 class Openid4VpUtilsTest {
 
@@ -65,7 +71,7 @@ class Openid4VpUtilsTest {
             clientId,
             responseUri,
             nonce,
-            mdocGeneratedNonce
+            jwkThumbprint = null
         ).EncodeToBytes()
         assertEquals(ANNEX_B_OPENID4VP_HANDOVER, Hex.toHexString(openid4VpHandover).uppercase())
     }
@@ -76,9 +82,32 @@ class Openid4VpUtilsTest {
             clientId,
             responseUri,
             nonce,
-            mdocGeneratedNonce
+            jwkThumbprint = null
         )
         assertEquals(ANNEX_B_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
+    }
+
+    @Test
+    fun testGenerateOpenId4VpHandoverWithJwkThumbprint() {
+        val openid4VpHandover = generateOpenId4VpHandover(
+            clientId = clientId,
+            responseUri = responseUri,
+            nonce = nonce,
+            jwkThumbprint = jwkThumbprint
+        ).EncodeToBytes()
+        assertEquals(ANNEX_C_OPENID4VP_HANDOVER, Hex.toHexString(openid4VpHandover).uppercase())
+
+    }
+
+    @Test
+    fun testGenerateSessionTranscriptWithJwkThumbprint() {
+        val sessionTranscript = generateSessionTranscript(
+            clientId = clientId,
+            responseUri = responseUri,
+            nonce = nonce,
+            jwkThumbprint = jwkThumbprint
+        )
+        assertEquals(ANNEX_C_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
     }
 
     @Test

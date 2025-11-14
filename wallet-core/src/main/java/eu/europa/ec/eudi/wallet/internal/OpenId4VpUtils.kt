@@ -98,36 +98,27 @@ import java.util.Date
  *
  *  Handover = OID4VPHandover
  *  OID4VPHandover = [
- *    clientIdHash
- *    responseUriHash
+ *    clientId
  *    nonce
+ *    jwkThumbprint or CBOR.Null
+ *    responseUri
  *  ]
  *
- *  clientIdHash = bstr
- *  responseUriHash = bstr
- *
- *  where clientIdHash is the SHA-256 hash of clientIdToHash and responseUriHash is the SHA-256 hash of the responseUriToHash.
- *
- *
- *  clientIdToHash = [clientId, mdocGeneratedNonce]
- *  responseUriToHash = [responseUri, mdocGeneratedNonce]
- *
- *
- *  mdocGeneratedNonce = tstr
  *  clientId = tstr
- *  responseUri = tstr
  *  nonce = tstr
+ *  jwkThumbprint = tstr
+ *  responseUri = tstr
  *
  */
 internal fun generateSessionTranscript(
     clientId: String,
     responseUri: String,
     nonce: String,
-    mdocGeneratedNonce: String,
+    jwkThumbprint: String?,
 ): SessionTranscriptBytes {
 
     val openID4VPHandover =
-        generateOpenId4VpHandover(clientId, responseUri, nonce, mdocGeneratedNonce)
+        generateOpenId4VpHandover(clientId, responseUri, nonce, jwkThumbprint = jwkThumbprint)
 
     val sessionTranscriptBytes =
         CBORObject.NewArray().apply {
@@ -145,33 +136,23 @@ internal fun generateSessionTranscript(
  * @param clientId The client identifier.
  * @param responseUri The response URI.
  * @param nonce The nonce for the session.
- * @param mdocGeneratedNonce The generated nonce for mdoc.
+ * @param jwkThumbprint  The JWK SHA-256 Thumbprint as defined in RFC7638, encoded as a Byte
+ *                          String, of the Verifier's public key used to encrypt the response.
  * @return The handover as a CBORObject.
  */
 internal fun generateOpenId4VpHandover(
     clientId: String,
     responseUri: String,
     nonce: String,
-    mdocGeneratedNonce: String,
+    jwkThumbprint: String?
 ): CBORObject {
-    val clientIdToHash = CBORObject.NewArray().apply {
-        Add(clientId)
-        Add(mdocGeneratedNonce)
-    }.EncodeToBytes()
-
-    val responseUriToHash = CBORObject.NewArray().apply {
-        Add(responseUri)
-        Add(mdocGeneratedNonce)
-    }.EncodeToBytes()
-
-    val clientIdHash = MessageDigest.getInstance("SHA-256").digest(clientIdToHash)
-    val responseUriHash = MessageDigest.getInstance("SHA-256").digest(responseUriToHash)
-
     val openID4VPHandover = CBORObject.NewArray().apply {
-        Add(clientIdHash)
-        Add(responseUriHash)
+        Add(clientId)
         Add(nonce)
+        Add(jwkThumbprint ?: CBORObject.Null)
+        Add(responseUri)
     }
+
     return openID4VPHandover
 }
 
@@ -244,18 +225,25 @@ internal fun OpenId4VpConfig.toSiopOpenId4VPConfig(trust: OpenId4VpReaderTrust):
 internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBytes(
     mdocGeneratedNonce: String,
 ): SessionTranscriptBytes {
+
     val clientId = this.client.id.clientId
     val responseUri = when (val mode = this.responseMode) {
         is ResponseMode.DirectPostJwt -> mode.responseURI.toString()
+        is ResponseMode.DirectPost -> mode.responseURI.toString()
         else -> ""
     }
     val nonce = this.nonce
 
+    val jwkThumbprint = when (val mode = this.responseMode) {
+        is ResponseMode.DirectPostJwt -> responseEncryptionSpecification?.recipientKey?.computeThumbprint("SHA-256")?.decodeToString()
+        else -> null
+    }
+
     val sessionTranscriptBytes = generateSessionTranscript(
         clientId,
         responseUri,
-        nonce,
-        mdocGeneratedNonce
+        nonce, 
+        jwkThumbprint
     )
     return sessionTranscriptBytes
 }
