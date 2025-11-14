@@ -51,7 +51,7 @@ fun parseVp(
 ): List<PresentedDocument> {
     val parsedMetadata = metadata.map { TransactionLog.Metadata.fromJson(it) }
     val vpToken =
-        VPTokenConsensusJson.decodeFromString<Consensus.PositiveConsensus.VPTokenConsensus>(
+        VPTokenConsensusJson.decodeFromString<Consensus.PositiveConsensus>(
             String(rawResponse)
         )
 

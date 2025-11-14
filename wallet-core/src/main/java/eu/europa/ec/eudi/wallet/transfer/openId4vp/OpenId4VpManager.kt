@@ -22,14 +22,14 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
+import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
-import eu.europa.ec.eudi.openid4vp.SiopOpenId4Vp
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.i
-import eu.europa.ec.eudi.wallet.internal.toSiopOpenId4VPConfig
+import eu.europa.ec.eudi.wallet.internal.makeOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -79,13 +79,14 @@ class OpenId4VpManager(
         }
 
     /**
-     * Lazy initialization of the SIOP OpenID4VP protocol handler with logging and content negotiation.
+     * Lazy initialization of the OpenID4VP protocol handler with logging and content negotiation.
      * Uses the configuration and trust anchor from the request processor.
      */
-    private val siopOpenId4Vp by lazy {
-        SiopOpenId4Vp(
-            siopOpenId4VPConfig = config.toSiopOpenId4VPConfig(
-                trust = requestProcessor.openid4VpX509CertificateTrust
+    private val openId4Vp by lazy {
+        OpenId4Vp(
+            openId4VPConfig = makeOpenId4VPConfig(
+                config,
+                requestProcessor.openid4VpX509CertificateTrust
             ),
             httpClient = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
                 .wrappedWithLogging(logger)
@@ -149,7 +150,7 @@ class OpenId4VpManager(
                 require(config.schemes.contains(Uri.parse(uri).scheme)) {
                     "Not supported scheme for OpenId4Vp"
                 }
-                when (val resolution = siopOpenId4Vp.resolveRequestUri(uri)) {
+                when (val resolution = openId4Vp.resolveRequestUri(uri)) {
                     is Resolution.Invalid -> {
 
                         // TODO dispatch error to verifier/RP
@@ -163,25 +164,13 @@ class OpenId4VpManager(
 
                     is Resolution.Success -> {
                         logger?.d(TAG, "Resolution.Success")
-                        when (val resolvedRequest = resolution.requestObject) {
-                            is ResolvedRequestObject.OpenId4VPAuthorization -> {
-                                logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
-                                val request = OpenId4VpRequest(resolvedRequest)
-                                val processedRequest = requestProcessor.process(request)
-                                transferEventListeners.onTransferEvent(
-                                    TransferEvent.RequestReceived(processedRequest, request)
-                                )
-                            }
-
-                            is ResolvedRequestObject.SiopAuthentication,
-                            is ResolvedRequestObject.SiopOpenId4VPAuthentication,
-                                -> {
-                                logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
-                                transferEventListeners.onTransferEvent(
-                                    TransferEvent.Error(IllegalArgumentException("Unsupported request type"))
-                                )
-                            }
-                        }
+                        val resolvedRequest = resolution.requestObject
+                        logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
+                        val request = OpenId4VpRequest(resolvedRequest)
+                        val processedRequest = requestProcessor.process(request)
+                        transferEventListeners.onTransferEvent(
+                            TransferEvent.RequestReceived(processedRequest, request)
+                        )
                     }
                 }
             } catch (e: Throwable) {
@@ -212,13 +201,10 @@ class OpenId4VpManager(
                 require(response is OpenId4VpResponse) {
                     "Response must be an OpenId4VpResponse"
                 }
-                require(response.resolvedRequestObject is ResolvedRequestObject.OpenId4VPAuthorization) {
-                    "Resolved request object must be OpenId4VPAuthorization"
-                }
 
                 logger?.let { response.debugLog(it, TAG) }
 
-                when (val outcome = siopOpenId4Vp.dispatch(
+                when (val outcome = openId4Vp.dispatch(
                     request = response.resolvedRequestObject,
                     consensus = response.vpToken,
                     encryptionParameters = response.encryptionParameters,
