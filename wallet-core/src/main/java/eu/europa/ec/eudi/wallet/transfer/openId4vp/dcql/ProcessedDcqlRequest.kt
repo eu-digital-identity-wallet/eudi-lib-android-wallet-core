@@ -170,7 +170,7 @@ class ProcessedDcqlRequest(
         // Generate the appropriate verifiable presentation based on format
         val vp = when (format) {
             FORMAT_MSO_MDOC -> {
-                // For MSO mdoc, include session transcript and handle devic engagement
+                // For MSO mdoc, include session transcript and handle device engagement
                 verifiablePresentationForMsoMdoc(
                     documentManager = documentManager,
                     sessionTranscript = resolvedRequestObject
