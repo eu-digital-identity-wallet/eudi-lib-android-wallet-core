@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsa
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
 import org.multipaz.crypto.Algorithm
 import java.util.concurrent.Executor
@@ -210,6 +212,8 @@ interface OpenId4VciManager {
         var documentManager: DocumentManager? = null
         var logger: Logger? = null
         var ktorHttpClientFactory: (() -> HttpClient)? = null
+        var walletKeyManager: WalletKeyManager? = null
+        var walletAttestationsProvider: WalletAttestationsProvider? = null
 
         /**
          * Set the [Config] to use
@@ -245,20 +249,31 @@ interface OpenId4VciManager {
             this.ktorHttpClientFactory = factory
         }
 
+        fun walletKeyManager(keyManager: WalletKeyManager) = apply {
+            this.walletKeyManager = keyManager
+        }
+
+        fun walletAttestationsProvider(provider: WalletAttestationsProvider) = apply {
+            this.walletAttestationsProvider = provider
+        }
+
         /**
          * Build the [OpenId4VciManager]
          * @return the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
          */
         fun build(): OpenId4VciManager {
-            checkNotNull(config) { "config is required" }
-            checkNotNull(documentManager) { "documentManager is required" }
+            val config = checkNotNull(config) { "config is required" }
+            val documentManager = checkNotNull(documentManager) { "documentManager is required" }
+            val walletKeyManager = checkNotNull(walletKeyManager) { "walletKeyManager is required" }
             return DefaultOpenId4VciManager(
                 context = context,
-                config = config!!,
-                documentManager = documentManager!!,
+                config = config,
+                documentManager = documentManager,
                 logger = logger,
-                ktorHttpClientFactory = ktorHttpClientFactory
+                ktorHttpClientFactory = ktorHttpClientFactory,
+                walletProvider = walletAttestationsProvider,
+                walletAttestationKeyManager = walletKeyManager
             )
         }
     }

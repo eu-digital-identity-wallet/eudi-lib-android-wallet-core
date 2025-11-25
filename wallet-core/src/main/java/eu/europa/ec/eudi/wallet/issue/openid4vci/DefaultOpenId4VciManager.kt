@@ -36,6 +36,8 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
@@ -59,6 +61,8 @@ import java.util.concurrent.Executor
 internal class DefaultOpenId4VciManager(
     private val context: Context,
     private val documentManager: DocumentManager,
+    private val walletProvider: WalletAttestationsProvider?,
+    private val walletAttestationKeyManager: WalletKeyManager,
     var config: OpenId4VciManager.Config,
     var logger: Logger? = null,
     var ktorHttpClientFactory: (() -> HttpClient)? = null,
@@ -73,7 +77,13 @@ internal class DefaultOpenId4VciManager(
         OfferResolver(httpClientFactory)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(config, httpClientFactory, logger)
+        IssuerCreator(
+            config,
+            httpClientFactory,
+            walletProvider,
+            walletAttestationKeyManager,
+            logger
+        )
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         IssuerAuthorization(context, logger)
@@ -97,9 +107,8 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val issuer = issuerCreator.createIssuer(
-                    listOf(
-                        CredentialConfigurationIdentifier(credentialConfigurationId)
-                    )
+                    config.issuerUrl,
+                    CredentialConfigurationIdentifier(credentialConfigurationId)
                 )
                 doIssue(issuer, Offer(issuer.credentialOffer), txCode, listener)
             } catch (e: Throwable) {
@@ -117,7 +126,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                val issuer = issuerCreator.createIssuer(format)
+                val issuer = issuerCreator.createIssuer(config.issuerUrl, format)
                 val offer = Offer(issuer.credentialOffer)
                 doIssue(issuer, offer, txCode, listener)
             } catch (e: Throwable) {

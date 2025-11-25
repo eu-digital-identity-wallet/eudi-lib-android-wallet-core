@@ -37,6 +37,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
+import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
@@ -77,6 +79,9 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
     val transferManager: TransferManager
     val logger: Logger
     val documentStatusResolver: DocumentStatusResolver
+
+    val walletProvider: WalletAttestationsProvider?
+    val walletKeyManager: WalletKeyManager
 
     /**
      * Sets the reader trust store with the given [ReaderTrustStore]. This method is useful when
@@ -155,9 +160,10 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         operator fun invoke(
             context: Context,
             config: EudiWalletConfig,
+            walletProvider: WalletAttestationsProvider? = null,
             extraConfiguration: (Builder.() -> Unit)? = null,
         ): EudiWallet {
-            val builder = Builder(context, config)
+            val builder = Builder(context, config, walletProvider)
             extraConfiguration?.invoke(builder)
             return builder.build()
         }
@@ -184,6 +190,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
     class Builder(
         context: Context,
         val config: EudiWalletConfig,
+        val walletProvider: WalletAttestationsProvider?,
     ) {
         private val context = context.applicationContext
         var storage: Storage? = null
@@ -196,6 +203,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         var transactionLogger: TransactionLogger? = null
         var documentStatusResolver: DocumentStatusResolver? = null
         var dcapiRegistration: DCAPIRegistration? = null
+
+        var walletKeyManager: WalletKeyManager? = null
 
         /**
          * Configure with the given [SecureArea] implementations to use for documents' keys management.
@@ -312,6 +321,10 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             this.dcapiRegistration = dcapiRegistration
         }
 
+        fun withWalletKeyManager(walletKeyManager: WalletKeyManager): Builder = apply {
+            this.walletKeyManager = walletKeyManager
+        }
+
         /**
          * Build the [EudiWallet] instance
          *
@@ -377,6 +390,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 documentManager = documentManagerToUse,
                 presentationManager = presentationManagerToUse,
                 transferManager = transferManager,
+                walletProvider = walletProvider,
+                walletKeyManager = walletKeyManager ?: WalletKeyManager.getDefault(context),
                 logger = loggerToUse,
                 documentStatusResolver = documentStatusResolverToUse,
                 transactionLogger = transactionLogger,

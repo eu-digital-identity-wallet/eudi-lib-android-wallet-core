@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2024-2025 European Commission
- *  
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +27,8 @@ import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
+import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import io.ktor.client.HttpClient
@@ -52,8 +54,10 @@ class EudiWalletImpl internal constructor(
     override val transferManager: TransferManager,
     override val logger: Logger,
     override val documentStatusResolver: DocumentStatusResolver,
+    override val walletProvider: WalletAttestationsProvider?,
+    override val walletKeyManager: WalletKeyManager,
     val transactionLogger: TransactionLogger?,
-    val ktorHttpClientFactory: (() -> HttpClient)?
+    val ktorHttpClientFactory: (() -> HttpClient)?,
 ) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
     SampleDocumentManager by SampleDocumentManagerImpl(documentManager),
     DocumentStatusResolver by documentStatusResolver {
@@ -97,6 +101,8 @@ class EudiWalletImpl internal constructor(
 
         return OpenId4VciManager(context) {
             documentManager(this@EudiWalletImpl)
+            walletKeyManager(this@EudiWalletImpl.walletKeyManager)
+            this@EudiWalletImpl.walletProvider?.let { walletAttestationsProvider(it) }
             config(config)
             logger(this@EudiWalletImpl.logger)
             if (httpClientFactory != null) {
