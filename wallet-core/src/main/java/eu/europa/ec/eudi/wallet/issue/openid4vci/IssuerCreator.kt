@@ -16,12 +16,13 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
+import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
 import eu.europa.ec.eudi.openid4vci.EcConfig
 import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
@@ -30,13 +31,17 @@ import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.ParUsage
 import eu.europa.ec.eudi.openid4vci.RsaConfig
+import eu.europa.ec.eudi.openid4vci.clientAttestationJWSAlgs
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.VctFilter
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
+import org.multipaz.crypto.Algorithm
 import java.net.URI
 
 /**
@@ -45,39 +50,35 @@ import java.net.URI
 internal class IssuerCreator(
     private val config: OpenId4VciManager.Config,
     private val ktorHttpClientFactory: () -> HttpClient,
-    private val logger: Logger?
+    private val walletProvider: WalletAttestationsProvider?,
+    private val walletAttestationKeyManager: WalletKeyManager,
+    private val logger: Logger?,
 ) {
-
-    private var issuerMetadata: Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>>? =
-        null
-
 
     /**
      * Creates an [Issuer] from the given [Offer].
      * @param offer The [Offer].
      * @return The [Issuer].
      */
-    suspend fun createIssuer(offer: Offer): Issuer {
-        val credentialOffer = offer.credentialOffer
-        return Issuer.make(
-            config = config.toOpenId4VCIConfig(),
-            credentialOffer = credentialOffer,
-            httpClient = ktorHttpClientFactory()
-        ).getOrThrow()
-    }
+    suspend fun createIssuer(offer: Offer): Issuer = doCreateIssuer(offer.credentialOffer)
 
     /**
      * Creates an [Issuer] from the given [CredentialConfigurationIdentifier]s.
      * @param credentialConfigurationIdentifiers The [CredentialConfigurationIdentifier]s.
      * @return The [Issuer].
      */
-    suspend fun createIssuer(credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>): Issuer {
-        return Issuer.makeWalletInitiated(
-            config = config.toOpenId4VCIConfig(),
-            credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow(),
-            credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-            httpClient = ktorHttpClientFactory()
-        ).getOrThrow()
+    suspend fun createIssuer(
+        issuerUrl: String,
+        credentialConfigurationIdentifier: CredentialConfigurationIdentifier,
+    ): Issuer {
+
+        val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
+            .map { getIssuerMetadata(it) }
+            .getOrThrow()
+
+        return doCreateIssuer(
+            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifier
+        )
     }
 
     /**
@@ -88,57 +89,123 @@ internal class IssuerCreator(
      * @return The [Issuer] supporting the given document format.
      * @throws IllegalStateException if no suitable configuration is found for the document format.
      */
-    suspend fun createIssuer(documentFormat: DocumentFormat): Issuer {
+    suspend fun createIssuer(issuerUrl: String, documentFormat: DocumentFormat): Issuer {
         val formatFilter = when (documentFormat) {
             is MsoMdocFormat -> DocTypeFilter(documentFormat.docType)
             is SdJwtVcFormat -> VctFilter(documentFormat.vct)
         }
-        val configurationId = getCredentialIssuerMetadata()
-            .credentialConfigurationsSupported
+        val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
+            .map { getIssuerMetadata(it) }
+            .getOrThrow()
+
+        val configurationId = issuerMetadata.credentialConfigurationsSupported
             .filterValues { conf -> formatFilter(conf) }
             .firstNotNullOfOrNull { (confId, _) -> confId }
             ?: throw IllegalStateException("No suitable configuration found")
 
-        return createIssuer(listOf(configurationId))
+        return doCreateIssuer(issuerMetadata, authorizationServerMetadata.first(), configurationId)
     }
 
+
+    private suspend fun getIssuerMetadata(credentialIssuerId: CredentialIssuerId): Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>> {
+        return ktorHttpClientFactory().use {
+            Issuer.metaData(it, credentialIssuerId, IssuerMetadataPolicy.IgnoreSigned)
+        }
+    }
+
+
+    private suspend fun doCreateIssuer(
+        credentialOffer: CredentialOffer,
+    ): Issuer {
+        val clientAuth =
+            credentialOffer.authorizationServerMetadata.toClientAuthentication().getOrThrow()
+        return Issuer.make(
+            config = config.toOpenId4VCIConfig(
+                credentialOffer.credentialIssuerMetadata,
+                credentialOffer.authorizationServerMetadata,
+            ),
+            credentialOffer = credentialOffer,
+            httpClient = ktorHttpClientFactory()
+        ).getOrThrow()
+    }
+
+    private suspend fun doCreateIssuer(
+        credentialIssuerMetadata: CredentialIssuerMetadata,
+        authorizationServerMetadata: CIAuthorizationServerMetadata,
+        credentialConfigurationIdentifier: CredentialConfigurationIdentifier,
+    ): Issuer {
+        return Issuer.makeWalletInitiated(
+            config = config.toOpenId4VCIConfig(
+                credentialIssuerMetadata,
+                authorizationServerMetadata
+            ),
+            credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
+            credentialConfigurationIdentifiers = listOf(credentialConfigurationIdentifier),
+            httpClient = ktorHttpClientFactory()
+        ).getOrThrow()
+    }
+
+    private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(): Result<ClientAuthentication> =
+        runCatching {
+            // if clientAttestationJWSAlgs is null or empty then not Attestation based authentication is not supported
+            if (this.clientAttestationJWSAlgs.isNullOrEmpty()) {
+                return@runCatching ClientAuthentication.None(config.clientId)
+            }
+
+            val authorizationServerUrl = this.authorizationEndpointURI.toASCIIString()
+
+            checkNotNull(walletProvider) {
+                "WalletProvider is required for client attestation based authentication for $authorizationServerUrl"
+            }
+
+            // check if matching algorithms exist between wallet and server else return failure
+            val supportedAlgorithms = clientAttestationJWSAlgs?.map { a ->
+                Algorithm.fromJoseAlgorithmIdentifier(a.name)
+            }
+            check(!supportedAlgorithms.isNullOrEmpty()) {
+                "No supported client attestation algorithms found between wallet and server for $authorizationServerUrl"
+            }
+
+            walletAttestationKeyManager
+                .getWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
+                .map {
+                    with(it) { walletProvider.toClientAuthentication().getOrThrow() }
+                }.getOrThrow()
+        }
+
     /**
-     * Loads the issuer metadata from the configured issuer URL if not already loaded.
-     *
-     * @return A pair containing the credential issuer metadata and a list of authorization server metadata.
-     * @throws Exception if the metadata cannot be retrieved.
+     * Converts the [OpenId4VciManager.Config] to [OpenId4VCIConfig].
+     * @receiver The [OpenId4VciManager.Config].
+     * @return The [OpenId4VCIConfig].
      */
-    private suspend fun loadIssuerMetadata(): Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>> {
-        return issuerMetadata ?: CredentialIssuerId(config.issuerUrl)
-            .mapCatching { createIssuerId ->
-                ktorHttpClientFactory().use { client ->
-                    Issuer.metaData(
-                        httpClient = client,
-                        credentialIssuerId = createIssuerId,
-                        policy = IssuerMetadataPolicy.IgnoreSigned
-                    )
+    private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
+        issuerMetadata: CredentialIssuerMetadata,
+        authorizationServerMetadata: CIAuthorizationServerMetadata,
+    ): OpenId4VCIConfig {
+        return OpenId4VCIConfig(
+            clientAuthentication = authorizationServerMetadata.toClientAuthentication()
+                .getOrThrow(),
+            authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
+            encryptionSupportConfig = EncryptionSupportConfig(
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
+                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+                rsaConfig = RsaConfig(rcaKeySize = 2048)
+            ),
+            dPoPSigner = when (dPoPUsage) {
+                OpenId4VciManager.Config.DPoPUsage.Disabled -> null
+
+                is OpenId4VciManager.Config.DPoPUsage.IfSupported -> {
+                    ensureDPoPAlgorithmSupported(authorizationServerMetadata, dPoPUsage)
+                    DPoPSigner(dPoPUsage.algorithm, logger).getOrNull()
                 }
-            }.onSuccess {
-                issuerMetadata = it
-            }.getOrThrow()
-    }
-
-    /**
-     * Retrieves the credential issuer metadata from the loaded issuer metadata.
-     *
-     * @return The credential issuer metadata.
-     */
-    private suspend fun getCredentialIssuerMetadata(): CredentialIssuerMetadata {
-        return loadIssuerMetadata().first
-    }
-
-    /**
-     * Retrieves the authorization server metadata from the loaded issuer metadata.
-     *
-     * @return A list of authorization server metadata objects.
-     */
-    private suspend fun getAuthorizationServerMetadata(): List<CIAuthorizationServerMetadata> {
-        return loadIssuerMetadata().second
+            },
+            parUsage = when (parUsage) {
+                OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
+                OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required
+                OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
+                else -> ParUsage.IfSupported
+            }
+        )
     }
 
     /**
@@ -147,13 +214,11 @@ internal class IssuerCreator(
      * @param dPoPUsage The DPoP usage configuration with the algorithm to check.
      * @throws IllegalStateException if the specified algorithm is not supported by the issuer.
      */
-    private suspend fun ensureDPoPAlgorithmSupported(dPoPUsage: OpenId4VciManager.Config.DPoPUsage.IfSupported) {
-        check(
-            getAuthorizationServerMetadata().first()
-                .dPoPJWSAlgs
-                .contains(JWSAlgorithm.parse(dPoPUsage.algorithm.joseAlgorithmIdentifier))
-        ) {
-
+    private fun ensureDPoPAlgorithmSupported(
+        authorizationServerMetadata: CIAuthorizationServerMetadata,
+        dPoPUsage: OpenId4VciManager.Config.DPoPUsage.IfSupported,
+    ) {
+        check(dPoPUsage.algorithm.joseAlgorithmIdentifier in authorizationServerMetadata.dPoPJWSAlgs.map { it.name }) {
             "DPoP algorithm ${dPoPUsage.algorithm.joseAlgorithmIdentifier} is not supported by the issuer"
                 .also {
                     logger?.log(
@@ -166,36 +231,5 @@ internal class IssuerCreator(
                     )
                 }
         }
-    }
-
-    /**
-     * Converts the [OpenId4VciManager.Config] to [OpenId4VCIConfig].
-     * @receiver The [OpenId4VciManager.Config].
-     * @return The [OpenId4VCIConfig].
-     */
-    private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(): OpenId4VCIConfig {
-        return OpenId4VCIConfig(
-            clientId = clientId,
-            authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
-            encryptionSupportConfig = EncryptionSupportConfig(
-                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
-                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
-                rsaConfig = RsaConfig(rcaKeySize = 2048)
-            ),
-            dPoPSigner = when (dPoPUsage) {
-                OpenId4VciManager.Config.DPoPUsage.Disabled -> null
-
-                is OpenId4VciManager.Config.DPoPUsage.IfSupported -> {
-                    ensureDPoPAlgorithmSupported(dPoPUsage)
-                    DPoPSigner(dPoPUsage.algorithm, logger).getOrNull()
-                }
-            },
-            parUsage = when (parUsage) {
-                OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
-                OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required
-                OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
-                else -> ParUsage.IfSupported
-            }
-        )
     }
 }
