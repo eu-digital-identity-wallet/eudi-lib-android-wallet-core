@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.TransactionData
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentations
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
@@ -63,6 +64,17 @@ class ProcessedDcqlRequest(
     private val queryMap: RequestedDocumentsByQueryId,
     val msoMdocNonce: String,
 ) : RequestProcessor.ProcessedRequest.Success(RequestedDocuments(queryMap.flatMap { it.value.requestedDocuments })) {
+
+    val transactionData: List<TransactionData>?
+        get() = resolvedRequestObject.transactionData
+
+    private fun getTransactionDataForQuery(queryId: QueryId): List<TransactionData.SdJwtVc>? {
+        return transactionData
+            ?.filterIsInstance<TransactionData.SdJwtVc>()
+            ?.filter { it.credentialIds.contains(queryId) }
+            ?.takeIf { it.isNotEmpty() }
+    }
+
     /**
      * Generates an OpenID4VP response with verifiable presentations for the selected documents.
      *
@@ -103,6 +115,7 @@ class ProcessedDcqlRequest(
                         respondedDocuments.add(respondedDocument)
                         val verifiablePresentation = runBlocking {
                             vpFromRequestedDocuments(
+                                queryId = queryId,
                                 format = format,
                                 requestedDocuments = requestedDocuments,
                                 disclosedDocument = disclosedDocument,
@@ -140,6 +153,7 @@ class ProcessedDcqlRequest(
      * This method handles the conversion of different document formats into their
      * corresponding verifiable presentation formats as defined by OpenID4VP specifications.
      *
+     * @param queryId The DCQL query ID
      * @param format Document format identifier (MSO_MDOC or SD_JWT_VC)
      * @param requestedDocuments The collection of all requested documents for this query
      * @param disclosedDocument The specific document selected to disclose
@@ -148,6 +162,7 @@ class ProcessedDcqlRequest(
      * @throws IllegalArgumentException If document format doesn't match expected format or is unsupported
      */
     private suspend fun vpFromRequestedDocuments(
+        queryId: QueryId,
         format: String,
         requestedDocuments: RequestedDocuments,
         disclosedDocument: DisclosedDocument,
@@ -170,7 +185,7 @@ class ProcessedDcqlRequest(
         // Generate the appropriate verifiable presentation based on format
         val vp = when (format) {
             FORMAT_MSO_MDOC -> {
-                // For MSO mdoc, include session transcript and handle devic engagement
+                // MSO mdoc does not support transaction data binding in the same way as SD-JWT VC
                 verifiablePresentationForMsoMdoc(
                     documentManager = documentManager,
                     sessionTranscript = resolvedRequestObject
@@ -182,12 +197,14 @@ class ProcessedDcqlRequest(
             }
 
             FORMAT_SD_JWT_VC -> {
-                // For SD-JWT, create presentation according to SD-JWT VC format
+                // Filter transaction data to only include entries that reference this query ID
+                val queryTransactionData = getTransactionDataForQuery(queryId)
                 verifiablePresentationForSdJwtVc(
                     resolvedRequestObject = resolvedRequestObject,
                     document = document,
                     disclosedDocument = disclosedDocument,
-                    signatureAlgorithm = signatureAlgorithm
+                    signatureAlgorithm = signatureAlgorithm,
+                    transactionData = queryTransactionData
                 )
             }
 

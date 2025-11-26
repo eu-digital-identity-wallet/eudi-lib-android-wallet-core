@@ -26,6 +26,8 @@ import java.util.Locale
 import kotlin.io.encoding.ExperimentalEncodingApi
 import androidx.core.graphics.scale
 
+private const val SHA_256_ALGORITHM = "SHA-256"
+
 /**
  * Utility functions for DCAPI.
  */
@@ -89,7 +91,7 @@ internal fun getDCAPIIsoMdocSessionTranscript(encryptionInfoBase64: String, orig
             Add(encryptionInfoBase64)
             Add(origin)
         }.EncodeToBytes()
-    val dcapiInfoHash = MessageDigest.getInstance("SHA-256").digest(dcapiInfo)
+    val dcapiInfoHash = MessageDigest.getInstance(SHA_256_ALGORITHM).digest(dcapiInfo)
     val dcapiIsoMdocHandover = CBORObject.NewArray().apply {
         Add(DCAPI)
         Add(dcapiInfoHash)
