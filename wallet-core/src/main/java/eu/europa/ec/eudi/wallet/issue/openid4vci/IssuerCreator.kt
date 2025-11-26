@@ -119,7 +119,6 @@ internal class IssuerCreator(
     ): Issuer {
         return Issuer.make(
             config = config.toOpenId4VCIConfig(
-                credentialOffer.credentialIssuerMetadata,
                 credentialOffer.authorizationServerMetadata,
             ),
             credentialOffer = credentialOffer,
@@ -134,7 +133,6 @@ internal class IssuerCreator(
     ): Issuer {
         return Issuer.makeWalletInitiated(
             config = config.toOpenId4VCIConfig(
-                credentialIssuerMetadata,
                 authorizationServerMetadata
             ),
             credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
@@ -177,7 +175,6 @@ internal class IssuerCreator(
      * @return The [OpenId4VCIConfig].
      */
     private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
-        issuerMetadata: CredentialIssuerMetadata,
         authorizationServerMetadata: CIAuthorizationServerMetadata,
     ): OpenId4VCIConfig {
         return OpenId4VCIConfig(
