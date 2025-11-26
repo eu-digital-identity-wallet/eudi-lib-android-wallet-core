@@ -51,6 +51,7 @@ import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.ResponseEncryptionConfiguration
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdPrefix
+import eu.europa.ec.eudi.openid4vp.TransactionData
 import eu.europa.ec.eudi.openid4vp.VPConfiguration
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VerifierId
@@ -83,6 +84,8 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.Date
+
+private const val SHA_256_ALGORITHM = "SHA-256"
 
 /**
  *  Utility to generate the session transcript for the OpenID4VP protocol.
@@ -164,8 +167,8 @@ internal fun generateOpenId4VpHandover(
         Add(mdocGeneratedNonce)
     }.EncodeToBytes()
 
-    val clientIdHash = MessageDigest.getInstance("SHA-256").digest(clientIdToHash)
-    val responseUriHash = MessageDigest.getInstance("SHA-256").digest(responseUriToHash)
+    val clientIdHash = MessageDigest.getInstance(SHA_256_ALGORITHM).digest(clientIdToHash)
+    val responseUriHash = MessageDigest.getInstance(SHA_256_ALGORITHM).digest(responseUriToHash)
 
     val openID4VPHandover = CBORObject.NewArray().apply {
         Add(clientIdHash)
@@ -317,6 +320,7 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
  * @param nonce The nonce for the session.
  * @param signatureAlgorithm The algorithm to use for signing.
  * @param issueDate The date of issuance.
+ * @param transactionData Optional list of transaction data
  * @return The serialized SD-JWT as a string.
  */
 internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
@@ -326,6 +330,7 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
     nonce: String,
     signatureAlgorithm: Algorithm,
     issueDate: Date,
+    transactionData: List<TransactionData.SdJwtVc>? = null,
 ): String {
     val algorithm = JWSAlgorithm.parse((signatureAlgorithm).joseAlgorithmIdentifier)
     val publicKey = credential.secureArea.getKeyInfo(credential.alias).publicKey
@@ -350,8 +355,21 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
         audience(clientId.clientId)
         claim("nonce", nonce)
         issueTime(issueDate)
+        if (!transactionData.isNullOrEmpty()) {
+            val transactionDataHashes = transactionData.map { td ->
+                computeTransactionDataHash(td.value)
+            }
+            claim("transaction_data_hashes", transactionDataHashes)
+            claim("transaction_data_hashes_alg", "sha-256")
+        }
     }
     return serializeWithKeyBinding(buildKbJwt).getOrThrow()
+}
+
+internal fun computeTransactionDataHash(transactionDataValue: String): String {
+    val digest = MessageDigest.getInstance(SHA_256_ALGORITHM)
+    digest.update(transactionDataValue.encodeToByteArray())
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(digest.digest())
 }
 
 /**
@@ -361,6 +379,7 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
  * @param document The issued document containing the credential.
  * @param disclosedDocument The document with disclosed claims.
  * @param signatureAlgorithm The algorithm to use for signing.
+ * @param transactionData Optional list of SD-JWT VC transaction data applicable to this presentation.
  * @return The constructed [VerifiablePresentation.Generic].
  * @throws IllegalArgumentException if no claims are disclosed or presentation creation fails.
  */
@@ -369,6 +388,7 @@ internal suspend fun verifiablePresentationForSdJwtVc(
     document: IssuedDocument,
     disclosedDocument: DisclosedDocument,
     signatureAlgorithm: Algorithm,
+    transactionData: List<TransactionData.SdJwtVc>? = null,
 ): VerifiablePresentation.Generic {
     return document.consumingCredential {
         val credentialIssuedData =
@@ -399,7 +419,8 @@ internal suspend fun verifiablePresentationForSdJwtVc(
                 clientId = resolvedRequestObject.client.id,
                 nonce = resolvedRequestObject.nonce,
                 signatureAlgorithm = signatureAlgorithm,
-                issueDate = Date()
+                issueDate = Date(),
+                transactionData = transactionData
             )
         } else {
             presentation.serialize()
