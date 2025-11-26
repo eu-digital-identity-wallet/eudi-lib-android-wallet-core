@@ -24,9 +24,7 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.io.Closeable
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(
@@ -39,7 +37,7 @@ internal class ProcessResponse(
 
     suspend fun process(response: SubmitRequest.Response) {
         response.forEach { (unsignedDocument, result) ->
-            process(unsignedDocument, result.first, result.second)
+            process(unsignedDocument, result.keyAliases, result.outcome)
         }
     }
 
@@ -62,14 +60,10 @@ internal class ProcessResponse(
                                 signingAlgorithm = e.signingAlgorithm,
                                 keysRequireAuth = e.keysAndSecureAreas,
                                 resume = { keyUnlockData ->
-                                    runBlocking {
-                                        cont.resume(keyUnlockData)
-                                    }
+                                    cont.resume(keyUnlockData)
                                 },
                                 cancel = {
-                                    runBlocking {
-                                        cont.cancel(IllegalStateException("Canceled"))
-                                    }
+                                    cont.cancel(IllegalStateException("Canceled"))
                                 }
                             )
                         )

@@ -28,6 +28,6 @@ import org.multipaz.securearea.SecureArea
 internal class UserAuthRequiredException(
     val signingAlgorithm: Algorithm,
     val keysAndSecureAreas: Map<KeyAlias, SecureArea>,
-    val resume: suspend (Map<KeyAlias, KeyUnlockData?>) -> Pair<List<String>, SubmissionOutcome>,
+    val resume: suspend (Map<KeyAlias, KeyUnlockData?>) -> SubmitRequest.ResponseResult<SubmissionOutcome>,
     override val cause: Throwable? = null,
 ) : Throwable()
