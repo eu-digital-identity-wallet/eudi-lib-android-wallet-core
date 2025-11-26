@@ -272,7 +272,7 @@ internal class DefaultOpenId4VciManager(
         )
         val requestMap = documentCreator.createDocuments(offer)
 
-        val submit = SubmitRequest(config, issuer, authorizedRequest)
+        val submit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
         val response = submit.request(requestMap).also {
             authorizedRequest = submit.authorizedRequest
         }
