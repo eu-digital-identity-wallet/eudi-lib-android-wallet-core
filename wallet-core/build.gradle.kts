@@ -125,7 +125,7 @@ dependencies {
     // OpenID4VCI
     implementation(libs.nimbus.oauth2.oidc.sdk)
     // Siop-Openid4VP library
-    implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
+    api(libs.eudi.lib.jvm.siop.openid4vp.kt) {
         exclude(group = "org.bouncycastle")
     }
     // SD-JWT VC library

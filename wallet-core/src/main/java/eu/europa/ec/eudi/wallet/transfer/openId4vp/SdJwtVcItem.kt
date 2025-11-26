@@ -23,3 +23,6 @@ import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
  * @property path The path of the item.
  */
 class SdJwtVcItem(val path: List<String>) : DocItem
+
+// query id dcql gia kathe ena apanta me document , ta query ids dn ta dinw sto ui, prepei na
+// xeri pia tranction data aforoun pio query

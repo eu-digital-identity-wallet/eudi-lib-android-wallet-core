@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.Resolution
-import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
