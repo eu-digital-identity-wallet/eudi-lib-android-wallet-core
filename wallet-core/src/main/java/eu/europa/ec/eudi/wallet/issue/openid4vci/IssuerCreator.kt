@@ -31,7 +31,7 @@ import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.ParUsage
 import eu.europa.ec.eudi.openid4vci.RsaConfig
-import eu.europa.ec.eudi.openid4vci.clientAttestationJWSAlgs
+import eu.europa.ec.eudi.openid4vci.clientAttestationPOPJWSAlgs
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
@@ -117,8 +117,6 @@ internal class IssuerCreator(
     private suspend fun doCreateIssuer(
         credentialOffer: CredentialOffer,
     ): Issuer {
-        val clientAuth =
-            credentialOffer.authorizationServerMetadata.toClientAuthentication().getOrThrow()
         return Issuer.make(
             config = config.toOpenId4VCIConfig(
                 credentialOffer.credentialIssuerMetadata,
@@ -147,8 +145,8 @@ internal class IssuerCreator(
 
     private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(): Result<ClientAuthentication> =
         runCatching {
-            // if clientAttestationJWSAlgs is null or empty then not Attestation based authentication is not supported
-            if (this.clientAttestationJWSAlgs.isNullOrEmpty()) {
+            // if clientAttestationPOPJWSAlgs is null or empty then not Attestation based authentication is not supported
+            if (this.clientAttestationPOPJWSAlgs.isNullOrEmpty()) {
                 return@runCatching ClientAuthentication.None(config.clientId)
             }
 
@@ -159,7 +157,7 @@ internal class IssuerCreator(
             }
 
             // check if matching algorithms exist between wallet and server else return failure
-            val supportedAlgorithms = clientAttestationJWSAlgs?.map { a ->
+            val supportedAlgorithms = clientAttestationPOPJWSAlgs?.map { a ->
                 Algorithm.fromJoseAlgorithmIdentifier(a.name)
             }
             check(!supportedAlgorithms.isNullOrEmpty()) {
