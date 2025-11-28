@@ -108,7 +108,7 @@ internal class SubmitRequest(
             }
 
             else -> {
-                throw IllegalStateException("No supported proof type found in the credential configuration")
+                error("No supported proof type found in the credential configuration")
             }
         }
 

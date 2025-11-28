@@ -205,6 +205,8 @@ interface OpenId4VciManager {
      * @property documentManager the [DocumentManager] to use
      * @property logger the logger to use
      * @property ktorHttpClientFactory the factory to create the Ktor HTTP client
+     * @property walletKeyManager the [WalletKeyManager] to use
+     * @property walletAttestationsProvider the [WalletAttestationsProvider] to use
      * requires user authentication
      */
     class Builder(private val context: Context) {
@@ -249,10 +251,21 @@ interface OpenId4VciManager {
             this.ktorHttpClientFactory = factory
         }
 
+        /**
+         * Configures the [WalletKeyManager] responsible for managing cryptographic keys.
+         * @param keyManager The instance handling local key lifecycle and signing operations.
+         * @return this builder
+         */
         fun walletKeyManager(keyManager: WalletKeyManager) = apply {
             this.walletKeyManager = keyManager
         }
 
+        /**
+         * Configures the [WalletAttestationsProvider]
+         * @param provider The implementation responsible for making network calls to your Wallet Provider
+         * to fetch attestation JWTs.
+         * @return this builder
+         */
         fun walletAttestationsProvider(provider: WalletAttestationsProvider) = apply {
             this.walletAttestationsProvider = provider
         }

@@ -23,6 +23,21 @@ import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
 import java.security.MessageDigest
 
+/**
+ * A generic implementation of [WalletKeyManager] that delegates cryptographic operations
+ * to a provided [SecureArea].
+ *
+ * Derives a stable key alias from the [authorizationServerUrl] (using SHA-256).
+ * Checks if a key exists in the [SecureArea] for that alias.
+ * If it exists and matches a supported algorithm, it is reused.
+ * If it does not exist or the algorithm is incompatible, a new key is generated.
+ *
+ * @param secureArea The underlying secure storage abstraction.
+ * @param createKeySettingsProvider A lambda that provides configuration for creating new keys
+ * given a selected [Algorithm].
+ * @param keyUnlockDataProvider Optional provider for user-authentication data (e.g., Biometrics/PIN)
+ * if the key requires unlocking before use. Defaults to null.
+ */
 open class SecureAreaWalletKeyManager(
     private val secureArea: SecureArea,
     private val createKeySettingsProvider: suspend (Algorithm) -> CreateKeySettings,
@@ -55,6 +70,10 @@ open class SecureAreaWalletKeyManager(
         }
     }
 
+    /**
+     * Generates a privacy-preserving alias for the key based on the target URL.
+     * This ensures that different Authorization Servers get different keys.
+     */
     private fun generateKeyAlias(authorizationServerUrl: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(authorizationServerUrl.toByteArray())
