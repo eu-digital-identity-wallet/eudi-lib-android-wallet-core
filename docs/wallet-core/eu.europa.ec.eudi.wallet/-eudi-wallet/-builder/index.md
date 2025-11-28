@@ -2,7 +2,7 @@
 
 # Builder
 
-class [Builder](index.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), val config: [EudiWalletConfig](../../-eudi-wallet-config/index.md))
+class [Builder](index.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), val config: [EudiWalletConfig](../../-eudi-wallet-config/index.md), val walletProvider: [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)?)
 
 Builder class to create an instance of [EudiWallet](../index.md)
 
@@ -19,7 +19,7 @@ androidJvm
 
 | | |
 |---|---|
-| [Builder](-builder.md) | [androidJvm]<br>constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), config: [EudiWalletConfig](../../-eudi-wallet-config/index.md)) |
+| [Builder](-builder.md) | [androidJvm]<br>constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), config: [EudiWalletConfig](../../-eudi-wallet-config/index.md), walletProvider: [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)?) |
 
 ## Properties
 
@@ -36,6 +36,8 @@ androidJvm
 | [secureAreas](secure-areas.md) | [androidJvm]<br>var [secureAreas](secure-areas.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;SecureArea&gt;?<br>the secure areas to use for documents' keys management if you want to provide a different implementation |
 | [storage](storage.md) | [androidJvm]<br>var [storage](storage.md): Storage?<br>the storage to use for storing/retrieving documents if you want to provide a different implementation |
 | [transactionLogger](transaction-logger.md) | [androidJvm]<br>var [transactionLogger](transaction-logger.md): [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md)?<br>the transaction logger to use if you want to provide a custom implementation |
+| [walletKeyManager](wallet-key-manager.md) | [androidJvm]<br>var [walletKeyManager](wallet-key-manager.md): [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)? |
+| [walletProvider](wallet-provider.md) | [androidJvm]<br>val [walletProvider](wallet-provider.md): [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)? |
 
 ## Functions
 
@@ -52,3 +54,4 @@ androidJvm
 | [withSecureAreas](with-secure-areas.md) | [androidJvm]<br>fun [withSecureAreas](with-secure-areas.md)(secureAreas: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;SecureArea&gt;): &lt;Error class: unknown class&gt;<br>Configure with the given SecureArea implementations to use for documents' keys management. If not set, the default secure area will be used which is AndroidKeystoreSecureArea. |
 | [withStorage](with-storage.md) | [androidJvm]<br>fun [withStorage](with-storage.md)(storage: Storage): &lt;Error class: unknown class&gt;<br>Configure with the given Storage to use for storing/retrieving documents. If not set, the default storage will be used which is AndroidStorage. |
 | [withTransactionLogger](with-transaction-logger.md) | [androidJvm]<br>fun [withTransactionLogger](with-transaction-logger.md)(transactionLogger: [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md)): &lt;Error class: unknown class&gt;<br>Configure with the given [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md) to use for logging transactions. If not set, the default transaction logger will be used which logs transactions to the console. |
+| [withWalletKeyManager](with-wallet-key-manager.md) | [androidJvm]<br>fun [withWalletKeyManager](with-wallet-key-manager.md)(walletKeyManager: [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)): [EudiWallet.Builder](index.md) |

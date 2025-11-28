@@ -1,0 +1,29 @@
+//[wallet-core](../../../index.md)/[eu.europa.ec.eudi.wallet.provider](../index.md)/[DefaultWalletKeyManager](index.md)
+
+# DefaultWalletKeyManager
+
+class [DefaultWalletKeyManager](index.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)) : [WalletKeyManager](../-wallet-key-manager/index.md)
+
+The default Android implementation of [WalletKeyManager](../-wallet-key-manager/index.md).
+
+This class handles the initialization of an AndroidKeystoreSecureArea backed by a dedicated file storage in the application's `noBackupFilesDir`.
+
+#### Parameters
+
+androidJvm
+
+| | |
+|---|---|
+| context | The Android Application Context. |
+
+## Constructors
+
+| | |
+|---|---|
+| [DefaultWalletKeyManager](-default-wallet-key-manager.md) | [androidJvm]<br>constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)) |
+
+## Functions
+
+| Name | Summary |
+|---|---|
+| [getWalletAttestationKey](get-wallet-attestation-key.md) | [androidJvm]<br>open suspend override fun [getWalletAttestationKey](get-wallet-attestation-key.md)(authorizationServerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), supportedAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;[WalletAttestationKey](../-wallet-attestation-key/index.md)&gt;<br>Retrieves or creates a signing key to be used for Wallet Attestation (Client Authentication). The Wallet Attestation Keys must be distinct for different Authorization Servers but unique for a specific one, and should be stored for subsequent use with the same Authorization Server |

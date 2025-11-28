@@ -201,6 +201,10 @@ $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Buil
 $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/ktorHttpClientFactory/#kotlin.Function0[io.ktor.client.HttpClient]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/ktor-http-client-factory.md
 $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/logger/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/logger.md
 $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/logger/#eu.europa.ec.eudi.wallet.logging.Logger/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/logger.md
+$dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/walletAttestationsProvider/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/wallet-attestations-provider.md
+$dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/walletAttestationsProvider/#eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/wallet-attestations-provider.md
+$dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/walletKeyManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/wallet-key-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Builder/walletKeyManager/#eu.europa.ec.eudi.wallet.provider.WalletKeyManager/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-builder/wallet-key-manager.md
 $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Companion///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-companion/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Companion/invoke/#android.content.Context#kotlin.Function1[eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Builder,kotlin.Unit]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-companion/invoke.md
 $dokka.location:eu.europa.ec.eudi.wallet.issue.openid4vci/OpenId4VciManager.Config.Builder///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.issue.openid4vci/-open-id4-vci-manager/-config/-builder/index.md
@@ -313,6 +317,25 @@ $dokka.location:eu.europa.ec.eudi.wallet.presentation/SessionTerminationFlag.Com
 $dokka.location:eu.europa.ec.eudi.wallet.presentation/SessionTerminationFlag.Companion/SEND_SESSION_TERMINATION_MESSAGE/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.presentation/-session-termination-flag/-companion/-s-e-n-d_-s-e-s-s-i-o-n_-t-e-r-m-i-n-a-t-i-o-n_-m-e-s-s-a-g-e.md
 $dokka.location:eu.europa.ec.eudi.wallet.presentation/SessionTerminationFlag.Companion/USE_TRANSPORT_SPECIFIC_SESSION_TERMINATION/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.presentation/-session-termination-flag/-companion/-u-s-e_-t-r-a-n-s-p-o-r-t_-s-p-e-c-i-f-i-c_-s-e-s-s-i-o-n_-t-e-r-m-i-n-a-t-i-o-n.md
 $dokka.location:eu.europa.ec.eudi.wallet.presentation/SessionTerminationFlag///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.presentation/-session-termination-flag/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/DefaultWalletKeyManager///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-default-wallet-key-manager/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/DefaultWalletKeyManager/DefaultWalletKeyManager/#android.content.Context/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-default-wallet-key-manager/-default-wallet-key-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/DefaultWalletKeyManager/getWalletAttestationKey/#kotlin.String#kotlin.collections.List[org.multipaz.crypto.Algorithm]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-default-wallet-key-manager/get-wallet-attestation-key.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/SecureAreaWalletKeyManager///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-secure-area-wallet-key-manager/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/SecureAreaWalletKeyManager/SecureAreaWalletKeyManager/#org.multipaz.securearea.SecureArea#kotlin.coroutines.SuspendFunction1[org.multipaz.crypto.Algorithm,org.multipaz.securearea.CreateKeySettings]#kotlin.coroutines.SuspendFunction2[kotlin.String,org.multipaz.securearea.SecureArea,org.multipaz.securearea.KeyUnlockData?]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-secure-area-wallet-key-manager/-secure-area-wallet-key-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/SecureAreaWalletKeyManager/getWalletAttestationKey/#kotlin.String#kotlin.collections.List[org.multipaz.crypto.Algorithm]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-secure-area-wallet-key-manager/get-wallet-attestation-key.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationKey///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestation-key/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationKey/WalletAttestationKey/#org.multipaz.securearea.KeyInfo#kotlin.coroutines.SuspendFunction1[kotlin.ByteArray,kotlin.ByteArray]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestation-key/-wallet-attestation-key.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationKey/keyInfo/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestation-key/key-info.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationKey/signFunction/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestation-key/sign-function.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationKey/toClientAuthentication/eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestation-key/to-client-authentication.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationsProvider///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationsProvider/getKeyAttestation/#kotlin.collections.List[org.multipaz.securearea.KeyInfo]#eu.europa.ec.eudi.openid4vci.Nonce?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/get-key-attestation.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletAttestationsProvider/getWalletAttestation/#org.multipaz.securearea.KeyInfo/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/get-wallet-attestation.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletKeyManager.Companion///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/-companion/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletKeyManager.Companion/getDefault/#android.content.Context/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/-companion/get-default.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletKeyManager///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.provider/WalletKeyManager/getWalletAttestationKey/#kotlin.String#kotlin.collections.List[org.multipaz.crypto.Algorithm]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/get-wallet-attestation-key.md
 $dokka.location:eu.europa.ec.eudi.wallet.statium////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.statium/index.md
 $dokka.location:eu.europa.ec.eudi.wallet.statium//x5c/eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature.Companion#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.statium/x5c.md
 $dokka.location:eu.europa.ec.eudi.wallet.statium/DefaultStatusReferenceExtractor///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.statium/-default-status-reference-extractor/index.md
@@ -620,7 +643,7 @@ $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborParse/#kotlin.ByteArray/P
 $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborPrettyPrint/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-pretty-print.md
 $dokka.location:eu.europa.ec.eudi.wallet////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/index.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/index.md
-$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/Builder/#android.content.Context#eu.europa.ec.eudi.wallet.EudiWalletConfig/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/-builder.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/Builder/#android.content.Context#eu.europa.ec.eudi.wallet.EudiWalletConfig#eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/-builder.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/build/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/build.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/config/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/config.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/dcapiRegistration/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/dcapi-registration.md
@@ -633,6 +656,8 @@ $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/readerTrustStore/#/P
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/secureAreas/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/secure-areas.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/storage/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/storage.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/transactionLogger/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/transaction-logger.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/walletKeyManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/wallet-key-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/walletProvider/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/wallet-provider.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withDCAPIRegistration/#eu.europa.ec.eudi.wallet.dcapi.DCAPIRegistration/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-d-c-a-p-i-registration.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withDocumentManager/#eu.europa.ec.eudi.wallet.document.DocumentManager/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-document-manager.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withDocumentStatusResolver/#eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-document-status-resolver.md
@@ -643,8 +668,9 @@ $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withReaderTrustStore
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withSecureAreas/#kotlin.collections.List[org.multipaz.securearea.SecureArea]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-secure-areas.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withStorage/#org.multipaz.storage.Storage/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-storage.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withTransactionLogger/#eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-transaction-logger.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/withWalletKeyManager/#eu.europa.ec.eudi.wallet.provider.WalletKeyManager/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/with-wallet-key-manager.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Companion///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-companion/index.md
-$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Companion/invoke/#android.content.Context#eu.europa.ec.eudi.wallet.EudiWalletConfig#kotlin.Function1[eu.europa.ec.eudi.wallet.EudiWallet.Builder,kotlin.Unit]?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-companion/invoke.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Companion/invoke/#android.content.Context#eu.europa.ec.eudi.wallet.EudiWalletConfig#eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider?#kotlin.Function1[eu.europa.ec.eudi.wallet.EudiWallet.Builder,kotlin.Unit]?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-companion/invoke.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/index.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/config/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/config.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/createOpenId4VciManager/#eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config?#kotlin.Function0[io.ktor.client.HttpClient]?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/create-open-id4-vci-manager.md
@@ -657,6 +683,8 @@ $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/setReaderTrustStore/#eu.euro
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/setTrustedReaderCertificates/#kotlin.IntArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/set-trusted-reader-certificates.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/setTrustedReaderCertificates/#kotlin.collections.List[java.security.cert.X509Certificate]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/set-trusted-reader-certificates.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/transferManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/transfer-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/walletKeyManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/wallet-key-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWallet/walletProvider/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/wallet-provider.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Companion///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-companion/index.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Companion/DEFAULT_DOCUMENT_MANAGER_IDENTIFIER/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-companion/-d-e-f-a-u-l-t_-d-o-c-u-m-e-n-t_-m-a-n-a-g-e-r_-i-d-e-n-t-i-f-i-e-r.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig.Companion/invoke/#kotlin.Function1[eu.europa.ec.eudi.wallet.EudiWalletConfig,kotlin.Unit]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/-companion/invoke.md
@@ -706,6 +734,8 @@ $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/setTrustedReaderCertific
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/setTrustedReaderCertificates/#kotlin.collections.List[java.security.cert.X509Certificate]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/set-trusted-reader-certificates.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/transactionLogger/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/transaction-logger.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/transferManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/transfer-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/walletKeyManager/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/wallet-key-manager.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/walletProvider/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/wallet-provider.md
 eu.europa.ec.eudi.wallet
 eu.europa.ec.eudi.wallet.dcapi
 eu.europa.ec.eudi.wallet.document
@@ -713,6 +743,7 @@ eu.europa.ec.eudi.wallet.issue.openid4vci
 eu.europa.ec.eudi.wallet.issue.openid4vci.transformations
 eu.europa.ec.eudi.wallet.logging
 eu.europa.ec.eudi.wallet.presentation
+eu.europa.ec.eudi.wallet.provider
 eu.europa.ec.eudi.wallet.statium
 eu.europa.ec.eudi.wallet.transactionLogging
 eu.europa.ec.eudi.wallet.transactionLogging.presentation
