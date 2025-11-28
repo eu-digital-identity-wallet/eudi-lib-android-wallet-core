@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.openid4vp.Format
-import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
 import eu.europa.ec.eudi.openid4vp.dcql.metaMsoMdoc
 import eu.europa.ec.eudi.openid4vp.dcql.metaSdJwtVc
@@ -94,6 +93,14 @@ class DcqlRequestProcessor(
         try {
             // Validate request type and structure
             require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
+
+            // Temporarily reject all requests with transaction data (not yet supported)
+            val requestTransactionData = request.resolvedRequestObject.transactionData
+            if (!requestTransactionData.isNullOrEmpty()) {
+                return RequestProcessor.ProcessedRequest.Failure(
+                    IllegalArgumentException("Transaction data is not supported")
+                )
+            }
 
             val dcql = request.resolvedRequestObject.query
             val credentials = dcql.credentials
