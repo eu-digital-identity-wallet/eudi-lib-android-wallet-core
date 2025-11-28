@@ -26,6 +26,14 @@ import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.storage.android.AndroidStorage
 import java.security.SecureRandom
 
+/**
+ * The default Android implementation of [WalletKeyManager].
+ *
+ * This class handles the initialization of an [AndroidKeystoreSecureArea] backed by
+ * a dedicated file storage in the application's `noBackupFilesDir`.
+ *
+ * @param context The Android Application Context.
+ */
 class DefaultWalletKeyManager(
     private val context: Context,
 ) : WalletKeyManager {

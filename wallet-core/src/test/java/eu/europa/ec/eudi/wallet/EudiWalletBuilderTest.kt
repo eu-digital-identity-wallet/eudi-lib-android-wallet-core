@@ -62,7 +62,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every { getDocumentStatusResolver() } returns mockk(relaxed = true)
@@ -95,7 +95,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customSecureArea: SecureArea = mockk()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } answers {
                 // Verify secure areas are passed to document manager
                 val secureAreas = secondArg<List<SecureArea>?>()
@@ -131,7 +131,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customStorageEngine: Storage = mockk()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } answers {
                 // Verify storage engine is passed to document manager
                 val storageEngine = firstArg<Storage?>()
@@ -165,7 +165,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customDocumentManager: DocumentManager = mockk()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every { getDocumentStatusResolver() } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
@@ -199,7 +199,7 @@ class EudiWalletBuilderTest {
         val documentManager: DocumentManager = mockk(relaxed = true)
         val transferManager: TransferManager = mockk(relaxed = true)
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns documentManager
             every { getTransferManager(any(), any()) } answers {
                 // Verify reader trust store is passed to transfer manager
@@ -235,7 +235,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customPresentationManager: PresentationManager = mockk()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every {
@@ -275,7 +275,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customLogger: Logger = mockk()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every { getDocumentStatusResolver() } returns mockk(relaxed = true)
@@ -306,7 +306,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customHttpClientFactory: () -> HttpClient = { mockk() }
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every { getDocumentStatusResolver() } answers {
@@ -342,7 +342,7 @@ class EudiWalletBuilderTest {
         val documentManager: DocumentManager = mockk(relaxed = true)
         val defaultPresentationManager: PresentationManagerImpl = mockk(relaxed = true)
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns documentManager
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every {
@@ -390,7 +390,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
         val customDocumentStatusResolver: DocumentStatusResolver = mockk()
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
@@ -429,7 +429,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
             .configureOpenId4Vp(openId4VpConfig)
 
-        val builder = spyk(EudiWallet.Builder(context, config)) {
+        val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every { getDocumentStatusResolver() } returns mockk(relaxed = true)
