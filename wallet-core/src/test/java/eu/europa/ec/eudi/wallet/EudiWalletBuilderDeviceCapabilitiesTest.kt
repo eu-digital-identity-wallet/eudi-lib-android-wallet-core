@@ -69,7 +69,7 @@ class EudiWalletBuilderDeviceCapabilitiesTest(
         }
 
         val builder = spyk(
-            EudiWallet.Builder(context, config)
+            EudiWallet.Builder(context, config, null)
                 .withLogger(logger)
         ) {
             every { capabilities } returns mockk {

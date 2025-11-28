@@ -31,28 +31,30 @@ graph TD
 
 The library supports the following features:
 
-| Category                   | Feature                                                                 | Status                                                                                                                 |
-|----------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                      |
-|                            | Custom Key Management implementation                                    | ✅ via imeplementation of SecureArea                                                                                    |
-|                            | Multiple Key Management implementations                                 | ✅                                                                                                                      |
-|                            | Support for Batch credentials per Document                              | ✅                                                                                                                      |
-| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                        |
-|                            | Authorization Code Flow                                                 | ✅                                                                                                                      |
-|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                      |
-|                            | DPoP JWT in authorization                                               | ✅                                                                                                                      |
-|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
-|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                             |
-|                            | Proof                                                                   | ✅ JWT                                                                                                                  |
-|                            | Credential batch issuing                                                | ✅ multiple JWT proofs                                                                                                  |
-|                            | Deferred issuing                                                        | ✅                                                                                                                      |
-|                            | Notify credential issuer                                                | ❌                                                                                                                      |
-| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                        |
-|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                      |
-|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
-| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
-|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
-|                            | DCQL                                                                    | ✅ support for credential_sets  <br />❌ support for claim_sets <br /> ❌ multiple credentials in CredentialQuery ignored |
+| Category                   | Feature                                                                 | Status                                                                                                                    |
+|----------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                         |
+|                            | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                        |
+|                            | Multiple Key Management implementations                                 | ✅                                                                                                                         |
+|                            | Support for Batch credentials per Document                              | ✅                                                                                                                         |
+| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                           |
+|                            | Authorization Code Flow                                                 | ✅                                                                                                                         |
+|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                         |
+|                            | DPoP JWT in authorization                                               | ✅                                                                                                                         |
+|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                               |
+|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                                |
+|                            | Proof                                                                   | ✅ JWT                                                                                                                     |
+|                            | Credential batch issuing                                                | ✅                                                                                                                         |
+|                            | Deferred issuing                                                        | ✅                                                                                                                         |
+|                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ [Attestation-Based Client Authentication](#oauth-20-attestation-based-client-authentication)(WIA) |
+|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type, <br/> ✅ Proof Type without Attestation <br/> ❌ JWT Proof Type with Attestation                  |
+|                            | Notify credential issuer                                                | ❌                                                                                                                         |
+| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                           |
+|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                         |
+|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                    |
+| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                           |
+|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                           |
+|                            | DCQL                                                                    | ✅ support for credential_sets  <br />❌ support for claim_sets <br /> ❌ multiple credentials in CredentialQuery ignored    |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -224,6 +226,47 @@ val customWallet = EudiWallet(context, config) {
 
 See the [CustomizeSecureArea.md](CustomizeSecureArea.md) for more information on how to use the
 wallet-core library with custom SecureArea implementations.
+
+#### Configure EudiWallet for Attestation Based Client Authentication(WIA) and Wallet Unit Attestation(WUA) with a Wallet Provider
+The wallet-core supports Wallet Instance Attestation (WIA) that attests the integrity of the app & Wallet Unit Attestation (WUA) that attests the security of keys stored in the Wallet Unit.
+You can optionally configure your wallet with this capability by implementing the core's `WalletAttestationsProvider` interface which bridges your wallet-specific Wallet Provider to the core.
+Example usage is documented below:
+```kotlin
+val walletAttestationsProvider = object : WalletAttestationsProvider {
+    /**
+     * WIA (Wallet Instance Attestation)
+     * Used for Client Authentication (OAuth 2.0).
+     */
+    override suspend fun getWalletAttestation(keyInfo: KeyInfo) : Result<String> {
+        //  Make a network call to your Wallet Provider Service.
+        //  Send the public key from 'keyInfo' (PoP key).
+        //  Prove app integrity
+        // Return the "Client Attestation JWT" signed by your Provider. 
+        return Result.success("ey...<The_WIA_JWT>")
+    }
+
+    /**
+     * WUA (Wallet Unit Attestation)
+     * Used to authorize Credential Issuance.
+     */
+    override suspend fun getKeyAttestation(keys: List<KeyInfo>, nonce: Nonce?) : Result<String> {
+        // Make a network call to your Wallet Provider Service.
+        // Send the public keys (from 'keys') intended for the new Credential.
+        // Provide the 'nonce' if required by the Issuer.
+        // Return the "Wallet Unit Attestation" (or Key Attestation) JWT.
+        // This certifies that these specific keys are hardware-bound and trusted.
+        return Result.success("ey...<The_WUA_JWT>")
+    }
+}
+```
+So the configuration of the EudiWallet documented in the above section would now be:
+```kotlin
+val wallet = EudiWallet(
+    context,
+    config,
+    walletAttestationsProvider
+)
+```
 
 ### Manage documents
 

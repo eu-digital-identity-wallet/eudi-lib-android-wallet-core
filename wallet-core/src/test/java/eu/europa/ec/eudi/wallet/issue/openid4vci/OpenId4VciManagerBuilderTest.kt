@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.mockk.mockk
 import org.junit.Assert.assertThrows
 import kotlin.test.Test
@@ -27,6 +28,7 @@ class OpenId4VciManagerBuilderTest {
 
     private val context = mockk<Context>(relaxed = true)
     private val documentManager = mockk<DocumentManager>(relaxed = true)
+    private val walletKeyManager = mockk<WalletKeyManager>(relaxed = true)
     private val config = OpenId4VciManager.Config(
         issuerUrl = "https://issuer.example.com",
         clientId = "testClientId",
@@ -40,6 +42,7 @@ class OpenId4VciManagerBuilderTest {
         val builder = OpenId4VciManager.Builder(context)
             .config(config)
             .documentManager(documentManager)
+            .walletKeyManager(walletKeyManager)
 
         val manager = builder.build()
 
