@@ -79,6 +79,7 @@ import kotlinx.coroutines.runBlocking
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyUnlockData
+import org.multipaz.securearea.UnlockReason
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -331,7 +332,7 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
  */
 internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
     credential: SecureAreaBoundCredential,
-    keyUnlockData: KeyUnlockData?,
+    unlockReason: UnlockReason = UnlockReason.Unspecified,
     clientId: VerifierId,
     nonce: String,
     signatureAlgorithm: Algorithm,
@@ -348,7 +349,7 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
                     credential.secureArea.sign(
                         alias = credential.alias,
                         dataToSign = signingInput,
-                        keyUnlockData = keyUnlockData
+                        unlockReason = unlockReason
                     )
                 }
                 return Base64URL.encode(signature.toJoseEncoded(algorithm))
@@ -404,8 +405,8 @@ internal suspend fun verifiablePresentationForSdJwtVc(
         // If the SD-JWT contains a 'cnf' claim, serialize with key binding
         val serialized = if (containsCnf) {
             presentation.serializeWithKeyBinding(
-                credential = this, //credential
-                keyUnlockData = disclosedDocument.keyUnlockData,
+                credential = this,
+                unlockReason = UnlockReason.Unspecified,
                 clientId = resolvedRequestObject.client.id,
                 nonce = resolvedRequestObject.nonce,
                 signatureAlgorithm = signatureAlgorithm,

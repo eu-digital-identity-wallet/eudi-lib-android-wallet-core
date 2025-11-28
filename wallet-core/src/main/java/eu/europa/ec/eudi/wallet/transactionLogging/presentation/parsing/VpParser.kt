@@ -45,7 +45,7 @@ import java.util.Base64
  * @param metadata metadata associated with the documents
  * @return a list of PresentedDocument objects
  */
-fun parseVp(
+suspend fun parseVp(
     rawResponse: ByteArray,
     metadata: List<String>,
 ): List<PresentedDocument> {
@@ -91,7 +91,7 @@ fun parseVp(
  * @param metadata List of metadata strings associated with the documents.
  * @return A PresentedDocument objects parsed from the mso_mdoc data.
  */
-fun parseMsoMdocFromVp(
+suspend fun parseMsoMdocFromVp(
     vp: VerifiablePresentation.Generic,
     metadata: TransactionLog.Metadata,
 ): PresentedDocument? {

@@ -14,40 +14,62 @@
  * limitations under the License.
  */
 
+import com.android.build.api.dsl.LibraryExtension
+import com.android.build.gradle.internal.tasks.factory.dependsOn
+
 import com.github.jk1.license.filter.DependencyFilter
 import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
 import com.github.jk1.license.render.InventoryMarkdownReportRenderer
-import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
-import org.jetbrains.dokka.gradle.DokkaExtension
+
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 import java.util.Locale
+
+import kotlin.String
 
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    // alias(libs.plugins.builtin.kotlin)
     alias(libs.plugins.kotlin.serialization)
     id("kotlin-parcelize")
-    alias(libs.plugins.dokka.html)
-    alias(libs.plugins.dokka.javadoc)
+    alias(libs.plugins.gradle.publish)
     alias(libs.plugins.dependency.license.report)
     alias(libs.plugins.dependencycheck)
     alias(libs.plugins.sonarqube)
-    alias(libs.plugins.maven.publish)
     alias(libs.plugins.kover)
+    alias(libs.plugins.dokka.javadoc)
+    alias(libs.plugins.dokka.html)
 }
 
-val NAMESPACE: String by project
-val GROUP: String by project
-val POM_SCM_URL: String by project
-val POM_DESCRIPTION: String by project
+@Suppress("PropertyName") val GHR_URL: String by project
+@Suppress("PropertyName") val GROUP: String by project
+@Suppress("PropertyName") val NAMESPACE: String by project
+@Suppress("PropertyName") val VERSION_NAME: String by project
+@Suppress("PropertyName") val POM_ARTIFACT_ID: String by project
+@Suppress("PropertyName") val POM_NAME: String by project
+@Suppress("PropertyName") val POM_DESCRIPTION: String by project
+@Suppress("PropertyName") val POM_URL: String by project
+@Suppress("PropertyName") val POM_LICENSE_NAME: String by project
+@Suppress("PropertyName") val POM_LICENSE_URL: String by project
+@Suppress("PropertyName") val POM_SCM_URL: String by project
+@Suppress("PropertyName") val POM_SCM_CONNECTION: String by project
+@Suppress("PropertyName") val POM_SCM_DEV_CONNECTION: String by project
+@Suppress("PropertyName") val POM_ISSUE_SYSTEM: String by project
+@Suppress("PropertyName") val POM_ISSUE_URL: String by project
+@Suppress("PropertyName") val POM_DEVELOPER_URL: String by project
+@Suppress("PropertyName") val GITHUB_DEV: String by project
+@Suppress("PropertyName") val GITHUB_EMAIL: String by project
+@Suppress("PropertyName") val GITHUB_HANDLE: String by project
 
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
         optIn.add("kotlin.RequiresOptIn")
         optIn.add("kotlin.time.ExperimentalTime")
+        freeCompilerArgs = listOf("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
     }
 }
 
@@ -58,11 +80,21 @@ android {
 
     defaultConfig {
         minSdk = 26
+        consumerProguardFiles("consumer-rules.pro")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testApplicationId = "$NAMESPACE.test"
         testHandleProfiling = true
         testFunctionalTest = true
-        consumerProguardFiles("consumer-rules.pro")
+    }
+
+    @Suppress("UnstableApiUsage")
+    sourceSets {
+        named("main") {
+            java.directories.add("src/main/java")
+        }
+        named("test") {
+            res.directories.add("resources")
+        }
     }
 
     buildTypes {
@@ -72,10 +104,6 @@ android {
         }
         release {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
     }
     compileOptions {
@@ -89,45 +117,38 @@ android {
         }
     }
 
-    sourceSets.getByName("test").apply {
-        res.setSrcDirs(files("resources"))
-    }
-
     packaging {
         resources {
             excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
     }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-        }
-    }
 }
 
 dependencies {
 
+    implementation(libs.androidx.appcompat)
+
     // EUDI libs
     api(libs.eudi.document.manager)
     api(libs.eudi.iso18013.data.transfer)
-    api(libs.eudi.lib.jvm.openid4vci.kt)
+    api(libs.eudi.lib.jvm.openid4vci.ktx)
+
     // multipaz library
     api(libs.multipaz.android) {
         exclude(group = "org.bouncycastle")
         exclude(group = "io.ktor")
     }
 
-    implementation(libs.appcompat)
     // OpenID4VCI
     implementation(libs.nimbus.oauth2.oidc.sdk)
+
     // Siop-Openid4VP library
-    implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
+    implementation(libs.eudi.lib.jvm.siop.openid4vp.ktx) {
         exclude(group = "org.bouncycastle")
     }
     // SD-JWT VC library
-    implementation(libs.eudi.lib.jvm.sdjwt.kt)
+    implementation(libs.eudi.lib.jvm.sdjwt.ktx)
 
     // Document status
     api(libs.eudi.lib.kmp.statium)
@@ -138,76 +159,119 @@ dependencies {
 
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
+
     // CBOR
     implementation(libs.cbor)
     implementation(libs.upokecenter.cbor)
     implementation(libs.cose.java)
+
     // Ktor Android Engine
     implementation(libs.ktor.client.logging)
-    // Bouncy Castle
-    implementation(libs.bouncy.castle.prov)
-    implementation(libs.bouncy.castle.pkix)
-
     runtimeOnly(libs.ktor.client.android)
 
+    // Bouncy Castle
+    implementation(libs.bundles.bouncy.castle)
+
     testImplementation(kotlin("test"))
+    testImplementation(libs.robolectric)
     testImplementation(libs.mockk)
     testImplementation(libs.json)
     testImplementation(libs.kotlin.coroutines.test)
-    testImplementation(libs.biometric.ktx)
-    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.biometric.ktx)
 
-    androidTestImplementation(libs.android.junit)
+    debugImplementation(libs.androidx.test.core.ktx)
+    debugImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.androidx.test.monitor)
+
+    androidTestImplementation(libs.bundles.androidx.test)
+    androidTestImplementation(libs.bundles.androidx.test.espresso)
     androidTestImplementation(libs.mockito.android)
-    androidTestImplementation(libs.test.core)
-    androidTestImplementation(libs.test.runner)
-    androidTestImplementation(libs.test.rules)
-    androidTestImplementation(libs.test.coreKtx)
-    androidTestImplementation(libs.espresso.core)
-    androidTestImplementation(libs.espresso.contrib)
-    androidTestImplementation(libs.espresso.intents)
-}
 
-// Dependency check
-
-dependencyCheck {
-    formats = listOf("XML", "HTML")
-    nvd.apiKey = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString() ?: ""
-    nvd.delay = 10000
-    nvd.maxRetryCount = 2
+    // Dokka Android Documentation Plugin
+    dokkaPlugin(libs.dokka.android.documentation.plugin)
 }
 
 // Dokka generation
 dokka {
+    dokkaSourceSets.named("main") {
+        val sdkComponents = androidComponents::sdkComponents.get()
+        val sdkDirectory: Directory? = sdkComponents.sdkDirectory.get()
+        val compileSdk = project.extensions.getByType<LibraryExtension>().compileSdk
+        sourceRoots.from(
+            files(File("${sdkDirectory}/platforms/${compileSdk}/android.jar")),
+            "${projectDir.absolutePath}/src/main/java"
+        )
+        sourceLink {
+            localDirectory.set(file("${projectDir.absolutePath}/src/main/java"))
+            remoteUrl("https://github.com/eu-digital-identity-wallet/tree/master/wallet-core/src/main/java")
+            remoteLineSuffix.set("#L")
+        }
+    }
     dokkaSourceSets.configureEach {
+        enableJdkDocumentationLink.set(true)
+        enableKotlinStdLibDocumentationLink.set(true)
+        enableAndroidDocumentationLink.set(true)
+        jdkVersion.set(17)
+        dokkaPublications.javadoc {
+            moduleName.set(project.name)
+            moduleVersion.set(project.version.toString())
+            outputDirectory.set(layout.buildDirectory.dir("dokka/javadoc"))
+        }
         dokkaPublications.html {
-            outputDirectory.set(rootProject.file("docs"))
-        }
-        externalDocumentationLinks.register("android") {
-            url("https://developer.android.com/reference")
-            packageListUrl("https://developer.android.com/reference/kotlin/package-list")
-        }
-        externalDocumentationLinks.register("java") {
-            url("https://docs.oracle.com/en/java/javase/17/docs/api/")
-            packageListUrl("https://docs.oracle.com/en/java/javase/17/docs/api/allpackages-index.html")
+            moduleName.set(project.name)
+            moduleVersion.set(project.version.toString())
+            outputDirectory.set(layout.buildDirectory.dir("dokka/html"))
         }
     }
 }
 
-val dokkaHtmlJar by tasks.registering(Jar::class) {
-    group = "documentation"
+val dokkaGenerateJavadocJar by tasks.registering(Jar::class) {
+    group = "dokka"
+    dependsOn(tasks.dokkaGeneratePublicationJavadoc)
+    from(tasks.dokkaGeneratePublicationJavadoc.flatMap { it.outputDirectory })
+    archiveClassifier.set("javadoc")
+    description = "Assembles a JAR containing the Javadoc-style documentation generated by Dokka."
+}
+
+val dokkaGenerateHtmlJar by tasks.registering(Jar::class) {
+    group = "dokka"
     dependsOn(tasks.dokkaGeneratePublicationHtml)
     from(tasks.dokkaGeneratePublicationHtml.flatMap { it.outputDirectory })
     archiveClassifier.set("html-docs")
     description = "Assembles a JAR containing the HTML documentation generated by Dokka."
 }
 
-val dokkaJavadocJar by tasks.registering(Jar::class) {
-    group = "documentation"
-    dependsOn(tasks.dokkaGeneratePublicationJavadoc)
-    from(tasks.dokkaGeneratePublicationJavadoc.flatMap { it.outputDirectory })
-    archiveClassifier.set("javadoc")
-    description = "Assembles a JAR containing the Javadoc-style documentation generated by Dokka."
+val dokkaCleanJavadoc by tasks.registering(Delete::class) {
+    group = "dokka"
+    delete = setOf(rootProject.file("docs/javadoc"))
+    description = "It removes the documentation generated by Dokka."
+}
+
+val dokkaCleanHtml by tasks.registering(Delete::class) {
+    group = "dokka"
+    delete = setOf(rootProject.file("docs/html"))
+    description = "It removes the documentation generated by Dokka."
+}
+
+tasks.dokkaGeneratePublicationJavadoc.dependsOn(dokkaCleanJavadoc)
+tasks.dokkaGeneratePublicationHtml.dependsOn(dokkaCleanHtml)
+
+val dokkaClean by tasks.registering {
+    group = "dokka"
+    dependsOn(dokkaCleanJavadoc, dokkaCleanHtml)
+}
+
+tasks.withType<Jar>().configureEach {
+    archiveBaseName.set(POM_ARTIFACT_ID)
+    archiveVersion.set(VERSION_NAME)
+}
+
+// Dependency check
+dependencyCheck {
+    formats = listOf("XML", "HTML")
+    nvd.apiKey = System.getenv("NVD_API_KEY") ?: properties["nvdApiKey"]?.toString() ?: ""
+    nvd.delay = 10000
+    nvd.maxRetryCount = 2
 }
 
 // Third-party licenses report
@@ -236,35 +300,77 @@ tasks.generateLicenseReport.configure {
 // Build documentation and license report
 tasks.register<Task>("buildDocumentation") {
     group = "documentation"
-    dependsOn("dokkaGfm", "generateLicenseReport")
-    description = "Aggregates all documentation tasks (Dokka GFM, License Report)."
+    dependsOn("dokkaGenerate", "generateLicenseReport")
+    description = "Aggregates all documentation tasks (Dokka, License Report)."
 }
+
 tasks.assemble.configure {
     finalizedBy("buildDocumentation")
 }
 
-// Publish
-mavenPublishing {
-    configure(
-        AndroidMultiVariantLibrary(
-            sourcesJar = true,
-            publishJavadocJar = true,
-            setOf("release")
-        )
-    )
-    pom {
-        ciManagement {
-            system = "github"
-            url = "${POM_SCM_URL}/actions"
-        }
+val sourcesJar by tasks.registering(Jar::class) {
+    from("${projectDir.absolutePath}/src/main/java")
+    archiveClassifier.set("sources")
+}
+
+// Gradle 9.1 deprecation fix
+configurations {
+    @Suppress("UnstableApiUsage")
+    consumable("jars") {
+        outgoing.artifact(dokkaGenerateJavadocJar)
+        outgoing.artifact(sourcesJar)
     }
 }
 
-// handle java.lang.UnsupportedOperationException: PermittedSubclasses requires ASM9
-// when publishing module
+tasks.named("assemble") {
+    dependsOn(dokkaGenerateJavadocJar)
+    dependsOn(sourcesJar)
+}
+
+// Publish
 afterEvaluate {
-    tasks.named("javaDocReleaseGeneration").configure {
-        enabled = false
+    configure<PublishingExtension> {
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                url = uri(GHR_URL)
+                credentials {
+                    username = System.getenv("GITHUB_ACTOR")
+                    password = System.getenv("GITHUB_TOKEN")
+                }
+            }
+        }
+        publications {
+            register<MavenPublication>("ReleaseAar") {
+                groupId = GROUP
+                artifactId = POM_ARTIFACT_ID
+                version = VERSION_NAME
+                artifact(tasks.getByName("bundleReleaseAar"))
+                pom {
+                    name = POM_NAME
+                    description = POM_DESCRIPTION
+                    url = POM_URL
+                    scm {
+                        connection = POM_SCM_CONNECTION
+                        developerConnection = POM_SCM_DEV_CONNECTION
+                        url = POM_SCM_URL
+                    }
+                    developers {
+                        developer {
+                            name = GITHUB_DEV
+                            email = GITHUB_EMAIL
+                            id = GITHUB_HANDLE
+                        }
+                    }
+                    licenses {
+                        license {
+                            name = POM_LICENSE_NAME
+                            url = POM_LICENSE_URL
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -277,9 +383,9 @@ val coverageExclusions = listOf(
     "**/*Test*.*",
     "android/**/*.*",
     // butterKnife
-    "**/*\$ViewInjector*.*",
-    "**/*\$ViewBinder*.*",
-    "**/Lambda\$*.class",
+    $$"**/*$ViewInjector*.*",
+    $$"**/*$ViewBinder*.*",
+    "**/Lambda$*.class",
     "**/Lambda.class",
     "**/*Lambda.class",
     "**/*Lambda*.class",
@@ -293,13 +399,13 @@ val coverageExclusions = listOf(
     "**/*Hilt*.*",
     // kotlin
     "**/*MapperImpl*.*",
-    "**/*\$ViewInjector*.*",
-    "**/*\$ViewBinder*.*",
+    $$"**/*$ViewInjector*.*",
+    $$"**/*$ViewBinder*.*",
     "**/BuildConfig.*",
     "**/*Component*.*",
     "**/*BR*.*",
     "**/Manifest*.*",
-    "**/*\$Lambda\$*.*",
+    $$"**/*$Lambda$*.*",
     "**/*Companion*.*",
     "**/*Module*.*",
     "**/*Dagger*.*",

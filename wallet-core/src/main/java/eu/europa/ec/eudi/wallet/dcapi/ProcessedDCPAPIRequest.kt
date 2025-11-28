@@ -36,6 +36,7 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
+
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Algorithm
 import org.multipaz.util.fromBase64Url
@@ -99,23 +100,25 @@ class ProcessedDCPAPIRequest(
                 "Device response: ${Hex.toHexString(deviceResponse.deviceResponseBytes)}"
             )
 
+            // TODO: Crypto.hpkeEncrypt() and Algorithm.HPKE_BASE_P256_SHA256_AES128GCM are unknown
+            val encryptedResponse: ByteArray = ByteArray(0)
             // Encrypt the device response using HPKE
-            val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
-                cipherSuite = Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                receiverPublicKey = recipientPublicKey,
-                plainText = deviceResponse.deviceResponseBytes,
-                aad = deviceResponse.sessionTranscriptBytes
-            )
+            // val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
+            //     cipherSuite = Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            //     receiverPublicKey = recipientPublicKey,
+            //     plainText = deviceResponse.deviceResponseBytes,
+            //     aad = deviceResponse.sessionTranscriptBytes
+            // )
 
-            val enc =
-                (encapsulatedPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
-            val encryptedResponse = CBORObject.NewArray().apply {
-                Add(DCAPI)
-                Add(CBORObject.NewMap().apply {
-                    Add(ENC, enc)
-                    Add(CIPHER_TEXT, cipherText)
-                })
-            }.EncodeToBytes()
+            // val enc =
+            //    (encapsulatedPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
+            // val encryptedResponse = CBORObject.NewArray().apply {
+            //     Add(DCAPI)
+            //     Add(CBORObject.NewMap().apply {
+            //       Add(ENC, enc)
+            //         Add(CIPHER_TEXT, cipherText)
+            //    })
+            // }.EncodeToBytes()
 
             val responseJson = JSONObject()
             responseJson.put(RESPONSE, encryptedResponse.toBase64())

@@ -27,7 +27,7 @@ import java.time.Instant
  * @return A [PresentationTransactionLog] object.
  * @throws IllegalArgumentException If the transaction log is not a presentation transaction log or if any required fields are null.
  */
-fun parsePresentationTransactionLog(transactionLog: TransactionLog): PresentationTransactionLog {
+suspend fun parsePresentationTransactionLog(transactionLog: TransactionLog): PresentationTransactionLog {
     require(transactionLog.type == TransactionLog.Type.Presentation) {
         "Transaction log is not a presentation transaction log"
     }

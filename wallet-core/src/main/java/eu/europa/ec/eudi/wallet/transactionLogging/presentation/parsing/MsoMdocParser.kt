@@ -32,11 +32,12 @@ import org.multipaz.mdoc.response.DeviceResponseParser
  * @param metadata A list of metadata strings, or null if not available.
  * @return A list of presented documents.
  */
-fun parseMsoMdoc(
+suspend fun parseMsoMdoc(
     rawResponse: ByteArray,
     sessionTranscript: ByteArray?,
     metadata: List<String>
 ): List<PresentedDocument> {
+
     // Parse the raw response using the DeviceResponseParser
     val parsed = DeviceResponseParser(
         rawResponse,
@@ -46,7 +47,6 @@ fun parseMsoMdoc(
     val parsedMetadata = metadata.map { TransactionLog.Metadata.fromJson(it) }
 
     // Convert metadata strings to IssuerMetaData objects
-
     val issuerMetaData = parsedMetadata
         .associate { v ->
             v.index to v.issuerMetadata?.let { IssuerMetadata.fromJson(it) }?.getOrNull()

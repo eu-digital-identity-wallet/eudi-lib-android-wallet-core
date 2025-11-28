@@ -73,7 +73,7 @@ data class PresentationTransactionLog(
          * @param transactionLog The [TransactionLog] to be parsed.
          * @return A [Result] containing the parsed [PresentationTransactionLog] or an exception if parsing fails.
          */
-        fun fromTransactionLog(transactionLog: TransactionLog): Result<PresentationTransactionLog> {
+        suspend fun fromTransactionLog(transactionLog: TransactionLog): Result<PresentationTransactionLog> {
             return runCatching {
                 parsePresentationTransactionLog(transactionLog)
             }

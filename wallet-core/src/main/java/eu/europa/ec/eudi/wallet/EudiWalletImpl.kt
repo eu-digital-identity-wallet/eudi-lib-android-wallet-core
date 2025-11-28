@@ -65,8 +65,8 @@ class EudiWalletImpl internal constructor(
         }
     }
 
-    override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+    override fun setTrustedReaderCertificates(readerCertificates: List<X509Certificate>) =
+        setReaderTrustStore(ReaderTrustStore.getDefault(readerCertificates))
 
     override fun setTrustedReaderCertificates(vararg rawRes: Int) =
         setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }))
