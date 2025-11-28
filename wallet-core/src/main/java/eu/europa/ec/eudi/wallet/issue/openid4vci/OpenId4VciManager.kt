@@ -198,6 +198,27 @@ interface OpenId4VciManager {
      */
     fun interface OnDeferredIssueResult : OnResult<DeferredIssueResult>
 
+
+    /**
+     * Client Authentication for the OpenId4Vci issuer
+     *
+     * @property None no client authentication, only client id is provided
+     * @property AttestationBased attestation based client authentication using [WalletAttestationsProvider]
+     */
+    sealed interface ClientAuthenticationType {
+        /**
+         * No client authentication, only client id is provided
+         * @param clientId the client id
+         */
+        data class None(val clientId: String) : ClientAuthenticationType
+
+        /**
+         * Attestation based client authentication using [WalletAttestationsProvider]
+         * declared in [eu.europa.ec.eudi.wallet.EudiWallet.Builder]
+         */
+        data object AttestationBased : ClientAuthenticationType
+    }
+
     /**
      * Builder to create an instance of [OpenId4VciManager]
      * @param context the context
@@ -311,7 +332,7 @@ interface OpenId4VciManager {
      */
     data class Config @JvmOverloads constructor(
         val issuerUrl: String,
-        val clientId: String,
+        val clientAuthenticationType: ClientAuthenticationType,
         val authFlowRedirectionURI: String,
         val dPoPUsage: DPoPUsage = DPoPUsage.IfSupported(),
         @ParUsage val parUsage: Int = IF_SUPPORTED,
@@ -387,7 +408,7 @@ interface OpenId4VciManager {
          */
         class Builder {
             var issuerUrl: String? = null
-            var clientId: String? = null
+            var clientAuthenticationType: ClientAuthenticationType? = null
             var authFlowRedirectionURI: String? = null
             var dPoPUsage: DPoPUsage = DPoPUsage.IfSupported()
 
@@ -402,11 +423,29 @@ interface OpenId4VciManager {
             fun withIssuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
 
             /**
-             * Set the client id
+             * Set the client id for [ClientAuthenticationType.None]
+             *
              * @param clientId the client id
              * @return this builder
              */
-            fun withClientId(clientId: String) = apply { this.clientId = clientId }
+            @Deprecated("Use withClientAuthenticationType(ClientAuthenticationType.None(clientId)) instead")
+            fun withClientId(clientId: String) =
+                apply { this.clientAuthenticationType = ClientAuthenticationType.None(clientId) }
+
+            /**
+             * Set the client authentication type
+             *
+             * Can be either:
+             *  - [ClientAuthenticationType.None] provided a client id
+             *  - [ClientAuthenticationType.AttestationBased] using [WalletAttestationsProvider]
+             *
+             * @param clientAuthenticationType the client authentication
+             * @return this builder
+             */
+            fun withClientAuthenticationType(clientAuthenticationType: ClientAuthenticationType) =
+                apply {
+                    this.clientAuthenticationType = clientAuthenticationType
+                }
 
             /**
              * Set the redirection URI for the authorization flow
@@ -439,13 +478,15 @@ interface OpenId4VciManager {
              * @return the [Config]
              */
             fun build(): Config {
-                checkNotNull(issuerUrl) { "issuerUrl is required" }
-                checkNotNull(clientId) { "clientId is required" }
-                checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
+                val issuerUrl = checkNotNull(issuerUrl) { "issuerUrl is required" }
+                val clientAuthenticationType =
+                    checkNotNull(clientAuthenticationType) { "client authentication is required" }
+                val authFlowRedirectionURI =
+                    checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
                 return Config(
-                    issuerUrl = issuerUrl!!,
-                    clientId = clientId!!,
-                    authFlowRedirectionURI = authFlowRedirectionURI!!,
+                    issuerUrl = issuerUrl,
+                    clientAuthenticationType = clientAuthenticationType,
+                    authFlowRedirectionURI = authFlowRedirectionURI,
                     dPoPUsage = dPoPUsage,
                     parUsage = parUsage
                 )

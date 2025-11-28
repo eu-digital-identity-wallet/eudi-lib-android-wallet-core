@@ -143,30 +143,31 @@ internal class IssuerCreator(
 
     private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(): Result<ClientAuthentication> =
         runCatching {
-            // if clientAttestationPOPJWSAlgs is null or empty then not Attestation based authentication is not supported
-            if (this.clientAttestationPOPJWSAlgs.isNullOrEmpty()) {
-                return@runCatching ClientAuthentication.None(config.clientId)
-            }
-
             val authorizationServerUrl = this.authorizationEndpointURI.toASCIIString()
-
-            checkNotNull(walletProvider) {
-                "WalletProvider is required for client attestation based authentication for $authorizationServerUrl"
+            when (val type = config.clientAuthenticationType) {
+                is OpenId4VciManager.ClientAuthenticationType.None -> ClientAuthentication.None(type.clientId)
+                is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> {
+                    val walletAttestationsProvider = checkNotNull(walletProvider) {
+                        "Wallet attestation provider is not provided in the IssuerCreator for attestation based client authentication"
+                    }
+                    val clientAttestationPOPJWSAlgs = clientAttestationPOPJWSAlgs
+                        .takeUnless { it.isNullOrEmpty() }
+                        ?: throw IllegalStateException(
+                            "Client attestation based authentication is not supported by the authorization server at ${this.authorizationEndpointURI}"
+                        )
+                    val supportedAlgorithms = clientAttestationPOPJWSAlgs.map { a ->
+                        Algorithm.fromJoseAlgorithmIdentifier(a.name)
+                    }
+                    walletAttestationKeyManager
+                        .getWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
+                        .map {
+                            with(it) {
+                                walletAttestationsProvider.toClientAuthentication()
+                                    .getOrThrow()
+                            }
+                        }.getOrThrow()
+                }
             }
-
-            // check if matching algorithms exist between wallet and server else return failure
-            val supportedAlgorithms = clientAttestationPOPJWSAlgs?.map { a ->
-                Algorithm.fromJoseAlgorithmIdentifier(a.name)
-            }
-            check(!supportedAlgorithms.isNullOrEmpty()) {
-                "No supported client attestation algorithms found between wallet and server for $authorizationServerUrl"
-            }
-
-            walletAttestationKeyManager
-                .getWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
-                .map {
-                    with(it) { walletProvider.toClientAuthentication().getOrThrow() }
-                }.getOrThrow()
         }
 
     /**
