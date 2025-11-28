@@ -39,8 +39,8 @@ import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SE
  * the wallet can generate the response with [eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor.ProcessedRequest.Success.generateResponse]
  * and send it back to the verifier by calling [sendResponse] method.
  *
- * It also extends [ReaderTrustStoreAware] that allows to set the [ReaderTrustStore] that is used
- * to verify the authenticity of the reader.
+ * It also extends [ReaderTrustStoreAware] that allows to set the [eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore]
+ * that is used to verify the authenticity of the reader.
  *
  * It provides also functionality to start the NFC engagement by calling [enableNFCEngagement]
  * method and stop it by calling [disableNFCEngagement] method.
