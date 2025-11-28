@@ -59,8 +59,14 @@ open class SecureAreaWalletKeyManager(
 
         } catch (_: IllegalArgumentException) {
             // create new key if not existing or not compatible
-            val matchedAlgorithm =
-                secureArea.supportedAlgorithms.first { it in supportedAlgorithms }
+            val matchedAlgorithm = requireNotNull(
+                secureArea.supportedAlgorithms.firstOrNull { it in supportedAlgorithms }
+            ) {
+                val walletSupports =
+                    secureArea.supportedAlgorithms.joinToString(",") { it.name }
+                val authSupports = supportedAlgorithms.joinToString(",") { it.name }
+                "No suitable algorithm can be found! Wallet:[$walletSupports], authServer:[$authSupports]"
+            }
             val createKeySettings = createKeySettingsProvider(matchedAlgorithm)
             secureArea.createKey(keyAlias, createKeySettings)
         }
