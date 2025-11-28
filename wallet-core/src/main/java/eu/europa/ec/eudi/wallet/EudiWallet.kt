@@ -95,7 +95,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
      * @param readerCertificates the list of reader certificates
      * @return this [EudiWallet] instance
      */
-    fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>): EudiWallet
+    fun setTrustedReaderCertificates(readerCertificates: List<X509Certificate>): EudiWallet
 
     /**
      * Sets the reader trust store with the given list of raw resource IDs. This method is useful
@@ -179,7 +179,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
      * @property transactionLogger the transaction logger to use if you want to provide a custom implementation
      * @property documentStatusResolver the document status resolver to use if you want to provide a custom implementation
      * @property dcapiRegistration the DCAPI registration to use if you want to provide a custom implementation, by default
-     * it will be [DCAPIIsoMdocRegistration] when the DCAPI is enabled in the configuration
+     * it will be [eu.europa.ec.eudi.wallet.dcapi.DCAPIIsoMdocRegistration] when the DCAPI is enabled in the configuration
      */
     class Builder(
         context: Context,
@@ -221,9 +221,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
 
         /**
          * Configure with the given [DocumentManager] to use. If not set, the default document manager
-         * will be used which is [DocumentManagerImpl] configured with the provided [storageEngine] and [secureAreas]
-         * if they are set.
-         *
+         * will be used which is [eu.europa.ec.eudi.wallet.document.DocumentManagerImpl] configured
+         * with the provided [storage] and [secureAreas] if they are set.
          * @param documentManager the document manager
          * @return this [Builder] instance
          */
@@ -302,9 +301,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         /**
          * Configure with the given [DCAPIRegistration] to use for registering credentials
          * with the Digital Credential API (DCAPI).
-         * If not set, the default [DCAPIIsoMdocRegistration] will be used when the DCAPI is enabled
-         * in the configuration.
-         *
+         * If not set, the default [eu.europa.ec.eudi.wallet.dcapi.DCAPIIsoMdocRegistration]
+         * will be used when the DCAPI is enabled in the configuration.
          * @param dcapiRegistration the DCAPI registration
          * @return this [Builder] instance
          */
@@ -320,7 +318,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
          * The [EudiWallet] instance will be created with the following default implementations if not set:
          * - [AndroidStorage] for storing/retrieving documents
          * - [AndroidKeystoreSecureArea] for managing documents' keys
-         * - [DocumentManagerImpl] for managing documents
+         * - [eu.europa.ec.eudi.wallet.document.DocumentManagerImpl] for managing documents
          * - [PresentationManagerImpl] for both proximity and remote presentation
          * - [OpenId4VpManager] for remote presentation
          * - [eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl] for proximity presentation

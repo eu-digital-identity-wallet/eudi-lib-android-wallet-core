@@ -71,7 +71,7 @@ class VerifyStatusListTokenSignatureX5c : VerifyStatusListTokenJwtSignature {
 class SignatureVerificationError : IllegalStateException()
 
 /**
- * Companion object for [VerifyStatusListTokenSignature] to provide a x5c implementation.
+ * Companion object for [VerifyStatusListTokenSignatureX5c] to provide a x5c implementation.
  */
 val VerifyStatusListTokenJwtSignature.Companion.x5c: VerifyStatusListTokenJwtSignature
     get() = VerifyStatusListTokenSignatureX5c()

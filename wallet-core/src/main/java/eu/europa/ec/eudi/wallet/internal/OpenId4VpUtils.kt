@@ -261,10 +261,10 @@ internal fun ResolvedRequestObject.OpenId4VPAuthorization.getSessionTranscriptBy
 }
 
 /**
- * Converts a list of [Format]s to [VpFormats] for use in VP configuration.
+ * Converts a list of [Format]s to [VpFormatsSupported] for use in VP configuration.
  *
  * @receiver List of credential formats.
- * @return The corresponding [VpFormats] object.
+ * @return The corresponding [VpFormatsSupported] object.
  */
 internal fun List<Format>.toVpFormats(): VpFormatsSupported {
 

@@ -78,7 +78,7 @@ interface DocumentStatusResolver {
      * Builder for [DocumentStatusResolver]
      * It allows to set the parameters for the resolver it builds a [DocumentStatusResolverImpl]
      *
-     * @property verifySignature a function to verify the status list token signature; default is [VerifyStatusListTokenJwtSignature.x5c]
+     * @property verifySignature a function to verify the status list token signature; default is [VerifyStatusListTokenSignatureX5c]
      * @property ktorHttpClientFactory a factory function to create an [HttpClient]; default is [HttpClient]
      * @property allowedClockSkew the allowed clock skew for the verification; default is [Duration.ZERO]
      * @property extractor an instance of [StatusReferenceExtractor] to extract the status reference from the document; default is [DefaultStatusReferenceExtractor]
