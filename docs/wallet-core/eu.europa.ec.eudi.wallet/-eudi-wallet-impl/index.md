@@ -25,6 +25,8 @@ Implementation of [EudiWallet](../-eudi-wallet/index.md)
 | [storage](index.md#2025247801%2FProperties%2F1615067946) | [androidJvm]<br>open override val [storage](index.md#2025247801%2FProperties%2F1615067946): Storage |
 | [transactionLogger](transaction-logger.md) | [androidJvm]<br>val [transactionLogger](transaction-logger.md): [TransactionLogger](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md)?<br>the transaction logger |
 | [transferManager](transfer-manager.md) | [androidJvm]<br>open override val [transferManager](transfer-manager.md): TransferManager<br>the transfer manager |
+| [walletKeyManager](wallet-key-manager.md) | [androidJvm]<br>open override val [walletKeyManager](wallet-key-manager.md): [WalletKeyManager](../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md) |
+| [walletProvider](wallet-provider.md) | [androidJvm]<br>open override val [walletProvider](wallet-provider.md): [WalletAttestationsProvider](../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)? |
 
 ## Functions
 

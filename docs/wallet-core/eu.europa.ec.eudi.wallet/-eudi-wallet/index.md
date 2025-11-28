@@ -25,7 +25,7 @@ To create an instance of [EudiWallet](index.md), use the [EudiWallet.invoke](-co
 
 | Name | Summary |
 |---|---|
-| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), val config: [EudiWalletConfig](../-eudi-wallet-config/index.md))<br>Builder class to create an instance of [EudiWallet](index.md) |
+| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), val config: [EudiWalletConfig](../-eudi-wallet-config/index.md), val walletProvider: [WalletAttestationsProvider](../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)?)<br>Builder class to create an instance of [EudiWallet](index.md) |
 | [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
 
 ## Properties
@@ -43,6 +43,8 @@ To create an instance of [EudiWallet](index.md), use the [EudiWallet.invoke](-co
 | [secureAreaRepository](../-eudi-wallet-impl/index.md#2086712120%2FProperties%2F1615067946) | [androidJvm]<br>abstract val [secureAreaRepository](../-eudi-wallet-impl/index.md#2086712120%2FProperties%2F1615067946): SecureAreaRepository |
 | [storage](../-eudi-wallet-impl/index.md#2025247801%2FProperties%2F1615067946) | [androidJvm]<br>abstract val [storage](../-eudi-wallet-impl/index.md#2025247801%2FProperties%2F1615067946): Storage |
 | [transferManager](transfer-manager.md) | [androidJvm]<br>abstract val [transferManager](transfer-manager.md): TransferManager<br>the transfer manager for proximity presentation |
+| [walletKeyManager](wallet-key-manager.md) | [androidJvm]<br>abstract val [walletKeyManager](wallet-key-manager.md): [WalletKeyManager](../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md) |
+| [walletProvider](wallet-provider.md) | [androidJvm]<br>abstract val [walletProvider](wallet-provider.md): [WalletAttestationsProvider](../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)? |
 
 ## Functions
 
