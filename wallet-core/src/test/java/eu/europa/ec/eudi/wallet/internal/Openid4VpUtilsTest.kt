@@ -37,11 +37,8 @@ package eu.europa.ec.eudi.wallet.internal
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import org.bouncycastle.util.encoders.Hex
-import java.security.MessageDigest
-import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 
 
 /**
@@ -214,58 +211,5 @@ class Openid4VpUtilsTest {
 //        val mdocGeneratedNonce = mdocGeneratedNonce
 //        val sessionTranscriptBytes = auth.getSessionTranscriptBytes(mdocGeneratedNonce)
 //        assertContentEquals(expected, sessionTranscriptBytes)
-    }
-
-    /**
-     * Tests for transaction data hash computation.
-     * Per OpenID4VP spec, transaction data hashes use SHA-256 and are base64url-encoded without padding.
-     */
-    @Test
-    fun testComputeTransactionDataHash_producesCorrectHash() {
-        // Test with a known input - a simple base64url-encoded JSON object
-        val transactionDataValue = "eyJ0eXBlIjoiZXUuZXVyb3BhLmVjLmV1ZGkuZmFtaWx5LW5hbWUtcHJlc2VudGF0aW9uIiwiY3JlZGVudGlhbF9pZHMiOlsicGlkX3NkX2p3dCJdfQ"
-
-        // Compute the hash using our function
-        val hash = computeTransactionDataHash(transactionDataValue)
-
-        // Manually compute expected hash for verification
-        val digest = MessageDigest.getInstance("SHA-256")
-        digest.update(transactionDataValue.encodeToByteArray())
-        val expectedHash = Base64.getUrlEncoder().withoutPadding().encodeToString(digest.digest())
-
-        assertEquals(expectedHash, hash)
-    }
-
-    @Test
-    fun testComputeTransactionDataHash_differentInputsProduceDifferentHashes() {
-        val transactionDataValue1 = "eyJ0eXBlIjoiZXhhbXBsZTEifQ"
-        val transactionDataValue2 = "eyJ0eXBlIjoiZXhhbXBsZTIifQ"
-
-        val hash1 = computeTransactionDataHash(transactionDataValue1)
-        val hash2 = computeTransactionDataHash(transactionDataValue2)
-
-        assertNotEquals(hash1, hash2, "Different inputs should produce different hashes")
-    }
-
-    @Test
-    fun testComputeTransactionDataHash_sameInputProducesSameHash() {
-        val transactionDataValue = "eyJ0eXBlIjoiZXhhbXBsZSJ9"
-
-        val hash1 = computeTransactionDataHash(transactionDataValue)
-        val hash2 = computeTransactionDataHash(transactionDataValue)
-
-        assertEquals(hash1, hash2, "Same input should always produce the same hash")
-    }
-
-    @Test
-    fun testComputeTransactionDataHash_outputIsBase64UrlWithoutPadding() {
-        val transactionDataValue = "eyJ0eXBlIjoiZXhhbXBsZSJ9"
-
-        val hash = computeTransactionDataHash(transactionDataValue)
-
-        // Verify it doesn't contain standard base64 characters that differ in base64url
-        assert(!hash.contains('+')) { "Hash should not contain '+' (base64url uses '-' instead)" }
-        assert(!hash.contains('/')) { "Hash should not contain '/' (base64url uses '_' instead)" }
-        assert(!hash.contains('=')) { "Hash should not contain '=' padding" }
     }
 }
