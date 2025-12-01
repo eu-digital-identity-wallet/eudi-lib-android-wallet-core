@@ -300,6 +300,12 @@ interface OpenId4VciManager {
             val config = checkNotNull(config) { "config is required" }
             val documentManager = checkNotNull(documentManager) { "documentManager is required" }
             val walletKeyManager = checkNotNull(walletKeyManager) { "walletKeyManager is required" }
+            if (config.clientAuthenticationType is ClientAuthenticationType.AttestationBased) {
+                checkNotNull(walletAttestationsProvider) {
+                    "walletAttestationsProvider is required for AttestationBased client authentication"
+                }
+            }
+
             return DefaultOpenId4VciManager(
                 context = context,
                 config = config,
@@ -422,15 +428,6 @@ interface OpenId4VciManager {
              */
             fun withIssuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
 
-            /**
-             * Set the client id for [ClientAuthenticationType.None]
-             *
-             * @param clientId the client id
-             * @return this builder
-             */
-            @Deprecated("Use withClientAuthenticationType(ClientAuthenticationType.None(clientId)) instead")
-            fun withClientId(clientId: String) =
-                apply { this.clientAuthenticationType = ClientAuthenticationType.None(clientId) }
 
             /**
              * Set the client authentication type
