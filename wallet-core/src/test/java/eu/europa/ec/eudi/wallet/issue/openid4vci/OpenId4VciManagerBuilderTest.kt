@@ -31,7 +31,7 @@ class OpenId4VciManagerBuilderTest {
     private val walletKeyManager = mockk<WalletKeyManager>(relaxed = true)
     private val config = OpenId4VciManager.Config(
         issuerUrl = "https://issuer.example.com",
-        clientId = "testClientId",
+        clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.None("testClientId"),
         authFlowRedirectionURI = "app://redirect",
         dPoPUsage = OpenId4VciManager.Config.DPoPUsage.IfSupported(),
         parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
@@ -63,6 +63,27 @@ class OpenId4VciManagerBuilderTest {
     fun `Builder throws exception when documentManager is not set`() {
         val builder = OpenId4VciManager.Builder(context)
             .config(config)
+
+        assertThrows(IllegalStateException::class.java) {
+            builder.build()
+        }
+    }
+
+    @Test
+    fun `Builder throws exception when walletAttestationsProvider is not set for AttestationBased authentication`() {
+        val configWithAttestationBased = OpenId4VciManager.Config(
+            issuerUrl = "https://issuer.example.com",
+            clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased,
+            authFlowRedirectionURI = "app://redirect",
+            dPoPUsage = OpenId4VciManager.Config.DPoPUsage.IfSupported(),
+            parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
+        )
+
+        val builder = OpenId4VciManager.Builder(context)
+            .config(configWithAttestationBased)
+            .documentManager(documentManager)
+            .walletKeyManager(walletKeyManager)
+        // Intentionally not setting walletAttestationsProvider
 
         assertThrows(IllegalStateException::class.java) {
             builder.build()

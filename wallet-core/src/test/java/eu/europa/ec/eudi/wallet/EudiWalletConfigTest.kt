@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet
 
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
@@ -42,7 +43,7 @@ class EudiWalletConfigTest {
             configureDocumentManager("storage/path")
             configureOpenId4Vci {
                 withIssuerUrl("https://example.com")
-                withClientId("client-id")
+                withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
                 withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
             }
             configureOpenId4Vp {
@@ -103,7 +104,7 @@ class EudiWalletConfigTest {
             config.openId4VpConfig?.encryptionMethods?.get(0)
         )
         assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
-        assertEquals("client-id", config.openId4VciConfig?.clientId)
+        assertEquals(OpenId4VciManager.ClientAuthenticationType.AttestationBased, config.openId4VciConfig?.clientAuthenticationType)
         assertEquals("eudi-openid4ci://authorize", config.openId4VciConfig?.authFlowRedirectionURI)
 
         assertEquals(true, config.dcapiConfig?.enabled)

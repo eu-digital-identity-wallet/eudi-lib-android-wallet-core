@@ -30,7 +30,7 @@ class OpenId4VciManagerConfigBuilderParUsageTest(
     fun `ConfigBuilder set the parUsage property correctly`() {
         val builder = OpenId4VciManager.Config.Builder()
             .withIssuerUrl("https://issuer.example.com")
-            .withClientId("testClientId")
+            .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("testClientId"))
             .withAuthFlowRedirectionURI("app://redirect")
             .withParUsage(parUsage)
 
