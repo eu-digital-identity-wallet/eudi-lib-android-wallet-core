@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.credential.ProofOfPossessionSigner
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import kotlinx.coroutines.runBlocking
 import org.multipaz.securearea.KeyUnlockData
 
 internal class SubmitRequest(
@@ -204,32 +205,36 @@ internal class SubmitRequest(
         val keyIndex = 0
         val proofsSpecification = ProofsSpecification.JwtProofs.WithKeyAttestation(
             proofSignerProvider = { nonce ->
-                try {
-                    val factory = KeyAttestationSigner.Factory(
-                        signers, keyIndex, walletAttestationsProvider, keyUnlockData
-                    )
-                    factory(nonce).getOrThrow().also { proofSigner = it }
-                } catch (e: Throwable) {
-
-                    val isUserAuthRequired = proofSigner.keyLockedException != null
-                    if (isUserAuthRequired) {
-                        val keysAndSecureAreas = mapOf(
-                            proofSigner.signer.let { it.keyAlias to it.secureArea }
-                        )
-                        throw UserAuthRequiredException(
-                            signingAlgorithm = proofSigner.signer.getKeyInfo().algorithm,
-                            keysAndSecureAreas = keysAndSecureAreas,
-                            resume = { keyUnlockData -> unlockResume(keyUnlockData) },
-                            cause = e
-                        )
-                    } else {
-                        throw e
-                    }
-                }
+                val factory = KeyAttestationSigner.Factory(
+                    signers, keyIndex, walletAttestationsProvider, keyUnlockData
+                )
+                factory(nonce).getOrThrow().also { proofSigner = it }
             },
             keyIndex = keyIndex,
         )
-        return with(issuer) { request(payload, proofsSpecification) }.getOrThrow()
+        try {
+            return with(issuer) { request(payload, proofsSpecification) }.getOrThrow()
+        } catch (e: Throwable) {
+
+            val isUserAuthRequired = proofSigner.keyLockedException != null
+            if (isUserAuthRequired) {
+                val keysAndSecureAreas = mapOf(
+                    proofSigner.signer.let { it.keyAlias to it.secureArea }
+                )
+                throw UserAuthRequiredException(
+                    signingAlgorithm = proofSigner.signer.getKeyInfo().algorithm,
+                    keysAndSecureAreas = keysAndSecureAreas,
+                    resume = { keyUnlockData ->
+                        runBlocking {
+                            unlockResume(keyUnlockData)
+                        }
+                    },
+                    cause = e
+                )
+            } else {
+                throw e
+            }
+        }
 
     }
 
@@ -256,7 +261,9 @@ internal class SubmitRequest(
                 throw UserAuthRequiredException(
                     signingAlgorithm = proofSigner.algorithm,
                     keysAndSecureAreas = keysAndSecureAreas,
-                    resume = { keyUnlockData -> unlockResume(keyUnlockData) },
+                    resume = { keyUnlockData -> runBlocking {
+                        unlockResume(keyUnlockData)
+                    } },
                     cause = e
                 )
             } else {

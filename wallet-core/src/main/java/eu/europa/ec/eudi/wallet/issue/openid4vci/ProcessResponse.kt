@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -60,10 +61,14 @@ internal class ProcessResponse(
                                 signingAlgorithm = e.signingAlgorithm,
                                 keysRequireAuth = e.keysAndSecureAreas,
                                 resume = { keyUnlockData ->
-                                    cont.resume(keyUnlockData)
+                                    runBlocking {
+                                        cont.resume(keyUnlockData)
+                                    }
                                 },
                                 cancel = {
-                                    cont.cancel(IllegalStateException("Canceled"))
+                                    runBlocking {
+                                        cont.cancel(IllegalStateException("Canceled"))
+                                    }
                                 }
                             )
                         )
