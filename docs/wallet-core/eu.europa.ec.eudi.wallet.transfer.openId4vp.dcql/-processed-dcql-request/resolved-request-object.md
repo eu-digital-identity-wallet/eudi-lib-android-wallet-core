@@ -3,4 +3,4 @@
 # resolvedRequestObject
 
 [androidJvm]\
-val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject.OpenId4VPAuthorization
+val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject

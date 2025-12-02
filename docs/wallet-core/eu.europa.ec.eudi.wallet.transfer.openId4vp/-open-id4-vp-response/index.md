@@ -3,7 +3,7 @@
 # OpenId4VpResponse
 
 [androidJvm]\
-class [OpenId4VpResponse](index.md)(val resolvedRequestObject: ResolvedRequestObject, val vpToken: Consensus.PositiveConsensus.VPTokenConsensus, val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val respondedDocuments: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;&gt;) : Response
+class [OpenId4VpResponse](index.md)(val resolvedRequestObject: ResolvedRequestObject, val vpToken: Consensus.PositiveConsensus, val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val respondedDocuments: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;&gt;) : Response
 
 Represents an OpenID4VP (OpenID for Verifiable Presentations) response.
 
@@ -13,7 +13,7 @@ This class encapsulates the complete response to an OpenID4VP request, including
 
 | | |
 |---|---|
-| [OpenId4VpResponse](-open-id4-vp-response.md) | [androidJvm]<br>constructor(resolvedRequestObject: ResolvedRequestObject, vpToken: Consensus.PositiveConsensus.VPTokenConsensus, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), respondedDocuments: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;&gt;) |
+| [OpenId4VpResponse](-open-id4-vp-response.md) | [androidJvm]<br>constructor(resolvedRequestObject: ResolvedRequestObject, vpToken: Consensus.PositiveConsensus, msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), respondedDocuments: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;&gt;) |
 
 ## Types
 
@@ -29,4 +29,4 @@ This class encapsulates the complete response to an OpenID4VP request, including
 | [msoMdocNonce](mso-mdoc-nonce.md) | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>The nonce used for MSO mdoc presentations |
 | [resolvedRequestObject](resolved-request-object.md) | [androidJvm]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject<br>The resolved OpenID4VP request object that was processed |
 | [respondedDocuments](responded-documents.md) | [androidJvm]<br>val [respondedDocuments](responded-documents.md): [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[OpenId4VpResponse.RespondedDocument](-responded-document/index.md)&gt;&gt;<br>The list of responded documents with their metadata |
-| [vpToken](vp-token.md) | [androidJvm]<br>val [vpToken](vp-token.md): Consensus.PositiveConsensus.VPTokenConsensus<br>The consensus result containing the verifiable presentation token |
+| [vpToken](vp-token.md) | [androidJvm]<br>val [vpToken](vp-token.md): Consensus.PositiveConsensus<br>The consensus result containing the verifiable presentation token |

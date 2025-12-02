@@ -3,13 +3,13 @@
 # deserialize
 
 [androidJvm]\
-open override fun [deserialize](deserialize.md)(decoder: Decoder): Consensus.PositiveConsensus.VPTokenConsensus
+open override fun [deserialize](deserialize.md)(decoder: Decoder): Consensus.PositiveConsensus
 
-Deserializes a Consensus.PositiveConsensus.VPTokenConsensus object from the decoder.
+Deserializes a Consensus.PositiveConsensus object from the decoder.
 
 #### Return
 
-The deserialized VPTokenConsensus object
+The deserialized PositiveConsensus object
 
 #### Parameters
 
