@@ -99,10 +99,11 @@ internal class SubmitRequest(
         offeredDocument: Offer.OfferedDocument,
         keyUnlockData: Map<KeyAlias, KeyUnlockData?>?,
     ): Pair<AuthorizedRequest, SubmissionOutcome> {
-        val requiresAttestation = offeredDocument.configuration.proofTypesSupported.values.all {
-            it is HasKeyAttestationRequirement
-        }
-        check(!requiresAttestation) {
+        val canBeIssuedWithoutAttestation = offeredDocument.configuration.proofTypesSupported.values
+            .filterIsInstance<ProofTypeMeta.Jwt>()
+            .any { it.keyAttestationRequirement is KeyAttestationRequirement.NotRequired }
+
+        check(canBeIssuedWithoutAttestation) {
             "Offered document requires attestation proof, but client authentication type is None"
         }
 
