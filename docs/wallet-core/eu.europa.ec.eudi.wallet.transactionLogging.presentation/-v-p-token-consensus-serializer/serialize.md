@@ -3,9 +3,9 @@
 # serialize
 
 [androidJvm]\
-open override fun [serialize](serialize.md)(encoder: Encoder, value: Consensus.PositiveConsensus.VPTokenConsensus)
+open override fun [serialize](serialize.md)(encoder: Encoder, value: Consensus.PositiveConsensus)
 
-Serializes a Consensus.PositiveConsensus.VPTokenConsensus object to the encoder.
+Serializes a Consensus.PositiveConsensus object to the encoder.
 
 #### Parameters
 
@@ -14,4 +14,4 @@ androidJvm
 | | |
 |---|---|
 | encoder | The encoder to write the serialized data to |
-| value | The VPTokenConsensus object to serialize |
+| value | The PositiveConsensus object to serialize |
