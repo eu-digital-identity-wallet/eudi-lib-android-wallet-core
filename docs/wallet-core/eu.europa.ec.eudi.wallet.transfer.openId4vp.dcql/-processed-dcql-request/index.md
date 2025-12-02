@@ -3,7 +3,7 @@
 # ProcessedDcqlRequest
 
 [androidJvm]\
-class [ProcessedDcqlRequest](index.md)(val resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
+class [ProcessedDcqlRequest](index.md)(val resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
 
 Represents a processed DCQL (Digital Credentials Query Language) request for OpenID4VP flows.
 
@@ -24,7 +24,7 @@ This class:
 
 | | |
 |---|---|
-| [ProcessedDcqlRequest](-processed-dcql-request.md) | [androidJvm]<br>constructor(resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
+| [ProcessedDcqlRequest](-processed-dcql-request.md) | [androidJvm]<br>constructor(resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
@@ -32,7 +32,7 @@ This class:
 |---|---|
 | [msoMdocNonce](mso-mdoc-nonce.md) | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>Random nonce used for MSO mdoc format presentations for security |
 | [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
-| [resolvedRequestObject](resolved-request-object.md) | [androidJvm]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject.OpenId4VPAuthorization<br>The parsed OpenID4VP authorization request with presentation query details |
+| [resolvedRequestObject](resolved-request-object.md) | [androidJvm]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject<br>The parsed OpenID4VP authorization request with presentation query details |
 
 ## Functions
 

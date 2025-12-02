@@ -3,4 +3,4 @@
 # ProcessedDcqlRequest
 
 [androidJvm]\
-constructor(resolvedRequestObject: ResolvedRequestObject.OpenId4VPAuthorization, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))
+constructor(resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))

@@ -3,4 +3,4 @@
 # vpToken
 
 [androidJvm]\
-val [vpToken](vp-token.md): Consensus.PositiveConsensus.VPTokenConsensus
+val [vpToken](vp-token.md): Consensus.PositiveConsensus

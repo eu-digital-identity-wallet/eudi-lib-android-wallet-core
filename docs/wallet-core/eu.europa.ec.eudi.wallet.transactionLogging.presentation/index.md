@@ -14,7 +14,7 @@
 | [TransactionsListener](-transactions-listener/index.md) | [androidJvm]<br>class [TransactionsListener](-transactions-listener/index.md)(transactionLogger: [TransactionLogger](../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md), documentManager: DocumentManager, logger: [Logger](../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null) : TransferEvent.Listener<br>Listener for transaction logging. |
 | [VerifiablePresentationSerializer](-verifiable-presentation-serializer/index.md) | [androidJvm]<br>object [VerifiablePresentationSerializer](-verifiable-presentation-serializer/index.md) : KSerializer&lt;VerifiablePresentation&gt; <br>Custom serializer for VerifiablePresentation objects. |
 | [VerifiablePresentationsSerializer](-verifiable-presentations-serializer/index.md) | [androidJvm]<br>object [VerifiablePresentationsSerializer](-verifiable-presentations-serializer/index.md) : KSerializer&lt;VerifiablePresentations&gt; <br>Custom serializer for VerifiablePresentations collections. |
-| [VPTokenConsensusSerializer](-v-p-token-consensus-serializer/index.md) | [androidJvm]<br>object [VPTokenConsensusSerializer](-v-p-token-consensus-serializer/index.md) : KSerializer&lt;Consensus.PositiveConsensus.VPTokenConsensus&gt; <br>Custom serializer for Consensus.PositiveConsensus.VPTokenConsensus objects. |
+| [VPTokenConsensusSerializer](-v-p-token-consensus-serializer/index.md) | [androidJvm]<br>object [VPTokenConsensusSerializer](-v-p-token-consensus-serializer/index.md) : KSerializer&lt;Consensus.PositiveConsensus&gt; <br>Custom serializer for Consensus.PositiveConsensus objects. |
 
 ## Properties
 

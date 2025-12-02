@@ -16,6 +16,7 @@
 | [GrantTO](-grant-t-o/index.md) | [androidJvm]<br>@Serializable<br>enum [GrantTO](-grant-t-o/index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[GrantTO](-grant-t-o/index.md)&gt; |
 | [IssueEvent](-issue-event/index.md) | [androidJvm]<br>sealed interface [IssueEvent](-issue-event/index.md) : [OpenId4VciResult](-open-id4-vci-result/index.md)<br>Events related to document issuance. |
 | [KeyAlias](-key-alias/index.md) | [androidJvm]<br>typealias [KeyAlias](-key-alias/index.md) = [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [KeyAttestationSigner](-key-attestation-signer/index.md) | [androidJvm]<br>class [KeyAttestationSigner](-key-attestation-signer/index.md) : Signer&lt;KeyAttestationJWT&gt; |
 | [Offer](-offer/index.md) | [androidJvm]<br>data class [Offer](-offer/index.md)(val credentialOffer: CredentialOffer)<br>Represents an offer of credentials from an issuer. |
 | [OfferResult](-offer-result/index.md) | [androidJvm]<br>sealed interface [OfferResult](-offer-result/index.md) : [OpenId4VciResult](-open-id4-vci-result/index.md)<br>The result of an offer operation. |
 | [OpenId4VciManager](-open-id4-vci-manager/index.md) | [androidJvm]<br>interface [OpenId4VciManager](-open-id4-vci-manager/index.md)<br>OpenId4VciManager is the main entry point to issue documents using the OpenId4Vci protocol It provides methods to issue documents using a document type or an offer, and to resolve an offer |
