@@ -25,7 +25,7 @@ import org.multipaz.crypto.Algorithm
  * Responsible for creating, storing, and retrieving the cryptographic
  * keys that those attestations certify.
  */
-fun interface WalletKeyManager {
+interface WalletKeyManager {
     /**
      * Retrieves or creates a signing key to be used for Wallet Attestation (Client Authentication).
      * The Wallet Attestation Keys must be distinct for different Authorization Servers but unique for a specific one, and
@@ -41,10 +41,20 @@ fun interface WalletKeyManager {
      * @return A [Result] containing the [WalletAttestationKey], which includes the public key info
      * and a mechanism to sign data.
      */
-    suspend fun getWalletAttestationKey(
+    suspend fun getOrCreateWalletAttestationKey(
         authorizationServerUrl: String,
         supportedAlgorithms: List<Algorithm>,
     ): Result<WalletAttestationKey>
+
+    /**
+     * Retrieves the existing Wallet Attestation Key for the specified Authorization Server URL.
+     * If no key exists for the given Authorization Server, it returns null.
+     * @param authorizationServerUrl The URL of the Authorization Server.
+     * @return The existing [WalletAttestationKey] or null if not found.
+     */
+    suspend fun getWalletAttestationKey(
+        authorizationServerUrl: String,
+    ): WalletAttestationKey?
 
     companion object {
         /**

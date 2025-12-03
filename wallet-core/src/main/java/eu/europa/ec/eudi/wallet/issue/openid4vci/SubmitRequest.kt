@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
-import eu.europa.ec.eudi.openid4vci.HasKeyAttestationRequirement
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.KeyAttestationJWT

@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -31,6 +32,7 @@ import kotlin.coroutines.resume
 internal class ProcessResponse(
     val documentManager: DocumentManager,
     val deferredContextFactory: DeferredContextFactory,
+    val walletKeyManager: WalletKeyManager,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
@@ -112,7 +114,10 @@ internal class ProcessResponse(
             }
 
             is SubmissionOutcome.Deferred -> runCatching {
-                val contextToStore = deferredContextFactory(keyAliases, outcome)
+                val contextToStore = makeDeferredContextJson(
+                    walletKeyManager
+                ).encodeToString(deferredContextFactory(keyAliases, outcome))
+
                 documentManager.storeDeferredDocument(
                     unsignedDocument = unsignedDocument,
                     relatedData = contextToStore.toByteArray()

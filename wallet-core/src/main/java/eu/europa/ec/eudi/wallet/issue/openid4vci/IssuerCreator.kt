@@ -159,11 +159,10 @@ internal class IssuerCreator(
                         Algorithm.fromJoseAlgorithmIdentifier(a.name)
                     }
                     walletAttestationKeyManager
-                        .getWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
+                        .getOrCreateWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
                         .map {
                             with(it) {
-                                walletAttestationsProvider.toClientAuthentication()
-                                    .getOrThrow()
+                                walletAttestationsProvider.toClientAuthentication().getOrThrow()
                             }
                         }.getOrThrow()
                 }
