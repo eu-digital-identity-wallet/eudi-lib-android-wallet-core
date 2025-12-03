@@ -39,14 +39,18 @@ class DefaultWalletKeyManager(
 ) : WalletKeyManager {
 
 
-    override suspend fun getWalletAttestationKey(
+    override suspend fun getOrCreateWalletAttestationKey(
         authorizationServerUrl: String,
         supportedAlgorithms: List<Algorithm>,
     ): Result<WalletAttestationKey> {
-        return getSecureAreaWalletKeyManager().getWalletAttestationKey(
+        return getSecureAreaWalletKeyManager().getOrCreateWalletAttestationKey(
             authorizationServerUrl,
             supportedAlgorithms
         )
+    }
+
+    override suspend fun getWalletAttestationKey(authorizationServerUrl: String): WalletAttestationKey? {
+        return getSecureAreaWalletKeyManager().getWalletAttestationKey(authorizationServerUrl)
     }
 
     private var secureAreaBased: SecureAreaWalletKeyManager? = null
