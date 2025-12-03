@@ -44,7 +44,7 @@ open class SecureAreaWalletKeyManager(
     private val keyUnlockDataProvider: suspend (String, SecureArea) -> KeyUnlockData? = { _, _ -> null },
 ) : WalletKeyManager {
 
-    override suspend fun getWalletAttestationKey(
+    override suspend fun getOrCreateWalletAttestationKey(
         authorizationServerUrl: String,
         supportedAlgorithms: List<Algorithm>,
     ): Result<WalletAttestationKey> = runCatching {
@@ -74,6 +74,18 @@ open class SecureAreaWalletKeyManager(
             val keyUnlockData = keyUnlockDataProvider(keyAlias, secureArea)
             secureArea.sign(keyAlias, data, keyUnlockData).toDerEncoded()
         }
+    }
+
+    override suspend fun getWalletAttestationKey(authorizationServerUrl: String): WalletAttestationKey? {
+        val keyAlias = generateKeyAlias(authorizationServerUrl)
+        return runCatching {
+            secureArea.getKeyInfo(keyAlias)
+        }.map { keyInfo ->
+            WalletAttestationKey(keyInfo) { data ->
+                val keyUnlockData = keyUnlockDataProvider(keyAlias, secureArea)
+                secureArea.sign(keyAlias, data, keyUnlockData).toDerEncoded()
+            }
+        }.getOrNull()
     }
 
     /**

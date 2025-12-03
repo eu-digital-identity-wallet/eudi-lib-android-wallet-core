@@ -196,7 +196,9 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueResult) { coroutineScope, callback ->
             try {
-                val deferredContext = DeferredContext.fromByteArray(deferredDocument.relatedData)
+                val deferredContext: DeferredContext = makeDeferredContextJson(
+                    walletAttestationKeyManager
+                ).decodeFromString(String(deferredDocument.relatedData))
                 when {
                     deferredContext.issuanceContext.hasExpired -> callback(
                         DeferredIssueResult.DocumentExpired(deferredDocument)
@@ -211,6 +213,7 @@ internal class DefaultOpenId4VciManager(
                             .getOrThrow()
                         ProcessDeferredOutcome(
                             documentManager = documentManager,
+                            walletKeyManager = walletAttestationKeyManager,
                             callback = callback,
                             deferredContext = ctx?.let {
                                 DeferredContext(
@@ -279,6 +282,7 @@ internal class DefaultOpenId4VciManager(
         ProcessResponse(
             documentManager = documentManager,
             deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest),
+            walletKeyManager = walletAttestationKeyManager,
             listener = listener,
             issuedDocumentIds = issuedDocumentIds,
             logger = logger,
