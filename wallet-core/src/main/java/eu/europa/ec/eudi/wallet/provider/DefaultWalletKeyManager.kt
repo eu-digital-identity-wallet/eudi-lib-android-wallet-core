@@ -49,8 +49,8 @@ class DefaultWalletKeyManager(
         )
     }
 
-    override suspend fun getWalletAttestationKey(authorizationServerUrl: String): WalletAttestationKey? {
-        return getSecureAreaWalletKeyManager().getWalletAttestationKey(authorizationServerUrl)
+    override suspend fun getWalletAttestationKey(keyAlias: String): WalletAttestationKey? {
+        return getSecureAreaWalletKeyManager().getWalletAttestationKey(keyAlias)
     }
 
     private var secureAreaBased: SecureAreaWalletKeyManager? = null

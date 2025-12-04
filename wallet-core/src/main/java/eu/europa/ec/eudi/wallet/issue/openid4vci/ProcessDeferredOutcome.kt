@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 internal class ProcessDeferredOutcome(
     val documentManager: DocumentManager,
     val walletKeyManager: WalletKeyManager,
+    val clientAttestationPopKeyId: String?,
     val callback: OpenId4VciManager.OnResult<DeferredIssueResult>,
     val deferredContext: DeferredContext?,
     val logger: Logger? = null,
@@ -35,7 +36,7 @@ internal class ProcessDeferredOutcome(
     fun process(
         deferredDocument: DeferredDocument,
         keyAliases: List<String>,
-        outcome: DeferredCredentialQueryOutcome
+        outcome: DeferredCredentialQueryOutcome,
     ) {
         try {
             when (outcome) {
@@ -50,9 +51,9 @@ internal class ProcessDeferredOutcome(
 
                 is DeferredCredentialQueryOutcome.IssuancePending -> {
                     deferredContext?.let { ctx ->
-                        val contextToStore = makeDeferredContextJson(walletKeyManager)
-                            .encodeToString(ctx)
-                        documentManager.storeDeferredDocument(deferredDocument, contextToStore.toByteArray())
+                        val contextToStore =
+                            ctx.toBytes(walletKeyManager, clientAttestationPopKeyId)
+                        documentManager.storeDeferredDocument(deferredDocument, contextToStore)
                             .kotlinResult.onSuccess { document ->
                                 callback(DeferredIssueResult.DocumentNotReady(document))
                             }.onFailure { error ->
