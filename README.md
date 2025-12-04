@@ -221,11 +221,28 @@ val customWallet = EudiWallet(context, config) {
     withTransactionLogger(myTransactionLogger)
     // custom document status resolver
     withDocumentStatusResolver(myDocumentStatusResolver)
+    // custom wallet key manager
+    withWalletKeyManager(myWalletKeyManager)
 }
 ```
 
 See the [CustomizeSecureArea.md](CustomizeSecureArea.md) for more information on how to use the
 wallet-core library with custom SecureArea implementations.
+
+
+#### WalletKeyManager Configuration
+This interface is responsible for managing Attestation Keys used during Attestation Based Client Authentication with OpenId4Vci.
+The library provides `SecureAreaWalletKeyManager`, an extensible SecureArea based implementation of this interface.
+If no configuration is provided for a custom `WalletKeyManager` the default implementation of the library will be used based on `AndroidKeystoreSecureArea`.
+You can provide your custom `WalletKeyManager` by configuring the `EudiWallet` instance:
+```kotlin
+val customWallet = EudiWallet(context, config) {
+    // rest of configurations
+    // ......................
+    // custom wallet key manager
+    withWalletKeyManager(myWalletKeyManager)
+}
+```
 
 #### Configure EudiWallet for Attestation Based Client Authentication(WIA) and Wallet Unit Attestation(WUA) with a Wallet Provider
 The wallet-core supports Wallet Instance Attestation (WIA) that attests the integrity of the app & Wallet Unit Attestation (WUA) that attests the security of keys stored in the Wallet Unit.
@@ -259,6 +276,7 @@ val walletAttestationsProvider = object : WalletAttestationsProvider {
     }
 }
 ```
+
 So the configuration of the EudiWallet documented in the above section would now be:
 ```kotlin
 val wallet = EudiWallet(
@@ -269,6 +287,7 @@ val wallet = EudiWallet(
 ```
 
 **NOTE:** When Attestation Based Client Authentication is configured for OpendId4Vci, the `EudiWallet` must also be instantiated with a WalletProvider
+
 
 ### Manage documents
 
