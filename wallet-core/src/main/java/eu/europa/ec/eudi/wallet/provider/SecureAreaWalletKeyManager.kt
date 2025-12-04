@@ -76,8 +76,7 @@ open class SecureAreaWalletKeyManager(
         }
     }
 
-    override suspend fun getWalletAttestationKey(authorizationServerUrl: String): WalletAttestationKey? {
-        val keyAlias = generateKeyAlias(authorizationServerUrl)
+    override suspend fun getWalletAttestationKey(keyAlias: String): WalletAttestationKey? {
         return runCatching {
             secureArea.getKeyInfo(keyAlias)
         }.map { keyInfo ->

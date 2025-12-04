@@ -33,6 +33,7 @@ internal class ProcessResponse(
     val documentManager: DocumentManager,
     val deferredContextFactory: DeferredContextFactory,
     val walletKeyManager: WalletKeyManager,
+    val clientAttestationPopKeyId: String?,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
@@ -47,7 +48,7 @@ internal class ProcessResponse(
     suspend fun process(
         unsignedDocument: UnsignedDocument,
         keyAliases: List<String>,
-        outcomeResult: Result<SubmissionOutcome>
+        outcomeResult: Result<SubmissionOutcome>,
     ) {
         try {
             processSubmittedRequest(unsignedDocument, keyAliases, outcomeResult.getOrThrow())
@@ -87,7 +88,7 @@ internal class ProcessResponse(
     fun processSubmittedRequest(
         unsignedDocument: UnsignedDocument,
         keyAliases: List<String>,
-        outcome: SubmissionOutcome
+        outcome: SubmissionOutcome,
     ) {
         when (outcome) {
             is SubmissionOutcome.Success -> runCatching {
@@ -114,13 +115,15 @@ internal class ProcessResponse(
             }
 
             is SubmissionOutcome.Deferred -> runCatching {
-                val contextToStore = makeDeferredContextJson(
-                    walletKeyManager
-                ).encodeToString(deferredContextFactory(keyAliases, outcome))
+                val contextToStore = deferredContextFactory(
+                    keyAliases,
+                    outcome,
+                    clientAttestationPopKeyId
+                ).toBytes(walletKeyManager, clientAttestationPopKeyId)
 
                 documentManager.storeDeferredDocument(
                     unsignedDocument = unsignedDocument,
-                    relatedData = contextToStore.toByteArray()
+                    relatedData = contextToStore
                 ).getOrThrow()
             }.onSuccess { document ->
                 issuedDocumentIds.add(document.id)

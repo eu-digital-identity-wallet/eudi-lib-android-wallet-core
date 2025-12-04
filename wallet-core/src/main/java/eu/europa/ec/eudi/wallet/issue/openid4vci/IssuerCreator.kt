@@ -55,6 +55,9 @@ internal class IssuerCreator(
     private val logger: Logger?,
 ) {
 
+    internal var clientAttestationPopKeyId: String? = null
+        private set
+
     /**
      * Creates an [Issuer] from the given [Offer].
      * @param offer The [Offer].
@@ -161,6 +164,7 @@ internal class IssuerCreator(
                     walletAttestationKeyManager
                         .getOrCreateWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
                         .map {
+                            clientAttestationPopKeyId = it.keyInfo.alias
                             with(it) {
                                 walletAttestationsProvider.toClientAuthentication().getOrThrow()
                             }

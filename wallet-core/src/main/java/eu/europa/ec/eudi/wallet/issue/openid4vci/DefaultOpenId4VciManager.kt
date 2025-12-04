@@ -196,9 +196,12 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueResult) { coroutineScope, callback ->
             try {
-                val deferredContext: DeferredContext = makeDeferredContextJson(
+
+                val deferredContext = DeferredContext.fromBytes(
+                    deferredDocument.relatedData,
                     walletAttestationKeyManager
-                ).decodeFromString(String(deferredDocument.relatedData))
+                )
+                val clientAttestationPopKeyId = deferredContext.clientAttestationPopKeyId
                 when {
                     deferredContext.issuanceContext.hasExpired -> callback(
                         DeferredIssueResult.DocumentExpired(deferredDocument)
@@ -211,14 +214,17 @@ internal class DefaultOpenId4VciManager(
                             responseEncryptionKey = null // TODO handle encrypted responses
                         )
                             .getOrThrow()
+
                         ProcessDeferredOutcome(
                             documentManager = documentManager,
                             walletKeyManager = walletAttestationKeyManager,
+                            clientAttestationPopKeyId = clientAttestationPopKeyId,
                             callback = callback,
                             deferredContext = ctx?.let {
                                 DeferredContext(
                                     issuanceContext = it,
                                     keyAliases = deferredContext.keyAliases,
+                                    clientAttestationPopKeyId = clientAttestationPopKeyId
                                 )
                             } ?: deferredContext,
                             logger = logger
@@ -283,6 +289,7 @@ internal class DefaultOpenId4VciManager(
             documentManager = documentManager,
             deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest),
             walletKeyManager = walletAttestationKeyManager,
+            clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
             listener = listener,
             issuedDocumentIds = issuedDocumentIds,
             logger = logger,
