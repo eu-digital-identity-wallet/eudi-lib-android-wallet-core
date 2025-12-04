@@ -21,6 +21,7 @@ import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIRegistration
@@ -459,7 +460,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
         @get:JvmSynthetic
         internal val defaultReaderTrustStore: ReaderTrustStore?
             get() = config.readerTrustedCertificates?.let { certificates ->
-                ReaderTrustStore.getDefault(certificates)
+                ReaderTrustStoreImpl(certificates, profileValidation = { _, _ -> true })
             }
 
         /**
