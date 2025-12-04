@@ -49,11 +49,11 @@ interface WalletKeyManager {
     /**
      * Retrieves the existing Wallet Attestation Key for the specified Authorization Server URL.
      * If no key exists for the given Authorization Server, it returns null.
-     * @param authorizationServerUrl The URL of the Authorization Server.
+     * @param keyAlias The URL of the Authorization Server.
      * @return The existing [WalletAttestationKey] or null if not found.
      */
     suspend fun getWalletAttestationKey(
-        authorizationServerUrl: String,
+        keyAlias: String,
     ): WalletAttestationKey?
 
     companion object {

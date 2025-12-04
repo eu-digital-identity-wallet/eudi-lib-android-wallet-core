@@ -76,7 +76,9 @@ import java.time.Instant
 internal typealias DeferredContextFactory = (
     keyAliases: List<String>,
     outcome: SubmissionOutcome.Deferred,
-) -> DeferredContext
+    clientAttestationPopKeyId: String?,
+
+    ) -> DeferredContext
 
 /**
  * Creates a [DeferredContextFactory] from an [Issuer] and [AuthorizedRequest].
@@ -87,13 +89,14 @@ internal typealias DeferredContextFactory = (
  */
 internal fun DeferredContextFactory(
     issuer: Issuer,
-    authorizedRequest: AuthorizedRequest
+    authorizedRequest: AuthorizedRequest,
 ): DeferredContextFactory {
-    return { keyAliases, outcome ->
+    return { keyAliases, outcome, clientAttestationPopKeyId ->
         with(issuer) {
             DeferredContext(
                 issuanceContext = authorizedRequest.deferredContext(outcome),
-                keyAliases = keyAliases
+                keyAliases = keyAliases,
+                clientAttestationPopKeyId = clientAttestationPopKeyId
             )
         }
     }
@@ -110,16 +113,47 @@ internal fun DeferredContextFactory(
 internal data class DeferredContext(
     @Contextual val issuanceContext: DeferredIssuanceContext,
     val keyAliases: List<String>,
-)
+    val clientAttestationPopKeyId: String?,
+) {
+    companion object
+}
+
+internal fun DeferredContext.Companion.fromBytes(
+    bytes: ByteArray,
+    walletKeyManager: WalletKeyManager,
+): DeferredContext {
+    val json = makeDeferredContextJson(
+        walletKeyManager,
+        null
+    )
+    return json.decodeFromString(String(bytes))
+}
+
+internal fun DeferredContext.toBytes(
+    walletKeyManager: WalletKeyManager,
+    clientAttestationPopKeyId: String?,
+): ByteArray {
+    val json = makeDeferredContextJson(
+        walletKeyManager = walletKeyManager,
+        clientAttestationPopKeyId = clientAttestationPopKeyId
+    )
+    return json.encodeToString(DeferredContext.serializer(), this).toByteArray()
+}
 
 internal fun makeDeferredContextJson(
     walletKeyManager: WalletKeyManager,
+    clientAttestationPopKeyId: String?,
 ): Json {
     return Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
         serializersModule = SerializersModule {
-            contextual(DeferredIssuanceContextSerializer(walletKeyManager))
+            contextual(
+                DeferredIssuanceContextSerializer(
+                    walletKeyManager,
+                    clientAttestationPopKeyId
+                )
+            )
         }
     }
 }
@@ -135,6 +169,7 @@ internal fun makeDeferredContextJson(
  */
 internal class DeferredIssuanceContextSerializer(
     private val walletKeyManager: WalletKeyManager,
+    private val clientAttestationPopKeyId: String?,
 ) : KSerializer<DeferredIssuanceContext> {
     override val descriptor: SerialDescriptor =
         buildClassSerialDescriptor("eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext") {
@@ -152,6 +187,7 @@ internal class DeferredIssuanceContextSerializer(
         val contextTO = DeferredIssuanceStoredContextTO.from(
             value,
             null,
+            clientAttestationPopKeyId,
         )
         encoder.encodeStructure(descriptor) {
             encodeSerializableElement(
@@ -383,13 +419,14 @@ data class DeferredIssuanceStoredContextTO(
         fun from(
             dCtx: DeferredIssuanceContext,
             dPoPSignerKid: String?,
+            clientAttestationPopKeyId: String?,
         ): DeferredIssuanceStoredContextTO {
             val authorizedTransaction = dCtx.authorizedTransaction
             return DeferredIssuanceStoredContextTO(
                 credentialIssuerId = dCtx.config.credentialIssuerId.toString(),
                 clientId = dCtx.config.clientAuthentication.id,
                 clientAttestationJwt = dCtx.config.clientAuthentication.ifAttested { attestationJWT.jwt.serialize() },
-                clientAttestationPopKeyId = dCtx.config.clientAuthentication.ifAttested { dCtx.config.authorizationServerId.toString() },
+                clientAttestationPopKeyId = dCtx.config.clientAuthentication.ifAttested { clientAttestationPopKeyId },
                 deferredEndpoint = dCtx.config.deferredEndpoint.toString(),
                 authServerId = dCtx.config.authorizationServerId.toString(),
                 tokenEndpoint = dCtx.config.tokenEndpoint.toString(),
