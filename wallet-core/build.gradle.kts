@@ -114,7 +114,9 @@ dependencies {
     // EUDI libs
     api(libs.eudi.document.manager)
     api(libs.eudi.iso18013.data.transfer)
-    api(libs.eudi.lib.jvm.openid4vci.kt)
+    // OpenID4VCI
+    // EUDI-added
+    api(project(LibraryModule.Openid4vci.path))
     // multipaz library
     api(libs.multipaz.android) {
         exclude(group = "org.bouncycastle")
