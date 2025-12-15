@@ -34,13 +34,13 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceReques
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
+import kotlinx.coroutines.runBlocking
 import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Algorithm
 import org.multipaz.util.fromBase64Url
-import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
+import org.multipaz.crypto.Hpke
 
 /**
  * Processes a DCAPI request by generating a response based on the provided device request and credential options.
@@ -100,19 +100,24 @@ class ProcessedDCPAPIRequest(
             )
 
             // Encrypt the device response using HPKE
-            val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
-                cipherSuite = Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                receiverPublicKey = recipientPublicKey,
-                plainText = deviceResponse.deviceResponseBytes,
-                aad = deviceResponse.sessionTranscriptBytes
-            )
+            val (cipherText, encapsulatedPublicKey) = runBlocking {
+                val encrypter = Hpke.getEncrypter(
+                    cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,
+                    receiverPublicKey = recipientPublicKey,
+                    info = deviceResponse.sessionTranscriptBytes
+                )
+                val cipherText = encrypter.encrypt(
+                    plaintext = deviceResponse.deviceResponseBytes,
+                    aad = ByteArray(0)
+                )
+                val encapsulatedPublicKey = encrypter.encapsulatedKey.toByteArray()
+                Pair(cipherText, encapsulatedPublicKey)
+            }
 
-            val enc =
-                (encapsulatedPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
             val encryptedResponse = CBORObject.NewArray().apply {
                 Add(DCAPI)
                 Add(CBORObject.NewMap().apply {
-                    Add(ENC, enc)
+                    Add(ENC, encapsulatedPublicKey)
                     Add(CIPHER_TEXT, cipherText)
                 })
             }.EncodeToBytes()

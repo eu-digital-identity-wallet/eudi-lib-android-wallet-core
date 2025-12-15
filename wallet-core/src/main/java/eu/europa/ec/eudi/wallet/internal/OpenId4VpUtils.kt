@@ -76,9 +76,11 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyUnlockData
+import org.multipaz.securearea.UnlockReason
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -331,17 +333,20 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
 ): String {
     val algorithm = JWSAlgorithm.parse((signatureAlgorithm).joseAlgorithmIdentifier)
     val publicKey = credential.secureArea.getKeyInfo(credential.alias).publicKey
+    val provider = keyUnlockData.asProvider()
     val buildKbJwt = NimbusSdJwtOps.kbJwtIssuer(
         signer = object : JWSSigner {
             override fun getJCAContext(): JCAContext = JCAContext()
             override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
             override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
                 val signature = runBlocking {
-                    credential.secureArea.sign(
-                        alias = credential.alias,
-                        dataToSign = signingInput,
-                        keyUnlockData = keyUnlockData
-                    )
+                    withContext(provider) {
+                        credential.secureArea.sign(
+                            alias = credential.alias,
+                            dataToSign = signingInput,
+                            unlockReason = UnlockReason.Unspecified
+                        )
+                    }
                 }
                 return Base64URL.encode(signature.toJoseEncoded(algorithm))
             }
