@@ -35,6 +35,7 @@ package eu.europa.ec.eudi.wallet.internal
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
+import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import org.bouncycastle.util.encoders.Hex
 import kotlin.test.Test
@@ -43,42 +44,54 @@ import kotlin.test.assertEquals
 
 /**
  *    Examples has been taken from:
- *    https://github.com/awoie/annex-b-examples/pull/2
- *    https://github.com/awoie/annex-b-examples/blob/main/examples/annex-b-examples.txt
+ *    https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-handover-and-sessiontranscr
  */
 
-const val ANNEX_B_OPENID4VP_HANDOVER =
-    "835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
-const val ANNEX_B_SESSION_TRANSCRIPT =
-    "83F6F6835820DA25C527E5FB75BC2DD31267C02237C4462BA0C1BF37071F692E7DD93B10AD0B5820F6ED8E3220D3C59A5F17EB45F48AB70AEECF9EE21744B1014982350BD96AC0C572616263646566676831323334353637383930"
+const val OPENID4VP_1_0_HANDOVER =
+    "82714f70656e494434565048616e646f7665725820048bc053c00442af9b8eed494cefdd9d95240d254b046b11b68013722aad38ac"
+const val OPENID4VP_1_0_SESSION_TRANSCRIPT =
+    "83f6f682714f70656e494434565048616e646f7665725820048bc053c00442af9b8eed494cefdd9d95240d254b046b11b68013722aad38ac"
 
-const val clientId = "example.com"
-const val responseUri = "https://example.com/12345/response"
-const val nonce = "abcdefgh1234567890"
-const val mdocGeneratedNonce = "1234567890abcdefgh"
+const val clientId = "x509_san_dns:example.com"
+const val nonce = "exc7gBkxjx1rdc9udRrveKvSsJIq80avlXeLHhGwqtA"
+const val jwk = """
+    {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "DxiH5Q4Yx3UrukE2lWCErq8N8bqC9CHLLrAwLz5BmE0",
+      "y": "XtLM4-3h5o3HUH0MHVJV0kyq0iBlrBwlh8qEDMZ4-Pc",
+      "use": "enc",
+      "alg": "ECDH-ES",
+      "kid": "1"
+    }
+    """
+const val responseUri = "https://example.com/response"
 
 class Openid4VpUtilsTest {
 
     @Test
     fun testGenerateOpenId4VpHandover() {
         val openid4VpHandover = generateOpenId4VpHandover(
-            clientId,
-            responseUri,
-            nonce,
-            mdocGeneratedNonce
+            clientId = clientId,
+            nonce = nonce,
+            jwkThumbprint = JWK.parse(jwk).computeThumbprint().decode(),
+            responseOrRedirectUri = responseUri
         ).EncodeToBytes()
-        assertEquals(ANNEX_B_OPENID4VP_HANDOVER, Hex.toHexString(openid4VpHandover).uppercase())
+        assertEquals(OPENID4VP_1_0_HANDOVER, Hex.toHexString(openid4VpHandover).lowercase())
     }
 
     @Test
     fun testGenerateSessionTranscript() {
         val sessionTranscript = generateSessionTranscript(
-            clientId,
-            responseUri,
-            nonce,
-            mdocGeneratedNonce
+            clientId = clientId,
+            nonce = nonce,
+            jwkThumbprint = JWK.parse(jwk).computeThumbprint().decode(),
+            responseOrRedirectUri = responseUri
         )
-        assertEquals(ANNEX_B_SESSION_TRANSCRIPT, Hex.toHexString(sessionTranscript).uppercase())
+        assertEquals(
+            OPENID4VP_1_0_SESSION_TRANSCRIPT,
+            Hex.toHexString(sessionTranscript).lowercase()
+        )
     }
 
     @Test
