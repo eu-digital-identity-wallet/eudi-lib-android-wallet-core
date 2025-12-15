@@ -18,8 +18,13 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jwt.SignedJWT
+import eu.europa.ec.eudi.openid4vci.AuthorizeIssuanceConfig
 import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
+import eu.europa.ec.eudi.openid4vci.ClientAttestationJWT
+import eu.europa.ec.eudi.openid4vci.ClientAttestationPoPJWTSpec
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
@@ -32,6 +37,7 @@ import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.ParUsage
 import eu.europa.ec.eudi.openid4vci.RsaConfig
+import eu.europa.ec.eudi.openid4vci.Signer
 import eu.europa.ec.eudi.openid4vci.clientAttestationPOPJWSAlgs
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -45,6 +51,7 @@ import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
 import org.multipaz.crypto.Algorithm
 import java.net.URI
+import java.time.Clock
 
 /**
  * Creates an [Issuer] from the given [Offer].
@@ -68,6 +75,26 @@ internal class IssuerCreator(
      */
     suspend fun createIssuer(offer: Offer): Issuer = doCreateIssuer(offer.credentialOffer)
 
+    suspend fun createIssuerWithAttestation(
+        attestationJWT: SignedJWT,
+        walletWiaPopSigner: Signer<JWK>,
+        credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
+    ): Issuer {
+        val authorizationServerMetadata = CredentialIssuerId(config.issuerUrl)
+            .map { getIssuerMetadata(it).second.first() }
+            .getOrThrow()
+
+        return Issuer.makeWalletInitiated(
+            config = config.toOpenId4VCIConfigWithAttestation(
+                authorizationServerMetadata,
+                attestationJWT,
+                walletWiaPopSigner
+            ),
+            credentialIssuerId = CredentialIssuerId(config.issuerUrl).getOrThrow(),
+            credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
+            httpClient = ktorHttpClientFactory()
+        ).getOrThrow()
+    }
     /**
      * Creates an [Issuer] from the given [CredentialConfigurationIdentifier]s.
      * @param credentialConfigurationIdentifiers The list of [CredentialConfigurationIdentifier]s.
@@ -216,6 +243,51 @@ internal class IssuerCreator(
                 OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
                 else -> ParUsage.IfSupported
             }
+        )
+    }
+    private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfigWithAttestation(
+        authorizationServerMetadata: CIAuthorizationServerMetadata,
+        attestationJWT: SignedJWT,
+        walletWiaPopSigner: Signer<JWK>,
+    ): OpenId4VCIConfig {
+        val clientAttestationJWT = ClientAttestationJWT(attestationJWT)
+
+        val poPJWTSpec = ClientAttestationPoPJWTSpec(
+            signer = walletWiaPopSigner
+        )
+
+        return OpenId4VCIConfig(
+            clientAuthentication = ClientAuthentication.AttestationBased(
+                attestationJWT = clientAttestationJWT,
+                popJwtSpec = poPJWTSpec
+            ),
+            authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
+            encryptionSupportConfig = EncryptionSupportConfig(
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
+                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+                rsaConfig = RsaConfig(rcaKeySize = 2048)
+            ),
+            parUsage = ParUsage.Required,
+            authorizeIssuanceConfig = AuthorizeIssuanceConfig.FAVOR_SCOPES,
+            dPoPSigner = DPopSigner.makeIfSupported(
+                context = context,
+                config = dpopConfig,
+                authorizationServerMetadata = authorizationServerMetadata,
+                logger = logger
+            )
+                .getOrElse {
+                    logger?.log(
+                        Logger.Record(
+                            level = Logger.Companion.LEVEL_DEBUG,
+                            message = "DPoP not supported: ${it.message}",
+                            sourceClassName = "eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator",
+                            sourceMethod = "toOpenId4VCIConfig"
+                        )
+                    )
+                    null
+                },
+            clock = Clock.systemDefaultZone(),
+            issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
         )
     }
 }
