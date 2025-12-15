@@ -101,37 +101,39 @@ private const val SHA_256_ALGORITHM = "SHA-256"
  *  EReaderKeyBytes = null
  *
  *  Handover = OID4VPHandover
- *  OID4VPHandover = [
- *    clientIdHash
- *    responseUriHash
- *    nonce
+ *
+ *  OpenID4VPHandover = [
+ *    "OpenID4VPHandover",      ; A fixed identifier for this handover type
+ *    OpenID4VPHandoverInfoHash ; A cryptographic hash of OpenID4VPHandoverInfo
  *  ]
  *
- *  clientIdHash = bstr
- *  responseUriHash = bstr
+ *  ; Contains the sha-256 hash of OpenID4VPHandoverInfoBytes
+ *  OpenID4VPHandoverInfoHash = bstr
  *
- *  where clientIdHash is the SHA-256 hash of clientIdToHash and responseUriHash is the SHA-256 hash of the responseUriToHash.
+ *  ; Contains the bytes of OpenID4VPHandoverInfo encoded as CBOR
+ *  OpenID4VPHandoverInfoBytes = bstr .cbor OpenID4VPHandoverInfo
  *
+ *  OpenID4VPHandoverInfo = [
+ *    clientId,
+ *    nonce,
+ *    jwkThumbprint,
+ *    responseUri
+ *  ] ; Array containing handover parameters
  *
- *  clientIdToHash = [clientId, mdocGeneratedNonce]
- *  responseUriToHash = [responseUri, mdocGeneratedNonce]
- *
- *
- *  mdocGeneratedNonce = tstr
  *  clientId = tstr
- *  responseUri = tstr
  *  nonce = tstr
- *
+ *  jwkThumbprint = bstr
+ *  responseUri = tstr
  */
 internal fun generateSessionTranscript(
     clientId: String,
-    responseUri: String,
     nonce: String,
-    mdocGeneratedNonce: String,
+    jwkThumbprint: ByteArray?,
+    responseOrRedirectUri: String
 ): SessionTranscriptBytes {
 
     val openID4VPHandover =
-        generateOpenId4VpHandover(clientId, responseUri, nonce, mdocGeneratedNonce)
+        generateOpenId4VpHandover(clientId, nonce, jwkThumbprint, responseOrRedirectUri)
 
     val sessionTranscriptBytes =
         CBORObject.NewArray().apply {
@@ -144,38 +146,36 @@ internal fun generateSessionTranscript(
 }
 
 /**
- * Generates the OpenID4VP handover CBOR object containing clientId hash, responseUri hash, and nonce.
+ * Generates the OpenID4VP handover CBOR object
  *
  * @param clientId The client identifier.
- * @param responseUri The response URI.
- * @param nonce The nonce for the session.
- * @param mdocGeneratedNonce The generated nonce for mdoc.
- * @return The handover as a CBORObject.
+ * @param nonce The nonce value.
+ * @param jwkThumbprint The JWK thumbprint as a byte array.
+ * @param responseOrRedirectUri The response URI or redirect URI.
+ * @return The CBOR object representing the OpenID4VP handover.
  */
 internal fun generateOpenId4VpHandover(
     clientId: String,
-    responseUri: String,
     nonce: String,
-    mdocGeneratedNonce: String,
+    jwkThumbprint: ByteArray?,
+    responseOrRedirectUri: String,
 ): CBORObject {
-    val clientIdToHash = CBORObject.NewArray().apply {
+
+    val openID4VPHandoverInfoBytes = CBORObject.NewArray().apply {
         Add(clientId)
-        Add(mdocGeneratedNonce)
+        Add(nonce)
+        Add(jwkThumbprint ?: CBORObject.Null)
+        Add(responseOrRedirectUri)
     }.EncodeToBytes()
 
-    val responseUriToHash = CBORObject.NewArray().apply {
-        Add(responseUri)
-        Add(mdocGeneratedNonce)
-    }.EncodeToBytes()
-
-    val clientIdHash = MessageDigest.getInstance(SHA_256_ALGORITHM).digest(clientIdToHash)
-    val responseUriHash = MessageDigest.getInstance(SHA_256_ALGORITHM).digest(responseUriToHash)
+    val openID4VPHandoverInfoHash = MessageDigest.getInstance(SHA_256_ALGORITHM)
+        .digest(openID4VPHandoverInfoBytes)
 
     val openID4VPHandover = CBORObject.NewArray().apply {
-        Add(clientIdHash)
-        Add(responseUriHash)
-        Add(nonce)
+        Add("OpenID4VPHandover")
+        Add(openID4VPHandoverInfoHash)
     }
+
     return openID4VPHandover
 }
 
@@ -232,24 +232,25 @@ internal fun makeOpenId4VPConfig(
 /**
  * Extension function to get the session transcript bytes from a resolved OpenID4VP authorization request.
  *
- * @param mdocGeneratedNonce The generated nonce for mdoc.
  * @return The session transcript as a byte array.
  */
-internal fun ResolvedRequestObject.getSessionTranscriptBytes(
-    mdocGeneratedNonce: String,
-): SessionTranscriptBytes {
-    val clientId = this.client.id.clientId
-    val responseUri = when (val mode = this.responseMode) {
+internal fun ResolvedRequestObject.getSessionTranscriptBytes(): SessionTranscriptBytes {
+    val clientId = client.id.clientId
+    val nonce = nonce
+    val jwkThumbprint = responseEncryptionSpecification?.recipientKey?.computeThumbprint()?.decode()
+    val responseOrRedirectUri = when (val mode = this.responseMode) {
         is ResponseMode.DirectPostJwt -> mode.responseURI.toString()
-        else -> ""
+        is ResponseMode.DirectPost -> mode.responseURI.toString()
+        is ResponseMode.Fragment -> mode.redirectUri.toString()
+        is ResponseMode.FragmentJwt -> mode.redirectUri.toString()
+        is ResponseMode.Query -> mode.redirectUri.toString()
+        is ResponseMode.QueryJwt -> mode.redirectUri.toString()
     }
-    val nonce = this.nonce
-
     val sessionTranscriptBytes = generateSessionTranscript(
-        clientId,
-        responseUri,
-        nonce,
-        mdocGeneratedNonce
+        clientId = clientId,
+        nonce = nonce,
+        jwkThumbprint = jwkThumbprint,
+        responseOrRedirectUri = responseOrRedirectUri
     )
     return sessionTranscriptBytes
 }
