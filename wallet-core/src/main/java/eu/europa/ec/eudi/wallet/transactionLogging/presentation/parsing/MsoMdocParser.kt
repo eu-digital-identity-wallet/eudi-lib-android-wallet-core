@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import eu.europa.ec.eudi.wallet.util.CBOR
+import kotlinx.coroutines.runBlocking
 import org.multipaz.mdoc.response.DeviceResponseParser
 
 /**
@@ -38,10 +39,12 @@ fun parseMsoMdoc(
     metadata: List<String>
 ): List<PresentedDocument> {
     // Parse the raw response using the DeviceResponseParser
-    val parsed = DeviceResponseParser(
-        rawResponse,
-        sessionTranscript ?: byteArrayOf(0)
-    ).parse()
+    val parsed = runBlocking {
+        DeviceResponseParser(
+            rawResponse,
+            sessionTranscript ?: byteArrayOf(0)
+        ).parse()
+    }
 
     val parsedMetadata = metadata.map { TransactionLog.Metadata.fromJson(it) }
 
