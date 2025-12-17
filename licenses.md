@@ -1,7 +1,7 @@
 
 # EUDI Wallet Core library for Android
 ## Dependency License Report
-_2025-12-04 13:09:40 EET_
+_2025-12-17 11:29:41 EET_
 ## Android Software Development Kit License
 
 **1** **Group:** `com.google.android.gms` **Name:** `play-services-identity-credentials` **Version:** `16.0.0-alpha05` 
@@ -50,7 +50,7 @@ _2025-12-04 13:09:40 EET_
 > - **POM Project URL**: [https://github.com/Kotlin/kotlinx-io](https://github.com/Kotlin/kotlinx-io)
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**12** **Group:** `org.multipaz` **Name:** `multipaz-android` **Version:** `0.94.0` 
+**12** **Group:** `org.multipaz` **Name:** `multipaz-android` **Version:** `0.95.0` 
 > - **POM License**: Apache License, Version 2.0 - [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
 ## BSD3
