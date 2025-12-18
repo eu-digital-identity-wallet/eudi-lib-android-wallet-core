@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -95,6 +96,10 @@ import kotlin.time.Duration.Companion.minutes
  *         withEnabled(true) // Enable DCAPI, by default it is disabled
  *         withPrivilegedAllowlist("allowlist") // your own allowlist of privileged browsers/apps that you trust
  *     }
+ *     .configureZkp(
+ *         // To enable ZKP Support provide a ZkSystemRepository, for example:
+ *         zkSystemRepository = LongfellowZkSystemRepository(LongfellowCircuits.get(context)).build()
+ *      )
  *
  * ```
  *
@@ -113,6 +118,7 @@ import kotlin.time.Duration.Companion.minutes
  * @property userAuthenticationTimeout the user authentication timeout
  * @property useStrongBoxForKeys whether to use the strong box for keys
  * @property documentStatusResolverClockSkew the clock skew for the document status resolver
+ * @property zkSystemRepository the Zero-Knowledge Proofs (ZKP) system repository
  *
  * @see EudiWallet.Builder
  */
@@ -398,6 +404,18 @@ class EudiWalletConfig {
         this.documentStatusResolverClockSkew = clockSkewInMinutes.minutes
     }
 
+    var zkSystemRepository: ZkSystemRepository? = null
+        private set
+
+    /**
+     * Configure Zero-Knowledge Proofs (ZKP) support.
+     * This allows you to enable ZKP support by providing a [ZkSystemRepository].
+     */
+    fun configureZkp(
+        zkSystemRepository: ZkSystemRepository
+    ) = apply {
+        this.zkSystemRepository = zkSystemRepository
+    }
 
     companion object {
 

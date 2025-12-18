@@ -433,6 +433,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                         documentManager = documentManager,
                         readerTrustStore = readerTrustStore,
                         privilegedAllowlist = privilegedAllowlist,
+                        zkSystemRepository = config.zkSystemRepository,
                         logger = loggerObj
                     ),
                     logger = loggerObj
@@ -532,7 +533,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                     centralClientMode = config.enableBleCentralMode,
                     clearBleCache = config.clearBleCache
                 )
-            )
+            ),
+            zkSystemRepository = config.zkSystemRepository
         )
 
         /**

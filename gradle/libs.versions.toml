@@ -1,5 +1,5 @@
 [versions]
-androidx-credentials-registry-provider = "1.0.0-alpha01"
+androidx-credentials-registry-provider = "1.0.0-alpha03"
 appcompat = "1.7.1"
 biometricKtx = "1.2.0-alpha05"
 bouncy-castle = "1.78.1"
@@ -32,7 +32,7 @@ mockito-kotlin = "5.4.0"
 mockk = "1.14.4"
 multipaz = "0.95.0"
 nimbus-sdk = "11.20.1"
-play-services-identity-credentials = "16.0.0-alpha05"
+play-services-identity-credentials = "16.0.0-alpha08"
 robolectric = "4.15.1"
 sonarqube = "6.2.0.5505"
 test-core = "1.6.1"
@@ -76,6 +76,7 @@ mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 multipaz-android = { module = "org.multipaz:multipaz-android", version.ref = "multipaz" }
+multipaz-longfellow = { module = "org.multipaz:multipaz-longfellow-android", version.ref = "multipaz" }
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
 play-services-identity-credentials = { module = "com.google.android.gms:play-services-identity-credentials", version.ref = "play-services-identity-credentials" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
