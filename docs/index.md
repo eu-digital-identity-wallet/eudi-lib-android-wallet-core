@@ -21,3 +21,4 @@
 | [eu.europa.ec.eudi.wallet.transfer.openId4vp](wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp/index.md) |
 | [eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql](wallet-core/eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/index.md) |
 | [eu.europa.ec.eudi.wallet.util](wallet-core/eu.europa.ec.eudi.wallet.util/index.md) |
+| [eu.europa.ec.eudi.wallet.zkp](wallet-core/eu.europa.ec.eudi.wallet.zkp/index.md) |
