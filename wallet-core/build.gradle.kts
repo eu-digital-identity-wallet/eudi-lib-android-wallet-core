@@ -120,6 +120,7 @@ dependencies {
         exclude(group = "org.bouncycastle")
         exclude(group = "io.ktor")
     }
+    implementation(libs.multipaz.longfellow)
 
     implementation(libs.appcompat)
     // OpenID4VCI
