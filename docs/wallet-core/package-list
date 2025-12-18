@@ -657,6 +657,16 @@ $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborDecodeByteString/#kotlin.
 $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborEncode/#co.nstant.in.cbor.model.DataItem/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-encode.md
 $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborParse/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-parse.md
 $dokka.location:eu.europa.ec.eudi.wallet.util/CBOR/cborPrettyPrint/#kotlin.ByteArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.util/-c-b-o-r/cbor-pretty-print.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/Circuit///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-circuit/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/Circuit/Circuit/#kotlin.String#kotlinx.io.bytestring.ByteString/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-circuit/-circuit.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/Circuit/bytes/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-circuit/bytes.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/Circuit/filename/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-circuit/filename.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/LongfellowCircuits///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-longfellow-circuits/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/LongfellowCircuits/get/#android.content.Context/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-longfellow-circuits/get.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/LongfellowZkSystemRepository///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-longfellow-zk-system-repository/index.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/LongfellowZkSystemRepository/LongfellowZkSystemRepository/#kotlin.collections.List[eu.europa.ec.eudi.wallet.zkp.Circuit]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-longfellow-zk-system-repository/-longfellow-zk-system-repository.md
+$dokka.location:eu.europa.ec.eudi.wallet.zkp/LongfellowZkSystemRepository/build/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet.zkp/-longfellow-zk-system-repository/build.md
 $dokka.location:eu.europa.ec.eudi.wallet////PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/index.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/index.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWallet.Builder/Builder/#android.content.Context#eu.europa.ec.eudi.wallet.EudiWalletConfig#eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider?/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/-builder.md
@@ -721,6 +731,7 @@ $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/configureProximityPres
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/configureReaderTrustStore/#android.content.Context#kotlin.IntArray/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/configure-reader-trust-store.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/configureReaderTrustStore/#kotlin.Array[java.security.cert.X509Certificate]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/configure-reader-trust-store.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/configureReaderTrustStore/#kotlin.collections.List[java.security.cert.X509Certificate]/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/configure-reader-trust-store.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/configureZkp/#org.multipaz.mdoc.zkp.ZkSystemRepository/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/configure-zkp.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/dcapiConfig/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/dcapi-config.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/documentManagerIdentifier/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/document-manager-identifier.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/documentStatusResolverClockSkew/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/document-status-resolver-clock-skew.md
@@ -736,6 +747,7 @@ $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/readerTrustedCertifica
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/useStrongBoxForKeys/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/use-strong-box-for-keys.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/userAuthenticationRequired/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/user-authentication-required.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/userAuthenticationTimeout/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/user-authentication-timeout.md
+$dokka.location:eu.europa.ec.eudi.wallet/EudiWalletConfig/zkSystemRepository/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-config/zk-system-repository.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl///PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/index.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/config/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/config.md
 $dokka.location:eu.europa.ec.eudi.wallet/EudiWalletImpl/context/#/PointingToDeclaration/wallet-core/eu.europa.ec.eudi.wallet/-eudi-wallet-impl/context.md
@@ -767,4 +779,5 @@ eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
 eu.europa.ec.eudi.wallet.transfer.openId4vp
 eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 eu.europa.ec.eudi.wallet.util
+eu.europa.ec.eudi.wallet.zkp
 
