@@ -33,6 +33,7 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import org.json.JSONObject
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 
 /**
  * Processes requests for the Digital Credential API (DCAPI) by converting them into device requests
@@ -43,6 +44,7 @@ import org.json.JSONObject
  * @property documentManager The [DocumentManager] instance used to manage documents.
  * @property readerTrustStore The [ReaderTrustStore] the reader trust store.
  * @property privilegedAllowlist The allowlist for privileged browsers/apps that are trusted.
+ * @property zkSystemRepository The [ZkSystemRepository] for zero-knowledge proof systems.
  * @property logger Optional logger for logging events.
  *
  */
@@ -53,7 +55,8 @@ internal class DCAPIRequestProcessor(
     private val documentManager: DocumentManager,
     override var readerTrustStore: ReaderTrustStore?,
     private val privilegedAllowlist: String,
-    private var logger: Logger? = null
+    private var zkSystemRepository: ZkSystemRepository?,
+    private var logger: Logger? = null,
     ): RequestProcessor, ReaderTrustStoreAware {
 
     override fun process(request: Request): RequestProcessor.ProcessedRequest {
@@ -64,7 +67,8 @@ internal class DCAPIRequestProcessor(
         val (deviceRequest, origin) = credRequest.toDeviceRequest()
         val processedDeviceRequest = DeviceRequestProcessor(
             documentManager = documentManager,
-            readerTrustStore = readerTrustStore
+            readerTrustStore = readerTrustStore,
+            zkSystemRepository = zkSystemRepository
         ).process(deviceRequest) as ProcessedDeviceRequest
 
         val credentialId = credRequest.selectedEntryId
