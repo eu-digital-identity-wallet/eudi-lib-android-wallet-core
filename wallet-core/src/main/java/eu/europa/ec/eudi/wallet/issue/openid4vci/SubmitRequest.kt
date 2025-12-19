@@ -201,7 +201,7 @@ internal class SubmitRequest(
         val walletAttestationsProvider = checkNotNull(walletAttestationsProvider) {
             "WalletAttestationsProvider is required for attestation based client authentication"
         }
-        lateinit var proofSigner: KeyAttestationSigner
+        var proofSigner: KeyAttestationSigner? = null
         val keyIndex = 0
         val proofsSpecification = ProofsSpecification.JwtProofs.WithKeyAttestation(
             proofSignerProvider = { nonce ->
@@ -216,7 +216,7 @@ internal class SubmitRequest(
             return with(issuer) { request(payload, proofsSpecification) }.getOrThrow()
         } catch (e: Throwable) {
 
-            val isUserAuthRequired = proofSigner.keyLockedException != null
+            val isUserAuthRequired = proofSigner?.keyLockedException != null
             if (isUserAuthRequired) {
                 val keysAndSecureAreas = mapOf(
                     proofSigner.signer.let { it.keyAlias to it.secureArea }
