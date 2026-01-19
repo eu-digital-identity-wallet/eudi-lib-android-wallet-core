@@ -1,5 +1,7 @@
 # EUDI Wallet Core library for Android
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=eu-digital-identity-wallet_eudi-lib-android-wallet-core&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=eu-digital-identity-wallet_eudi-lib-android-wallet-core)
+
 **Important!** Before you proceed, please read
 the [EUDI Wallet Reference Implementation project description](https://github.com/eu-digital-identity-wallet/.github/blob/main/profile/reference-implementation.md)
 
