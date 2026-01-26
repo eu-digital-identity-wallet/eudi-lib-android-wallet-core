@@ -30,7 +30,9 @@ import java.security.MessageDigest
  * A generic implementation of [WalletKeyManager] that delegates cryptographic operations
  * to a provided [SecureArea].
  *
- * Derives a stable key alias from the [authorizationServerUrl] (using SHA-256).
+ * This implementation enforces privacy by deriving a stable key alias from the [issuerUrl]
+ * (using SHA-256). This ensures that a unique key is used for each Authorization Server.
+ *
  * Checks if a key exists in the [SecureArea] for that alias.
  * If it exists and matches a supported algorithm, it is reused.
  * If it does not exist or the algorithm is incompatible, a new key is generated.
@@ -48,10 +50,10 @@ open class SecureAreaWalletKeyManager(
 ) : WalletKeyManager {
 
     override suspend fun getOrCreateWalletAttestationKey(
-        authorizationServerUrl: String,
+        issuerUrl: String,
         supportedAlgorithms: List<Algorithm>,
     ): Result<WalletAttestationKey> = runCatching {
-        val keyAlias = generateKeyAlias(authorizationServerUrl)
+        val keyAlias = generateKeyAlias(issuerUrl)
 
         val keyInfo: KeyInfo = try {
             // get existing key info if available and compatible
@@ -100,9 +102,9 @@ open class SecureAreaWalletKeyManager(
      * Generates a privacy-preserving alias for the key based on the target URL.
      * This ensures that different Authorization Servers get different keys.
      */
-    private fun generateKeyAlias(authorizationServerUrl: String): String {
+    private fun generateKeyAlias(issuerUrl: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        val hashBytes = digest.digest(authorizationServerUrl.toByteArray())
+        val hashBytes = digest.digest(issuerUrl.toByteArray())
         val hashHex = hashBytes.joinToString("") { "%02x".format(it) }.take(16)
         return "client-attestation-$hashHex"
     }

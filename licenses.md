@@ -1,7 +1,7 @@
 
 # EUDI Wallet Core library for Android
 ## Dependency License Report
-_2025-12-18 17:46:59 EET_
+_2026-01-26 15:43:52 EET_
 ## Android Software Development Kit License
 
 **1** **Group:** `com.google.android.gms` **Name:** `play-services-identity-credentials` **Version:** `16.0.0-alpha08` 

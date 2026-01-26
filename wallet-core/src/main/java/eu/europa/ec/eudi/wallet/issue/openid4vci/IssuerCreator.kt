@@ -146,7 +146,7 @@ internal class IssuerCreator(
 
     private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(): Result<ClientAuthentication> =
         runCatching {
-            val authorizationServerUrl = this.authorizationEndpointURI.toASCIIString()
+            val issuerUrl = this.issuer.value
             when (val type = config.clientAuthenticationType) {
                 is OpenId4VciManager.ClientAuthenticationType.None -> ClientAuthentication.None(type.clientId)
                 is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> {
@@ -162,7 +162,7 @@ internal class IssuerCreator(
                         Algorithm.fromJoseAlgorithmIdentifier(a.name)
                     }
                     walletAttestationKeyManager
-                        .getOrCreateWalletAttestationKey(authorizationServerUrl, supportedAlgorithms)
+                        .getOrCreateWalletAttestationKey(issuerUrl, supportedAlgorithms)
                         .map {
                             clientAttestationPopKeyId = it.keyInfo.alias
                             with(it) {

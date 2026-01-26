@@ -28,13 +28,14 @@ import org.multipaz.crypto.Algorithm
 interface WalletKeyManager {
     /**
      * Retrieves or creates a signing key to be used for Wallet Attestation (Client Authentication).
-     * The Wallet Attestation Keys must be distinct for different Authorization Servers but unique for a specific one, and
-     * should be stored for subsequent use with the same Authorization Server
+     * The implementation must ensure that keys are scoped to the specific Authorization Server
+     * to prevent cross-service tracking (Unlinkability). The key alias is derived from the [issuerUrl].
      *
      * The implementation should ensure that the returned key is compatible with one of the
      * [supportedAlgorithms] required by the Authorization Server.
      *
-     * @param authorizationServerUrl The URL of the Authorization Server.
+     * @param issuerUrl The Issuer Identifier of the Authorization Server
+     * This string is hashed to generate a unique, stable alias for the key in the Secure Area.
      *
      * @param supportedAlgorithms A list of cryptographic algorithms supported by the Authorization Server.
      * The returned key must use one of these algorithms.
@@ -42,7 +43,7 @@ interface WalletKeyManager {
      * and a mechanism to sign data.
      */
     suspend fun getOrCreateWalletAttestationKey(
-        authorizationServerUrl: String,
+        issuerUrl: String,
         supportedAlgorithms: List<Algorithm>,
     ): Result<WalletAttestationKey>
 

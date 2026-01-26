@@ -13,7 +13,7 @@ espresso-core = "3.6.1"
 eudi-document-manager = "0.14.0"
 eudi-iso18013-data-transfer = "0.11.0"
 eudi-lib-jvm-openid4vci-kt = "0.9.1"
-eudi-lib-jvm-siop-openid4vp-kt = "0.12.0"
+eudi-lib-jvm-openid4vp-kt = "0.12.2"
 eudi-lib-jvm-sdjwt-kt = "0.10.0"
 eudi-lib-kmp-statium = "0.4.0"
 gradle-plugin = "8.13.1"
@@ -60,7 +60,7 @@ espresso-intents = { module = "androidx.test.espresso:espresso-intents", version
 eudi-document-manager = { module = "eu.europa.ec.eudi:eudi-lib-android-wallet-document-manager", version.ref = "eudi-document-manager" }
 eudi-iso18013-data-transfer = { module = "eu.europa.ec.eudi:eudi-lib-android-iso18013-data-transfer", version.ref = "eudi-iso18013-data-transfer" }
 eudi-lib-jvm-openid4vci-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vci-kt", version.ref = "eudi-lib-jvm-openid4vci-kt" }
-eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vp-kt", version.ref = "eudi-lib-jvm-siop-openid4vp-kt" }
+eudi-lib-jvm-siop-openid4vp-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-openid4vp-kt", version.ref = "eudi-lib-jvm-openid4vp-kt" }
 eudi-lib-jvm-sdjwt-kt = { module = "eu.europa.ec.eudi:eudi-lib-jvm-sdjwt-kt", version.ref = "eudi-lib-jvm-sdjwt-kt" }
 eudi-lib-kmp-statium = { module = "eu.europa.ec.eudi:eudi-lib-kmp-statium-android", version.ref = "eudi-lib-kmp-statium" }
 json = { module = "org.json:json", version.ref = "json" }

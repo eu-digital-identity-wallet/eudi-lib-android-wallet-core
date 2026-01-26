@@ -40,11 +40,11 @@ class DefaultWalletKeyManager(
 
 
     override suspend fun getOrCreateWalletAttestationKey(
-        authorizationServerUrl: String,
+        issuerUrl: String,
         supportedAlgorithms: List<Algorithm>,
     ): Result<WalletAttestationKey> {
         return getSecureAreaWalletKeyManager().getOrCreateWalletAttestationKey(
-            authorizationServerUrl,
+            issuerUrl,
             supportedAlgorithms
         )
     }
