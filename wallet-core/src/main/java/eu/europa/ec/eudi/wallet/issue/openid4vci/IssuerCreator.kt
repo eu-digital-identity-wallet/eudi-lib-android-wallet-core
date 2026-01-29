@@ -67,12 +67,12 @@ internal class IssuerCreator(
 
     /**
      * Creates an [Issuer] from the given [CredentialConfigurationIdentifier]s.
-     * @param credentialConfigurationIdentifiers The [CredentialConfigurationIdentifier]s.
+     * @param credentialConfigurationIdentifiers The list of [CredentialConfigurationIdentifier]s.
      * @return The [Issuer].
      */
     suspend fun createIssuer(
         issuerUrl: String,
-        credentialConfigurationIdentifier: CredentialConfigurationIdentifier,
+        credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
     ): Issuer {
 
         val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
@@ -80,7 +80,7 @@ internal class IssuerCreator(
             .getOrThrow()
 
         return doCreateIssuer(
-            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifier
+            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifiers
         )
     }
 
@@ -106,7 +106,7 @@ internal class IssuerCreator(
             .firstNotNullOfOrNull { (confId, _) -> confId }
             ?: throw IllegalStateException("No suitable configuration found")
 
-        return doCreateIssuer(issuerMetadata, authorizationServerMetadata.first(), configurationId)
+        return doCreateIssuer(issuerMetadata, authorizationServerMetadata.first(), listOf(configurationId))
     }
 
 
@@ -132,14 +132,14 @@ internal class IssuerCreator(
     private suspend fun doCreateIssuer(
         credentialIssuerMetadata: CredentialIssuerMetadata,
         authorizationServerMetadata: CIAuthorizationServerMetadata,
-        credentialConfigurationIdentifier: CredentialConfigurationIdentifier,
+        credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
     ): Issuer {
         return Issuer.makeWalletInitiated(
             config = config.toOpenId4VCIConfig(
                 authorizationServerMetadata
             ),
             credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
-            credentialConfigurationIdentifiers = listOf(credentialConfigurationIdentifier),
+            credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
             httpClient = ktorHttpClientFactory()
         ).getOrThrow()
     }

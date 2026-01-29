@@ -59,8 +59,28 @@ interface OpenId4VciManager {
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called when the document is issued
      */
+    @Deprecated("Use issueDocumentByConfigurationIdentifiers that accepts a list of identifiers")
     fun issueDocumentByConfigurationIdentifier(
         credentialConfigurationId: String,
+        txCode: String? = null,
+        executor: Executor? = null,
+        onIssueEvent: OnIssueEvent,
+    )
+
+    /**
+     * Issue a list of documents using a list of configuration identifiers.
+     *
+     * The credential configuration identifier can be obtained from the [getIssuerMetadata]
+     *
+     * @see [CredentialConfigurationIdentifier] for the configuration identifier
+     *
+     * @param credentialConfigurationIds the list of configuration identifiers to issue the document
+     * @param txCode the transaction code to use for pre-authorized issuing
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onIssueEvent the callback to be called when the document is issued
+     */
+    fun issueDocumentByConfigurationIdentifiers(
+        credentialConfigurationIds: List<String>,
         txCode: String? = null,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent,

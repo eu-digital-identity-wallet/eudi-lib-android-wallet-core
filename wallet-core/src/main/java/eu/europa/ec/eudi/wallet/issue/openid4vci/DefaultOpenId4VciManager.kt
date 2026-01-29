@@ -98,8 +98,29 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+    @Deprecated("Use issueDocumentByConfigurationIdentifiers that accepts a list of identifiers")
     override fun issueDocumentByConfigurationIdentifier(
         credentialConfigurationId: String,
+        txCode: String?,
+        executor: Executor?,
+        onIssueEvent: OpenId4VciManager.OnIssueEvent
+    ) {
+        launch(executor, onIssueEvent) { coroutineScope, listener ->
+            try {
+                val issuer = issuerCreator.createIssuer(
+                    config.issuerUrl,
+                    listOf(CredentialConfigurationIdentifier(credentialConfigurationId))
+                )
+                doIssue(issuer, Offer(issuer.credentialOffer), txCode, listener)
+            } catch (e: Throwable) {
+                listener(failure(e))
+                coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
+            }
+        }
+    }
+
+    override fun issueDocumentByConfigurationIdentifiers(
+        credentialConfigurationIds: List<String>,
         txCode: String?,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent,
@@ -108,7 +129,7 @@ internal class DefaultOpenId4VciManager(
             try {
                 val issuer = issuerCreator.createIssuer(
                     config.issuerUrl,
-                    CredentialConfigurationIdentifier(credentialConfigurationId)
+                    credentialConfigurationIds.map{ id -> CredentialConfigurationIdentifier(id) }
                 )
                 doIssue(issuer, Offer(issuer.credentialOffer), txCode, listener)
             } catch (e: Throwable) {
