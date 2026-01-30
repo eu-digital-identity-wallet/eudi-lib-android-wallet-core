@@ -108,7 +108,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.24.0-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.24.0"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
