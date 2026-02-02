@@ -105,18 +105,12 @@ internal class DefaultOpenId4VciManager(
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
-        launch(executor, onIssueEvent) { coroutineScope, listener ->
-            try {
-                val issuer = issuerCreator.createIssuer(
-                    config.issuerUrl,
-                    listOf(CredentialConfigurationIdentifier(credentialConfigurationId))
-                )
-                doIssue(issuer, Offer(issuer.credentialOffer), txCode, listener)
-            } catch (e: Throwable) {
-                listener(failure(e))
-                coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
-            }
-        }
+        issueDocumentByConfigurationIdentifiers(
+            listOf(credentialConfigurationId),
+            txCode,
+            executor,
+            onIssueEvent
+        )
     }
 
     override fun issueDocumentByConfigurationIdentifiers(
