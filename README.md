@@ -592,7 +592,7 @@ There are two ways to issue a document using OpenID4VCI:
    required.
 2. Using the `OpenId4VciManager.issueDocumentByOffer` or `OpenId4VciManager.issueDocumentByOfferUri`
    methods, when an OpenId4VCI offer is given.
-3. Using the `issueDocumentByConfigurationIdentifier` method, when the document's configuration
+3. Using the `issueDocumentByConfigurationIdentifiers` method, when the document's configuration
    identifier is known. The configuration identifiers can be retrieved from the issuer's metadata,
    using the `getIssuerMetadata` method.
 
@@ -822,7 +822,7 @@ From the user's perspective, the application must provide a way to input the tra
 When the transaction code is provided, the issuance process can be resumed by calling any of the
 following methods:
 
-- `EudiWallet.issueDocumentByConfigurationIdentifier`
+- `EudiWallet.issueDocumentByConfigurationIdentifiers`
 - `EudiWallet.issueDocumentByFormat`
 - `EudiWallet.issueDocumentByOfferUri`
 - `EudiWallet.issueDocumentByOffer`
