@@ -386,9 +386,9 @@ internal suspend fun verifiablePresentationForSdJwtVc(
         val query = disclosedDocument.disclosedItems
             .filterIsInstance<SdJwtVcItem>()
             .map { item ->
-                ClaimPath(
-                    value = item.path.map { ClaimPathElement.Claim(it) }
-                )
+                val elements = item.path.map { ClaimPathElement.Claim(it) }
+
+                ClaimPath(elements.first(), *elements.drop(1).toTypedArray())
             }.toSet()
 
         // Check that at least one claim is disclosed, otherwise throw an error
