@@ -147,6 +147,10 @@ class PresentationManagerImpl @JvmOverloads constructor(
         openId4vpManager?.stop()
     }
 
+    override fun rejectRemotePresentation() {
+        openId4vpManager?.reject()
+    }
+
 
     companion object {
         const val MDOC_SCHEME = "mdoc"
