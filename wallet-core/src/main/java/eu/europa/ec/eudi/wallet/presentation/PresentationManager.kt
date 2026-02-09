@@ -91,6 +91,8 @@ interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware 
      */
     fun stopRemotePresentation()
 
+    fun rejectRemotePresentation()
+
     /**
      * Starts the DCAPI presentation.
      * This method is used to start the DCAPI presentation flow.
