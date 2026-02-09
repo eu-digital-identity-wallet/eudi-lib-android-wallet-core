@@ -17,13 +17,18 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import android.net.Uri
+import org.jetbrains.annotations.VisibleForTesting
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
+import eu.europa.ec.eudi.openid4vp.AuthorizationRequestError
+import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
+import eu.europa.ec.eudi.openid4vp.ErrorDispatchDetails
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.Resolution
+import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
@@ -65,7 +70,7 @@ class OpenId4VpManager(
     val requestProcessor: DcqlRequestProcessor,
     var logger: Logger? = null,
     var listenersExecutor: Executor? = null,
-    val ktorHttpClientFactory: (() -> HttpClient)? = null,
+    val ktorHttpClientFactory: (() -> HttpClient)? = null
 ) : TransferEvent.Listenable, ReaderTrustStoreAware {
 
     /**
@@ -93,6 +98,8 @@ class OpenId4VpManager(
                 .invoke()
         )
     }
+
+    private var activeRequestObject: ResolvedRequestObject? = null
 
     /**
      * List of listeners for transfer events (request received, response sent, errors, etc).
@@ -155,15 +162,28 @@ class OpenId4VpManager(
                         // TODO dispatch error to verifier/RP
                         //  if resolution.dispatchDetails is present
 
-                        logger?.e(TAG, "Invalid resolution: ${resolution.error}")
+                        val error = resolution.error
+                        logger?.e(TAG, "Invalid resolution: $error")
+
+                        val details = resolution.dispatchDetails
+                        if (details != null) {
+                            dispatchErrorResponse(error, details)
+                        }
+
                         transferEventListeners.onTransferEvent(
-                            TransferEvent.Error(resolution.error.asException())
+                            TransferEvent.Error(error.asException())
                         )
+
+//                        logger?.e(TAG, "Invalid resolution: ${resolution.error}")
+//                        transferEventListeners.onTransferEvent(
+//                            TransferEvent.Error(resolution.error.asException())
+//                        )
                     }
 
                     is Resolution.Success -> {
                         logger?.d(TAG, "Resolution.Success")
                         val resolvedRequest = resolution.requestObject
+                        activeRequestObject = resolvedRequest
                         logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
                         val request = OpenId4VpRequest(resolvedRequest)
                         val processedRequest = requestProcessor.process(request)
@@ -179,6 +199,70 @@ class OpenId4VpManager(
                     else -> TransferEvent.Error(e)
                 }
                 transferEventListeners.onTransferEvent(event)
+            }
+        }
+    }
+
+    private suspend fun dispatchErrorResponse(
+        error: AuthorizationRequestError,
+        dispatchDetails: ErrorDispatchDetails
+    ) {
+        try {
+            logger?.d(TAG, "Dispatching error: $error via ${dispatchDetails.responseMode}")
+
+            val outcome = openId4Vp.dispatchError(
+                error = error,
+                errorDispatchDetails = dispatchDetails,
+                encryptionParameters = null
+            )
+
+            if (outcome is DispatchOutcome.VerifierResponse.Accepted) {
+                logger?.d(TAG, "Error successfully dispatched to Verifier")
+            }
+        } catch (e: Exception) {
+            logger?.e(TAG, "Failed to dispatch error response", e)
+        }
+    }
+
+    /**
+     * Called when the USER cancels the transaction from the UI.
+     * Uses the cached request object to send the rejection.
+     */
+    fun reject() {
+        scope.launch {
+            try {
+                val request = activeRequestObject
+
+                if (request == null) {
+                    logger?.d(TAG, "Attempted to reject, but no active request found.")
+                    return@launch
+                }
+
+                logger?.d(TAG, "User rejected the request. Dispatching error.")
+
+                // Dispatch openid4vp NegativeConsensus case
+                val outcome = openId4Vp.dispatch(
+                    request = request,
+                    consensus = Consensus.NegativeConsensus,
+                    encryptionParameters = null
+                )
+
+                if (outcome is DispatchOutcome.VerifierResponse.Accepted) {
+                    logger?.d(TAG, "Rejection accepted by verifier.")
+
+                    val redirectUri = outcome.redirectURI
+                    if (redirectUri != null) {
+                        // Verifier wants us to redirect
+                        transferEventListeners.onTransferEvent(TransferEvent.Redirect(redirectUri))
+                    } else {
+                        // Verifier just said OK
+                        transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
+                    }
+                }
+
+                activeRequestObject = null
+            } catch (e: Exception) {
+                logger?.e(TAG, "Error during manual rejection", e)
             }
         }
     }
