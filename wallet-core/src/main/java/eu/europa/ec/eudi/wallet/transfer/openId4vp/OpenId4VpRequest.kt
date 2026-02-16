@@ -16,9 +16,26 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
+import eu.europa.ec.eudi.openid4vp.EncryptionParameters
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 
 data class OpenId4VpRequest(
-    val resolvedRequestObject: ResolvedRequestObject,
-) : Request
+    val resolvedRequestObject: ResolvedRequestObject
+) : Request {
+    /**
+     * Computes the encryption parameters required to send a response (Success or Error)
+     * if the Verifier requested JARM encryption.
+     */
+    val responseEncryptionParameters: EncryptionParameters?
+        get() = resolvedRequestObject.responseEncryptionSpecification?.let { _ ->
+            // Generate a fresh random APU (Agreement PartyUInfo) for this specific response
+            val randomApu = generateJarmNonce()
+
+            EncryptionParameters.DiffieHellman(
+                apu = Base64URL.encode(randomApu)
+            )
+        }
+}
