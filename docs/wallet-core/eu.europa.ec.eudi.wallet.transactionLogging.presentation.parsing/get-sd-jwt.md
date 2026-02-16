@@ -3,7 +3,7 @@
 # getSdJwt
 
 [androidJvm]\
-fun [getSdJwt](get-sd-jwt.md)(sdJwt: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): SdJwt&lt;JwtAndClaims&gt;?
+fun [getSdJwt](get-sd-jwt.md)(sdJwt: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): SdJwt&lt;&lt;Error class: unknown class&gt;&gt;?
 
 Function to parse the sd-jwt string and return the SdJwt object
 

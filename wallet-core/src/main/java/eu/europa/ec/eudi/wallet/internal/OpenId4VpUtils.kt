@@ -180,11 +180,11 @@ internal fun generateOpenId4VpHandover(
 }
 
 /**
- * Generates a random nonce for mdoc using a secure random generator.
+ * Generates a random nonce for a generic JARM (JWT Secured Authorization Response Mode) using a secure random generator.
  *
  * @return A URL-safe base64 encoded nonce string.
  */
-internal fun generateMdocGeneratedNonce(): String {
+internal fun generateJarmNonce(): String {
     val secureRandom = SecureRandom()
     val bytes = ByteArray(16)
     secureRandom.nextBytes(bytes)

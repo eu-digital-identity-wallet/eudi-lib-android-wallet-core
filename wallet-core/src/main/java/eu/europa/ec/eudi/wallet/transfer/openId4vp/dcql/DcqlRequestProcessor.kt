@@ -36,7 +36,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocClaim
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.eudi.wallet.internal.generateMdocGeneratedNonce
+import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
@@ -186,7 +186,7 @@ class DcqlRequestProcessor(
                 resolvedRequestObject = request.resolvedRequestObject,
                 documentManager = documentManager,
                 queryMap = queryRequestedDocumentsMap,
-                msoMdocNonce = generateMdocGeneratedNonce() // Generate a random nonce for MSO mdoc presentations
+                msoMdocNonce = generateJarmNonce() // Generate a random nonce
             )
         } catch (e: Throwable) {
             return RequestProcessor.ProcessedRequest.Failure(e)

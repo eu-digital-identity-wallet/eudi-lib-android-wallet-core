@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import android.net.Uri
+import com.nimbusds.jose.util.Base64URL
 import org.jetbrains.annotations.VisibleForTesting
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
@@ -25,6 +26,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.openid4vp.AuthorizationRequestError
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
+import eu.europa.ec.eudi.openid4vp.EncryptionParameters
 import eu.europa.ec.eudi.openid4vp.ErrorDispatchDetails
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.Resolution
@@ -32,6 +34,7 @@ import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.internal.makeOpenId4VPConfig
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
@@ -99,6 +102,14 @@ class OpenId4VpManager(
         )
     }
 
+    /**
+     * Caches the currently active [ResolvedRequestObject] during a remote presentation flow.
+     *
+     * This object is populated upon successful resolution of a request URI and is cleared
+     * when the presentation is stopped or rejected. It is essential for supporting
+     * user-initiated rejection ([reject]), as it allows the SDK to construct the correct
+     * negative consensus response without requiring the UI to pass the request object back.
+     */
     private var activeRequestObject: ResolvedRequestObject? = null
 
     /**
@@ -150,6 +161,7 @@ class OpenId4VpManager(
      *
      */
     fun resolveRequestUri(uri: String) {
+        activeRequestObject = null
         resolveRequestUriJob?.cancel()
         resolveRequestUriJob = scope.launch {
             try {
@@ -158,9 +170,6 @@ class OpenId4VpManager(
                 }
                 when (val resolution = openId4Vp.resolveRequestUri(uri)) {
                     is Resolution.Invalid -> {
-
-                        // TODO dispatch error to verifier/RP
-                        //  if resolution.dispatchDetails is present
 
                         val error = resolution.error
                         logger?.e(TAG, "Invalid resolution: $error")
@@ -173,11 +182,6 @@ class OpenId4VpManager(
                         transferEventListeners.onTransferEvent(
                             TransferEvent.Error(error.asException())
                         )
-
-//                        logger?.e(TAG, "Invalid resolution: ${resolution.error}")
-//                        transferEventListeners.onTransferEvent(
-//                            TransferEvent.Error(resolution.error.asException())
-//                        )
                     }
 
                     is Resolution.Success -> {
@@ -203,6 +207,19 @@ class OpenId4VpManager(
         }
     }
 
+    /**
+     * Dispatches a protocol-level error to the Verifier.
+     *
+     * This method is used when the Authorization Request cannot be fully resolved or validated
+     * (e.g., unsupported scheme, missing scope, or invalid format), but enough information
+     * (the [dispatchDetails]) was parsed to allow for a proper error response.
+     *
+     * Sending this error ensures the Verifier is notified of the failure instead of waiting
+     * indefinitely for a response.
+     *
+     * @param error The specific [AuthorizationRequestError] describing why the request failed.
+     * @param dispatchDetails The details (redirect URI, state, nonce) required to send the error.
+     */
     private suspend fun dispatchErrorResponse(
         error: AuthorizationRequestError,
         dispatchDetails: ErrorDispatchDetails
@@ -210,10 +227,19 @@ class OpenId4VpManager(
         try {
             logger?.d(TAG, "Dispatching error: $error via ${dispatchDetails.responseMode}")
 
+            val encryptionSpec = dispatchDetails.responseEncryptionSpecification
+
+            val encParams = if (encryptionSpec != null) {
+                val randomApu = generateJarmNonce()
+                EncryptionParameters.DiffieHellman(apu = Base64URL.encode(randomApu))
+            } else {
+                null
+            }
+
             val outcome = openId4Vp.dispatchError(
                 error = error,
                 errorDispatchDetails = dispatchDetails,
-                encryptionParameters = null
+                encryptionParameters = encParams
             )
 
             if (outcome is DispatchOutcome.VerifierResponse.Accepted) {
@@ -225,8 +251,8 @@ class OpenId4VpManager(
     }
 
     /**
-     * Called when the USER cancels the transaction from the UI.
-     * Uses the cached request object to send the rejection.
+     * Called when the USER cancels-rejects the transaction from the UI.
+     * Uses the cached resolved request object to send the rejection.
      */
     fun reject() {
         scope.launch {
@@ -238,13 +264,16 @@ class OpenId4VpManager(
                     return@launch
                 }
 
+                val wrapper = OpenId4VpRequest(request)
+                val encParams = wrapper.responseEncryptionParameters
+
                 logger?.d(TAG, "User rejected the request. Dispatching error.")
 
                 // Dispatch openid4vp NegativeConsensus case
                 val outcome = openId4Vp.dispatch(
                     request = request,
                     consensus = Consensus.NegativeConsensus,
-                    encryptionParameters = null
+                    encryptionParameters = encParams
                 )
 
                 if (outcome is DispatchOutcome.VerifierResponse.Accepted) {
@@ -258,10 +287,12 @@ class OpenId4VpManager(
                         // Verifier just said OK
                         transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
                     }
+                } else {
+                    logger?.d(TAG, "Outcome is $outcome")
                 }
 
                 activeRequestObject = null
-            } catch (e: Exception) {
+            }  catch (e: Exception) {
                 logger?.e(TAG, "Error during manual rejection", e)
             }
         }
@@ -334,6 +365,7 @@ class OpenId4VpManager(
      */
     fun stop() {
         logger?.d(TAG, "Stopping OpenId4VpManager")
+        activeRequestObject = null
         scope.coroutineContext.cancelChildren()
     }
 
