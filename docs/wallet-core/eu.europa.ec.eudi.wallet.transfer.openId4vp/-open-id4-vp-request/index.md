@@ -16,3 +16,4 @@ data class [OpenId4VpRequest](index.md)(val resolvedRequestObject: ResolvedReque
 | Name | Summary |
 |---|---|
 | [resolvedRequestObject](resolved-request-object.md) | [androidJvm]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject |
+| [responseEncryptionParameters](response-encryption-parameters.md) | [androidJvm]<br>val [responseEncryptionParameters](response-encryption-parameters.md): EncryptionParameters?<br>Computes the encryption parameters required to send a response (Success or Error) if the Verifier requested JARM encryption. |
