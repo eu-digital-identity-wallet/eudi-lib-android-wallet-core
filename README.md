@@ -867,7 +867,7 @@ val customAuthHandler = CustomAuthorizationHandler()
 EudiWalletConfig()
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.example.com")
-        withClientId("client-id")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
         withAuthorizationHandler(customAuthHandler)
     }
@@ -875,7 +875,7 @@ EudiWalletConfig()
 // Or provide it when creating a specific OpenId4VciManager instance
 val customConfig = OpenId4VciManager.Config.Builder()
     .withIssuerUrl("https://issuer.example.com")
-    .withClientId("client-id")
+    .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
     .withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
     .withAuthorizationHandler(customAuthHandler)
     .build()

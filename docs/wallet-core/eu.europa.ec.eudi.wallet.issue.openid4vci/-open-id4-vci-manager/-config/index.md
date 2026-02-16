@@ -3,7 +3,7 @@
 # Config
 
 [androidJvm]\
-data class [Config](index.md)@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)constructor(val issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val clientAuthenticationType: [OpenId4VciManager.ClientAuthenticationType](../-client-authentication-type/index.md), val authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val dPoPUsage: [OpenId4VciManager.Config.DPoPUsage](-d-po-p-usage/index.md) = DPoPUsage.IfSupported(), val parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = IF_SUPPORTED)
+data class [Config](index.md)@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)constructor(val issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val clientAuthenticationType: [OpenId4VciManager.ClientAuthenticationType](../-client-authentication-type/index.md), val authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), val authorizationHandler: [AuthorizationHandler](../../-authorization-handler/index.md)? = null, val dPoPUsage: [OpenId4VciManager.Config.DPoPUsage](-d-po-p-usage/index.md) = DPoPUsage.IfSupported(), val parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = IF_SUPPORTED)
 
 Configuration for the OpenId4Vci issuer
 
@@ -11,7 +11,7 @@ Configuration for the OpenId4Vci issuer
 
 | | |
 |---|---|
-| [Config](-config.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>constructor(issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), clientAuthenticationType: [OpenId4VciManager.ClientAuthenticationType](../-client-authentication-type/index.md), authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), dPoPUsage: [OpenId4VciManager.Config.DPoPUsage](-d-po-p-usage/index.md) = DPoPUsage.IfSupported(), parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = IF_SUPPORTED) |
+| [Config](-config.md) | [androidJvm]<br>@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)<br>constructor(issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), clientAuthenticationType: [OpenId4VciManager.ClientAuthenticationType](../-client-authentication-type/index.md), authFlowRedirectionURI: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), authorizationHandler: [AuthorizationHandler](../../-authorization-handler/index.md)? = null, dPoPUsage: [OpenId4VciManager.Config.DPoPUsage](-d-po-p-usage/index.md) = DPoPUsage.IfSupported(), parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = IF_SUPPORTED) |
 
 ## Types
 
@@ -27,6 +27,7 @@ Configuration for the OpenId4Vci issuer
 | Name | Summary |
 |---|---|
 | [authFlowRedirectionURI](auth-flow-redirection-u-r-i.md) | [androidJvm]<br>val [authFlowRedirectionURI](auth-flow-redirection-u-r-i.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>the redirection URI for the authorization flow |
+| [authorizationHandler](authorization-handler.md) | [androidJvm]<br>val [authorizationHandler](authorization-handler.md): [AuthorizationHandler](../../-authorization-handler/index.md)? = null<br>the handler for authorization requests. If null, uses [BrowserAuthorizationHandler](../../-browser-authorization-handler/index.md) |
 | [clientAuthenticationType](client-authentication-type.md) | [androidJvm]<br>val [clientAuthenticationType](client-authentication-type.md): [OpenId4VciManager.ClientAuthenticationType](../-client-authentication-type/index.md) |
 | [dPoPUsage](d-po-p-usage.md) | [androidJvm]<br>val [dPoPUsage](d-po-p-usage.md): [OpenId4VciManager.Config.DPoPUsage](-d-po-p-usage/index.md)<br>flag that if set will enable the use of DPoP JWT |
 | [issuerUrl](issuer-url.md) | [androidJvm]<br>val [issuerUrl](issuer-url.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>the issuer url |
