@@ -1310,6 +1310,11 @@ val transferEventListener = TransferEvent.Listener { event ->
 }
 ```
 
+#### Rejecting a Presentation
+To reject a remote presentation request and notify the Verifier that the user has declined, call the `wallet.rejectRemotePresentation()` method
+
+This method sends a "Negative Consensus" response to the Verifier. Once the rejection is successfully sent, the wallet will emit a `TransferEvent.ResponseSent` event
+
 See also,
 the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-management-with-presentation)
 for more information on how to use the wallet-core library for presentation with custom SecureArea
