@@ -292,8 +292,13 @@ class OpenId4VpManager(
                 }
 
                 activeRequestObject = null
-            }  catch (e: Exception) {
-                logger?.e(TAG, "Error during manual rejection", e)
+            }  catch (e: Throwable) {
+                logger?.e(TAG, "Failed to send rejection response", e)
+                val event = when (e) {
+                    is CancellationException -> TransferEvent.Disconnected
+                    else -> TransferEvent.Error(e)
+                }
+                transferEventListeners.onTransferEvent(event)
             }
         }
     }
