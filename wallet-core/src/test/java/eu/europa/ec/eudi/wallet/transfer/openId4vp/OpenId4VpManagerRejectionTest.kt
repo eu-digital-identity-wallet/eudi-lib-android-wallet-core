@@ -108,13 +108,13 @@ class OpenId4VpManagerRejectionTest {
             manager.resolveRequestUri("openid4vp://example-request-uri")
 
             // Ensure RequestReceived happens before we reject
-            verify(timeout = 3000) {
+            verify(timeout = 2000) {
                 listener.onTransferEvent(ofType(TransferEvent.RequestReceived::class))
             }
 
             manager.reject()
 
-            verify {
+            verify(timeout = 2000) {
                 listener.onTransferEvent(ofType(TransferEvent.ResponseSent::class))
             }
 
