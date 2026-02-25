@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.mockk.mockk
@@ -98,14 +99,15 @@ class AuthorizationHandlerIntegrationTest {
             withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("wallet-client"))
             withAuthFlowRedirectionURI("eudi-wallet://oauth-callback")
             withAuthorizationHandler(customHandler)
-            withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.Disabled)
+            withDPopConfig(DPopConfig.Disabled)
+//            withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.Disabled)
             withParUsage(OpenId4VciManager.Config.ParUsage.REQUIRED)
         }
 
         assertEquals("https://issuer.example.com", config.issuerUrl)
         assertEquals("eudi-wallet://oauth-callback", config.authFlowRedirectionURI)
         assertEquals(customHandler, config.authorizationHandler)
-        assertEquals(OpenId4VciManager.Config.DPoPUsage.Disabled, config.dPoPUsage)
+        assertEquals(DPopConfig.Disabled, config.dpopConfig)
         assertEquals(OpenId4VciManager.Config.ParUsage.REQUIRED, config.parUsage)
     }
 
