@@ -77,7 +77,7 @@ class OpenId4VciManagerBuilderTest {
             issuerUrl = "https://issuer.example.com",
             clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased,
             authFlowRedirectionURI = "app://redirect",
-            dPoPUsage = OpenId4VciManager.Config.DPoPUsage.IfSupported(),
+            dpopConfig = DPopConfig.Default,
             parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
         )
 

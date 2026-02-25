@@ -2,12 +2,15 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci.dpop
 
 import com.nimbusds.jose.jwk.JWK
 import eu.europa.ec.eudi.openid4vci.SignOperation
+import eu.europa.ec.eudi.wallet.internal.asProvider
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.javaAlgorithm
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyInfo
+import org.multipaz.securearea.UnlockReason
 
 /**
  * Secure area-based implementation of [DPopSigner] for OpenID4VCI credential issuance.
@@ -178,7 +181,10 @@ class SecureAreaDpopSigner(
         return SignOperation(
             function = { input ->
                 val keyUnlockData = config.keyUnlockDataProvider(keyInfo.alias, secureArea)
-                secureArea.sign(keyInfo.alias, input, keyUnlockData).toDerEncoded()
+                val provider = keyUnlockData.asProvider()
+                withContext(provider) {
+                    secureArea.sign(keyInfo.alias, input, UnlockReason.Unspecified).toDerEncoded()
+                }
             },
             publicMaterial = jwk
         )
