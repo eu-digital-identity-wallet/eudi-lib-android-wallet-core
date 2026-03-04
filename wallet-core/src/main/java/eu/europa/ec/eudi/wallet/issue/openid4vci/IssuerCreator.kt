@@ -39,6 +39,7 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.VctFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -59,6 +60,12 @@ internal class IssuerCreator(
 ) {
 
     internal var clientAttestationPopKeyId: String? = null
+        private set
+
+    internal var dpopKeyAlias: String? = null
+        private set
+
+    internal var clientAuthentication: ClientAuthentication? = null
         private set
 
     /**
@@ -184,9 +191,10 @@ internal class IssuerCreator(
     private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
         authorizationServerMetadata: CIAuthorizationServerMetadata,
     ): OpenId4VCIConfig {
+        val auth = authorizationServerMetadata.toClientAuthentication().getOrThrow()
+        clientAuthentication = auth
         return OpenId4VCIConfig(
-            clientAuthentication = authorizationServerMetadata.toClientAuthentication()
-                .getOrThrow(),
+            clientAuthentication = auth,
             authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
             encryptionSupportConfig = EncryptionSupportConfig(
                 credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
@@ -199,6 +207,10 @@ internal class IssuerCreator(
                 authorizationServerMetadata = authorizationServerMetadata,
                 logger = logger
             )
+                .onSuccess { signer ->
+                    // Track DPoP key alias for re-issuance metadata
+                    dpopKeyAlias = (signer as SecureAreaDpopSigner).keyInfo.alias
+                }
                 .getOrElse {
                     logger?.log(
                         Logger.Record(
