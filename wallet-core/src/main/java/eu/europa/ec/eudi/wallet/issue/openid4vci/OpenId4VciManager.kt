@@ -22,6 +22,7 @@ import androidx.annotation.IntDef
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
+import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
@@ -29,6 +30,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsa
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
+import org.multipaz.storage.Storage
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
@@ -160,6 +162,34 @@ interface OpenId4VciManager {
         deferredDocument: DeferredDocument,
         executor: Executor? = null,
         onIssueResult: OnDeferredIssueResult,
+    )
+
+    /**
+     * Re-issue a previously issued document using stored authorization context.
+     *
+     * This method allows re-issuing a credential without requiring the user to go through
+     * the full authorization flow again. It uses the stored refresh token to obtain a new
+     * access token if needed, and issues a new credential with the same keys.
+     *
+     * **Prerequisites:**
+     * - The document must have been issued successfully with a refresh token
+     * - Re-issuance metadata must have been stored during the original issuance
+     * - The refresh token must still be valid (not expired)
+     *
+     * **Use Cases:**
+     * - Credential renewal/refresh before expiration
+     * - Updating credential data while maintaining the same keys
+     * - Re-issuing after credential revocation
+     *
+     * @param documentId the ID of the document to re-issue
+     * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
+     * @param onIssueEvent the callback to be called during the re-issuance process
+     * @see OnIssueEvent for the possible events during re-issuance
+     */
+    fun reissueDocument(
+        documentId: DocumentId,
+        executor: Executor? = null,
+        onIssueEvent: OnIssueEvent,
     )
 
     /**
@@ -399,6 +429,7 @@ interface OpenId4VciManager {
         val authorizationHandler: AuthorizationHandler? = null,
         val dpopConfig: DPopConfig = DPopConfig.Default,
         @ParUsage val parUsage: Int = IF_SUPPORTED,
+        val reissuanceMetadataStorage: Storage? = null,
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -510,6 +541,8 @@ interface OpenId4VciManager {
 
             @ParUsage
             var parUsage: Int = IF_SUPPORTED
+
+            var reissuanceMetadataStorage: Storage? = null
 
             /**
              * Set the issuer url
@@ -638,6 +671,34 @@ interface OpenId4VciManager {
             }
 
             /**
+             * Sets the storage for credential re-issuance metadata.
+             *
+             * When configured, the library will automatically store metadata after successful
+             * credential issuance, enabling credentials to be re-issued later without requiring
+             * the user to go through the full authorization flow again.
+             *
+             * The metadata includes:
+             * - Access token and refresh token
+             * - Token endpoint and credential endpoint URLs
+             * - Key aliases used for proof-of-possession
+             * - DPoP key alias (if DPoP was used)
+             * - Client attestation information (if attestation-based auth was used)
+             *
+             * **Storage Key Format**: `"reissuance_<documentId>"`
+             *
+             * If not set, a default [org.multipaz.storage.android.AndroidStorage] will be used
+             * with a separate database file for re-issuance metadata.
+             *
+             * @param storage The [Storage] implementation for re-issuance metadata, or null to use default
+             * @return This builder instance for method chaining
+             * @see Storage
+             * @see eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
+             */
+            fun withReissuanceMetadataStorage(storage: Storage?) = apply {
+                this.reissuanceMetadataStorage = storage
+            }
+
+            /**
              * Build the [Config]
              * @return the [Config]
              */
@@ -653,7 +714,8 @@ interface OpenId4VciManager {
                     clientAuthenticationType = clientAuthenticationType,
                     authFlowRedirectionURI = authFlowRedirectionURI,
                     dpopConfig = dpopConfig,
-                    parUsage = parUsage
+                    parUsage = parUsage,
+                    reissuanceMetadataStorage = reissuanceMetadataStorage
                 )
             }
         }

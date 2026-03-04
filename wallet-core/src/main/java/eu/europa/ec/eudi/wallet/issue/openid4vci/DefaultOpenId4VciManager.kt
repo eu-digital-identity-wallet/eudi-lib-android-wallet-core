@@ -31,10 +31,14 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -46,6 +50,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import org.multipaz.storage.Storage
+import org.multipaz.storage.StorageTableSpec
+import org.multipaz.storage.android.AndroidStorage
+import java.io.File
 import java.util.concurrent.Executor
 
 /**
@@ -82,6 +90,20 @@ internal class DefaultOpenId4VciManager(
     private val issuerAuthorization: IssuerAuthorization by lazy {
         val handler = config.authorizationHandler ?: BrowserAuthorizationHandler(context, logger)
         IssuerAuthorization(handler, logger)
+    }
+
+    /**
+     * Storage for re-issuance metadata.
+     * If not configured in [config], uses a default AndroidStorage with a separate database file.
+     */
+    private val reissuanceStorage: Storage by lazy {
+        config.reissuanceMetadataStorage ?: run {
+            val storagePath = File(
+                context.noBackupFilesDir,
+                "reissuance_metadata.db"
+            ).absolutePath
+            AndroidStorage(storagePath)
+        }
     }
 
     override suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata> {
@@ -271,6 +293,131 @@ internal class DefaultOpenId4VciManager(
         resumeWithAuthorization(uri.toUri())
     }
 
+    override fun reissueDocument(
+        documentId: DocumentId,
+        executor: Executor?,
+        onIssueEvent: OpenId4VciManager.OnIssueEvent
+    ) {
+        launch(executor, onIssueEvent) { coroutineScope, listener ->
+            try {
+                // 1. Load re-issuance config from storage
+                val reissuanceConfig = loadReissuanceConfig(documentId)
+                    ?: throw IllegalStateException("No re-issuance metadata found for document $documentId")
+
+                // 2. Reconstruct AuthorizedRequest from stored config
+                var authorizedRequest = ReissuanceIssuer.reconstructAuthorizedRequest(reissuanceConfig)
+
+                // 3. Create Issuer using IssuerCreator (resolves issuer metadata)
+                val issuer = issuerCreator.createIssuer(
+                    reissuanceConfig.credentialIssuerId,
+                    listOf(CredentialConfigurationIdentifier(reissuanceConfig.credentialConfigurationIdentifier))
+                )
+                val offer = Offer(issuer.credentialOffer)
+
+                // 4. Create a new UnsignedDocument (fresh keys) via DocumentCreator
+                //    This fires IssueEvent.DocumentRequiresCreateSettings so the app
+                //    can provide CreateDocumentSettings (secure area, number of credentials, etc.)
+                val documentCreator = DocumentCreator(
+                    documentManager = documentManager,
+                    listener = listener,
+                    logger = logger
+                )
+                val requestMap = documentCreator.createDocuments(offer)
+
+                listener(IssueEvent.Started(requestMap.size))
+
+                // 5. Submit the issuance request using stored AuthorizedRequest
+                //    (skips the authorization flow - uses refresh token instead)
+                val submit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
+                val response = submit.request(requestMap).also {
+                    authorizedRequest = submit.authorizedRequest
+                }
+
+                // 6. Process the response: store new document, then delete old one
+                val issuedDocumentIds = mutableListOf<DocumentId>()
+                ProcessResponse(
+                    documentManager = documentManager,
+                    deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest),
+                    walletKeyManager = walletAttestationKeyManager,
+                    clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
+                    listener = listener,
+                    issuedDocumentIds = issuedDocumentIds,
+                    logger = logger,
+                    authorizedRequest = authorizedRequest,
+                    issuer = issuer,
+                    documentToConfigurationMap = requestMap,
+                    dpopKeyAlias = issuerCreator.dpopKeyAlias,
+                    config = config,
+                    clientAuthentication = issuerCreator.clientAuthentication,
+                ).process(response)
+
+                // 7. If new document(s) issued successfully, delete the old document
+                //    and migrate the re-issuance metadata
+                if (issuedDocumentIds.isNotEmpty()) {
+                    // Delete the old document
+                    documentManager.deleteDocumentById(documentId)
+                    logger?.d(TAG, "Deleted old document $documentId after re-issuance")
+
+                    // Migrate re-issuance metadata: delete old entry
+                    // (new entries were already stored by ProcessResponse.storeReissuanceMetadata)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        deleteReissuanceMetadata(documentId)
+                    }
+                }
+
+                listener(IssueEvent.Finished(issuedDocumentIds))
+
+            } catch (e: Throwable) {
+                listener(failure(e))
+                coroutineScope.cancel("reissueDocument failed", e)
+            }
+        }
+    }
+
+    /**
+     * Loads re-issuance configuration from storage.
+     *
+     * @param documentId The document ID
+     * @return The re-issuance config, or null if not found
+     */
+    private suspend fun loadReissuanceConfig(documentId: DocumentId): ReissuanceConfig? {
+        return runCatching {
+            val storage = reissuanceStorage
+            val table = storage.getTable(
+                StorageTableSpec(
+                    name = "reissuance_metadata",
+                    supportPartitions = false,
+                    supportExpiration = false
+                )
+            )
+
+            val bytes = table.get(documentId) ?: return null
+            ReissuanceConfig.fromByteArray(bytes.toByteArray())
+        }.getOrNull()
+    }
+
+    /**
+     * Deletes re-issuance metadata for the given document ID.
+     *
+     * @param documentId The document ID whose metadata should be deleted
+     */
+    private suspend fun deleteReissuanceMetadata(documentId: DocumentId) {
+        runCatching {
+            val storage = reissuanceStorage
+            val table = storage.getTable(
+                StorageTableSpec(
+                    name = "reissuance_metadata",
+                    supportPartitions = false,
+                    supportExpiration = false
+                )
+            )
+            table.delete(documentId)
+            logger?.d(TAG, "Deleted re-issuance metadata for old document $documentId")
+        }.onFailure { error ->
+            logger?.d(TAG, "Failed to delete re-issuance metadata for $documentId: ${error.message}")
+        }
+    }
+
     /**
      * Issues the given [Offer].
      */
@@ -302,6 +449,12 @@ internal class DefaultOpenId4VciManager(
             listener = listener,
             issuedDocumentIds = issuedDocumentIds,
             logger = logger,
+            authorizedRequest = authorizedRequest,
+            issuer = issuer,
+            documentToConfigurationMap = requestMap,
+            dpopKeyAlias = issuerCreator.dpopKeyAlias,
+            config = config,
+            clientAuthentication = issuerCreator.clientAuthentication,
         ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds))
     }
