@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci.reissue
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.multipaz.storage.StorageTableSpec
 
 /**
  * Configuration data required for credential re-issuance.
@@ -82,6 +83,19 @@ data class ReissuanceConfig(
     val grantType: String, // "authorization_code" or "pre-authorized_code"
 ) {
     companion object {
+        /**
+         * Shared [StorageTableSpec] for the re-issuance metadata table.
+         *
+         * Multipaz [org.multipaz.storage.Storage] requires a single [StorageTableSpec] instance
+         * per table name. This constant must be used by all callers that access the
+         * `"reissuance_metadata"` table.
+         */
+        internal val STORAGE_TABLE_SPEC = StorageTableSpec(
+            name = "reissuance_metadata",
+            supportPartitions = false,
+            supportExpiration = false
+        )
+
         /**
          * Deserializes a [ReissuanceConfig] from a [ByteArray].
          *
