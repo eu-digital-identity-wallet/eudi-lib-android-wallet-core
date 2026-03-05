@@ -87,36 +87,42 @@ import org.multipaz.securearea.UnlockReason
  * @see DPopConfig.Custom
  * @see DPopSigner.makeIfSupported
  */
-class SecureAreaDpopSigner(
+class SecureAreaDpopSigner private constructor(
     val config: DPopConfig.Custom,
-    private val algorithms: List<Algorithm>,
+    val keyInfo: KeyInfo,
     private val logger: Logger? = null,
 ) : DPopSigner {
 
     private val secureArea = config.secureArea
 
     /**
-     * Information about the DPoP key created in the secure area.
+     * Creates a new DPoP signer with a fresh key in the specified secure area.
      *
-     * This property is initialized during object construction by creating a new key
-     * using the algorithms and key settings from the configuration. The configuration's
+     * A new key is created immediately during construction using the provided
+     * algorithms and configuration settings. The configuration's
      * [DPopConfig.Custom.createKeySettingsBuilder] function receives the list of supported
-     * algorithms and selects an appropriate one for key creation. The key is created
-     * synchronously using [runBlocking] to ensure it's available immediately.
+     * algorithms and selects an appropriate one for key creation.
      *
-     * The [KeyInfo] contains:
-     * - **alias**: The unique identifier for the key in the secure area
-     * - **algorithm**: The cryptographic algorithm selected by the configuration's builder
-     * - **publicKey**: The public key material in EC format
+     * @param config The DPoP configuration containing the secure area and key settings builder
+     * @param algorithms The list of cryptographic algorithms supported by both server and secure area
+     * @param logger Optional logger for debugging
      */
-    val keyInfo: KeyInfo = runBlocking {
-        val createKeySettings = config.createKeySettingsBuilder(algorithms)
-        logger?.d(
-            TAG,
-            "Creating DPoP key of algorithm: ${createKeySettings.algorithm.joseAlgorithmIdentifier}"
-        )
-        secureArea.createKey(null, createKeySettings)
-    }
+    constructor(
+        config: DPopConfig.Custom,
+        algorithms: List<Algorithm>,
+        logger: Logger? = null,
+    ) : this(
+        config = config,
+        keyInfo = runBlocking {
+            val createKeySettings = config.createKeySettingsBuilder(algorithms)
+            logger?.d(
+                TAG,
+                "Creating DPoP key of algorithm: ${createKeySettings.algorithm.joseAlgorithmIdentifier}"
+            )
+            config.secureArea.createKey(null, createKeySettings)
+        },
+        logger = logger,
+    )
 
     /**
      * The Java algorithm identifier for the signing algorithm.
@@ -209,5 +215,28 @@ class SecureAreaDpopSigner(
 
     companion object {
         private const val TAG = "SecureAreaDpopSigner"
+
+        /**
+         * Creates a [SecureAreaDpopSigner] that reuses an existing key from the secure area.
+         *
+         * This is used during credential re-issuance where the DPoP key must be the same
+         * as the one used during the original authorization. The access token is bound to
+         * the original key's thumbprint (`cnf.jkt`), so DPoP proofs must be signed with
+         * the same key.
+         *
+         * @param config The DPoP configuration containing the secure area
+         * @param keyAlias The alias of the existing key in the secure area
+         * @param logger Optional logger for debugging
+         * @return A [SecureAreaDpopSigner] wrapping the existing key
+         */
+        internal suspend fun fromExistingKey(
+            config: DPopConfig.Custom,
+            keyAlias: String,
+            logger: Logger? = null,
+        ): SecureAreaDpopSigner {
+            val keyInfo = config.secureArea.getKeyInfo(keyAlias)
+            logger?.d(TAG, "Reusing existing DPoP key: $keyAlias")
+            return SecureAreaDpopSigner(config, keyInfo, logger)
+        }
     }
 }

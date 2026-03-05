@@ -38,6 +38,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.VctFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -62,10 +63,10 @@ internal class IssuerCreator(
     internal var clientAttestationPopKeyId: String? = null
         private set
 
-    internal var dpopKeyAlias: String? = null
+    internal lateinit var dpopKeyAlias: String
         private set
 
-    internal var clientAuthentication: ClientAuthentication? = null
+    internal lateinit var clientAuthentication: ClientAuthentication
         private set
 
     /**
@@ -77,12 +78,15 @@ internal class IssuerCreator(
 
     /**
      * Creates an [Issuer] from the given [CredentialConfigurationIdentifier]s.
+     * @param issuerUrl The issuer URL.
      * @param credentialConfigurationIdentifiers The list of [CredentialConfigurationIdentifier]s.
+     * @param existingDpopKeyAlias Optional alias of an existing DPoP key to reuse (for re-issuance).
      * @return The [Issuer].
      */
     suspend fun createIssuer(
         issuerUrl: String,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
+        existingDpopKeyAlias: String? = null,
     ): Issuer {
 
         val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
@@ -90,7 +94,8 @@ internal class IssuerCreator(
             .getOrThrow()
 
         return doCreateIssuer(
-            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifiers
+            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifiers,
+            existingDpopKeyAlias
         )
     }
 
@@ -143,10 +148,12 @@ internal class IssuerCreator(
         credentialIssuerMetadata: CredentialIssuerMetadata,
         authorizationServerMetadata: CIAuthorizationServerMetadata,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
+        existingDpopKeyAlias: String? = null,
     ): Issuer {
         return Issuer.makeWalletInitiated(
             config = config.toOpenId4VCIConfig(
-                authorizationServerMetadata
+                authorizationServerMetadata,
+                existingDpopKeyAlias
             ),
             credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
             credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
@@ -190,6 +197,7 @@ internal class IssuerCreator(
      */
     private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
         authorizationServerMetadata: CIAuthorizationServerMetadata,
+        existingDpopKeyAlias: String? = null,
     ): OpenId4VCIConfig {
         val auth = authorizationServerMetadata.toClientAuthentication().getOrThrow()
         clientAuthentication = auth
@@ -201,27 +209,42 @@ internal class IssuerCreator(
                 ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
                 rsaConfig = RsaConfig(rcaKeySize = 2048)
             ),
-            dPoPSigner = DPopSigner.makeIfSupported(
-                context = context,
-                config = dpopConfig,
-                authorizationServerMetadata = authorizationServerMetadata,
-                logger = logger
-            )
-                .onSuccess { signer ->
-                    // Track DPoP key alias for re-issuance metadata
-                    dpopKeyAlias = (signer as SecureAreaDpopSigner).keyInfo.alias
+            dPoPSigner = if (existingDpopKeyAlias != null) {
+                // Re-issuance: reuse existing DPoP key bound to the access token
+                val resolvedConfig = when (val cfg = dpopConfig) {
+                    DPopConfig.Disabled -> null
+                    DPopConfig.Default -> DPopConfig.Default.make(context)
+                    is DPopConfig.Custom -> cfg
                 }
-                .getOrElse {
-                    logger?.log(
-                        Logger.Record(
-                            level = Logger.Companion.LEVEL_DEBUG,
-                            message = "DPoP not supported: ${it.message}",
-                            sourceClassName = "eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator",
-                            sourceMethod = "toOpenId4VCIConfig"
+                resolvedConfig?.let { cfg ->
+                    SecureAreaDpopSigner.fromExistingKey(cfg, existingDpopKeyAlias, logger).also {
+                        dpopKeyAlias = it.keyInfo.alias
+                    }
+                }
+            } else {
+                // Normal issuance: create new DPoP key
+                DPopSigner.makeIfSupported(
+                    context = context,
+                    config = dpopConfig,
+                    authorizationServerMetadata = authorizationServerMetadata,
+                    logger = logger
+                )
+                    .onSuccess { signer ->
+                        // Track DPoP key alias for re-issuance metadata
+                        dpopKeyAlias = (signer as SecureAreaDpopSigner).keyInfo.alias
+                    }
+                    .getOrElse {
+                        logger?.log(
+                            Logger.Record(
+                                level = Logger.Companion.LEVEL_DEBUG,
+                                message = "DPoP not supported: ${it.message}",
+                                sourceClassName = "eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator",
+                                sourceMethod = "toOpenId4VCIConfig"
+                            )
                         )
-                    )
-                    null
-                },
+                        null
+                    }
+            },
             parUsage = when (parUsage) {
                 OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
                 OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required
