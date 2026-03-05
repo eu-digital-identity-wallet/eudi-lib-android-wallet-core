@@ -51,7 +51,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import org.multipaz.storage.Storage
-import org.multipaz.storage.StorageTableSpec
 import org.multipaz.storage.android.AndroidStorage
 import java.io.File
 import java.util.concurrent.Executor
@@ -300,21 +299,24 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                // 1. Load re-issuance config from storage
+                //  Load re-issuance config from storage
                 val reissuanceConfig = loadReissuanceConfig(documentId)
                     ?: throw IllegalStateException("No re-issuance metadata found for document $documentId")
 
-                // 2. Reconstruct AuthorizedRequest from stored config
+                //  Reconstruct AuthorizedRequest from stored config
                 var authorizedRequest = ReissuanceIssuer.reconstructAuthorizedRequest(reissuanceConfig)
 
-                // 3. Create Issuer using IssuerCreator (resolves issuer metadata)
+                //  Create Issuer using IssuerCreator (resolves issuer metadata)
+                //  Pass existing DPoP key alias so the same key is reused
+                //  (access token is bound to original key's thumbprint)
                 val issuer = issuerCreator.createIssuer(
                     reissuanceConfig.credentialIssuerId,
-                    listOf(CredentialConfigurationIdentifier(reissuanceConfig.credentialConfigurationIdentifier))
+                    listOf(CredentialConfigurationIdentifier(reissuanceConfig.credentialConfigurationIdentifier)),
+                    existingDpopKeyAlias = reissuanceConfig.dPoPKeyAlias
                 )
                 val offer = Offer(issuer.credentialOffer)
 
-                // 4. Create a new UnsignedDocument (fresh keys) via DocumentCreator
+                //  Create a new UnsignedDocument (fresh keys) via DocumentCreator
                 //    This fires IssueEvent.DocumentRequiresCreateSettings so the app
                 //    can provide CreateDocumentSettings (secure area, number of credentials, etc.)
                 val documentCreator = DocumentCreator(
@@ -326,14 +328,14 @@ internal class DefaultOpenId4VciManager(
 
                 listener(IssueEvent.Started(requestMap.size))
 
-                // 5. Submit the issuance request using stored AuthorizedRequest
+                //  Submit the issuance request using stored AuthorizedRequest
                 //    (skips the authorization flow - uses refresh token instead)
                 val submit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
                 val response = submit.request(requestMap).also {
                     authorizedRequest = submit.authorizedRequest
                 }
 
-                // 6. Process the response: store new document, then delete old one
+                //  Process the response: store new document, then delete old one
                 val issuedDocumentIds = mutableListOf<DocumentId>()
                 ProcessResponse(
                     documentManager = documentManager,
@@ -347,11 +349,11 @@ internal class DefaultOpenId4VciManager(
                     issuer = issuer,
                     documentToConfigurationMap = requestMap,
                     dpopKeyAlias = issuerCreator.dpopKeyAlias,
-                    config = config,
+                    reissuanceStorage = reissuanceStorage,
                     clientAuthentication = issuerCreator.clientAuthentication,
                 ).process(response)
 
-                // 7. If new document(s) issued successfully, delete the old document
+                //  If new document(s) issued successfully, delete the old document
                 //    and migrate the re-issuance metadata
                 if (issuedDocumentIds.isNotEmpty()) {
                     // Delete the old document
@@ -382,15 +384,7 @@ internal class DefaultOpenId4VciManager(
      */
     private suspend fun loadReissuanceConfig(documentId: DocumentId): ReissuanceConfig? {
         return runCatching {
-            val storage = reissuanceStorage
-            val table = storage.getTable(
-                StorageTableSpec(
-                    name = "reissuance_metadata",
-                    supportPartitions = false,
-                    supportExpiration = false
-                )
-            )
-
+            val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
             val bytes = table.get(documentId) ?: return null
             ReissuanceConfig.fromByteArray(bytes.toByteArray())
         }.getOrNull()
@@ -403,14 +397,7 @@ internal class DefaultOpenId4VciManager(
      */
     private suspend fun deleteReissuanceMetadata(documentId: DocumentId) {
         runCatching {
-            val storage = reissuanceStorage
-            val table = storage.getTable(
-                StorageTableSpec(
-                    name = "reissuance_metadata",
-                    supportPartitions = false,
-                    supportExpiration = false
-                )
-            )
+            val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
             table.delete(documentId)
             logger?.d(TAG, "Deleted re-issuance metadata for old document $documentId")
         }.onFailure { error ->
@@ -453,7 +440,7 @@ internal class DefaultOpenId4VciManager(
             issuer = issuer,
             documentToConfigurationMap = requestMap,
             dpopKeyAlias = issuerCreator.dpopKeyAlias,
-            config = config,
+            reissuanceStorage = reissuanceStorage,
             clientAuthentication = issuerCreator.clientAuthentication,
         ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds))

@@ -39,7 +39,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
-import org.multipaz.storage.StorageTableSpec
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(
@@ -50,12 +49,12 @@ internal class ProcessResponse(
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
-    val authorizedRequest: AuthorizedRequest? = null,
-    val issuer: Issuer? = null,
-    val documentToConfigurationMap: Map<UnsignedDocument, Offer.OfferedDocument>? = null,
-    val dpopKeyAlias: String? = null,
-    val config: OpenId4VciManager.Config? = null,
-    val clientAuthentication: ClientAuthentication? = null,
+    val authorizedRequest: AuthorizedRequest,
+    val issuer: Issuer,
+    val documentToConfigurationMap: Map<UnsignedDocument, Offer.OfferedDocument>,
+    val dpopKeyAlias: String,
+    val reissuanceStorage: Storage,
+    val clientAuthentication: ClientAuthentication,
 ) {
 
     suspend fun process(response: SubmitRequest.Response) {
@@ -175,24 +174,23 @@ internal class ProcessResponse(
         unsignedDocument: UnsignedDocument,
         keyAliases: List<String>,
     ) {
-        // TODO remove these or put require() blocks
-        // Early return if any required component is missing
-        val currentConfig = config ?: return
-        val storage = currentConfig.reissuanceMetadataStorage ?: return
-        val authRequest = authorizedRequest ?: return
-        val currentIssuer = issuer ?: return
+        // TODO redundant declare Storage non-nullable
+//        val storage = reissuanceStorage ?: return // Re-issuance storage not configured
+//        val authRequest = requireNotNull(authorizedRequest) { "AuthorizedRequest is required to store re-issuance metadata" }
+//        val currentIssuer = requireNotNull(issuer) { "Issuer is required to store re-issuance metadata" }
 
         // Only store if refresh token exists (otherwise re-issuance won't work)
-        val refreshToken = authRequest.refreshToken?.refreshToken ?: return
+        // TODO investigate this maybe we should continue the flow if null
+        val refreshToken = authorizedRequest.refreshToken?.refreshToken
 
         runCatching {
-            // Find the credential configuration identifier for this document
-            val credentialConfigurationId = documentToConfigurationMap?.get(unsignedDocument)
-                ?.configurationIdentifier?.value
-                ?: return // Skip if we can't find the configuration
+//            val configMap = requireNotNull(documentToConfigurationMap) { "documentToConfigurationMap is required" }
+            val credentialConfigurationId = requireNotNull(
+                documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value
+            ) { "Credential configuration identifier not found for document" }
 
             // Get metadata from credential offer
-            val credentialOffer = currentIssuer.credentialOffer
+            val credentialOffer = issuer.credentialOffer
             val issuerMetadata = credentialOffer.credentialIssuerMetadata
             val authServerMetadata = credentialOffer.authorizationServerMetadata
 
@@ -217,41 +215,24 @@ internal class ProcessResponse(
                 clientAttestationPopKeyId = clientAttestationPopKeyId,
                 popKeyAliases = keyAliases,
                 dPoPKeyAlias = dpopKeyAlias,
-                accessToken = authRequest.accessToken.accessToken,
-                accessTokenType = when (authRequest.accessToken) {
+                accessToken = authorizedRequest.accessToken.accessToken,
+                accessTokenType = when (authorizedRequest.accessToken) {
                     is AccessToken.DPoP -> "DPoP"
                     is AccessToken.Bearer -> "Bearer"
                 },
                 refreshToken = refreshToken,
-                tokenTimestamp = authRequest.timestamp.epochSecond,
-                grantType = if (authRequest.grant::class.simpleName == "PreAuthorizedCodeGrant") {
+                tokenTimestamp = authorizedRequest.timestamp.epochSecond,
+                grantType = if (authorizedRequest.grant::class.simpleName == "PreAuthorizedCodeGrant") {
                     "pre-authorized_code"
                 } else {
                     "authorization_code"
                 },
             )
 
-            // Get storage table
-            val table = storage.getTable(
-                StorageTableSpec(
-                    name = "reissuance_metadata",
-                    supportPartitions = false,
-                    supportExpiration = false
-                )
-            )
+            val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
 
-            // Serialize to JSON ByteArray and convert to ByteString
             val bytes = ByteString(reissuanceConfig.toByteArray())
-            val storageKey = documentId
-
-            // TODO investigate this
-            // Insert or update
-            val existing = table.get(storageKey)
-            if (existing != null) {
-                table.update(key = storageKey, data = bytes)
-            } else {
-                table.insert(key = storageKey, data = bytes)
-            }
+            table.insert(key = documentId, data = bytes)
 
             logger?.d(TAG, "Stored re-issuance metadata for document $documentId")
         }.onFailure { error ->
