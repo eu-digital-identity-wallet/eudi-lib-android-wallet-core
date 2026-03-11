@@ -20,18 +20,21 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIssuanceError
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.DeferredIssuer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
+import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.internal.d
+import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
@@ -303,6 +306,8 @@ internal class DefaultOpenId4VciManager(
                 val reissuanceConfig = loadReissuanceConfig(documentId)
                     ?: throw IllegalStateException("No re-issuance metadata found for document $documentId")
 
+                logger?.d(TAG, "Loaded reissuanceConfig: credentialIssuerId=${reissuanceConfig.credentialIssuerId}")
+
                 //  Reconstruct AuthorizedRequest from stored config
                 var authorizedRequest = ReissuanceIssuer.reconstructAuthorizedRequest(reissuanceConfig)
 
@@ -331,8 +336,20 @@ internal class DefaultOpenId4VciManager(
                 //  Submit the issuance request using stored AuthorizedRequest
                 //    (skips the authorization flow - uses refresh token instead)
                 val submit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
-                val response = submit.request(requestMap).also {
+                var response = submit.request(requestMap).also {
                     authorizedRequest = submit.authorizedRequest
+                }
+
+                //  Check for authentication failure (401 / InvalidToken)
+                //    This happens when both stored access token AND refresh token are invalid.
+                //    Fall back to full OAuth authorization flow and retry with fresh tokens.
+                if (isAuthenticationFailure(response)) {
+                    logger?.d(TAG, "Re-issuance token expired for $documentId, falling back to full authorization")
+                    authorizedRequest = issuerAuthorization.authorize(issuer, null)
+                    val retrySubmit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
+                    response = retrySubmit.request(requestMap).also {
+                        authorizedRequest = retrySubmit.authorizedRequest
+                    }
                 }
 
                 //  Process the response: store new document, then delete old one
@@ -370,9 +387,36 @@ internal class DefaultOpenId4VciManager(
                 listener(IssueEvent.Finished(issuedDocumentIds))
 
             } catch (e: Throwable) {
+                logger?.e(TAG, "Something went wrong with reissuance of $documentId", e)
                 listener(failure(e))
                 coroutineScope.cancel("reissueDocument failed", e)
             }
+        }
+    }
+
+    /**
+     * Checks if a submission response contains an authentication failure,
+     * indicating the stored access token is no longer valid and fresh
+     * authorization is needed.
+     *
+     * Handles two scenarios:
+     * - Clean path: Server returns 401 with proper JSON body → parsed as
+     *   [SubmissionOutcome.Failed] with [CredentialIssuanceError.InvalidToken]
+     * - Dirty path: Server returns 401 without content-type → Ktor throws
+     *   [NoTransformationFoundException] containing "401 Unauthorized" in its message
+     */
+    private fun isAuthenticationFailure(response: SubmitRequest.Response): Boolean {
+        return response.values.any { result ->
+            // Clean path: SubmissionOutcome.Failed with InvalidToken
+            val outcome = result.outcome.getOrNull()
+            if (outcome is SubmissionOutcome.Failed && outcome.error is CredentialIssuanceError.InvalidToken) {
+                return@any true
+            }
+            // Fallback path: exception when the 401 response cannot be parsed as a typed error
+            // (e.g. response has no content-type or no JSON body)
+            val exception = result.outcome.exceptionOrNull() ?: return@any false
+            exception is CredentialIssuanceError.InvalidToken
+                || exception.message?.contains("401 Unauthorized") == true
         }
     }
 
@@ -383,11 +427,9 @@ internal class DefaultOpenId4VciManager(
      * @return The re-issuance config, or null if not found
      */
     private suspend fun loadReissuanceConfig(documentId: DocumentId): ReissuanceConfig? {
-        return runCatching {
-            val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
-            val bytes = table.get(documentId) ?: return null
-            ReissuanceConfig.fromByteArray(bytes.toByteArray())
-        }.getOrNull()
+        val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
+        val bytes = table.get(documentId) ?: return null
+        return ReissuanceConfig.fromByteArray(bytes.toByteArray())
     }
 
     /**
