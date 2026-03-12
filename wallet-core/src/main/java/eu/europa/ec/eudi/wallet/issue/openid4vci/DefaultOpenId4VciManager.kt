@@ -373,15 +373,11 @@ internal class DefaultOpenId4VciManager(
                 //  If new document(s) issued successfully, delete the old document
                 //    and migrate the re-issuance metadata
                 if (issuedDocumentIds.isNotEmpty()) {
-                    // Delete the old document
+                    // Delete the old document — the DocumentManagerWithReissuance wrapper
+                    // automatically cleans up re-issuance metadata for the old document.
+                    // New metadata was already stored by ProcessResponse.storeReissuanceMetadata.
                     documentManager.deleteDocumentById(documentId)
                     logger?.d(TAG, "Deleted old document $documentId after re-issuance")
-
-                    // Migrate re-issuance metadata: delete old entry
-                    // (new entries were already stored by ProcessResponse.storeReissuanceMetadata)
-                    CoroutineScope(Dispatchers.IO).launch {
-                        deleteReissuanceMetadata(documentId)
-                    }
                 }
 
                 listener(IssueEvent.Finished(issuedDocumentIds))
@@ -402,8 +398,8 @@ internal class DefaultOpenId4VciManager(
      * Handles two scenarios:
      * - Clean path: Server returns 401 with proper JSON body → parsed as
      *   [SubmissionOutcome.Failed] with [CredentialIssuanceError.InvalidToken]
-     * - Dirty path: Server returns 401 without content-type → Ktor throws
-     *   [NoTransformationFoundException] containing "401 Unauthorized" in its message
+     * - Fallback path: Server returns 401 without content-type → Ktor throws
+     *   NoTransformationFoundException containing "401 Unauthorized" in its message
      */
     private fun isAuthenticationFailure(response: SubmitRequest.Response): Boolean {
         return response.values.any { result ->
@@ -430,21 +426,6 @@ internal class DefaultOpenId4VciManager(
         val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
         val bytes = table.get(documentId) ?: return null
         return ReissuanceConfig.fromByteArray(bytes.toByteArray())
-    }
-
-    /**
-     * Deletes re-issuance metadata for the given document ID.
-     *
-     * @param documentId The document ID whose metadata should be deleted
-     */
-    private suspend fun deleteReissuanceMetadata(documentId: DocumentId) {
-        runCatching {
-            val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
-            table.delete(documentId)
-            logger?.d(TAG, "Deleted re-issuance metadata for old document $documentId")
-        }.onFailure { error ->
-            logger?.d(TAG, "Failed to delete re-issuance metadata for $documentId: ${error.message}")
-        }
     }
 
     /**

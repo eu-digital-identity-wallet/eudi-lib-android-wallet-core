@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.wallet.dcapi.DCAPIRegistration
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequestProcessor
 import eu.europa.ec.eudi.wallet.dcapi.DocumentManagerWithDCAPI
 import eu.europa.ec.eudi.wallet.dcapi.getDefaultPrivilegedUserAgents
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithReissuance
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -360,16 +361,35 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             ensureStrongBoxIsSupported(loggerToUse)
             ensureUserAuthIsSupported(loggerToUse)
 
+            // Create shared reissuance storage (used by both the wrapper and OpenId4VciManager)
+            val reissuanceStorage = config.openId4VciConfig?.reissuanceMetadataStorage ?: run {
+                val storagePath = File(
+                    context.noBackupFilesDir,
+                    "reissuance_metadata.db"
+                ).absolutePath
+                AndroidStorage(storagePath)
+            }
+
             val documentManagerToUse =
                 (documentManager ?: getDefaultDocumentManager(storage, secureAreas))
-                    .let { defaultManager ->
+                    .let { manager ->
+                        // Wrap with reissuance metadata cleanup (if OpenId4VCI is configured)
+                        if (config.openId4VciConfig != null) {
+                            DocumentManagerWithReissuance(
+                                delegate = manager,
+                                reissuanceStorage = reissuanceStorage,
+                                logger = loggerToUse
+                            )
+                        } else manager
+                    }
+                    .let { manager ->
                         if (config.dcapiConfig?.enabled == true) {
                             DocumentManagerWithDCAPI(
-                                delegate = defaultManager,
+                                delegate = manager,
                                 dcapiRegistration = dcapiRegistration,
                                 logger = loggerToUse
                             )
-                        } else defaultManager
+                        } else manager
                     }
 
             val readerTrustStoreToUse = readerTrustStore ?: defaultReaderTrustStore
@@ -396,7 +416,8 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 logger = loggerToUse,
                 documentStatusResolver = documentStatusResolverToUse,
                 transactionLogger = transactionLogger,
-                ktorHttpClientFactory = ktorHttpClientFactory
+                ktorHttpClientFactory = ktorHttpClientFactory,
+                reissuanceStorage = reissuanceStorage
             )
         }
 
