@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import io.ktor.client.HttpClient
+import org.multipaz.storage.Storage
 import java.security.cert.X509Certificate
 
 /**
@@ -58,6 +59,7 @@ class EudiWalletImpl internal constructor(
     override val walletKeyManager: WalletKeyManager,
     val transactionLogger: TransactionLogger?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
+    val reissuanceStorage: Storage?,
 ) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
     SampleDocumentManager by SampleDocumentManagerImpl(documentManager),
     DocumentStatusResolver by documentStatusResolver {
@@ -93,9 +95,14 @@ class EudiWalletImpl internal constructor(
         config: OpenId4VciManager.Config?,
         ktorHttpClientFactory: (() -> HttpClient)?,
     ): OpenId4VciManager {
-        val config = config ?: this.config.openId4VciConfig ?: throw IllegalStateException(
+        val resolvedConfig = config ?: this.config.openId4VciConfig ?: throw IllegalStateException(
             "OpenId4Vci configuration is missing. Please provide a config parameter or configure it in EudiWalletConfig."
         )
+
+        // Inject the shared reissuance storage into the config if not already set
+        val configWithStorage = if (reissuanceStorage != null && resolvedConfig.reissuanceMetadataStorage == null) {
+            resolvedConfig.copy(reissuanceMetadataStorage = reissuanceStorage)
+        } else resolvedConfig
 
         val httpClientFactory = ktorHttpClientFactory ?: this.ktorHttpClientFactory
 
@@ -103,7 +110,7 @@ class EudiWalletImpl internal constructor(
             documentManager(this@EudiWalletImpl)
             walletKeyManager(this@EudiWalletImpl.walletKeyManager)
             this@EudiWalletImpl.walletProvider?.let { walletAttestationsProvider(it) }
-            config(config)
+            config(configWithStorage)
             logger(this@EudiWalletImpl.logger)
             if (httpClientFactory != null) {
                 ktorHttpClientFactory(httpClientFactory)
