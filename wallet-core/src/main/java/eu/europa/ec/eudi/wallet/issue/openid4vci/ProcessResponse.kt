@@ -30,8 +30,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
-import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,10 +42,10 @@ import kotlin.coroutines.resume
 internal class ProcessResponse(
     val documentManager: DocumentManager,
     val deferredContextFactory: DeferredContextFactory,
-    val walletKeyManager: WalletKeyManager,
     val clientAttestationPopKeyId: String?,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
     val issuedDocumentIds: MutableList<DocumentId>,
+    val deferredDocumentIds: MutableList<DocumentId>,
     val logger: Logger? = null,
     val authorizedRequest: AuthorizedRequest,
     val issuer: Issuer,
@@ -55,6 +53,7 @@ internal class ProcessResponse(
     val dpopKeyAlias: String,
     val reissuanceStorage: Storage,
     val clientAuthentication: ClientAuthentication,
+    val replacesDocumentId: DocumentId? = null,
 ) {
 
     suspend fun process(response: SubmitRequest.Response) {
@@ -139,18 +138,23 @@ internal class ProcessResponse(
             }
 
             is SubmissionOutcome.Deferred -> runCatching {
-                val contextToStore = deferredContextFactory(
+                val deferredContext = deferredContextFactory(
                     keyAliases,
                     outcome,
-                    clientAttestationPopKeyId
-                ).toBytes(walletKeyManager, clientAttestationPopKeyId)
+                    clientAttestationPopKeyId,
+                    dpopKeyAlias
+                ).copy(
+                    replacesDocumentId = replacesDocumentId,
+                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value,
+                    credentialEndpoint = issuer.credentialOffer.credentialIssuerMetadata.credentialEndpoint.toString(),
+                )
 
                 documentManager.storeDeferredDocument(
                     unsignedDocument = unsignedDocument,
-                    relatedData = contextToStore
+                    relatedData = deferredContext.toBytes()
                 ).getOrThrow()
             }.onSuccess { document ->
-                issuedDocumentIds.add(document.id)
+                deferredDocumentIds.add(document.id)
                 listener(IssueEvent.DocumentDeferred(document))
             }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)

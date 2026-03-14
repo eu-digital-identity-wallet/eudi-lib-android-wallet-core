@@ -40,6 +40,7 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -231,9 +232,18 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueResult) { coroutineScope, callback ->
             try {
 
+                // Resolve DPopConfig so DeferredContext can recreate the DPoP signer
+                val resolvedDpopConfig = when (val cfg = config.dpopConfig) {
+                    DPopConfig.Disabled -> null
+                    DPopConfig.Default -> DPopConfig.Default.make(context)
+                    is DPopConfig.Custom -> cfg
+                }
+
                 val deferredContext = DeferredContext.fromBytes(
                     deferredDocument.relatedData,
-                    walletAttestationKeyManager
+                    walletAttestationKeyManager,
+                    dpopConfig = resolvedDpopConfig,
+                    logger = logger,
                 )
                 val clientAttestationPopKeyId = deferredContext.clientAttestationPopKeyId
                 when {
@@ -250,17 +260,20 @@ internal class DefaultOpenId4VciManager(
 
                         ProcessDeferredOutcome(
                             documentManager = documentManager,
-                            walletKeyManager = walletAttestationKeyManager,
-                            clientAttestationPopKeyId = clientAttestationPopKeyId,
                             callback = callback,
                             deferredContext = ctx?.let {
                                 DeferredContext(
                                     issuanceContext = it,
                                     keyAliases = deferredContext.keyAliases,
-                                    clientAttestationPopKeyId = clientAttestationPopKeyId
+                                    clientAttestationPopKeyId = clientAttestationPopKeyId,
+                                    dPoPKeyAlias = deferredContext.dPoPKeyAlias,
+                                    credentialConfigurationIdentifier = deferredContext.credentialConfigurationIdentifier,
+                                    credentialEndpoint = deferredContext.credentialEndpoint,
+                                    replacesDocumentId = deferredContext.replacesDocumentId,
                                 )
                             } ?: deferredContext,
-                            logger = logger
+                            logger = logger,
+                            reissuanceStorage = reissuanceStorage,
                         ).process(deferredDocument, deferredContext.keyAliases, outcome)
                     }
                 }
@@ -354,13 +367,14 @@ internal class DefaultOpenId4VciManager(
 
                 //  Process the response: store new document, then delete old one
                 val issuedDocumentIds = mutableListOf<DocumentId>()
+                val deferredDocumentIds = mutableListOf<DocumentId>()
                 ProcessResponse(
                     documentManager = documentManager,
-                    deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest),
-                    walletKeyManager = walletAttestationKeyManager,
+                    deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
                     clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
                     listener = listener,
                     issuedDocumentIds = issuedDocumentIds,
+                    deferredDocumentIds = deferredDocumentIds,
                     logger = logger,
                     authorizedRequest = authorizedRequest,
                     issuer = issuer,
@@ -368,19 +382,19 @@ internal class DefaultOpenId4VciManager(
                     dpopKeyAlias = issuerCreator.dpopKeyAlias,
                     reissuanceStorage = reissuanceStorage,
                     clientAuthentication = issuerCreator.clientAuthentication,
+                    replacesDocumentId = documentId,
                 ).process(response)
 
-                //  If new document(s) issued successfully, delete the old document
-                //    and migrate the re-issuance metadata
+                //  If new document(s) issued successfully, delete the old document.
+                //  If the outcome was deferred, the old document stays alive — the
+                //  replacesDocumentId stored in the deferred context will trigger
+                //  deletion when issueDeferredDocument() eventually succeeds.
                 if (issuedDocumentIds.isNotEmpty()) {
-                    // Delete the old document — the DocumentManagerWithReissuance wrapper
-                    // automatically cleans up re-issuance metadata for the old document.
-                    // New metadata was already stored by ProcessResponse.storeReissuanceMetadata.
                     documentManager.deleteDocumentById(documentId)
                     logger?.d(TAG, "Deleted old document $documentId after re-issuance")
                 }
 
-                listener(IssueEvent.Finished(issuedDocumentIds))
+                listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
 
             } catch (e: Throwable) {
                 logger?.e(TAG, "Something went wrong with reissuance of $documentId", e)
@@ -440,6 +454,7 @@ internal class DefaultOpenId4VciManager(
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
+        val deferredDocumentIds = mutableListOf<DocumentId>()
         val documentCreator = DocumentCreator(
             documentManager = documentManager,
             listener = listener,
@@ -453,11 +468,11 @@ internal class DefaultOpenId4VciManager(
         }
         ProcessResponse(
             documentManager = documentManager,
-            deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest),
-            walletKeyManager = walletAttestationKeyManager,
+            deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
             clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
             listener = listener,
             issuedDocumentIds = issuedDocumentIds,
+            deferredDocumentIds = deferredDocumentIds,
             logger = logger,
             authorizedRequest = authorizedRequest,
             issuer = issuer,
@@ -466,7 +481,7 @@ internal class DefaultOpenId4VciManager(
             reissuanceStorage = reissuanceStorage,
             clientAuthentication = issuerCreator.clientAuthentication,
         ).process(response)
-        listener(IssueEvent.Finished(issuedDocumentIds))
+        listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
     }
 
     /**
