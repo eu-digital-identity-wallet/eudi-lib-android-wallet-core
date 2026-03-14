@@ -13,12 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmMultifileClass
-@file:OptIn(InternalSerializationApi::class)
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
-import com.nimbusds.jose.CompressionAlgorithm
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.SignedJWT
@@ -39,31 +36,16 @@ import eu.europa.ec.eudi.openid4vci.SignOperation
 import eu.europa.ec.eudi.openid4vci.Signer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.openid4vci.TransactionId
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
+import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredDeferredContext
+import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.encoding.decodeStructure
-import kotlinx.serialization.encoding.encodeStructure
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.put
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.contextual
 import java.net.URI
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 
 /**
@@ -71,32 +53,37 @@ import java.time.Instant
  *
  * @param keyAliases List of key aliases used in the deferred issuance process
  * @param outcome The outcome of a deferred submission containing transaction details
+ * @param clientAttestationPopKeyId The client attestation PoP key ID, if any
+ * @param dPoPKeyAlias The DPoP key alias, if any
  * @return A [DeferredContext] containing the issuance context and key aliases
  */
 internal typealias DeferredContextFactory = (
     keyAliases: List<String>,
     outcome: SubmissionOutcome.Deferred,
     clientAttestationPopKeyId: String?,
-
-    ) -> DeferredContext
+    dPoPKeyAlias: String?,
+) -> DeferredContext
 
 /**
  * Creates a [DeferredContextFactory] from an [Issuer] and [AuthorizedRequest].
  *
  * @param issuer The credential issuer that will provide the deferred context
  * @param authorizedRequest The authorized request associated with the deferred issuance
+ * @param dPoPKeyAlias The DPoP key alias to use as default, if any
  * @return A factory function that creates [DeferredContext] instances
  */
 internal fun DeferredContextFactory(
     issuer: Issuer,
     authorizedRequest: AuthorizedRequest,
+    dPoPKeyAlias: String?,
 ): DeferredContextFactory {
-    return { keyAliases, outcome, clientAttestationPopKeyId ->
+    return { keyAliases, outcome, clientAttestationPopKeyId, dpopAlias ->
         with(issuer) {
             DeferredContext(
                 issuanceContext = authorizedRequest.deferredContext(outcome),
                 keyAliases = keyAliases,
-                clientAttestationPopKeyId = clientAttestationPopKeyId
+                clientAttestationPopKeyId = clientAttestationPopKeyId,
+                dPoPKeyAlias = dpopAlias ?: dPoPKeyAlias,
             )
         }
     }
@@ -104,16 +91,21 @@ internal fun DeferredContextFactory(
 
 /**
  * A data class that holds the deferred issuance context along with key aliases.
- * This class is serializable and used for storing and retrieving deferred issuance data.
+ * Used for storing and retrieving deferred issuance data.
  *
  * @property issuanceContext The deferred issuance context containing information about the credential issuance process.
  * @property keyAliases List of key aliases used in the deferred issuance process.
+ * @property clientAttestationPopKeyId The client attestation PoP key ID, if any.
+ * @property dPoPKeyAlias The DPoP key alias used during issuance, if any.
  */
-@Serializable
 internal data class DeferredContext(
-    @Contextual val issuanceContext: DeferredIssuanceContext,
+    val issuanceContext: DeferredIssuanceContext,
     val keyAliases: List<String>,
     val clientAttestationPopKeyId: String?,
+    val dPoPKeyAlias: String?,
+    val credentialConfigurationIdentifier: String? = null,
+    val credentialEndpoint: String? = null,
+    val replacesDocumentId: String? = null,
 ) {
     companion object
 }
@@ -121,384 +113,148 @@ internal data class DeferredContext(
 internal fun DeferredContext.Companion.fromBytes(
     bytes: ByteArray,
     walletKeyManager: WalletKeyManager,
+    dpopConfig: DPopConfig.Custom? = null,
+    logger: Logger? = null,
 ): DeferredContext {
-    val json = makeDeferredContextJson(
-        walletKeyManager,
-        null
-    )
-    return json.decodeFromString(String(bytes))
-}
+    val dto = Json.decodeFromString<StoredDeferredContext>(String(bytes, Charsets.UTF_8))
 
-internal fun DeferredContext.toBytes(
-    walletKeyManager: WalletKeyManager,
-    clientAttestationPopKeyId: String?,
-): ByteArray {
-    val json = makeDeferredContextJson(
-        walletKeyManager = walletKeyManager,
-        clientAttestationPopKeyId = clientAttestationPopKeyId
-    )
-    return json.encodeToString(DeferredContext.serializer(), this).toByteArray()
-}
+    // Recreate client authentication
+    val clientAuthentication =
+        if (dto.clientAttestationJwt != null && dto.clientAttestationPopKeyId != null) {
+            val jwt = runCatching {
+                ClientAttestationJWT(SignedJWT.parse(dto.clientAttestationJwt))
+            }.getOrNull() ?: error("Invalid client attestation JWT in stored context")
 
-internal fun makeDeferredContextJson(
-    walletKeyManager: WalletKeyManager,
-    clientAttestationPopKeyId: String?,
-): Json {
-    return Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = false
-        serializersModule = SerializersModule {
-            contextual(
-                DeferredIssuanceContextSerializer(
-                    walletKeyManager,
-                    clientAttestationPopKeyId
-                )
+            val popSigner = createSignerAdapter(walletKeyManager, dto.clientAttestationPopKeyId)
+            val popSpec = ClientAttestationPoPJWTSpec(signer = popSigner)
+            ClientAuthentication.AttestationBased(jwt, popSpec)
+        } else {
+            ClientAuthentication.None(dto.clientId)
+        }
+
+    // Recreate DPoP signer from the SecureArea using the stored key alias.
+    // DPoP keys are managed by SecureArea (not WalletKeyManager), so we use
+    // SecureAreaDpopSigner.fromExistingKey() which looks up the key by alias.
+    val dPoPSigner = if (dto.dPoPKeyAlias != null && dpopConfig != null) {
+        runBlocking {
+            runCatching {
+                SecureAreaDpopSigner.fromExistingKey(dpopConfig, dto.dPoPKeyAlias, logger)
+            }.getOrNull()
+        }
+    } else null
+
+    // Recreate encryption spec
+    val reqEncSpec =
+        if (dto.requestEncryptionKeyJwk != null && dto.requestEncryptionMethod != null) {
+            EncryptionSpec(
+                recipientKey = JWK.parse(dto.requestEncryptionKeyJwk),
+                encryptionMethod = EncryptionMethod.parse(dto.requestEncryptionMethod)
             )
-        }
-    }
-}
+        } else null
 
-/**
- * A serializer for [DeferredIssuanceContext] that handles the nested JSON structure required for serialization.
- *
- * This serializer addresses a specific JSON structure format where the context is nested within a
- * "context" field in the JSON. It correctly handles both serialization and deserialization of this structure.
- *
- * During serialization, it wraps the [DeferredIssuanceStoredContextTO] in a nested structure, and during
- * deserialization, it properly navigates this nested structure to extract the context object.
- */
-internal class DeferredIssuanceContextSerializer(
-    private val walletKeyManager: WalletKeyManager,
-    private val clientAttestationPopKeyId: String?,
-) : KSerializer<DeferredIssuanceContext> {
-    override val descriptor: SerialDescriptor =
-        buildClassSerialDescriptor("eu.europa.ec.eudi.openid4vci.DeferredIssuanceContext") {
-            element("context", DeferredIssuanceStoredContextTO.serializer().descriptor)
-        }
-
-    /**
-     * Serializes the [DeferredIssuanceContext] into a JSON structure with a nested "context" field.
-     *
-     * @param encoder The encoder to serialize to.
-     * @param value The [DeferredIssuanceContext] to serialize.
-     */
-    override fun serialize(encoder: Encoder, value: DeferredIssuanceContext) {
-        // TODO add dPoP info in serialization
-        val contextTO = DeferredIssuanceStoredContextTO.from(
-            value,
-            null,
-            clientAttestationPopKeyId,
-        )
-        encoder.encodeStructure(descriptor) {
-            encodeSerializableElement(
-                descriptor,
-                0,
-                DeferredIssuanceStoredContextTO.serializer(),
-                contextTO
-            )
-        }
+    val respEncParams = dto.responseEncryptionMethod?.let {
+        EncryptionMethod.parse(it) to null
     }
 
-    /**
-     * Deserializes a [DeferredIssuanceContext] from a JSON structure with a nested "context" field.
-     *
-     * This method handles the nested JSON structure by properly navigating through the structure to
-     * extract the context object stored in the "context" field. It uses a loop to process all elements
-     * in the structure, breaking when reaching the end of the structure.
-     *
-     * @param decoder The decoder to deserialize from.
-     * @return The deserialized [DeferredIssuanceContext].
-     */
-    override fun deserialize(decoder: Decoder): DeferredIssuanceContext {
-        // TODO use dPoP info in deserialization to recreate dPoP signer
-        var storedContext: DeferredIssuanceStoredContextTO? = null
-
-        decoder.decodeStructure(descriptor) {
-            while (true) {
-                val index = decodeElementIndex(descriptor)
-                if (index == -1) break
-
-                when (index) {
-                    0 -> storedContext = decodeSerializableElement(
-                        descriptor,
-                        0,
-                        DeferredIssuanceStoredContextTO.serializer()
-                    )
-                }
-            }
-        }
-
-        return requireNotNull(storedContext).toDeferredIssuanceStoredContext(
-            Clock.systemUTC(),
-            null,
-            walletKeyManager
-        )
-    }
-}
-
-
-//
-// Serialization
-//
-
-@Serializable
-data class RefreshTokenTO(
-    @Required @SerialName("refresh_token") val refreshToken: String,
-) {
-
-    fun toRefreshToken(): RefreshToken {
-        return RefreshToken(refreshToken)
-    }
-
-    companion object {
-
-        fun from(refreshToken: RefreshToken): RefreshTokenTO =
-            RefreshTokenTO(refreshToken.refreshToken)
-    }
-}
-
-@Serializable
-enum class AccessTokenTypeTO {
-    DPoP, Bearer
-}
-
-@Serializable
-data class AccessTokenTO(
-    @Required @SerialName("type") val type: AccessTokenTypeTO,
-    @Required @SerialName("access_token") val accessToken: String,
-    @SerialName("expires_in") val expiresIn: Long? = null,
-) {
-
-    fun toAccessToken(): AccessToken {
-        val exp = expiresIn?.let { Duration.ofSeconds(it) }
-        return when (type) {
-            AccessTokenTypeTO.DPoP -> AccessToken.DPoP(accessToken, exp)
-            AccessTokenTypeTO.Bearer -> AccessToken.Bearer(accessToken, exp)
-        }
-    }
-
-    companion object {
-
-        fun from(accessToken: AccessToken): AccessTokenTO {
-            return AccessTokenTO(
-                type = when (accessToken) {
-                    is AccessToken.DPoP -> AccessTokenTypeTO.DPoP
-                    is AccessToken.Bearer -> AccessTokenTypeTO.Bearer
-                },
-                accessToken = accessToken.accessToken,
-                expiresIn = accessToken.expiresIn?.seconds
-            )
-        }
-    }
-}
-
-@Serializable
-enum class GrantTO {
-    @SerialName("authorization_code")
-    AuthorizationCode,
-
-    @SerialName("urn:ietf:params:oauth:grant-type:pre-authorized_code")
-    PreAuthorizedCodeGrant,
-
-    ;
-
-    fun toGrant(): Grant =
-        when (this) {
-            AuthorizationCode -> Grant.AuthorizationCode
-            PreAuthorizedCodeGrant -> Grant.PreAuthorizedCodeGrant
-        }
-
-    companion object {
-        fun fromGrant(grant: Grant): GrantTO =
-            when (grant) {
-                Grant.AuthorizationCode -> AuthorizationCode
-                Grant.PreAuthorizedCodeGrant -> PreAuthorizedCodeGrant
-            }
-    }
-}
-
-@Serializable
-data class DeferredIssuanceStoredContextTO(
-    @Required @SerialName("credential_issuer") val credentialIssuerId: String,
-    @Required @SerialName("client_id") val clientId: String,
-    @SerialName("client_attestation_jwt") val clientAttestationJwt: String? = null,
-    @SerialName("client_attestation_pop_key_id") val clientAttestationPopKeyId: String? = null,
-    @Required @SerialName("deferred_endpoint") val deferredEndpoint: String,
-    @Required @SerialName("auth_server_id") val authServerId: String,
-    @SerialName("challenge_endpoint") val challengeEndpoint: String? = null,
-    @Required @SerialName("token_endpoint") val tokenEndpoint: String,
-    @SerialName("credential_request_encryption_spec") val requestEncryptionSpec: JsonObject? = null,
-    @SerialName("credential_response_encryption_params") val responseEncryptionParams: JsonObject? = null,
-    @SerialName("dpop_key_id") val dPoPSignerKid: String? = null,
-    @SerialName("transaction_id") val transactionId: String,
-    @SerialName("access_token") val accessToken: AccessTokenTO,
-    @SerialName("refresh_token") val refreshToken: RefreshTokenTO? = null,
-    @SerialName("authorization_timestamp") val authorizationTimestamp: Long,
-    @SerialName("grant") val grant: GrantTO,
-) {
-
-    fun toDeferredIssuanceStoredContext(
-        clock: Clock,
-        recreatePopSigner: ((String) -> Signer<JWK>)?,
-        walletKeyManager: WalletKeyManager,
-    ): DeferredIssuanceContext {
-        return DeferredIssuanceContext(
-            config = DeferredIssuerConfig(
-                credentialIssuerId = CredentialIssuerId(credentialIssuerId).getOrThrow(),
-                clock = clock,
-                clientAuthentication =
-                    if (clientAttestationJwt == null) ClientAuthentication.None(clientId)
-                    else runBlocking {
-                        val jwt = runCatching {
-                            ClientAttestationJWT(SignedJWT.parse(clientAttestationJwt))
-                        }.getOrNull() ?: error("Invalid client attestation JWT")
-
-                        val poPJWTSpec = clientAttestationPopKeyId
-                            ?.let { keyId -> walletKeyManager.getWalletAttestationKey(keyId) }
-                            ?.let { key ->
-                                ClientAttestationPoPJWTSpec(
-                                    signer = object : Signer<JWK> {
-                                        override val javaAlgorithm: String =
-                                            key.keyInfo.algorithm.javaAlgorithm
-                                                ?: throw IllegalStateException(
-                                                    "Key algorithm is required"
-                                                )
-
-                                        override suspend fun acquire(): SignOperation<JWK> {
-                                            return SignOperation<JWK>(
-                                                function = { key.signFunction(it) },
-                                                publicMaterial = JWK.parse(
-                                                    key.keyInfo.publicKey.toJwk().toString()
-                                                )
-                                            )
-                                        }
-
-                                        override suspend fun release(signOperation: SignOperation<JWK>?) {
-                                            // nothing to release
-                                        }
-
-                                    }
-                                )
-                            } ?: error("Unable to recreate PoP JWT signer for client attestation")
-
-                        ClientAuthentication.AttestationBased(jwt, poPJWTSpec)
-                    },
-                deferredEndpoint = URI(deferredEndpoint).toURL(),
-                authorizationServerId = URI(authServerId).toURL(),
-                challengeEndpoint = challengeEndpoint?.let { URI.create(it).toURL() },
-                tokenEndpoint = URI(tokenEndpoint).toURL(),
-                requestEncryptionSpec = requestEncryptionSpec?.let { requestEncryption(it) },
-                responseEncryptionParams = responseEncryptionParams
-                    ?.let { responseEncryptionParams(it) },
-                dPoPSigner = dPoPSignerKid?.let { requireNotNull(recreatePopSigner).invoke(it) },
-            ),
-            authorizedTransaction = AuthorizedTransaction(
-                authorizedRequest = AuthorizedRequest(
-                    accessToken = accessToken.toAccessToken(),
-                    refreshToken = refreshToken?.toRefreshToken(),
-                    credentialIdentifiers = emptyMap(),
-                    timestamp = Instant.ofEpochSecond(authorizationTimestamp),
-                    authorizationServerDpopNonce = null,
-                    resourceServerDpopNonce = null,
-                    grant = grant.toGrant(),
-                ),
-                transactionId = TransactionId(transactionId),
-            ),
-
-            )
-    }
-
-    companion object {
-
-        fun <A> ClientAuthentication.ifAttested(getter: ClientAuthentication.AttestationBased.() -> A?): A? =
-            when (this) {
-                is ClientAuthentication.AttestationBased -> getter()
-                is ClientAuthentication.None -> null
-            }
-
-        fun from(
-            dCtx: DeferredIssuanceContext,
-            dPoPSignerKid: String?,
-            clientAttestationPopKeyId: String?,
-        ): DeferredIssuanceStoredContextTO {
-            val authorizedTransaction = dCtx.authorizedTransaction
-            return DeferredIssuanceStoredContextTO(
-                credentialIssuerId = dCtx.config.credentialIssuerId.toString(),
-                clientId = dCtx.config.clientAuthentication.id,
-                clientAttestationJwt = dCtx.config.clientAuthentication.ifAttested { attestationJWT.jwt.serialize() },
-                clientAttestationPopKeyId = dCtx.config.clientAuthentication.ifAttested { clientAttestationPopKeyId },
-                deferredEndpoint = dCtx.config.deferredEndpoint.toString(),
-                authServerId = dCtx.config.authorizationServerId.toString(),
-                tokenEndpoint = dCtx.config.tokenEndpoint.toString(),
-                requestEncryptionSpec = dCtx.config.requestEncryptionSpec
-                    ?.let { requestEncryptionSpecTO(it) },
-                responseEncryptionParams = dCtx.config.responseEncryptionParams
-                    ?.let { responseEncryptionParamsTO(it) },
-                dPoPSignerKid = dPoPSignerKid,
-                transactionId = authorizedTransaction.transactionId.value,
-                accessToken = AccessTokenTO.from(authorizedTransaction.authorizedRequest.accessToken),
-                refreshToken = authorizedTransaction.authorizedRequest.refreshToken
-                    ?.let { RefreshTokenTO.from(it) },
-                authorizationTimestamp = authorizedTransaction.authorizedRequest.timestamp.epochSecond,
-                grant = GrantTO.fromGrant(authorizedTransaction.authorizedRequest.grant),
-            )
-        }
-    }
-}
-
-private fun requestEncryptionSpecTO(spec: EncryptionSpec): JsonObject {
-    val jwkJson = Json.parseToJsonElement(spec.recipientKey.toJSONString())
-    return buildJsonObject {
-        put("recipient_key", jwkJson)
-        put("encryption_method", spec.encryptionMethod.toString())
-        spec.compressionAlgorithm?.let {
-            put("compression_algorithm", it.toString())
-        }
-    }
-}
-
-private fun requestEncryption(specTO: JsonObject): EncryptionSpec =
-    EncryptionSpec(
-        recipientKey = run {
-            val element = specTO["recipient_key"]
-            require(element is JsonObject)
-            JWK.parse(element.toString())
-        },
-        encryptionMethod = run {
-            val element = specTO["encryption_method"]
-            require(element is JsonPrimitive)
-            EncryptionMethod.parse(requireNotNull(element.contentOrNull))
-        },
-        compressionAlgorithm = run {
-            val element = specTO["compression_algorithm"]
-            element?.let {
-                require(it is JsonPrimitive)
-                CompressionAlgorithm(requireNotNull(it.contentOrNull))
-            }
-        },
+    // Build configuration
+    val config = DeferredIssuerConfig(
+        credentialIssuerId = CredentialIssuerId(dto.credentialIssuerId).getOrThrow(),
+        clientAuthentication = clientAuthentication,
+        deferredEndpoint = URI(dto.deferredEndpoint).toURL(),
+        authorizationServerId = URI(dto.authorizationServerId).toURL(),
+        challengeEndpoint = dto.challengeEndpoint?.let { URI(it).toURL() },
+        tokenEndpoint = URI(dto.tokenEndpoint).toURL(),
+        requestEncryptionSpec = reqEncSpec,
+        responseEncryptionParams = respEncParams,
+        dPoPSigner = dPoPSigner,
+        clock = Clock.systemUTC()
     )
 
-private fun responseEncryptionParamsTO(params: Pair<EncryptionMethod, CompressionAlgorithm?>): JsonObject =
-    buildJsonObject {
-        put("encryption_method", params.first.toString())
-        params.second?.let {
-            put("compression_algorithm", it.toString())
-        }
+    // Build transaction
+    val accessToken = if (dto.accessTokenType == "DPoP") {
+        AccessToken.DPoP(dto.accessToken, null)
+    } else {
+        AccessToken.Bearer(dto.accessToken, null)
     }
 
-private fun responseEncryptionParams(specTO: JsonObject): Pair<EncryptionMethod, CompressionAlgorithm?> {
-    val encryptionMethod = run {
-        val element = specTO["encryption_method"]
-        require(element is JsonPrimitive)
-        EncryptionMethod.parse(requireNotNull(element.contentOrNull))
-    }
-    val compressionAlgorithm = run {
-        val element = specTO["compression_algorithm"]
-        element?.let {
-            require(it is JsonPrimitive)
-            CompressionAlgorithm(requireNotNull(it.contentOrNull))
-        }
-    }
-    return encryptionMethod to compressionAlgorithm
+    val transaction = AuthorizedTransaction(
+        authorizedRequest = AuthorizedRequest(
+            accessToken = accessToken,
+            refreshToken = dto.refreshToken?.let { RefreshToken(it) },
+            credentialIdentifiers = emptyMap(),
+            timestamp = Instant.now(),
+            grant = Grant.AuthorizationCode,
+            authorizationServerDpopNonce = null,
+            resourceServerDpopNonce = null,
+        ),
+        transactionId = TransactionId(dto.transactionId)
+    )
+
+    return DeferredContext(
+        issuanceContext = DeferredIssuanceContext(config, transaction),
+        keyAliases = dto.popKeyAliases,
+        clientAttestationPopKeyId = dto.clientAttestationPopKeyId,
+        dPoPKeyAlias = dto.dPoPKeyAlias,
+        credentialConfigurationIdentifier = dto.credentialConfigurationIdentifier,
+        credentialEndpoint = dto.credentialEndpoint,
+        replacesDocumentId = dto.replacesDocumentId,
+    )
 }
 
+internal fun DeferredContext.toBytes(): ByteArray {
+    val tx = issuanceContext.authorizedTransaction
+    val cfg = issuanceContext.config
+
+    val (clientId, attestationJwt) = when (val auth = cfg.clientAuthentication) {
+        is ClientAuthentication.None -> auth.id to null
+        is ClientAuthentication.AttestationBased -> auth.id to auth.attestationJWT.jwt.serialize()
+        else -> auth.id to null
+    }
+
+    val dto = StoredDeferredContext(
+        credentialIssuerId = cfg.credentialIssuerId.toString(),
+        deferredEndpoint = cfg.deferredEndpoint.toString(),
+        tokenEndpoint = cfg.tokenEndpoint.toString(),
+        authorizationServerId = cfg.authorizationServerId.toString(),
+        challengeEndpoint = cfg.challengeEndpoint?.toString(),
+        clientId = clientId,
+        popKeyAliases = keyAliases,
+        dPoPKeyAlias = dPoPKeyAlias,
+        clientAttestationPopKeyId = clientAttestationPopKeyId,
+        clientAttestationJwt = attestationJwt,
+        transactionId = tx.transactionId.value,
+        accessToken = tx.authorizedRequest.accessToken.accessToken,
+        accessTokenType = if (tx.authorizedRequest.accessToken is AccessToken.DPoP) "DPoP" else "Bearer",
+        refreshToken = tx.authorizedRequest.refreshToken?.refreshToken,
+        requestEncryptionKeyJwk = cfg.requestEncryptionSpec?.recipientKey?.toJSONString(),
+        requestEncryptionMethod = cfg.requestEncryptionSpec?.encryptionMethod?.name,
+        responseEncryptionMethod = cfg.responseEncryptionParams?.first?.name,
+        credentialConfigurationIdentifier = credentialConfigurationIdentifier,
+        credentialEndpoint = credentialEndpoint,
+        replacesDocumentId = replacesDocumentId,
+    )
+
+    return Json.encodeToString(dto).toByteArray(Charsets.UTF_8)
+}
+
+private fun createSignerAdapter(walletKeyManager: WalletKeyManager, keyAlias: String): Signer<JWK> {
+    val key = runBlocking {
+        walletKeyManager.getWalletAttestationKey(keyAlias)
+    } ?: error("Key alias '$keyAlias' not found in WalletKeyManager")
+
+    return object : Signer<JWK> {
+        override val javaAlgorithm: String = key.keyInfo.algorithm.javaAlgorithm
+            ?: error("Key algorithm is required for alias $keyAlias")
+
+        override suspend fun acquire(): SignOperation<JWK> {
+            return SignOperation(
+                function = { inputData -> key.signFunction(inputData) },
+                publicMaterial = JWK.parse(key.keyInfo.publicKey.toJwk().toString())
+            )
+        }
+
+        override suspend fun release(signOperation: SignOperation<JWK>?) {
+            // No-op for Android Keystore
+        }
+    }
+}
