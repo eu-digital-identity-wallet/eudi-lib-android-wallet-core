@@ -28,5 +28,12 @@ internal data class StoredDeferredContext(
     // Encryption Specs
     val requestEncryptionKeyJwk: String? = null,
     val requestEncryptionMethod: String? = null,
-    val responseEncryptionMethod: String? = null
+    val responseEncryptionMethod: String? = null,
+
+    // Re-issuance metadata: needed to store ReissuanceConfig when deferred credential is issued
+    val credentialConfigurationIdentifier: String? = null,
+    val credentialEndpoint: String? = null,
+
+    // Re-issuance linkage: if this deferred credential replaces an existing document
+    val replacesDocumentId: String? = null
 )
