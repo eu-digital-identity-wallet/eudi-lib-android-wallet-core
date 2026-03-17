@@ -23,7 +23,7 @@ import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +36,7 @@ internal class ProcessDeferredOutcome(
     val callback: OpenId4VciManager.OnResult<DeferredIssueResult>,
     val deferredContext: DeferredContext?,
     val logger: Logger? = null,
-    val reissuanceStorage: Storage? = null,
+    val issuanceMetadataStorage: Storage? = null,
 ) {
 
     fun process(
@@ -87,10 +87,10 @@ internal class ProcessDeferredOutcome(
                             logger?.d(TAG, "Deleted old document $oldDocId after deferred re-issuance")
                         }
 
-                        // Store re-issuance metadata so the new document can be re-issued later
-                        if (reissuanceStorage != null && deferredContext != null) {
+                        // Store issuance metadata so the new document can be re-issued later
+                        if (issuanceMetadataStorage != null && deferredContext != null) {
                             CoroutineScope(Dispatchers.IO).launch {
-                                storeReissuanceMetadata(document.id, deferredContext, keyAliases)
+                                storeIssuanceMetadata(document.id, deferredContext, keyAliases)
                             }
                         }
 
@@ -111,12 +111,12 @@ internal class ProcessDeferredOutcome(
         }
     }
 
-    private suspend fun storeReissuanceMetadata(
+    private suspend fun storeIssuanceMetadata(
         documentId: String,
         deferredContext: DeferredContext,
         keyAliases: List<String>,
     ) {
-        val storage = reissuanceStorage ?: return
+        val storage = issuanceMetadataStorage ?: return
         val credentialConfigId = deferredContext.credentialConfigurationIdentifier ?: return
         val credentialEndpoint = deferredContext.credentialEndpoint ?: return
 
@@ -131,7 +131,7 @@ internal class ProcessDeferredOutcome(
                 else -> auth.id to null
             }
 
-            val reissuanceConfig = ReissuanceConfig(
+            val issuanceMetadata = IssuanceMetadata(
                 credentialIssuerId = cfg.credentialIssuerId.toString(),
                 credentialConfigurationIdentifier = credentialConfigId,
                 credentialEndpoint = credentialEndpoint,
@@ -157,17 +157,17 @@ internal class ProcessDeferredOutcome(
                 },
             )
 
-            val table = storage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
-            table.insert(key = documentId, data = ByteString(reissuanceConfig.toByteArray()))
+            val table = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+            table.insert(key = documentId, data = ByteString(issuanceMetadata.toByteArray()))
 
-            logger?.d(TAG, "Stored re-issuance metadata for deferred document $documentId")
+            logger?.d(TAG, "Stored issuance metadata for deferred document $documentId")
         }.onFailure { error ->
             logger?.log(
                 Logger.Record(
                     level = Logger.Companion.LEVEL_ERROR,
-                    message = "Failed to store re-issuance metadata for deferred document $documentId: ${error.message}",
+                    message = "Failed to store issuance metadata for deferred document $documentId: ${error.message}",
                     sourceClassName = "ProcessDeferredOutcome",
-                    sourceMethod = "storeReissuanceMetadata",
+                    sourceMethod = "storeIssuanceMetadata",
                     thrown = error
                 )
             )

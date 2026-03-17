@@ -29,36 +29,36 @@ import kotlinx.coroutines.launch
 import org.multipaz.storage.Storage
 
 /**
- * [DocumentManagerWithReissuance] is a wrapper around [DocumentManager] that cleans up
- * re-issuance metadata when documents are deleted.
+ * [DocumentManagerWithMetadataCleanup] is a wrapper around [DocumentManager] that cleans up
+ * issuance metadata when documents are deleted.
  *
  * This ensures that when the wallet-ui (or any caller) deletes a document via
- * [deleteDocumentById], the corresponding re-issuance metadata is also removed.
+ * [deleteDocumentById], the corresponding issuance metadata is also removed.
  *
  * @property delegate The delegate [DocumentManager] instance.
- * @property reissuanceStorage The storage containing re-issuance metadata.
+ * @property issuanceMetadataStorage The storage containing issuance metadata.
  * @property logger Optional logger for logging events.
  */
-internal class DocumentManagerWithReissuance(
+internal class DocumentManagerWithMetadataCleanup(
     private val delegate: DocumentManager,
-    private val reissuanceStorage: Storage,
+    private val issuanceMetadataStorage: Storage,
     private val logger: Logger? = null,
 ) : DocumentManager by delegate {
 
     override fun deleteDocumentById(documentId: DocumentId): Outcome<ProofOfDeletion?> {
         return delegate.deleteDocumentById(documentId).also {
-            deleteReissuanceMetadata(documentId)
+            deleteIssuanceMetadata(documentId)
         }
     }
 
-    private fun deleteReissuanceMetadata(documentId: DocumentId) {
+    private fun deleteIssuanceMetadata(documentId: DocumentId) {
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
+                val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
                 table.delete(documentId)
-                logger?.d(TAG, "Deleted re-issuance metadata for old document $documentId")
+                logger?.d(TAG, "Deleted issuance metadata for old document $documentId")
             }.onFailure { error ->
-                logger?.d(TAG, "Failed to delete re-issuance metadata for $documentId: ${error.message}")
+                logger?.d(TAG, "Failed to delete issuance metadata for $documentId: ${error.message}")
             }
         }
     }

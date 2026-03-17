@@ -30,7 +30,7 @@ internal data class StoredDeferredContext(
     val requestEncryptionMethod: String? = null,
     val responseEncryptionMethod: String? = null,
 
-    // Re-issuance metadata: needed to store ReissuanceConfig when deferred credential is issued
+    // Metadata required for ReIssuance: needed to store IssuanceMetadata when deferred credential is issued
     val credentialConfigurationIdentifier: String? = null,
     val credentialEndpoint: String? = null,
 
