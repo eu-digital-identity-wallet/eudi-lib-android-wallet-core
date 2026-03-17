@@ -19,7 +19,6 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
-import eu.europa.ec.eudi.openid4vci.Grant
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DocumentId
@@ -28,7 +27,7 @@ import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +50,7 @@ internal class ProcessResponse(
     val issuer: Issuer,
     val documentToConfigurationMap: Map<UnsignedDocument, Offer.OfferedDocument>,
     val dpopKeyAlias: String,
-    val reissuanceStorage: Storage,
+    val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
     val replacesDocumentId: DocumentId? = null,
 ) {
@@ -116,9 +115,9 @@ internal class ProcessResponse(
             }.onSuccess { document ->
                 issuedDocumentIds.add(document.id)
 
-                // Store re-issuance metadata in background coroutine
+                // Store issuance metadata in background coroutine
                 CoroutineScope(Dispatchers.IO).launch {
-                    storeReissuanceMetadata(document.id, unsignedDocument, keyAliases)
+                    storeIssuanceMetadata(document.id, unsignedDocument, keyAliases)
                 }
 
                 listener(IssueEvent.DocumentIssued(document))
@@ -164,7 +163,7 @@ internal class ProcessResponse(
     }
 
     /**
-     * Stores re-issuance metadata for a successfully issued document.
+     * Stores issuance metadata for a successfully issued document.
      *
      * This method captures all necessary metadata to enable credential re-issuance later
      * without requiring the user to go through the full authorization flow again.
@@ -173,22 +172,15 @@ internal class ProcessResponse(
      * @param unsignedDocument The unsigned document that was issued
      * @param keyAliases The PoP key aliases used for this document
      */
-    private suspend fun storeReissuanceMetadata(
+    private suspend fun storeIssuanceMetadata(
         documentId: DocumentId,
         unsignedDocument: UnsignedDocument,
         keyAliases: List<String>,
     ) {
-        // TODO redundant declare Storage non-nullable
-//        val storage = reissuanceStorage ?: return // Re-issuance storage not configured
-//        val authRequest = requireNotNull(authorizedRequest) { "AuthorizedRequest is required to store re-issuance metadata" }
-//        val currentIssuer = requireNotNull(issuer) { "Issuer is required to store re-issuance metadata" }
 
-        // Only store if refresh token exists (otherwise re-issuance won't work)
-        // TODO investigate this maybe we should continue the flow if null
         val refreshToken = authorizedRequest.refreshToken?.refreshToken
 
         runCatching {
-//            val configMap = requireNotNull(documentToConfigurationMap) { "documentToConfigurationMap is required" }
             val credentialConfigurationId = requireNotNull(
                 documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value
             ) { "Credential configuration identifier not found for document" }
@@ -199,15 +191,14 @@ internal class ProcessResponse(
             val authServerMetadata = credentialOffer.authorizationServerMetadata
 
             // Extract client ID and WIA JWT directly from ClientAuthentication
-            // Following the pattern from Extensions.kt (DeferredIssuanceContext.serialize)
             val (clientId, clientAttestationJwt) = when (val auth = clientAuthentication) {
                 is ClientAuthentication.None -> auth.id to null
                 is ClientAuthentication.AttestationBased -> auth.id to auth.attestationJWT.jwt.serialize()
                 else -> authServerMetadata.issuer.toString() to null
             }
 
-            // Create re-issuance config
-            val reissuanceConfig = ReissuanceConfig(
+            // Create issuance metadata
+            val issuanceMetadata = IssuanceMetadata(
                 credentialIssuerId = issuerMetadata.credentialIssuerIdentifier.toString(),
                 credentialConfigurationIdentifier = credentialConfigurationId,
                 credentialEndpoint = issuerMetadata.credentialEndpoint.toString(),
@@ -233,20 +224,20 @@ internal class ProcessResponse(
                 },
             )
 
-            val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
+            val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
 
-            val bytes = ByteString(reissuanceConfig.toByteArray())
+            val bytes = ByteString(issuanceMetadata.toByteArray())
             table.insert(key = documentId, data = bytes)
 
-            logger?.d(TAG, "Stored re-issuance metadata for document $documentId")
+            logger?.d(TAG, "Stored issuance metadata for document $documentId")
         }.onFailure { error ->
             // Log but don't fail the issuance if metadata storage fails
             logger?.log(
                 Logger.Record(
                     level = Logger.Companion.LEVEL_ERROR,
-                    message = "Failed to store re-issuance metadata for document $documentId: ${error.message}",
+                    message = "Failed to store issuance metadata for document $documentId: ${error.message}",
                     sourceClassName = "ProcessResponse",
-                    sourceMethod = "storeReissuanceMetadata",
+                    sourceMethod = "storeIssuanceMetadata",
                     thrown = error
                 )
             )

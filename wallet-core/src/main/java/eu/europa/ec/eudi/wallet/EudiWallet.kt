@@ -28,7 +28,7 @@ import eu.europa.ec.eudi.wallet.dcapi.DCAPIRegistration
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequestProcessor
 import eu.europa.ec.eudi.wallet.dcapi.DocumentManagerWithDCAPI
 import eu.europa.ec.eudi.wallet.dcapi.getDefaultPrivilegedUserAgents
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithReissuance
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMetadataCleanup
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -361,11 +361,11 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             ensureStrongBoxIsSupported(loggerToUse)
             ensureUserAuthIsSupported(loggerToUse)
 
-            // Create shared reissuance storage (used by both the wrapper and OpenId4VciManager)
-            val reissuanceStorage = config.openId4VciConfig?.reissuanceMetadataStorage ?: run {
+            // Create shared issuance metadata storage (used by both the wrapper and OpenId4VciManager)
+            val issuanceMetadataStorage = config.openId4VciConfig?.issuanceMetadataStorage ?: run {
                 val storagePath = File(
                     context.noBackupFilesDir,
-                    "reissuance_metadata.db"
+                    "issuance_metadata.db"
                 ).absolutePath
                 AndroidStorage(storagePath)
             }
@@ -373,12 +373,12 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             val documentManagerToUse =
                 (documentManager ?: getDefaultDocumentManager(storage, secureAreas))
                     .let { manager ->
-                        // Always wrap with reissuance metadata cleanup.
+                        // Always wrap with metadata cleanup.
                         // OpenId4VciManager may be created later via createOpenId4VciManager(),
                         // so we cannot gate this on config.openId4VciConfig being set at build time.
-                        DocumentManagerWithReissuance(
+                        DocumentManagerWithMetadataCleanup(
                             delegate = manager,
-                            reissuanceStorage = reissuanceStorage,
+                            issuanceMetadataStorage = issuanceMetadataStorage,
                             logger = loggerToUse
                         )
                     }
@@ -417,7 +417,7 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
                 documentStatusResolver = documentStatusResolverToUse,
                 transactionLogger = transactionLogger,
                 ktorHttpClientFactory = ktorHttpClientFactory,
-                reissuanceStorage = reissuanceStorage
+                issuanceMetadataStorage = issuanceMetadataStorage
             )
         }
 

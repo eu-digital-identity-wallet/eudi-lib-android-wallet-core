@@ -59,7 +59,7 @@ class EudiWalletImpl internal constructor(
     override val walletKeyManager: WalletKeyManager,
     val transactionLogger: TransactionLogger?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
-    val reissuanceStorage: Storage?,
+    val issuanceMetadataStorage: Storage?,
 ) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
     SampleDocumentManager by SampleDocumentManagerImpl(documentManager),
     DocumentStatusResolver by documentStatusResolver {
@@ -99,9 +99,9 @@ class EudiWalletImpl internal constructor(
             "OpenId4Vci configuration is missing. Please provide a config parameter or configure it in EudiWalletConfig."
         )
 
-        // Inject the shared reissuance storage into the config if not already set
-        val configWithStorage = if (reissuanceStorage != null && resolvedConfig.reissuanceMetadataStorage == null) {
-            resolvedConfig.copy(reissuanceMetadataStorage = reissuanceStorage)
+        // Inject the shared issuance metadata storage into the config if not already set
+        val configWithStorage = if (issuanceMetadataStorage != null && resolvedConfig.issuanceMetadataStorage == null) {
+            resolvedConfig.copy(issuanceMetadataStorage = issuanceMetadataStorage)
         } else resolvedConfig
 
         val httpClientFactory = ktorHttpClientFactory ?: this.ktorHttpClientFactory
