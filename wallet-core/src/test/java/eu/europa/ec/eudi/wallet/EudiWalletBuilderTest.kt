@@ -20,6 +20,7 @@ import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMetadataCleanup
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
@@ -155,6 +156,7 @@ class EudiWalletBuilderTest {
         // Setup
         val context: Context = mockk {
             every { applicationContext } returns this
+            every { noBackupFilesDir } returns File("no-backup")
         }
 
         val capabilities = mockk<AndroidKeystoreSecureArea.Capabilities> {
@@ -176,9 +178,10 @@ class EudiWalletBuilderTest {
 
         // Verify
         assertIs<EudiWalletImpl>(wallet)
-        assertEquals(customDocumentManager, wallet.documentManager)
+        // documentManager is wrapped with DocumentManagerWithMetadataCleanup for metadata cleanup
+        assertIs<DocumentManagerWithMetadataCleanup>(wallet.documentManager)
         verify(exactly = 0) { builder.getDefaultDocumentManager(any(), any()) }
-        verify(exactly = 1) { builder.getTransferManager(customDocumentManager, null) }
+        verify(exactly = 1) { builder.getTransferManager(any(), null) }
     }
 
     @Test

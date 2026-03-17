@@ -23,17 +23,17 @@ import eu.europa.ec.eudi.openid4vci.RefreshToken
 import java.time.Instant
 
 /**
- * Helper functions for credential re-issuance.
+ * Helper for credential re-issuance.
  *
- * This object provides utility functions to restore runtime objects from stored [ReissuanceConfig].
+ * This class provides utility functions to restore runtime objects from stored [IssuanceMetadata].
  * The actual re-issuance flow is handled by `DefaultOpenId4VciManager.reissueDocument()`.
  *
- * @see ReissuanceConfig
+ * @see IssuanceMetadata
  */
-internal object ReissuanceIssuer {
+internal class ReissuanceIssuer {
 
     /**
-     * Reconstructs an [AuthorizedRequest] from stored [ReissuanceConfig].
+     * Reconstructs an [AuthorizedRequest] from stored [IssuanceMetadata].
      *
      * Following the pattern from Extensions.kt's `restore()` function for deferred issuance.
      * This recreates the runtime [AuthorizedRequest] object from serialized data,
@@ -43,10 +43,10 @@ internal object ReissuanceIssuer {
      * Note: credentialIdentifiers and DPoP nonces are initialized as null/empty,
      * as they will be updated during the re-issuance flow by the library.
      *
-     * @param config The stored re-issuance configuration
+     * @param config The stored credential metadata
      * @return The reconstructed [AuthorizedRequest]
      */
-    fun reconstructAuthorizedRequest(config: ReissuanceConfig): AuthorizedRequest {
+    fun reconstructAuthorizedRequest(config: IssuanceMetadata): AuthorizedRequest {
         val accessToken = when (config.accessTokenType) {
             "DPoP" -> AccessToken.DPoP(config.accessToken, expiresIn = null)
             "Bearer" -> AccessToken.Bearer(config.accessToken, expiresIn = null)

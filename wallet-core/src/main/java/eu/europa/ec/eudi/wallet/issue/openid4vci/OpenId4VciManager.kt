@@ -429,7 +429,7 @@ interface OpenId4VciManager {
         val authorizationHandler: AuthorizationHandler? = null,
         val dpopConfig: DPopConfig = DPopConfig.Default,
         @ParUsage val parUsage: Int = IF_SUPPORTED,
-        val reissuanceMetadataStorage: Storage? = null,
+        val issuanceMetadataStorage: Storage? = null,
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -542,7 +542,7 @@ interface OpenId4VciManager {
             @ParUsage
             var parUsage: Int = IF_SUPPORTED
 
-            var reissuanceMetadataStorage: Storage? = null
+            var issuanceMetadataStorage: Storage? = null
 
             /**
              * Set the issuer url
@@ -671,7 +671,7 @@ interface OpenId4VciManager {
             }
 
             /**
-             * Sets the storage for credential re-issuance metadata.
+             * Sets the storage for issuance metadata.
              *
              * When configured, the library will automatically store metadata after successful
              * credential issuance, enabling credentials to be re-issued later without requiring
@@ -684,18 +684,16 @@ interface OpenId4VciManager {
              * - DPoP key alias (if DPoP was used)
              * - Client attestation information (if attestation-based auth was used)
              *
-             * **Storage Key Format**: `"reissuance_<documentId>"`
-             *
              * If not set, a default [org.multipaz.storage.android.AndroidStorage] will be used
-             * with a separate database file for re-issuance metadata.
+             * with a separate database file for issuance metadata.
              *
-             * @param storage The [Storage] implementation for re-issuance metadata, or null to use default
+             * @param storage The [Storage] implementation for issuance metadata, or null to use default
              * @return This builder instance for method chaining
              * @see Storage
-             * @see eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
+             * @see eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
              */
-            fun withReissuanceMetadataStorage(storage: Storage?) = apply {
-                this.reissuanceMetadataStorage = storage
+            fun withIssuanceMetadataStorage(storage: Storage?) = apply {
+                this.issuanceMetadataStorage = storage
             }
 
             /**
@@ -715,7 +713,7 @@ interface OpenId4VciManager {
                     authFlowRedirectionURI = authFlowRedirectionURI,
                     dpopConfig = dpopConfig,
                     parUsage = parUsage,
-                    reissuanceMetadataStorage = reissuanceMetadataStorage
+                    issuanceMetadataStorage = issuanceMetadataStorage
                 )
             }
         }
