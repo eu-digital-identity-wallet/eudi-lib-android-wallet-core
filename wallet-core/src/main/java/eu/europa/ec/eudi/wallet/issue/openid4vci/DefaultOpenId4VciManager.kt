@@ -41,7 +41,7 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceConfig
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
@@ -96,14 +96,14 @@ internal class DefaultOpenId4VciManager(
     }
 
     /**
-     * Storage for re-issuance metadata.
+     * Storage for issuance metadata.
      * If not configured in [config], uses a default AndroidStorage with a separate database file.
      */
-    private val reissuanceStorage: Storage by lazy {
-        config.reissuanceMetadataStorage ?: run {
+    private val issuanceMetadataStorage: Storage by lazy {
+        config.issuanceMetadataStorage ?: run {
             val storagePath = File(
                 context.noBackupFilesDir,
-                "reissuance_metadata.db"
+                "issuance_metadata.db"
             ).absolutePath
             AndroidStorage(storagePath)
         }
@@ -273,7 +273,7 @@ internal class DefaultOpenId4VciManager(
                                 )
                             } ?: deferredContext,
                             logger = logger,
-                            reissuanceStorage = reissuanceStorage,
+                            issuanceMetadataStorage = issuanceMetadataStorage,
                         ).process(deferredDocument, deferredContext.keyAliases, outcome)
                     }
                 }
@@ -315,22 +315,22 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                //  Load re-issuance config from storage
-                val reissuanceConfig = loadReissuanceConfig(documentId)
-                    ?: throw IllegalStateException("No re-issuance metadata found for document $documentId")
+                //  Load issuance metadata from storage
+                val issuanceMetadata = loadIssuanceMetadata(documentId)
+                    ?: throw IllegalStateException("No issuance metadata found for document $documentId")
 
-                logger?.d(TAG, "Loaded reissuanceConfig: credentialIssuerId=${reissuanceConfig.credentialIssuerId}")
+                logger?.d(TAG, "Loaded issuanceMetadata: credentialIssuerId=${issuanceMetadata.credentialIssuerId}")
 
-                //  Reconstruct AuthorizedRequest from stored config
-                var authorizedRequest = ReissuanceIssuer.reconstructAuthorizedRequest(reissuanceConfig)
+                //  Reconstruct AuthorizedRequest from stored metadata
+                var authorizedRequest = ReissuanceIssuer().reconstructAuthorizedRequest(issuanceMetadata)
 
                 //  Create Issuer using IssuerCreator (resolves issuer metadata)
                 //  Pass existing DPoP key alias so the same key is reused
                 //  (access token is bound to original key's thumbprint)
                 val issuer = issuerCreator.createIssuer(
-                    reissuanceConfig.credentialIssuerId,
-                    listOf(CredentialConfigurationIdentifier(reissuanceConfig.credentialConfigurationIdentifier)),
-                    existingDpopKeyAlias = reissuanceConfig.dPoPKeyAlias
+                    issuanceMetadata.credentialIssuerId,
+                    listOf(CredentialConfigurationIdentifier(issuanceMetadata.credentialConfigurationIdentifier)),
+                    existingDpopKeyAlias = issuanceMetadata.dPoPKeyAlias
                 )
                 val offer = Offer(issuer.credentialOffer)
 
@@ -380,7 +380,7 @@ internal class DefaultOpenId4VciManager(
                     issuer = issuer,
                     documentToConfigurationMap = requestMap,
                     dpopKeyAlias = issuerCreator.dpopKeyAlias,
-                    reissuanceStorage = reissuanceStorage,
+                    issuanceMetadataStorage = issuanceMetadataStorage,
                     clientAuthentication = issuerCreator.clientAuthentication,
                     replacesDocumentId = documentId,
                 ).process(response)
@@ -431,15 +431,15 @@ internal class DefaultOpenId4VciManager(
     }
 
     /**
-     * Loads re-issuance configuration from storage.
+     * Loads issuance metadata from storage.
      *
      * @param documentId The document ID
-     * @return The re-issuance config, or null if not found
+     * @return The issuance metadata, or null if not found
      */
-    private suspend fun loadReissuanceConfig(documentId: DocumentId): ReissuanceConfig? {
-        val table = reissuanceStorage.getTable(ReissuanceConfig.STORAGE_TABLE_SPEC)
+    private suspend fun loadIssuanceMetadata(documentId: DocumentId): IssuanceMetadata? {
+        val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
         val bytes = table.get(documentId) ?: return null
-        return ReissuanceConfig.fromByteArray(bytes.toByteArray())
+        return IssuanceMetadata.fromByteArray(bytes.toByteArray())
     }
 
     /**
@@ -478,7 +478,7 @@ internal class DefaultOpenId4VciManager(
             issuer = issuer,
             documentToConfigurationMap = requestMap,
             dpopKeyAlias = issuerCreator.dpopKeyAlias,
-            reissuanceStorage = reissuanceStorage,
+            issuanceMetadataStorage = issuanceMetadataStorage,
             clientAuthentication = issuerCreator.clientAuthentication,
         ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))

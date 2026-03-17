@@ -55,7 +55,7 @@ import org.multipaz.storage.StorageTableSpec
  * @property grantType "authorization_code" or "pre-authorized_code"
  */
 @Serializable
-data class ReissuanceConfig(
+data class IssuanceMetadata(
     // Issuer identifiers
     val credentialIssuerId: String,
     val credentialConfigurationIdentifier: String,
@@ -84,55 +84,38 @@ data class ReissuanceConfig(
 ) {
     companion object {
         /**
-         * Shared [StorageTableSpec] for the re-issuance metadata table.
+         * Shared [StorageTableSpec] for the issuance metadata table.
          *
          * Multipaz [org.multipaz.storage.Storage] requires a single [StorageTableSpec] instance
          * per table name. This constant must be used by all callers that access the
-         * `"reissuance_metadata"` table.
+         * `"issuance_metadata"` table.
          */
         internal val STORAGE_TABLE_SPEC = StorageTableSpec(
-            name = "reissuance_metadata",
+            name = "issuance_metadata",
             supportPartitions = false,
             supportExpiration = false
         )
 
         /**
-         * Deserializes a [ReissuanceConfig] from a [ByteArray].
+         * Deserializes an [IssuanceMetadata] from a [ByteArray].
          *
-         * This method reconstructs a [ReissuanceConfig] from its serialized JSON form.
-         * The ByteArray should have been created using [ReissuanceConfig.toByteArray].
+         * This method reconstructs an [IssuanceMetadata] from its serialized JSON form.
+         * The ByteArray should have been created using [IssuanceMetadata.toByteArray].
          *
          * @param bytes The serialized ByteArray
-         * @return The deserialized [ReissuanceConfig]
+         * @return The deserialized [IssuanceMetadata]
          * @throws Exception if the bytes are invalid or corrupted
          */
-        fun fromByteArray(bytes: ByteArray): ReissuanceConfig {
-            return Json.decodeFromString<ReissuanceConfig>(bytes.toString(Charsets.UTF_8))
+        fun fromByteArray(bytes: ByteArray): IssuanceMetadata {
+            return Json.decodeFromString<IssuanceMetadata>(bytes.toString(Charsets.UTF_8))
         }
     }
 
     /**
-     * Serializes this [ReissuanceConfig] to a [ByteArray] for storage.
+     * Serializes this [IssuanceMetadata] to a [ByteArray] for storage.
      *
-     * This method converts the re-issuance configuration into a JSON-encoded ByteArray
+     * This method converts the issuance metadata into a JSON-encoded ByteArray
      * that can be stored in a multipaz Storage table. Use [fromByteArray] to deserialize.
-     *
-     * Example usage with [org.multipaz.storage.Storage]:
-     * ```kotlin
-     * // Get storage table
-     * val table = storage.getTable(
-     *     StorageTableSpec(name = "reissuance_metadata", supportPartitions = false, supportExpiration = false)
-     * )
-     *
-     * // Serialize and store
-     * val bytes = config.toByteArray()
-     * val storageKey = "reissuance_$documentId"
-     * table.insert(key = storageKey, data = bytes)
-     *
-     * // Retrieve and deserialize later
-     * val storedBytes = table.get(storageKey)
-     * val loadedConfig = storedBytes?.let { ReissuanceConfig.fromByteArray(it) }
-     * ```
      *
      * @return The serialized ByteArray
      */
