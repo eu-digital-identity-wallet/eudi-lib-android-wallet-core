@@ -373,9 +373,6 @@ interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatu
             val documentManagerToUse =
                 (documentManager ?: getDefaultDocumentManager(storage, secureAreas))
                     .let { manager ->
-                        // Always wrap with metadata cleanup.
-                        // OpenId4VciManager may be created later via createOpenId4VciManager(),
-                        // so we cannot gate this on config.openId4VciConfig being set at build time.
                         DocumentManagerWithMetadataCleanup(
                             delegate = manager,
                             issuanceMetadataStorage = issuanceMetadataStorage,
