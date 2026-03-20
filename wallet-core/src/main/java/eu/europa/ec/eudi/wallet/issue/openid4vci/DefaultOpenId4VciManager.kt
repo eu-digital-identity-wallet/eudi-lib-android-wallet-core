@@ -42,6 +42,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
@@ -310,6 +311,7 @@ internal class DefaultOpenId4VciManager(
 
     override fun reissueDocument(
         documentId: DocumentId,
+        allowAuthorizationFallback: Boolean,
         executor: Executor?,
         onIssueEvent: OpenId4VciManager.OnIssueEvent
     ) {
@@ -347,7 +349,7 @@ internal class DefaultOpenId4VciManager(
                 listener(IssueEvent.Started(requestMap.size))
 
                 //  Submit the issuance request using stored AuthorizedRequest
-                //    (skips the authorization flow - uses refresh token instead)
+                //  (skips the authorization flow - uses refresh token instead)
                 val submit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
                 var response = submit.request(requestMap).also {
                     authorizedRequest = submit.authorizedRequest
@@ -357,6 +359,11 @@ internal class DefaultOpenId4VciManager(
                 //    This happens when both stored access token AND refresh token are invalid.
                 //    Fall back to full OAuth authorization flow and retry with fresh tokens.
                 if (isAuthenticationFailure(response)) {
+                    if (!allowAuthorizationFallback) {
+                        throw ReissuanceAuthorizationException(
+                            "Re-issuance of document $documentId requires user authorization (tokens expired)"
+                        )
+                    }
                     logger?.d(TAG, "Re-issuance token expired for $documentId, falling back to full authorization")
                     authorizedRequest = issuerAuthorization.authorize(issuer, null)
                     val retrySubmit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)

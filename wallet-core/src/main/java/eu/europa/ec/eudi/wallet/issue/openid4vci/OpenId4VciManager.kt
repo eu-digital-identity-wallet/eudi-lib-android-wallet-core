@@ -182,12 +182,18 @@ interface OpenId4VciManager {
      * - Re-issuing after credential revocation
      *
      * @param documentId the ID of the document to re-issue
+     * @param allowAuthorizationFallback if `true` (default), falls back to a full OAuth authorization
+     *   flow when stored tokens are expired. Set to `false` for background re-issuance (e.g. WorkManager)
+     *   where opening a browser is not possible; in this case, a [eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException] is
+     *   delivered via [IssueEvent.Failure] instead.
      * @param executor the executor defines the thread on which the callback will be called. If null, the callback will be called on the main thread
      * @param onIssueEvent the callback to be called during the re-issuance process
      * @see OnIssueEvent for the possible events during re-issuance
+     * @see eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
      */
     fun reissueDocument(
         documentId: DocumentId,
+        allowAuthorizationFallback: Boolean = true,
         executor: Executor? = null,
         onIssueEvent: OnIssueEvent,
     )
