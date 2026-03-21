@@ -25,10 +25,15 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.openid4vp.Format
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimPath
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimPathElement
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimsQuery
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
+import eu.europa.ec.eudi.openid4vp.dcql.fold
 import eu.europa.ec.eudi.openid4vp.dcql.metaMsoMdoc
 import eu.europa.ec.eudi.openid4vp.dcql.metaSdJwtVc
 import eu.europa.ec.eudi.openid4vp.legalName
+import eu.europa.ec.eudi.wallet.document.format.DocumentClaim
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
@@ -43,6 +48,12 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
 
 /**
  * Processes OpenID4VP requests using DCQL (Digital Credentials Query Language).
@@ -215,16 +226,27 @@ class DcqlRequestProcessor(
         vctValues: List<String>,
         readerAuth: ReaderAuth?,
     ): RequestedDocuments {
-        // Map requested claims to SdJwtVcItems
+        // Map requested claims to SdJwtVcItems, preserving the typed ClaimPath
         val requestedItems = query.claims?.associate { claim ->
-            SdJwtVcItem(path = claim.path.value.map { it.toString() }) to (claim.intentToRetain == true)
+            SdJwtVcItem(path = claim.path) to (claim.intentToRetain == true)
         }
 
         // Find all documents that match any of the requested vctValues
-        val documents = runBlocking {
+        val allDocuments = runBlocking {
             vctValues.flatMap {
                 findDocumentsByFormat(SdJwtVcFormat(it))
             }
+        }
+
+        // Filter documents by values constraints if any claims have values specified
+        val documents = if (query.claims?.any { it.values != null } == true) {
+            allDocuments.filter { document ->
+                query.claims!!.all { claim ->
+                    matchesClaimValues(document.data.claims, claim, isMsoMdoc = false)
+                }
+            }
+        } else {
+            allDocuments
         }
 
         val requestedDocuments = RequestedDocuments(documents.map { document ->
@@ -234,7 +256,11 @@ class DcqlRequestProcessor(
                 requestedItems = requestedItems ?: (getAllClaimPathsFrom(
                     claims = document.data.claims.filterIsInstance<SdJwtVcClaim>(),
                     rootPath = emptyList()
-                ).associate { path -> SdJwtVcItem(path) to false }),
+                ).associate { path ->
+                    SdJwtVcItem(
+                        ClaimPath(path.map { ClaimPathElement.Claim(it) })
+                    ) to false
+                }),
                 readerAuth = readerAuth
             )
         })
@@ -266,15 +292,30 @@ class DcqlRequestProcessor(
         val documents =
             runBlocking { findDocumentsByFormat(format = MsoMdocFormat(docType)) }
 
-        // Map requested claims to MsoMdocItems or use all available claims if none specified
+        // Map requested claims to MsoMdocItems
+        // MsoMdoc DCQL paths have at least 2 Claim elements: [namespace, elementIdentifier, ...]
+        // Additional path elements (e.g., null for array traversal) are used for values matching.
         val requestedItems = query.claims?.associate { claim ->
+            val namespace = (claim.path.value[0] as ClaimPathElement.Claim).name
+            val elementIdentifier = (claim.path.value[1] as ClaimPathElement.Claim).name
             MsoMdocItem(
-                namespace = claim.path.value.first().toString(),
-                elementIdentifier = claim.path.value.last().toString()
+                namespace = namespace,
+                elementIdentifier = elementIdentifier
             ) to (claim.intentToRetain == true)
         }
 
-        val requestedDocuments = RequestedDocuments(documents.map { document ->
+        // Filter documents by values constraints if any claims have values specified
+        val filteredDocuments = if (query.claims?.any { it.values != null } == true) {
+            documents.filter { document ->
+                query.claims!!.all { claim ->
+                    matchesClaimValues(document.data.claims, claim, isMsoMdoc = true)
+                }
+            }
+        } else {
+            documents
+        }
+
+        val requestedDocuments = RequestedDocuments(filteredDocuments.map { document ->
             RequestedDocument(
                 documentId = document.id,
                 requestedItems = requestedItems ?: document.data.claims
@@ -392,6 +433,149 @@ class DcqlRequestProcessor(
         }
 
         return targetClaim
+    }
+
+    /**
+     * Checks if a document's claims satisfy a DCQL claim query's values constraint.
+     *
+     * If the claim query has no values constraint, returns true (no filtering needed).
+     * Otherwise, resolves the claim value at the given path and checks if it matches
+     * any of the requested values.
+     *
+     * For paths containing [ClaimPathElement.AllArrayElements] (null), all array elements
+     * are checked — if ANY element matches ANY requested value, the constraint is satisfied.
+     *
+     * @param claims The document's claims
+     * @param claimQuery The DCQL claim query with path and optional values
+     * @param isMsoMdoc Whether the document is MsoMdoc format
+     * @return true if the values constraint is satisfied or absent
+     */
+    private fun matchesClaimValues(
+        claims: List<DocumentClaim>,
+        claimQuery: ClaimsQuery,
+        isMsoMdoc: Boolean,
+    ): Boolean {
+        val requestedValues = claimQuery.values ?: return true // No values constraint
+
+        // Resolve the claim value at the path
+        val claimValue = if (isMsoMdoc) {
+            val namespace = (claimQuery.path.value[0] as ClaimPathElement.Claim).name
+            val elementId = (claimQuery.path.value[1] as ClaimPathElement.Claim).name
+            val claim = claims.filterIsInstance<MsoMdocClaim>()
+                .find { it.nameSpace == namespace && it.identifier == elementId }
+                ?: return false
+            // If path has more than 2 elements, navigate deeper into the value
+            val remainingPath = claimQuery.path.value.drop(2)
+            if (remainingPath.isEmpty()) claim.value else resolveValueAtPath(claim.value, remainingPath)
+        } else {
+            // SD-JWT VC: navigate the claim hierarchy
+            val sdJwtClaims = claims.filterIsInstance<SdJwtVcClaim>()
+            resolveValueFromSdJwtClaims(sdJwtClaims, claimQuery.path.value)
+        }
+
+        // Check if the resolved value matches any of the requested values
+        return valueMatchesAny(claimValue, requestedValues)
+    }
+
+    /**
+     * Resolves a value by navigating through an object/array structure following path elements.
+     *
+     * @param value The current value to navigate into
+     * @param path The remaining path elements to follow
+     * @return The resolved value(s), or a List of values when a wildcard expands to multiple results
+     */
+    private fun resolveValueAtPath(value: Any?, path: List<ClaimPathElement>): Any? {
+        if (path.isEmpty() || value == null) return value
+
+        val head = path.first()
+        val tail = path.drop(1)
+
+        return head.fold(
+            ifClaim = { name ->
+                when (value) {
+                    is Map<*, *> -> resolveValueAtPath(value[name], tail)
+                    else -> null
+                }
+            },
+            ifArrayElement = { index ->
+                when (value) {
+                    is List<*> -> if (index < value.size) resolveValueAtPath(value[index], tail) else null
+                    else -> null
+                }
+            },
+            ifAllArrayElements = {
+                when (value) {
+                    is List<*> -> value.mapNotNull { element -> resolveValueAtPath(element, tail) }
+                    else -> null
+                }
+            }
+        )
+    }
+
+    /**
+     * Resolves a value from SD-JWT VC claims following the typed ClaimPath.
+     * Navigates the SdJwtVcClaim hierarchy using Claim elements, then switches
+     * to value-based navigation for ArrayElement/AllArrayElements.
+     */
+    private fun resolveValueFromSdJwtClaims(
+        claims: List<SdJwtVcClaim>,
+        path: List<ClaimPathElement>,
+    ): Any? {
+        if (path.isEmpty()) return null
+
+        val head = path.first()
+        val tail = path.drop(1)
+
+        return head.fold(
+            ifClaim = { name ->
+                val claim = claims.find { it.identifier == name } ?: return null
+                if (tail.isEmpty()) {
+                    claim.value
+                } else if (claim.children.isNotEmpty() && tail.first() is ClaimPathElement.Claim) {
+                    // Continue navigating the claim hierarchy
+                    resolveValueFromSdJwtClaims(claim.children, tail)
+                } else {
+                    // Switch to value-based navigation (for array/wildcard elements)
+                    resolveValueAtPath(claim.value, tail)
+                }
+            },
+            ifArrayElement = { _ -> null }, // Array element cannot be first
+            ifAllArrayElements = { null }   // Wildcard cannot be first
+        )
+    }
+
+    /**
+     * Checks if a resolved value matches any of the requested JSON values.
+     *
+     * Handles:
+     * - Direct primitive comparison (String, Number, Boolean)
+     * - List of values from wildcard expansion (any element matching is sufficient)
+     */
+    private fun valueMatchesAny(resolvedValue: Any?, requestedValues: JsonArray): Boolean {
+        if (resolvedValue == null) return false
+
+        // If the resolved value is a list (from AllArrayElements expansion),
+        // check if ANY element matches ANY requested value
+        if (resolvedValue is List<*>) {
+            return resolvedValue.any { element ->
+                element != null && valueMatchesAny(element, requestedValues)
+            }
+        }
+
+        // Compare the primitive value against each requested value
+        return requestedValues.any { jsonValue ->
+            if (jsonValue !is JsonPrimitive) return@any false
+            when (resolvedValue) {
+                is String -> jsonValue.isString && jsonValue.content == resolvedValue
+                is Int -> jsonValue.intOrNull == resolvedValue
+                is Long -> jsonValue.longOrNull == resolvedValue
+                is Double -> jsonValue.doubleOrNull == resolvedValue
+                is Float -> jsonValue.doubleOrNull?.toFloat() == resolvedValue
+                is Boolean -> jsonValue.booleanOrNull == resolvedValue
+                is Number -> jsonValue.doubleOrNull == resolvedValue.toDouble()
+                else -> resolvedValue.toString() == jsonValue.content
+            }
+        }
     }
 
     companion object {
