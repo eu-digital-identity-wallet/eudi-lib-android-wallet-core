@@ -58,6 +58,8 @@ class DefaultWalletKeyManager(
 
     private suspend fun getSecureAreaWalletKeyManager(): SecureAreaWalletKeyManager {
         return secureAreaBased ?: mutex.withLock {
+            // another thread may have initialized secureAreaBased while we were acquiring mutex.
+            secureAreaBased ?.let { return it }
             val storage = AndroidStorage("${context.noBackupFilesDir.path}/wallet-attest.bin")
             val secureArea = AndroidKeystoreSecureArea.create(storage)
 
