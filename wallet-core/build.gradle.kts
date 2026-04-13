@@ -153,7 +153,8 @@ dependencies {
 
     runtimeOnly(libs.ktor.client.android)
 
-    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit"))
+    testImplementation(libs.android.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.json)
     testImplementation(libs.kotlin.coroutines.test)

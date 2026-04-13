@@ -2,10 +2,9 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci.dpop
 
 import com.nimbusds.jose.JWSAlgorithm
 import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
-import eu.europa.ec.eudi.wallet.issue.openid4vci.javaAlgorithm
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -14,9 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.software.SoftwareCreateKeySettings
-import org.multipaz.securearea.software.SoftwareSecureArea
-import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.securearea.KeyInfo
+import org.multipaz.securearea.SecureArea
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import kotlin.test.assertIs
@@ -81,18 +79,17 @@ class DPopSignerTest {
     @Test
     fun `makeIfSupported fails when no common algorithm exists`() = runTest {
         val context = RuntimeEnvironment.getApplication()
-        val storage = EphemeralStorage()
-        val secureArea = SoftwareSecureArea.create(storage)
+        val secureArea = createSecureAreaMock(
+            supportedAlgorithms = listOf(
+                Algorithm.ESP256
+            )
+        )
 
-        // Server supports an algorithm that is unlikely to exist in SoftwareSecureArea
         val metadata = createAuthServerMetadata(listOf(JWSAlgorithm.parse("NONEXISTENT_ALG")))
 
         val config = DPopConfig.Custom(
             secureArea = secureArea,
-            createKeySettingsBuilder = { algorithms ->
-                // This should not be called if no algorithms match
-                mockk<CreateKeySettings>()
-            }
+            createKeySettingsBuilder = { mockk<CreateKeySettings>() }
         )
 
         val result = DPopSigner.makeIfSupported(
@@ -111,18 +108,15 @@ class DPopSignerTest {
     @Test
     fun `makeIfSupported succeeds with Custom config when algorithms match`() = runTest {
         val context = RuntimeEnvironment.getApplication()
-        val storage = EphemeralStorage()
-        val secureArea = SoftwareSecureArea.create(storage)
+        val algorithm = Algorithm.ESP256
+        val secureArea = createSecureAreaMock(supportedAlgorithms = listOf(algorithm))
 
-        val algorithmSlot = slot<List<Algorithm>>()
+        var capturedAlgorithms: List<Algorithm>? = null
         val config = DPopConfig.Custom(
             secureArea = secureArea,
             createKeySettingsBuilder = { algorithms ->
-                algorithmSlot.captured = algorithms
-                // Use the first algorithm from the list for SoftwareSecureArea
-                SoftwareCreateKeySettings.Builder()
-                    .setAlgorithm(algorithms.first())
-                    .build()
+                capturedAlgorithms = algorithms
+                createKeySettingsMock(algorithms.first())
             }
         )
 
@@ -140,30 +134,29 @@ class DPopSignerTest {
         assertTrue(signer is SecureAreaDpopSigner)
 
         // Verify that the builder received the matched algorithms
-        assertTrue(algorithmSlot.isCaptured)
-        assertTrue(algorithmSlot.captured.isNotEmpty())
-
+        assertEquals(listOf(algorithm), capturedAlgorithms)
     }
 
     @Test
     fun `makeIfSupported passes all matched algorithms to builder`() = runTest {
         val context = RuntimeEnvironment.getApplication()
-        val storage = EphemeralStorage()
-        val secureArea = SoftwareSecureArea.create(storage)
+        val algorithm1 = Algorithm.ESP256
+        val algorithm2 = Algorithm.ESP384
+        val secureArea = createSecureAreaMock(
+            supportedAlgorithms = listOf(algorithm1, algorithm2)
+        )
+        val serverAlgorithms = listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384)
 
-        val algorithmSlot = slot<List<Algorithm>>()
+        var capturedAlgorithms: List<Algorithm>? = null
         val config = DPopConfig.Custom(
             secureArea = secureArea,
             createKeySettingsBuilder = { algorithms ->
-                algorithmSlot.captured = algorithms
-                SoftwareCreateKeySettings.Builder()
-                    .setAlgorithm(algorithms.first())
-                    .build()
+                capturedAlgorithms = algorithms
+                createKeySettingsMock(algorithms.first())
             }
         )
 
-        // Server supports ES256 and ES384
-        val metadata = createAuthServerMetadata(listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384))
+        val metadata = createAuthServerMetadata(serverAlgorithms)
 
         val result = DPopSigner.makeIfSupported(
             context = context,
@@ -174,23 +167,23 @@ class DPopSignerTest {
         assertTrue(result.isSuccess)
 
         // Verify that the builder received matched algorithms
-        assertTrue(algorithmSlot.isCaptured)
-        assertTrue(algorithmSlot.captured.isNotEmpty())
+        assertEquals(listOf(algorithm1, algorithm2), capturedAlgorithms)
     }
 
     @Test
     fun `makeIfSupported with Custom config and unlock key function`() = runTest {
         val context = RuntimeEnvironment.getApplication()
-        val storage = EphemeralStorage()
-        val secureArea = SoftwareSecureArea.create(storage)
+        val secureArea = createSecureAreaMock(
+            supportedAlgorithms = listOf(
+                Algorithm.ESP256
+            )
+        )
         val unlockKeyMock = KeyUnlockDataProvider { _, _ -> null }
 
         val config = DPopConfig.Custom(
             secureArea = secureArea,
             createKeySettingsBuilder = { algorithms ->
-                SoftwareCreateKeySettings.Builder()
-                    .setAlgorithm(algorithms.first())
-                    .build()
+                createKeySettingsMock(algorithms.first())
             },
             keyUnlockDataProvider = unlockKeyMock
         )
@@ -214,21 +207,24 @@ class DPopSignerTest {
     @Test
     fun `makeIfSupported filters out non-signing algorithms`() = runTest {
         val context = RuntimeEnvironment.getApplication()
-        val storage = EphemeralStorage()
-        val secureArea = SoftwareSecureArea.create(storage)
+        val signingAlgorithm = Algorithm.ESP256
+        val nonSigningAlgorithm = Algorithm.ES384
+        val secureArea = createSecureAreaMock(
+            supportedAlgorithms = listOf(signingAlgorithm, nonSigningAlgorithm)
+        )
 
-        val algorithmSlot = slot<List<Algorithm>>()
+        var capturedAlgorithms: List<Algorithm>? = null
         val config = DPopConfig.Custom(
             secureArea = secureArea,
             createKeySettingsBuilder = { algorithms ->
-                algorithmSlot.captured = algorithms
-                SoftwareCreateKeySettings.Builder()
-                    .setAlgorithm(algorithms.first { it.isSigning })
-                    .build()
+                capturedAlgorithms = algorithms
+                createKeySettingsMock(algorithms.first())
             }
         )
 
-        val metadata = createAuthServerMetadata(listOf(JWSAlgorithm.ES256))
+        val metadata = createAuthServerMetadata(
+            listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384)
+        )
 
         val result = DPopSigner.makeIfSupported(
             context = context,
@@ -239,25 +235,24 @@ class DPopSignerTest {
         assertTrue(result.isSuccess)
 
         // Verify only signing algorithms were passed to builder
-        assertTrue(algorithmSlot.isCaptured)
-        assertTrue(algorithmSlot.captured.isNotEmpty())
-        assertTrue(algorithmSlot.captured.all { it.isSigning })
+        assertEquals(listOf(signingAlgorithm), capturedAlgorithms)
     }
 
     @Test
     fun `makeIfSupported filters out algorithms without JOSE identifier`() = runTest {
         val context = RuntimeEnvironment.getApplication()
-        val storage = EphemeralStorage()
-        val secureArea = SoftwareSecureArea.create(storage)
+        val algorithmWithJoseId = Algorithm.ESP256
+        val algorithmWithoutJoseId = Algorithm.ES256
+        val secureArea = createSecureAreaMock(
+            supportedAlgorithms = listOf(algorithmWithJoseId, algorithmWithoutJoseId)
+        )
 
-        val algorithmSlot = slot<List<Algorithm>>()
+        var capturedAlgorithms: List<Algorithm>? = null
         val config = DPopConfig.Custom(
             secureArea = secureArea,
             createKeySettingsBuilder = { algorithms ->
-                algorithmSlot.captured = algorithms
-                SoftwareCreateKeySettings.Builder()
-                    .setAlgorithm(algorithms.first())
-                    .build()
+                capturedAlgorithms = algorithms
+                createKeySettingsMock(algorithms.first())
             }
         )
 
@@ -272,9 +267,7 @@ class DPopSignerTest {
         assertTrue(result.isSuccess)
 
         // Verify only algorithms with JOSE identifiers were passed to builder
-        assertTrue(algorithmSlot.isCaptured)
-        assertTrue(algorithmSlot.captured.isNotEmpty())
-        assertTrue(algorithmSlot.captured.all { it.joseAlgorithmIdentifier != null })
+        assertEquals(listOf(algorithmWithJoseId), capturedAlgorithms)
     }
 
     // Helper functions
@@ -285,16 +278,18 @@ class DPopSignerTest {
         }
     }
 
-    private fun createAlgorithmMock(
-        joseId: String,
-        javaAlgo: String,
-        isSigning: Boolean = true
-    ): Algorithm {
-        return mockk<Algorithm>(relaxed = true) {
-            every { joseAlgorithmIdentifier } returns joseId
-            every { this@mockk.isSigning } returns isSigning
-            every { javaAlgorithm } returns javaAlgo
+    private fun createSecureAreaMock(
+        supportedAlgorithms: List<Algorithm>
+    ): SecureArea {
+        val keyInfo = mockk<KeyInfo>(relaxed = true)
+        return mockk<SecureArea>(relaxed = true) {
+            every { this@mockk.supportedAlgorithms } returns supportedAlgorithms
+            coEvery { createKey(any(), any()) } returns keyInfo
         }
     }
-}
 
+    private fun createKeySettingsMock(algorithm: Algorithm): CreateKeySettings =
+        mockk<CreateKeySettings>(relaxed = true) {
+            every { this@mockk.algorithm } returns algorithm
+        }
+}
