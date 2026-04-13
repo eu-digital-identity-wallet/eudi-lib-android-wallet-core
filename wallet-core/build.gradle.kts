@@ -18,26 +18,27 @@ import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
 import com.github.jk1.license.render.InventoryMarkdownReportRenderer
-import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
+import project.convention.logic.config.LibraryModule
 import java.util.Locale
 
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.serialization)
+    id("project.android.library")
     id("kotlin-parcelize")
     alias(libs.plugins.dokka)
     alias(libs.plugins.dependency.license.report)
-    alias(libs.plugins.dependencycheck)
-    alias(libs.plugins.sonarqube)
-    alias(libs.plugins.maven.publish)
-    alias(libs.plugins.kover)
+    alias(libs.plugins.owasp.dependencycheck)
+    alias(libs.plugins.sonar)
+    alias(libs.plugins.kotlinx.kover)
 }
 
 val NAMESPACE: String by project
 val GROUP: String by project
 val POM_SCM_URL: String by project
 val POM_DESCRIPTION: String by project
+
+moduleConfig {
+    module = LibraryModule.Core
+}
 
 android {
     namespace = NAMESPACE
@@ -73,10 +74,6 @@ android {
         sourceCompatibility = JavaVersion.toVersion(libs.versions.java.get())
         targetCompatibility = JavaVersion.toVersion(libs.versions.java.get())
     }
-    kotlinOptions {
-        jvmTarget = libs.versions.java.get()
-    }
-
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -100,12 +97,13 @@ android {
         }
     }
 
-    kotlinOptions {
-        jvmTarget = libs.versions.java.get()
-        freeCompilerArgs += listOf(
-            "-opt-in=kotlin.RequiresOptIn",
-            "-opt-in=kotlin.time.ExperimentalTime",
-        )
+    kotlin {
+        compilerOptions {
+            freeCompilerArgs.addAll(
+                "-opt-in=kotlin.RequiresOptIn",
+                "-opt-in=kotlin.time.ExperimentalTime",
+            )
+        }
     }
 }
 
@@ -116,7 +114,7 @@ dependencies {
     api(libs.eudi.iso18013.data.transfer)
     // OpenID4VCI
     // EUDI-added
-    api(project(LibraryModule.Openid4vci.path))
+    api(project(":openid4vci"))
     // multipaz library
     api(libs.multipaz.android) {
         exclude(group = "org.bouncycastle")
@@ -124,7 +122,7 @@ dependencies {
     }
     implementation(libs.multipaz.longfellow)
 
-    implementation(libs.appcompat)
+    implementation(libs.androidx.appcompat)
     // OpenID4VCI
     implementation(libs.nimbus.oauth2.oidc.sdk)
     // Siop-Openid4VP library
@@ -239,31 +237,6 @@ tasks.register<Task>("buildDocumentation") {
 }
 tasks.assemble.configure {
     finalizedBy("buildDocumentation")
-}
-
-// Publish
-
-mavenPublishing {
-    configure(
-        AndroidMultiVariantLibrary(
-            sourcesJar = true,
-            publishJavadocJar = true,
-            setOf("release")
-        )
-    )
-    pom {
-        ciManagement {
-            system = "github"
-            url = "${POM_SCM_URL}/actions"
-        }
-    }
-}
-// handle java.lang.UnsupportedOperationException: PermittedSubclasses requires ASM9
-// when publishing module
-afterEvaluate {
-    tasks.named("javaDocReleaseGeneration").configure {
-        enabled = false
-    }
 }
 
 val coverageExclusions = listOf(

@@ -22,7 +22,8 @@ import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
 import eu.europa.ec.eudi.sdjwt.SdJwt
-import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.query
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
@@ -32,7 +33,10 @@ import eu.europa.ec.eudi.wallet.transactionLogging.presentation.VPTokenConsensus
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Base64
 
@@ -173,9 +177,21 @@ val SdJwt<JwtAndClaims>.claims: Map<List<String>, JsonElement?>
             this@claims.recreateClaimsAndDisclosuresPerClaim()
         }
         return claimPath.keys.associate {
-            it.value.toList().map(Any::toString) to jsonObject.query(it).getOrNull()?.toJsonElement()
+            it.value.toList().map(Any::toString) to jsonObject.select(it)
         }
     }
+
+private fun JsonElement.select(path: ClaimPath): JsonElement? {
+    var current: JsonElement = this
+    for (element in path.value) {
+        current = when (element) {
+            is ClaimPathElement.Claim -> (current as? JsonObject)?.get(element.name)
+            is ClaimPathElement.ArrayElement -> (current as? JsonArray)?.getOrNull(element.index)
+            ClaimPathElement.AllArrayElements -> return current
+        } ?: return null
+    }
+    return if (current == JsonNull) null else current
+}
 
 /**
  * Function to get the presented documents from the claims
