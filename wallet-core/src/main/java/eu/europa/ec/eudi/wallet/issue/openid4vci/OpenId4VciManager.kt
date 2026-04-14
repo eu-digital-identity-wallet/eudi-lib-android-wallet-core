@@ -91,6 +91,17 @@ interface OpenId4VciManager {
     )
 
     fun issueDocumentByConfigurationIdentifierAttested(
+        credentialConfigurationIds: List<String>,
+        walletAttestation: SignedJWT,
+        walletWiaPopPublicKey: JWK,
+        walletWiaPopPrivateKey: PrivateKey,
+        txCode: String? = null,
+        executor: Executor? = null,
+        onIssueEvent: OnIssueEvent,
+    )
+
+    @Deprecated("Use the List<String> version for batch issuance")
+    fun issueDocumentByConfigurationIdentifierAttested(
         credentialConfigurationId: String,
         walletAttestation: SignedJWT,
         walletWiaPopPublicKey: JWK,
