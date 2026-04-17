@@ -16,7 +16,7 @@ eudi-lib-jvm-openid4vci-kt = "0.10.1"
 eudi-lib-jvm-openid4vp-kt = "0.12.2"
 eudi-lib-jvm-sdjwt-kt = "0.20.0"
 eudi-lib-kmp-statium = "0.5.1"
-gradle-plugin = "8.13.1"
+gradle-plugin = "9.0.1"
 java = "17"
 json = "20250517"
 junit = "5.13.2"
@@ -30,7 +30,7 @@ mockito-android = "5.18.0"
 mockito-inline = "5.2.0"
 mockito-kotlin = "5.4.0"
 mockk = "1.14.4"
-multipaz = "0.95.0"
+multipaz = "0.97.0"
 nimbus-sdk = "11.20.1"
 play-services-identity-credentials = "16.0.0-alpha08"
 robolectric = "4.15.1"
@@ -88,13 +88,13 @@ upokecenter-cbor = { module = "com.upokecenter:cbor", version.ref = "upokecenter
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 testng = { group = "org.testng", name = "testng", version.ref = "testng" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "gradle-plugin" }
 dependency-license-report = { id = "com.github.jk1.dependency-license-report", version.ref = "dependency-license-report" }
 dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "dependencycheck" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }

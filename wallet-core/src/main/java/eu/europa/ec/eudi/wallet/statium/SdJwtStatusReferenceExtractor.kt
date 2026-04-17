@@ -56,7 +56,7 @@ object SdJwtStatusReferenceExtractor : StatusReferenceExtractor {
                 "No credential found for ${document.name}"
             }
 
-            val sdJwt = String(credential.issuerProvidedData, charset = Charsets.US_ASCII)
+            val sdJwt = String(credential.issuerProvidedData.toByteArray(), charset = Charsets.US_ASCII)
                 .let { DefaultSdJwtOps.unverifiedIssuanceFrom(it) }
                 .getOrThrow()
 

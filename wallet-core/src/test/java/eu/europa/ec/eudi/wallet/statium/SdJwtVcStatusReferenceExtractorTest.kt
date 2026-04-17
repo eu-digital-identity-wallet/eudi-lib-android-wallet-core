@@ -29,6 +29,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -227,7 +228,7 @@ class SdJwtVcStatusReferenceExtractorTest {
             every { format } returns fixedFormat
             every { name } returns fixedFormat.vct
             coEvery { findCredential() } returns mockk() {
-                every { issuerProvidedData } returns sdJwtContent.toByteArray(Charsets.US_ASCII)
+                every { issuerProvidedData } returns ByteString(sdJwtContent.toByteArray(Charsets.US_ASCII))
             }
         }
     }
@@ -239,7 +240,7 @@ class SdJwtVcStatusReferenceExtractorTest {
             every { format } returns fixedFormat
             every { name } returns fixedFormat.docType
             coEvery { findCredential() } returns mockk() {
-                every { issuerProvidedData } returns byteArrayOf(1, 2, 3, 4)
+                every { issuerProvidedData } returns ByteString(byteArrayOf(1, 2, 3, 4))
             }
         }
     }

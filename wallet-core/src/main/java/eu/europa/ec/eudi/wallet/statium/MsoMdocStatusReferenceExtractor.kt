@@ -67,7 +67,7 @@ object MsoMdocStatusReferenceExtractor : StatusReferenceExtractor {
             "No credential found for ${document.name}"
         }
 
-        val issuerAuthBytes = StaticAuthDataParser(credential.issuerProvidedData)
+        val issuerAuthBytes = StaticAuthDataParser(credential.issuerProvidedData.toByteArray())
             .parse()
             .issuerAuth
 

@@ -19,11 +19,11 @@ package eu.europa.ec.eudi.wallet.provider
 import eu.europa.ec.eudi.wallet.internal.asProvider
 import kotlinx.coroutines.withContext
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.Reason
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInfo
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
-import org.multipaz.securearea.UnlockReason
 import java.security.MessageDigest
 
 /**
@@ -79,7 +79,7 @@ open class SecureAreaWalletKeyManager(
             val keyUnlockData = keyUnlockDataProvider(keyAlias, secureArea)
             val provider = keyUnlockData.asProvider()
             withContext(provider) {
-                secureArea.sign(keyAlias, data, UnlockReason.Unspecified).toDerEncoded()
+                secureArea.sign(keyAlias, data, Reason.Unspecified).toDerEncoded()
             }
         }
     }
@@ -92,7 +92,7 @@ open class SecureAreaWalletKeyManager(
                 val keyUnlockData = keyUnlockDataProvider(keyAlias, secureArea)
                 val provider = keyUnlockData.asProvider()
                 withContext(provider) {
-                    secureArea.sign(keyAlias, data, UnlockReason.Unspecified).toDerEncoded()
+                    secureArea.sign(keyAlias, data, Reason.Unspecified).toDerEncoded()
                 }
             }
         }.getOrNull()

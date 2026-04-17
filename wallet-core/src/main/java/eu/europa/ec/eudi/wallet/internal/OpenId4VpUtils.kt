@@ -79,8 +79,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.Reason
 import org.multipaz.securearea.KeyUnlockData
-import org.multipaz.securearea.UnlockReason
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -345,7 +345,7 @@ internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
                         credential.secureArea.sign(
                             alias = credential.alias,
                             dataToSign = signingInput,
-                            unlockReason = UnlockReason.Unspecified
+                            unlockReason = Reason.Unspecified
                         )
                     }
                 }

@@ -16,11 +16,11 @@
 
 package eu.europa.ec.eudi.wallet.internal
 
+import org.multipaz.prompt.Reason
 import org.multipaz.securearea.KeyLockedException
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.KeyUnlockDataProvider
 import org.multipaz.securearea.SecureArea
-import org.multipaz.securearea.UnlockReason
 
 /**
  * Extension function to convert a nullable [KeyUnlockData] to a [KeyUnlockDataProvider].
@@ -37,7 +37,7 @@ internal fun KeyUnlockData?.asProvider(): KeyUnlockDataProvider {
         override suspend fun getKeyUnlockData(
             secureArea: SecureArea,
             alias: String,
-            unlockReason: UnlockReason
+            unlockReason: Reason
         ): KeyUnlockData {
             return data ?: throw KeyLockedException("No unlock data provided")
         }

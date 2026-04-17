@@ -9,8 +9,8 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.Reason
 import org.multipaz.securearea.KeyInfo
-import org.multipaz.securearea.UnlockReason
 
 /**
  * Secure area-based implementation of [DPopSigner] for OpenID4VCI credential issuance.
@@ -189,7 +189,7 @@ class SecureAreaDpopSigner private constructor(
                 val keyUnlockData = config.keyUnlockDataProvider(keyInfo.alias, secureArea)
                 val provider = keyUnlockData.asProvider()
                 withContext(provider) {
-                    secureArea.sign(keyInfo.alias, input, UnlockReason.Unspecified).toDerEncoded()
+                    secureArea.sign(keyInfo.alias, input, Reason.Unspecified).toDerEncoded()
                 }
             },
             publicMaterial = jwk

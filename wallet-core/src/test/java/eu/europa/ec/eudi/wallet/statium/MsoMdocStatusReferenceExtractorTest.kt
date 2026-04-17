@@ -39,6 +39,7 @@ import io.mockk.spyk
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -81,7 +82,7 @@ class MsoMdocStatusReferenceExtractorTest {
         val mockFormat = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
         val expectedCborMap = createMockCborMapWithoutStatus()
         val mockCredential = mockk<SecureAreaBoundCredential> {
-            every { issuerProvidedData } returns ByteArray(10)
+            every { issuerProvidedData } returns ByteString(ByteArray(10))
         }
         val mockDocument = mockk<IssuedDocument> {
             every { format } returns mockFormat
@@ -116,7 +117,7 @@ class MsoMdocStatusReferenceExtractorTest {
 
         // Verify
         assertEquals(expectedCborMap, result)
-        verify { StaticAuthDataParser(mockCredential.issuerProvidedData) }
+        verify { anyConstructed<StaticAuthDataParser>().parse() }
         verify { Message.DecodeFromBytes(any(), MessageTag.Sign1) }
         verify(exactly = 2) { CBORObject.DecodeFromBytes(any()) }
     }
@@ -138,7 +139,7 @@ class MsoMdocStatusReferenceExtractorTest {
         val mockFormat = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
         val expectedCborMap = createMockCborMapWithoutStatus()
         val mockCredential = mockk<SecureAreaBoundCredential> {
-            every { issuerProvidedData } returns ByteArray(10)
+            every { issuerProvidedData } returns ByteString(ByteArray(10))
         }
         val mockDocument = mockk<IssuedDocument> {
             every { format } returns mockFormat
@@ -159,7 +160,7 @@ class MsoMdocStatusReferenceExtractorTest {
         val mockFormat = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1")
         val expectedCborMap = createMockCborMapWithoutStatus()
         val mockCredential = mockk<SecureAreaBoundCredential> {
-            every { issuerProvidedData } returns ByteArray(10)
+            every { issuerProvidedData } returns ByteString(ByteArray(10))
         }
         val mockDocument = mockk<IssuedDocument> {
             every { format } returns mockFormat
