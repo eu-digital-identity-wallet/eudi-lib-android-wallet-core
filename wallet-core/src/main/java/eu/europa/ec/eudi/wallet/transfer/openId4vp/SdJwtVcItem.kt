@@ -17,9 +17,11 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimPath
 
 /**
  * Represents a SD-JWT VC item.
- * @property path The path of the item.
+ * @property path The typed claim path preserving DCQL semantics
+ *   (e.g., [ClaimPathElement.AllArrayElements] for null wildcard).
  */
-class SdJwtVcItem(val path: List<String>) : DocItem
+class SdJwtVcItem(val path: ClaimPath) : DocItem
