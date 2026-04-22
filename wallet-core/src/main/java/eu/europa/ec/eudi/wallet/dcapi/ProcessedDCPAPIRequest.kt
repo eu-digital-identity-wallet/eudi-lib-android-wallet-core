@@ -59,7 +59,7 @@ class ProcessedDCPAPIRequest(
     private val logger: Logger? = null,
     val origin: String,
     requestedDocuments: RequestedDocuments
-    ): RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
+): RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
     override fun generateResponse(
@@ -122,15 +122,17 @@ class ProcessedDCPAPIRequest(
                 })
             }.EncodeToBytes()
 
-            val responseJson = JSONObject()
-            responseJson.put(RESPONSE, encryptedResponse.toBase64())
-            val response = responseJson.toString()
+            val response = JSONObject()
+            response.put(RESPONSE, encryptedResponse.toBase64())
             logger?.d(TAG, "Response JSON: $response")
 
             return ResponseResult.Success(
                 DCAPIResponse(
                     deviceResponseBytes = deviceResponse.deviceResponseBytes,
-                    intent = createResponseIntent(response),
+                    intent = createResponseIntent(
+                        protocol = protocol,
+                        data = response
+                    ),
                     documentIds = deviceResponse.documentIds
                 )
             )
@@ -146,12 +148,17 @@ class ProcessedDCPAPIRequest(
     }
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
-    private fun createResponseIntent(response: String): Intent {
+    private fun createResponseIntent(protocol: String, data: JSONObject): Intent {
+        val credentialJson = JSONObject().apply {
+            put(PROTOCOL, protocol)
+            put(DATA, data)
+        }
+        logger?.d(TAG, "Credential JSON: $credentialJson")
         val resultData = Intent()
         PendingIntentHandler.setGetCredentialResponse(
             resultData,
             GetCredentialResponse(
-                DigitalCredential(response)
+                DigitalCredential(credentialJson.toString())
             )
         )
         return resultData
