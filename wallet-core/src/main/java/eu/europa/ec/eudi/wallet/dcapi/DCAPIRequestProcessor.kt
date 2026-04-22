@@ -94,8 +94,9 @@ internal class DCAPIRequestProcessor(
             documentManager = documentManager,
             sessionTranscript = deviceRequest.sessionTranscriptBytes,
             requestedDocuments = RequestedDocuments(filteredRequestedDocuments),
-            readerAuthPolicy = readerAuthPolicy
-        )
+            readerAuthPolicy = readerAuthPolicy,
+            zkSystemRepository = zkSystemRepository
+            )
         return ProcessedDCPAPIRequest(
             processedDeviceRequest = filteredProcessedDeviceRequest,
             providerGetCredentialRequest = request.providerGetCredentialRequest,
