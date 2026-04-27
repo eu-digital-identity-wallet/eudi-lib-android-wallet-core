@@ -31,7 +31,6 @@ import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocumen
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.VPTokenConsensusJson
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Base64
@@ -154,10 +153,8 @@ val VerifiablePresentation.Generic.valueWithoutKeyBinding: String
  * @return the SdJwt object or null if the parsing fails
  */
 fun getSdJwt(sdJwt: String): SdJwt<JwtAndClaims>? {
-    return runBlocking {
-        with(DefaultSdJwtOps) {
-            verify(NoSignatureValidation, sdJwt).getOrNull()
-        }
+    return with(DefaultSdJwtOps) {
+        unverifiedIssuanceFrom(sdJwt).getOrNull()
     }
 }
 

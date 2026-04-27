@@ -26,7 +26,6 @@ import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Grants
 import eu.europa.ec.eudi.openid4vci.KeyAttestationRequirement
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
-import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
 import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
@@ -67,7 +66,6 @@ class OfferTest {
                 )
             )
             every { docType } returns "testDocType"
-            every { isoPolicy } returns MsoMdocPolicy(true, 2)
         }
 
         mockSdJwtVcCredential = mockk<SdJwtVcCredential>(relaxed = true) {

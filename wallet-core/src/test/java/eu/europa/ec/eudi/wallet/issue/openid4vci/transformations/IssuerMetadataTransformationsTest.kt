@@ -2,14 +2,15 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci.transformations
 
 import eu.europa.ec.eudi.openid4vci.Claim
 import eu.europa.ec.eudi.openid4vci.ClaimPath
+import eu.europa.ec.eudi.openid4vci.CoseAlgorithm
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Display
+import eu.europa.ec.eudi.openid4vci.JwsAlgorithm
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
-import eu.europa.ec.eudi.openid4vci.MsoMdocPolicy
 import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
@@ -57,10 +58,7 @@ class IssuerMetadataTransformationsTest {
         val inputCredential = MsoMdocCredential(
             scope = "exampleScope",
             cryptographicBindingMethodsSupported = listOf(),
-            credentialSigningAlgorithmsSupported = listOf("ES256"),
-            isoCredentialSigningAlgorithmsSupported = listOf(),
-            isoCredentialCurvesSupported = listOf(),
-            isoPolicy = MsoMdocPolicy(oneTimeUse = true, batchSize = 10),
+            credentialSigningAlgorithmsSupported = listOf(CoseAlgorithm(-257)),
             proofTypesSupported = ProofTypesSupported.Companion.Empty,
             docType = "exampleDocType",
             credentialMetadata = CredentialMetadata(
@@ -144,7 +142,7 @@ class IssuerMetadataTransformationsTest {
         val inputCredential = SdJwtVcCredential(
             scope = "exampleScope",
             cryptographicBindingMethodsSupported = listOf(),
-            credentialSigningAlgorithmsSupported = listOf("RS256"),
+            credentialSigningAlgorithmsSupported = listOf(JwsAlgorithm("RS256")),
             proofTypesSupported = ProofTypesSupported.Companion.Empty,
             type = "exampleType",
             credentialMetadata = CredentialMetadata(
@@ -220,7 +218,7 @@ class IssuerMetadataTransformationsTest {
         val credentialWithNoClaims = SdJwtVcCredential(
             scope = "exampleScope",
             cryptographicBindingMethodsSupported = listOf(),
-            credentialSigningAlgorithmsSupported = listOf("RS256"),
+            credentialSigningAlgorithmsSupported = listOf(JwsAlgorithm("RS256")),
             proofTypesSupported = ProofTypesSupported.Companion.Empty,
             type = "exampleType",
             credentialMetadata = CredentialMetadata(
