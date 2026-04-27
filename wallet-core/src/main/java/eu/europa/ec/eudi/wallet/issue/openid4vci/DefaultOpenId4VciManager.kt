@@ -334,6 +334,25 @@ internal class DefaultOpenId4VciManager(
                     listOf(CredentialConfigurationIdentifier(issuanceMetadata.credentialConfigurationIdentifier)),
                     existingDpopKeyAlias = issuanceMetadata.dPoPKeyAlias
                 )
+
+                //  Refresh the access token using the stored refresh token.
+                //  If the refresh token is also expired (400 invalid_grant from /token),
+                //  fall back to full OAuth authorization when allowed.
+                var updatedAuthorizedRequest = try {
+                    with(issuer) {
+                        authorizedRequest.refresh().getOrThrow()
+                    }
+                } catch (e: Throwable) {
+                    if (!allowAuthorizationFallback) {
+                        throw ReissuanceAuthorizationException(
+                            "Re-issuance of document $documentId requires user authorization (refresh token expired)",
+                            cause = e
+                        )
+                    }
+                    logger?.d(TAG, "Refresh token expired for $documentId, falling back to full authorization")
+                    issuerAuthorization.authorize(issuer, null)
+                }
+
                 val offer = Offer(issuer.credentialOffer)
 
                 //  Create a new UnsignedDocument (fresh keys) via DocumentCreator
@@ -350,7 +369,7 @@ internal class DefaultOpenId4VciManager(
 
                 //  Submit the issuance request using stored AuthorizedRequest
                 //  (skips the authorization flow - uses refresh token instead)
-                val submit = SubmitRequest(config, walletProvider, issuer, authorizedRequest)
+                val submit = SubmitRequest(config, walletProvider, issuer, updatedAuthorizedRequest)
                 var response = submit.request(requestMap).also {
                     authorizedRequest = submit.authorizedRequest
                 }
