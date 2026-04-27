@@ -2,7 +2,7 @@
 
 The **EUDI Wallet Core** library includes support for the [Digital Credential API](https://w3c-fedid.github.io/digital-credentials/).
 
-The current implementation of DCAPI follows the protocol `org-iso-mdoc`, 
+The current implementation of DCAPI follows the protocol `org-iso-mdoc`,
 according to the [ISO/IEC TS 18013-7:2025](https://www.iso.org/standard/91154.html) **Annex C**.
 
 > **Note:** DCAPI is **disabled by default**. You can enable it in your application by following the steps below.
@@ -11,27 +11,27 @@ according to the [ISO/IEC TS 18013-7:2025](https://www.iso.org/standard/91154.ht
 
 ### Register the Intent
 
-In the application's `AndroidManifest.xml` file define an Activity to listen the 
+In the application's `AndroidManifest.xml` file define an Activity to listen the
 `androidx.credentials.registry.provider.action.GET_CREDENTIAL` intent filter:
 
 ```xml
-<activity 
+<activity
     android:name=".MainActivity"
     android:exported="true">
-    
+
     <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
     </intent-filter>
-    
+
     <!--Required for DCAPI -->
     <intent-filter>
         <action android:name="androidx.credentials.registry.provider.action.GET_CREDENTIAL" />
         <action android:name="androidx.identitycredentials.action.GET_CREDENTIALS" />
-    
+
         <category android:name="android.intent.category.DEFAULT" />
     </intent-filter>
-    
+
 </activity>
 ```
 
@@ -44,15 +44,20 @@ val config = EudiWalletConfig()
     .configureDCAPI {
         withEnabled(true) // Enable DCAPI, by default it is disabled
     }
-    // ... Rest of your configurations
+// ... Rest of your configurations
 
 
 // Initialize the EudiWallet with the configuration
 val eudiWallet = EudiWallet(context, config)
 ```
 
-In the `DCAPIConfig` you can also set up your own allowlist of privileged browsers/apps that you trust, 
-providing a json file of the following format:
+In the `DCAPIConfig` you can also set up your own allowlist of privileged user agents
+(typically web browsers) that the wallet trusts to deliver a website's origin on its
+behalf. This allowlist is **not** for native verifier apps — those are handled
+separately via the [App origin](#app-origin-native-android-verifiers) mechanism
+described below.
+
+The allowlist is provided as a JSON file in the following format:
 
 ```json
 {"apps": [
@@ -78,11 +83,11 @@ You can provide it as a JSON String in the `DCAPIConfig`:
 val config = EudiWalletConfig()
     .configureDCAPI {
         withEnabled(true) // Enable DCAPI
-        withAllowlistJsonFile(customAllowList) // Provide your custom allowlist
+        withPrivilegedAllowlist(customAllowListJson) // Override the bundled default allowlist
     }
 ```
 
-Optionally, you can provide your own implementation of `DCAPIRegistration` to handle the 
+Optionally, you can provide your own implementation of `DCAPIRegistration` to handle the
 registration of credentials:
 
 ```kotlin
@@ -91,6 +96,38 @@ val customWallet = EudiWallet(context, config) {
     withDCAPIRegistration(myCustomDCAPIRegistration())
 }
 ```
+
+### Verifier Origin Handling
+
+When the wallet receives a DCAPI request, it must determine the **origin** of the
+verifier and bind it into the `SessionTranscript` according to ISO/IEC 18013-7 Annex C.
+
+#### Web origin (privileged user agents)
+
+When the request is delivered through a privileged user agent — typically a trusted
+web browser acting on behalf of a website — the user agent provides the website's
+origin via the Android Credential Manager API. The wallet retrieves it through
+`CallingAppInfo.getOrigin(privilegedAllowlist)`, which returns the web origin
+(e.g. `https://verifier.example.com`) only when the caller's package name and
+signing certificate match an entry in the configured allowlist.
+
+To register additional privileged user agents, provide a custom allowlist JSON via
+`DCAPIConfig.withPrivilegedAllowlist(...)` as shown above.
+
+#### App origin (native Android verifiers)
+
+For native Android verifier apps, the wallet derives the origin from the calling app's
+signing certificate, `CallingAppInfo.signingInfoCompat.signingCertificateHistory[0]`, in
+the following form:
+
+```
+android:apk-key-hash:<encoded SHA 256 fingerprint>
+```
+
+See for more details [here](https://developer.android.com/identity/digital-credentials/credential-holder/credential-holder#check-verifier-origin).
+
+**Note:** For interoperability, native Android verifier apps must compute the same
+origin value from their own signing certificate and bind it into their `SessionTranscript`.
 
 ### Starting the DCAPI Presentation
 
@@ -106,7 +143,7 @@ fun onCreate(savedInstanceState: Bundle?) {
 
     // Handle the intent for Digital Credential API
     eudiWallet.startDCAPIPresentation(intent)
-    
+
 }
 ```
 This method will handle the intent and start the DCAPI presentation process, if it contains a valid DCAPI Request.
@@ -156,7 +193,7 @@ eudiWallet.addTransferEventListener { event ->
             // An error occurred
             // handle the error
         }
-        
+
         TransferEvent.IntentToSend -> {
             // The response intent is ready
             // You can send the response intent and finish the activity
@@ -174,7 +211,7 @@ eudiWallet.addTransferEventListener { event ->
                 finish()
             }
         }
-        
+
         else -> { }
     }
 }
