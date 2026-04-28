@@ -63,7 +63,7 @@ internal class IssuerCreator(
     internal var clientAttestationPopKeyId: String? = null
         private set
 
-    internal lateinit var dpopKeyAlias: String
+    internal var dpopKeyAlias: String? = null
         private set
 
     internal lateinit var clientAuthentication: ClientAuthentication
