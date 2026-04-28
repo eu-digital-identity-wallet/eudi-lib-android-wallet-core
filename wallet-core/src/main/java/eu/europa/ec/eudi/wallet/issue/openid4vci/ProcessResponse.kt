@@ -49,7 +49,7 @@ internal class ProcessResponse(
     val authorizedRequest: AuthorizedRequest,
     val issuer: Issuer,
     val documentToConfigurationMap: Map<UnsignedDocument, Offer.OfferedDocument>,
-    val dpopKeyAlias: String,
+    val dpopKeyAlias: String?,
     val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
     val replacesDocumentId: DocumentId? = null,
