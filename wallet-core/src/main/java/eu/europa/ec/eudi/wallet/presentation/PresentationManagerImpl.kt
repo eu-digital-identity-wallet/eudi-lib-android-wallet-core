@@ -83,13 +83,10 @@ class PresentationManagerImpl @JvmOverloads constructor(
         transferManager.startQrEngagement()
     }
 
+    @Deprecated("Use startRemotePresentation(uri: Uri)")
     override fun startRemotePresentation(intent: Intent) {
         val uri = intent.data ?: throw IllegalArgumentException("Intent data is missing")
         when {
-            uri.scheme == MDOC_SCHEME ->
-                transferManager.startEngagementToApp(intent)
-
-
             true == openId4vpManager?.config?.schemes?.contains(uri.scheme) ->
                 openId4vpManager.resolveRequestUri(uri.toString())
 
@@ -98,10 +95,10 @@ class PresentationManagerImpl @JvmOverloads constructor(
     }
 
     override fun startRemotePresentation(uri: Uri, refererUrl: String?) {
-        startRemotePresentation(Intent().apply {
-            data = uri
-            refererUrl?.let { putExtra(Intent.EXTRA_REFERRER, it) }
-        })
+        openId4vpManager
+            ?.takeIf { it.config.schemes.contains(uri.scheme) }
+            ?.resolveRequestUri(uri.toString())
+            ?: error("Not supported scheme")
     }
 
     override fun startDCAPIPresentation(intent: Intent) {
@@ -151,10 +148,6 @@ class PresentationManagerImpl @JvmOverloads constructor(
         openId4vpManager?.reject()
     }
 
-
-    companion object {
-        const val MDOC_SCHEME = "mdoc"
-    }
-
+    companion object
 
 }
