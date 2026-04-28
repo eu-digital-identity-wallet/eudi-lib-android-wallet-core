@@ -32,7 +32,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMeta
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
 import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
@@ -73,7 +72,7 @@ import org.multipaz.util.Logger as IdentityLogger
  * @property logger the logger
  * @property documentStatusResolver
  */
-interface EudiWallet : SampleDocumentManager, PresentationManager, DocumentStatusResolver {
+interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResolver {
 
     val config: EudiWalletConfig
     val documentManager: DocumentManager
