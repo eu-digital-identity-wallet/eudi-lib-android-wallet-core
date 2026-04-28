@@ -84,6 +84,7 @@ interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware 
      * - a OpenId4Vp request
      * @param intent the intent
      */
+    @Deprecated("Use startRemotePresentation(uri: Uri)")
     fun startRemotePresentation(intent: Intent)
 
     /**
