@@ -21,8 +21,6 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManager
-import eu.europa.ec.eudi.wallet.document.sample.SampleDocumentManagerImpl
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -60,8 +58,7 @@ class EudiWalletImpl internal constructor(
     val transactionLogger: TransactionLogger?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
     val issuanceMetadataStorage: Storage?,
-) : EudiWallet, DocumentManager, PresentationManager by presentationManager,
-    SampleDocumentManager by SampleDocumentManagerImpl(documentManager),
+) : EudiWallet, DocumentManager by documentManager, PresentationManager by presentationManager,
     DocumentStatusResolver by documentStatusResolver {
 
     override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
