@@ -102,9 +102,20 @@ internal class DCAPIRequestProcessor(
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
     private fun ProviderGetCredentialRequest.toDeviceRequest(): Pair<DeviceRequest, String> {
-        // If the mdoc does not receive the origin from the API, it shall abort the transaction.
+        // Resolve the origin according to:
+        // https://developer.android.com/identity/digital-credentials/credential-holder/credential-holder#check-verifier-origin
+        //
+        // Privileged callers, such as trusted browsers, may act on behalf of another verifier
+        // by setting an origin. CallingAppInfo.getOrigin() returns this origin only when the
+        // caller's package name and signing certificate match the provided allowlist.
+        //
+        // If a trusted origin is returned, use it in the response.
+        //
+        // If origin is empty, the request is from an Android native app.
+        // and derive the origin from the caller's signing certificate in the form:
+        // 'android:apk-key-hash:<encoded SHA 256 fingerprint>'
         val callingOrigin = this.callingAppInfo.getOrigin(privilegedAllowlist)
-        requireNotNull(callingOrigin) { "Calling origin must not be null." }
+            ?: getAppOrigin(callingAppInfo.signingInfoCompat.signingCertificateHistory[0].toByteArray())
         logger?.d(TAG, "Origin: $callingOrigin")
 
         val option = this.credentialOptions[0] as GetDigitalCredentialOption
