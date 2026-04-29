@@ -18,36 +18,32 @@
 package eu.europa.ec.eudi.wallet.dcapi
 
 import android.content.Context
-import android.graphics.BitmapFactory
-import com.google.android.gms.identitycredentials.IdentityCredentialManager
-import com.google.android.gms.identitycredentials.RegistrationRequest
-import com.upokecenter.cbor.CBORObject
+import androidx.credentials.registry.provider.ClearCredentialRegistryRequest
+import androidx.credentials.registry.provider.RegistryManager
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.bouncycastle.util.encoders.Hex
-import org.multipaz.cbor.Cbor
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
- * [DCAPIIsoMdocRegistration] is responsible for registering MSO MDOC credentials for the Digital
- * Credential API (DCAPI).
+ * [DCAPIIsoMdocRegistration] is responsible for registering MSO MDOC credentials for the
+ * Digital Credential API (DCAPI).
  *
- * It retrieves issued documents, converts them to CBOR format, and registers them with
- * the Identity Credential Manager.
+ * It collects all issued mdoc documents from the [DocumentManager] and hands them to an
+ * [IsoMdocRegistry] (a [DigitalCredentialRegistry] subclass implementing the
+ * `org-iso-mdoc` protocol per ISO/IEC TS 18013-7:2025 Annex C) which is then registered
+ * with the system [RegistryManager].
  *
- * @property context The application context used for accessing resources and services.
- * @property documentManager The [DocumentManager] instance used to manage documents.
- * @property logger Optional logger for logging events.
+ * @property context Application context used by [IsoMdocRegistry] to load the
+ *   bundled WASM matcher and resolve app name / locale.
+ * @property documentManager The [DocumentManager] instance used to fetch issued documents.
+ * @property logger Optional logger.
+ * @property ioDispatcher Coroutine dispatcher used for I/O bound work.
  */
 
 class DCAPIIsoMdocRegistration(
@@ -55,147 +51,65 @@ class DCAPIIsoMdocRegistration(
     private val documentManager: DocumentManager,
     private var logger: Logger? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-): DCAPIRegistration {
+) : DCAPIRegistration {
+
+    private val registryManager: RegistryManager by lazy {
+        RegistryManager.create(context)
+    }
 
     override suspend fun registerCredentials() {
-        return withContext(ioDispatcher) {
+        withContext(ioDispatcher) {
             try {
-                val issuedMsoMdocDocuments =
-                    documentManager.getDocuments().filterIsInstance<IssuedDocument>()
-                        .filter { it.format is MsoMdocFormat }
+                val issuedMsoMdocDocuments = documentManager.getDocuments()
+                    .filterIsInstance<IssuedDocument>()
+                    .filter { it.format is MsoMdocFormat }
 
-                val credentials = issuedMsoMdocDocuments.toCBORBytes(context)
-                val client = IdentityCredentialManager.getClient(context)
-                val matcher = context.getMatcher(IDENTITY_CREDENTIAL_MATCHER)
-                client.registerCredentials(
-                    RegistrationRequest(
-                        credentials = credentials,
-                        matcher = matcher,
-                        type = REGISTRATION_TYPE,
-                        requestType = "",
-                        protocolTypes = emptyList(),
-                    )
-                ).addOnSuccessListener {
-                    logger?.d(TAG, "Registration succeeded (old)")
-                }.addOnFailureListener {
-                    logger?.d(TAG, "Registration failed  (old) $it")
+                // clear previously registered credentials
+                registryManager.clearCredentialRegistry(
+                    ClearCredentialRegistryRequest(isDeleteAll = true)
+                )
+
+                if (issuedMsoMdocDocuments.isEmpty()) {
+                    logger?.d(TAG, "No mdoc documents to register; cleared existing registries")
+                    return@withContext
                 }
-                client.registerCredentials(
-                    RegistrationRequest(
-                        credentials = credentials,
-                        matcher = matcher,
-                        type = TYPE_DIGITAL_CREDENTIAL,
-                        requestType = "",
-                        protocolTypes = emptyList(),
-                    )
-                ).addOnSuccessListener {
-                    logger?.d(TAG, "Registration succeeded")
-                }.addOnFailureListener {
-                    logger?.d(TAG, "Registration failed $it")
-                }
+
+                val registry = IsoMdocRegistry(
+                    context = context,
+                    documents = issuedMsoMdocDocuments,
+                    id = REGISTRY_ID,
+                    logger = logger,
+                    ioDispatcher = ioDispatcher
+                )
+
+                registryManager.registerCredentials(registry)
+                logger?.d(TAG, "Registered ${issuedMsoMdocDocuments.size} mdoc credential(s)")
             } catch (e: Exception) {
-                logger?.e(TAG, "Error during registration", e)
+                logger?.e(TAG, "Error during DCAPI registration", e)
             }
         }
     }
 
-    private suspend fun List<IssuedDocument>.toCBORBytes(context: Context): ByteArray {
-        val docsBuilder = CBORObject.NewArray()
-        forEach { document ->
-            val docType = (document.data.format as MsoMdocFormat).docType
-            logger?.d(
-                TAG,
-                "Issued Document with id: ${document.id}, type: $docType is being added as a credential"
-            )
-
-            // Try to get document logo provided by issuer else use an empty byte array
-            val bitmapBytes = document.issuerMetadata?.let {
-                getBitmapBytes(it)
-            } ?: byteArrayOf(0)
-
-            docsBuilder.Add(CBORObject.NewMap().apply {
-                Add(TITLE, document.name)
-                Add(SUBTITLE, context.getAppName())
-                Add(BITMAP, bitmapBytes)
-                Add(MDOC, CBORObject.NewMap().apply {
-                    Add(ID, document.id)
-                    Add(DOC_TYPE, docType)
-                    Add(NAMESPACES, CBORObject.NewMap().apply {
-                        (document.data as MsoMdocData).claims.groupBy { it.nameSpace }
-                            .forEach { (nameSpace, elements) ->
-                                val namespaceBuilder = CBORObject.NewMap()
-                                elements.forEach { element ->
-                                    val displayName = element.issuerMetadata?.display?.find {
-                                        it.locale?.language == context.getLocale().language
-                                    }?.name ?: element.identifier
-                                    val displayedValue =
-                                        if (Cbor.toDiagnostics(element.rawValue).startsWith("h'")) {
-                                            "${element.rawValue.size} bytes"
-                                        } else {
-                                            Cbor.toDiagnostics(element.rawValue)
-                                        }
-                                    val elementBuilder = CBORObject.NewArray().apply {
-                                        Add(displayName)
-                                        Add(displayedValue)
-                                    }
-                                    namespaceBuilder.Add(element.identifier, elementBuilder)
-                                }
-                                Add(nameSpace, namespaceBuilder)
-                            }
-                    })
-                })
-            })
-        }
-        val credentialBytes = docsBuilder.EncodeToBytes()
-        logger?.d(TAG, "Register documents with bytes: ${Hex.toHexString(credentialBytes)}")
-        return credentialBytes
-    }
-
-    private suspend fun getBitmapBytes(issuerMetadata: IssuerMetadata): ByteArray {
-        return try {
-            issuerMetadata.display.find {
-                it.locale?.language == context.getLocale().language
-            }?.logo?.uri?.let { uri ->
-                getLogo(uri.toURL())?.let { logoBytes ->
-                    BitmapFactory.decodeByteArray(logoBytes, 0, logoBytes.size).getIconBytes()
-                }
-            } ?: byteArrayOf(0)
-        } catch (_: Exception) {
-            byteArrayOf(0)
-        }
-    }
-
-    private suspend fun getLogo(url: URL): ByteArray? = withContext(ioDispatcher) {
-        try {
-            (url.openConnection() as? HttpURLConnection)?.run {
-                connectTimeout = 5_000
-                readTimeout = 10_000
-                requestMethod = "GET"
-                doInput = true
-                connect()
-                inputStream.use { it.readBytes() }
+    override suspend fun unregisterCredentials() {
+        withContext(ioDispatcher) {
+            try {
+                registryManager.clearCredentialRegistry(
+                    ClearCredentialRegistryRequest(isDeleteAll = true)
+                )
+                logger?.d(TAG, "Unregistered all credentials")
+            } catch (e: Exception) {
+                logger?.e(TAG, "Error during DCAPI unregistration", e)
             }
-        } catch (e: Exception) {
-            logger?.e(TAG, "Failed to download from URL: $url", e)
-            null
         }
     }
 
     companion object {
         private const val TAG = "DCAPIIsoMdocRegistration"
-        private const val REGISTRATION_TYPE = "com.credman.IdentityCredential"
-        private const val TYPE_DIGITAL_CREDENTIAL = "androidx.credentials.TYPE_DIGITAL_CREDENTIAL"
-        private const val IDENTITY_CREDENTIAL_MATCHER = "identitycredentialmatcher.wasm"
-        private const val TITLE = "title"
-        private const val SUBTITLE = "subtitle"
-        private const val BITMAP = "bitmap"
-        private const val MDOC = "mdoc"
-        private const val ID = "id"
-        private const val DOC_TYPE = "docType"
-        private const val NAMESPACES = "namespaces"
+        private const val REGISTRY_ID = "eudi-mdoc-registry-v1"
     }
 }
 
-fun interface DCAPIRegistration {
+interface DCAPIRegistration {
     suspend fun registerCredentials()
+    suspend fun unregisterCredentials()
 }

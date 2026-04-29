@@ -9,6 +9,41 @@ according to the [ISO/IEC TS 18013-7:2025](https://www.iso.org/standard/91154.ht
 
 ## Enabling the Digital Credential API
 
+### Add the runtime dependency
+
+To enable DCAPI, add the following dependency to your app:
+
+```groovy
+dependencies {
+    // Required only if DCAPI is enabled
+    implementation "androidx.credentials.registry:registry-provider-play-services:1.0.0-alpha04"
+}
+```
+
+Without this dependency, DCAPI registration fails at runtime
+with the error `"no provider dependencies found - please ensure the desired provider dependencies are added"`.
+
+#### Why you need to add this dependency
+
+DCAPI registration relies on the AndroidX Credentials Registry, and the
+`registry-provider-play-services` artifact is currently the only runtime
+provider available — without it, DCAPI cannot function.
+
+This artifact pulls in Google Play Services (GMS), which is not available
+on every Android device.
+
+For this reason `eudi-lib-android-wallet-core` does **not** bundle the
+provider as a transitive dependency. Each consuming wallet is free to
+decide whether to support DCAPI based on its target distribution:
+
+- **GMS-enabled distributions** (e.g., apps shipped via Google Play): add
+  the dependency to enable DCAPI alongside all other wallet-core features.
+- **Non-GMS distributions** (e.g., **GrapheneOS**, AOSP-based government
+  builds): omit the dependency. DCAPI will not function,
+  but every other wallet-core capability — OpenID4VCI issuance, OpenID4VP
+  remote presentation, BLE/NFC proximity presentation —
+  continues to work normally.
+
 ### Register the Intent
 
 In the application's `AndroidManifest.xml` file define an Activity to listen the

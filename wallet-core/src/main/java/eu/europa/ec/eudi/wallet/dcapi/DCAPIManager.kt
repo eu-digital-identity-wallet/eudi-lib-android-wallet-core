@@ -20,8 +20,9 @@ package eu.europa.ec.eudi.wallet.dcapi
 import android.content.Intent
 import androidx.credentials.ExperimentalDigitalCredentialApi
 import androidx.credentials.GetDigitalCredentialOption
+import androidx.credentials.exceptions.GetCredentialCustomException
+import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.provider.ProviderGetCredentialRequest
-import com.google.android.gms.identitycredentials.IntentHelper
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
@@ -135,10 +136,12 @@ class DCAPIManager(
 class DCAPIException(message: String, cause: Throwable? = null): Exception(message, cause) {
     fun toIntent(): Intent {
         val resultData = Intent()
-        IntentHelper.setGetCredentialException(
+        PendingIntentHandler.setGetCredentialException(
             resultData,
-            cause?.toString() ?: "Unknown Error Type",
-            message
+            GetCredentialCustomException(
+                type = cause?.toString() ?: "Unknown Error Type",
+                errorMessage = message
+            )
         )
         return resultData
     }

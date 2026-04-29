@@ -19,12 +19,12 @@ package eu.europa.ec.eudi.wallet.dcapi
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.core.graphics.scale
 import com.upokecenter.cbor.CBORObject
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import java.util.Locale
 import kotlin.io.encoding.ExperimentalEncodingApi
-import androidx.core.graphics.scale
 import org.multipaz.util.toBase64
 
 private const val SHA_256_ALGORITHM = "SHA-256"
