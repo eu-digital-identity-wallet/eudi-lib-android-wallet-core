@@ -27,9 +27,15 @@ val eudiWallet = EudiWallet(context, config)
 ### Use the default Longfellow ZKP repository
 
 The library provides a default `ZkSystemRepository` implementation based on the 
-**Longfellow ΖΚ** system, preloaded with the required circuits shipped in the library assets.
+**Longfellow ZK** system, preloaded with the required circuits shipped in the library assets.
 
 For details about the Longfellow ZK reference implementation, see: https://github.com/google/longfellow-zk
+
+> **Circuit version note:** The default circuits bundled with this library
+> are Longfellow **v7**, which support `IssuerSignedItem` CBOR maps in any
+> key ordering. Older v6 circuits assume canonical key ordering
+> and will fail proof generation for credentials whose issuer emits keys in
+> a different order.
 
 ```kotlin
 
@@ -71,37 +77,33 @@ val eudiWallet = EudiWallet(context, config)
 ```
 
 > **Important:** If you provide your own circuits, make sure they are **compatible** with the current 
-> Longfellow ZK implementation bundled with EUDI Wallet Core. 
+> Longfellow ZK implementation [v0.9](https://github.com/google/longfellow-zk/releases/tag/v0.9) 
+> bundled with EUDI Wallet Core. 
 > Incompatible circuits may fail to load or generate a proof.
 
 ### Known limitations
 
-1. The current version of the Longfellow ZK implementation has the following known limitations:
+#### Longfellow circuit constraints
+The current version of the Longfellow ZK implementation [v0.9](https://github.com/google/longfellow-zk/releases/tag/v0.9) has the following known limitations:
 
- -  **IssuerSignedItem field order must be preserved** 
+- **IssuerSignedItem size limits**:
+  - Total encoded `IssuerSignedItem`: **max 119 bytes**
+  - `elementIdentifier`: **max 32 bytes**
+  - `elementValue` CBOR: **max 64 bytes**
+  
+  Attributes that exceed any of these limits will cause proof generation to fail.
 
-The `IssuerSignedItem` structures provided by the issuer must be encoded with the following field order:
+- **MSO size limit (2533 bytes)**
 
-```cddl
-IssuerSignedItem = {
-   "digestID" : uint,
-   "random" : bstr,
-   "elementIdentifier" : DataElementIdentifier,
-   "elementValue" : DataElementValue
-}
-```
+  Larger MSOs will cause proof generation to fail.
 
-If the issuer encodes these fields in a different order, **proof generation will fail** with the current implementation.
+#### Transport limitations
 
- - **IssuerSignedItem size limit (96 bytes)**
+- When using proximity transfer over BLE in Central/Client mode, the transfer
+  may remain incomplete.
 
-The current implementation expects each encoded `IssuerSignedItem` to be **at most 96 bytes**.
-If an `IssuerSignedItem` exceeds this limit, **proof generation will fail**.
+### Fallback behavior
 
- - **Mobile security object (MSO) size should not exceed 2213 bytes**
-If an `MSO` exceeds this limit, **proof generation will fail**.
-
-2. When using proximity transfer over BLE in Central/Client mode, the transfer may remains incomplete.
-
-> **Fallback behavior:** If ZKP proof generation fails for any reason, the library automatically falls 
-> back to a `DeviceResponse` that contains a `Document` structure instead of a `ZkDocument` (i.e., without ZKP proof).
+If ZKP proof generation fails for any reason, the library automatically falls
+back to a regular `DeviceResponse` containing a `Document` structure (without
+ZKP proof).
