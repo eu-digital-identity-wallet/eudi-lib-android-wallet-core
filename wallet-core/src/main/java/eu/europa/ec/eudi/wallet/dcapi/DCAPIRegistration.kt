@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -108,18 +109,14 @@ class DCAPIIsoMdocRegistration(
             )
 
             // Try to get document logo provided by issuer else use an empty byte array
-            val bitmapBytes = document.issuerMetadata?.display?.find {
-                it.locale?.language == context.getLocale().language
-            }?.logo?.uri?.let { uri ->
-                getLogo(uri.toURL())?.let { logoBytes ->
-                    BitmapFactory.decodeByteArray(logoBytes, 0, logoBytes.size).getIconBytes()
-                }
+            val bitmapBytes = document.issuerMetadata?.let {
+                getBitmapBytes(it)
             } ?: byteArrayOf(0)
 
             docsBuilder.Add(CBORObject.NewMap().apply {
                 Add(TITLE, document.name)
                 Add(SUBTITLE, context.getAppName())
-                 Add(BITMAP, bitmapBytes)
+                Add(BITMAP, bitmapBytes)
                 Add(MDOC, CBORObject.NewMap().apply {
                     Add(ID, document.id)
                     Add(DOC_TYPE, docType)
@@ -152,6 +149,20 @@ class DCAPIIsoMdocRegistration(
         val credentialBytes = docsBuilder.EncodeToBytes()
         logger?.d(TAG, "Register documents with bytes: ${Hex.toHexString(credentialBytes)}")
         return credentialBytes
+    }
+
+    private suspend fun getBitmapBytes(issuerMetadata: IssuerMetadata): ByteArray {
+        return try {
+            issuerMetadata.display.find {
+                it.locale?.language == context.getLocale().language
+            }?.logo?.uri?.let { uri ->
+                getLogo(uri.toURL())?.let { logoBytes ->
+                    BitmapFactory.decodeByteArray(logoBytes, 0, logoBytes.size).getIconBytes()
+                }
+            } ?: byteArrayOf(0)
+        } catch (_: Exception) {
+            byteArrayOf(0)
+        }
     }
 
     private suspend fun getLogo(url: URL): ByteArray? = withContext(ioDispatcher) {
