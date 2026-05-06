@@ -2,8 +2,8 @@
 
 # invoke
 
-[androidJvm]\
-operator fun [invoke](invoke.md)(configure: [EudiWalletConfig](../index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)
+[release]\
+operator fun [invoke](invoke.md)(configure: [EudiWalletConfig](../index.md).() -&gt; [Unit](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](../index.md)
 
 Create a new EudiWalletConfig instance.
 
@@ -13,7 +13,7 @@ the EudiWalletConfig instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

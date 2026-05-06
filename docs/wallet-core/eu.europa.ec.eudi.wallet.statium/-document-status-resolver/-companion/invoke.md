@@ -2,14 +2,14 @@
 
 # invoke
 
-[androidJvm]\
-operator fun [invoke](invoke.md)(verifySignature: VerifyStatusListTokenJwtSignature = VerifyStatusListTokenJwtSignature.x5c, ktorHttpClientFactory: () -&gt; HttpClient = { HttpClient() }, allowedClockSkew: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html) = Duration.ZERO): [DocumentStatusResolver](../index.md)
+[release]\
+operator fun [invoke](invoke.md)(verifySignature: VerifyStatusListTokenJwtSignature = VerifyStatusListTokenJwtSignature.x5c, ktorHttpClientFactory: () -&gt; HttpClient = { HttpClient() }, allowedClockSkew: [Duration](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/index.html) = Duration.ZERO): [DocumentStatusResolver](../index.md)
 
 Creates an instance of [DocumentStatusResolver](../index.md)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -17,8 +17,8 @@ androidJvm
 | verifySignature | a function to verify the status list token signature |
 | allowedClockSkew | the allowed clock skew for the verification |
 
-[androidJvm]\
-operator fun [invoke](invoke.md)(block: [DocumentStatusResolver.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)): [DocumentStatusResolver](../index.md)
+[release]\
+operator fun [invoke](invoke.md)(block: [DocumentStatusResolver.Builder](../-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html)): [DocumentStatusResolver](../index.md)
 
 Creates an instance of [DocumentStatusResolver](../index.md) using a builder
 
@@ -28,7 +28,7 @@ a [DocumentStatusResolver](../index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

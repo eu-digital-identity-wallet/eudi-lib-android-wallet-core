@@ -2,7 +2,7 @@
 
 # stopRemotePresentation
 
-[androidJvm]\
+[release]\
 open override fun [stopRemotePresentation](stop-remote-presentation.md)()
 
 Stops any ongoing remote presentation

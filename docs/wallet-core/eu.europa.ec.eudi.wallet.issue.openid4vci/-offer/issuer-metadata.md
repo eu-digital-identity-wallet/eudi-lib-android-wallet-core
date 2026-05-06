@@ -2,5 +2,5 @@
 
 # issuerMetadata
 
-[androidJvm]\
+[release]\
 val [issuerMetadata](issuer-metadata.md): CredentialIssuerMetadata

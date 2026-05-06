@@ -2,7 +2,7 @@
 
 # WalletAttestationsProvider
 
-[androidJvm]\
+[release]\
 interface [WalletAttestationsProvider](index.md)
 
 Interface defining the bridge between the Wallet Core SDK and the Wallet Provider Service.
@@ -15,5 +15,5 @@ These attestations are required during the OpenID for Verifiable Credential Issu
 
 | Name | Summary |
 |---|---|
-| [getKeyAttestation](get-key-attestation.md) | [androidJvm]<br>abstract suspend fun [getKeyAttestation](get-key-attestation.md)(keys: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;KeyInfo&gt;, nonce: Nonce?): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;<br>Retrieves the Wallet Unit Attestation (WUA) or Key Attestation. |
-| [getWalletAttestation](get-wallet-attestation.md) | [androidJvm]<br>abstract suspend fun [getWalletAttestation](get-wallet-attestation.md)(keyInfo: KeyInfo): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;<br>Retrieves the Wallet Instance Attestation (WIA). |
+| [getKeyAttestation](get-key-attestation.md) | [release]<br>abstract suspend fun [getKeyAttestation](get-key-attestation.md)(keys: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;KeyInfo&gt;, nonce: Nonce?): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;[String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)&gt;<br>Retrieves the Wallet Unit Attestation (WUA) or Key Attestation. |
+| [getWalletAttestation](get-wallet-attestation.md) | [release]<br>abstract suspend fun [getWalletAttestation](get-wallet-attestation.md)(keyInfo: KeyInfo): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;[String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)&gt;<br>Retrieves the Wallet Instance Attestation (WIA). |

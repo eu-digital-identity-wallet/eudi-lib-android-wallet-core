@@ -2,5 +2,5 @@
 
 # DocumentExpired
 
-[androidJvm]\
+[release]\
 constructor(document: DeferredDocument)

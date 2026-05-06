@@ -2,8 +2,8 @@
 
 # cborParse
 
-[androidJvm]\
-fun [cborParse](cbor-parse.md)(data: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)): [Any](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-any/index.html)?
+[release]\
+fun [cborParse](cbor-parse.md)(data: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)): [Any](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html)?
 
 Parses a given CBOR byte array into a Kotlin object.
 
@@ -13,7 +13,7 @@ The parsed object.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

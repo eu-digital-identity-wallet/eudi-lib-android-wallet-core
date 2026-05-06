@@ -2,5 +2,5 @@
 
 # providerGetCredentialRequest
 
-[androidJvm]\
+[release]\
 val [providerGetCredentialRequest](provider-get-credential-request.md): [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html)

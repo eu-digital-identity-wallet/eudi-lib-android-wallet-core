@@ -2,10 +2,10 @@
 
 # fromByteArray
 
-[androidJvm]\
-fun [fromByteArray](from-byte-array.md)(bytes: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)): [IssuanceMetadata](../index.md)
+[release]\
+fun [fromByteArray](from-byte-array.md)(bytes: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)): [IssuanceMetadata](../index.md)
 
-Deserializes an [IssuanceMetadata](../index.md) from a [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html).
+Deserializes an [IssuanceMetadata](../index.md) from a [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html).
 
 This method reconstructs an [IssuanceMetadata](../index.md) from its serialized JSON form. The ByteArray should have been created using [IssuanceMetadata.toByteArray](../to-byte-array.md).
 
@@ -15,7 +15,7 @@ The deserialized [IssuanceMetadata](../index.md)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -25,4 +25,4 @@ androidJvm
 
 | | |
 |---|---|
-| [Exception](https://developer.android.com/reference/kotlin/java/lang/Exception.html) | if the bytes are invalid or corrupted |
+| [Exception](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-exception/index.html) | if the bytes are invalid or corrupted |

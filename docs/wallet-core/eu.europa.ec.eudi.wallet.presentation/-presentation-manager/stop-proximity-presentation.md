@@ -2,8 +2,8 @@
 
 # stopProximityPresentation
 
-[androidJvm]\
-abstract fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = SEND_SESSION_TERMINATION_MESSAGE)
+[release]\
+abstract fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = SEND_SESSION_TERMINATION_MESSAGE)
 
 Stops the proximity presentation. Method receives flags that can be used to control the session termination. The available flags are:
 
@@ -14,7 +14,7 @@ Stops the proximity presentation. Method receives flags that can be used to cont
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,5 +2,5 @@
 
 # documentStatusResolverClockSkew
 
-[androidJvm]\
-var [documentStatusResolverClockSkew](document-status-resolver-clock-skew.md): [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html)
+[release]\
+var [documentStatusResolverClockSkew](document-status-resolver-clock-skew.md): [Duration](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/index.html)

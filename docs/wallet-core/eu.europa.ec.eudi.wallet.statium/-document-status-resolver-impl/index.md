@@ -2,13 +2,13 @@
 
 # DocumentStatusResolverImpl
 
-class [DocumentStatusResolverImpl](index.md)(verifySignature: VerifyStatusListTokenJwtSignature, allowedClockSkew: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html), ktorHttpClientFactory: () -&gt; HttpClient, extractor: [StatusReferenceExtractor](../-status-reference-extractor/index.md) = DefaultStatusReferenceExtractor, ioDispatcher: CoroutineDispatcher = Dispatchers.IO) : [DocumentStatusResolver](../-document-status-resolver/index.md)
+class [DocumentStatusResolverImpl](index.md)(verifySignature: VerifyStatusListTokenJwtSignature, allowedClockSkew: [Duration](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/index.html), ktorHttpClientFactory: () -&gt; HttpClient, extractor: [StatusReferenceExtractor](../-status-reference-extractor/index.md) = DefaultStatusReferenceExtractor, ioDispatcher: CoroutineDispatcher = Dispatchers.IO) : [DocumentStatusResolver](../-document-status-resolver/index.md)
 
 Default implementation of [DocumentStatusResolver](../-document-status-resolver/index.md)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -21,10 +21,10 @@ androidJvm
 
 | | |
 |---|---|
-| [DocumentStatusResolverImpl](-document-status-resolver-impl.md) | [androidJvm]<br>constructor(verifySignature: VerifyStatusListTokenJwtSignature, allowedClockSkew: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html), ktorHttpClientFactory: () -&gt; HttpClient, extractor: [StatusReferenceExtractor](../-status-reference-extractor/index.md) = DefaultStatusReferenceExtractor, ioDispatcher: CoroutineDispatcher = Dispatchers.IO) |
+| [DocumentStatusResolverImpl](-document-status-resolver-impl.md) | [release]<br>constructor(verifySignature: VerifyStatusListTokenJwtSignature, allowedClockSkew: [Duration](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/index.html), ktorHttpClientFactory: () -&gt; HttpClient, extractor: [StatusReferenceExtractor](../-status-reference-extractor/index.md) = DefaultStatusReferenceExtractor, ioDispatcher: CoroutineDispatcher = Dispatchers.IO) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [resolveStatus](resolve-status.md) | [androidJvm]<br>open suspend override fun [resolveStatus](resolve-status.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;Status&gt;<br>Resolves the status of the given document |
+| [resolveStatus](resolve-status.md) | [release]<br>open suspend override fun [resolveStatus](resolve-status.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;Status&gt;<br>Resolves the status of the given document |

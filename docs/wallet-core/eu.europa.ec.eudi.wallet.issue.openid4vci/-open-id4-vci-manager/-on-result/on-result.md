@@ -2,5 +2,5 @@
 
 # onResult
 
-[androidJvm]\
+[release]\
 abstract fun [onResult](on-result.md)(result: [T](index.md))

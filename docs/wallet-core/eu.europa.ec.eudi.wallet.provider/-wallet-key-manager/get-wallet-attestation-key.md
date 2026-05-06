@@ -2,8 +2,8 @@
 
 # getWalletAttestationKey
 
-[androidJvm]\
-abstract suspend fun [getWalletAttestationKey](get-wallet-attestation-key.md)(keyAlias: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): [WalletAttestationKey](../-wallet-attestation-key/index.md)?
+[release]\
+abstract suspend fun [getWalletAttestationKey](get-wallet-attestation-key.md)(keyAlias: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [WalletAttestationKey](../-wallet-attestation-key/index.md)?
 
 Retrieves the existing Wallet Attestation Key for the specified Authorization Server URL. If no key exists for the given Authorization Server, it returns null.
 
@@ -13,7 +13,7 @@ The existing [WalletAttestationKey](../-wallet-attestation-key/index.md) or null
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

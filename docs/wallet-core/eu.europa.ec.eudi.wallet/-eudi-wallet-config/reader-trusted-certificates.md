@@ -2,5 +2,5 @@
 
 # readerTrustedCertificates
 
-[androidJvm]\
-var [readerTrustedCertificates](reader-trusted-certificates.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[X509Certificate](https://developer.android.com/reference/kotlin/java/security/cert/X509Certificate.html)&gt;?
+[release]\
+var [readerTrustedCertificates](reader-trusted-certificates.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[X509Certificate](https://developer.android.com/reference/kotlin/java/security/cert/X509Certificate.html)&gt;?

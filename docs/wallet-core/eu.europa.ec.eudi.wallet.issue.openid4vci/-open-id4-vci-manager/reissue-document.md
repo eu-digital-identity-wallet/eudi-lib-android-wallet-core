@@ -2,8 +2,8 @@
 
 # reissueDocument
 
-[androidJvm]\
-abstract fun [reissueDocument](reissue-document.md)(documentId: &lt;Error class: unknown class&gt;, allowAuthorizationFallback: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = true, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+[release]\
+abstract fun [reissueDocument](reissue-document.md)(documentId: DocumentId, allowAuthorizationFallback: [Boolean](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html) = true, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
 
 Re-issue a previously issued document using stored authorization context.
 
@@ -29,7 +29,7 @@ This method allows re-issuing a credential without requiring the user to go thro
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -42,5 +42,5 @@ androidJvm
 
 | | |
 |---|---|
-| [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md) | for the possible events during re-issuance |
+| [OnIssueEvent](-on-issue-event/index.md) | for the possible events during re-issuance |
 | [ReissuanceAuthorizationException](../../eu.europa.ec.eudi.wallet.issue.openid4vci.reissue/-reissuance-authorization-exception/index.md) |

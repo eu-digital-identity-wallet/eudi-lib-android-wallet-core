@@ -2,7 +2,7 @@
 
 # build
 
-[androidJvm]\
+[release]\
 fun [build](build.md)(): [OpenId4VciManager.Config](../index.md)
 
 Build the [Config](../index.md)

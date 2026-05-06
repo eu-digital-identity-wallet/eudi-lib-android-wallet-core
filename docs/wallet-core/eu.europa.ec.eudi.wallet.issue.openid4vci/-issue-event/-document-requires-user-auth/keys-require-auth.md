@@ -2,5 +2,5 @@
 
 # keysRequireAuth
 
-[androidJvm]\
-val [keysRequireAuth](keys-require-auth.md): [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[KeyAlias](../../-key-alias/index.md), SecureArea&gt;
+[release]\
+val [keysRequireAuth](keys-require-auth.md): [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[KeyAlias](../../-key-alias/index.md), SecureArea&gt;

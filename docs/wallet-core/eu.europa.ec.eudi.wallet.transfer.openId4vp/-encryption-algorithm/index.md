@@ -2,7 +2,7 @@
 
 # EncryptionAlgorithm
 
-enum [EncryptionAlgorithm](index.md) : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-enum/index.html)&lt;[EncryptionAlgorithm](index.md)&gt; 
+enum [EncryptionAlgorithm](index.md) : [Enum](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-enum/index.html)&lt;[EncryptionAlgorithm](index.md)&gt; 
 
 Encryption algorithm enumeration for OpenID4VP key agreement and key wrapping operations.
 
@@ -35,28 +35,28 @@ All algorithms provide forward secrecy through ephemeral key generation and are 
 
 | | |
 |---|---|
-| [ECDH_ES](-e-c-d-h_-e-s/index.md) | [androidJvm]<br>[ECDH_ES](-e-c-d-h_-e-s/index.md)<br>Elliptic Curve Diffie-Hellman Ephemeral Static key agreement |
-| [ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md) | [androidJvm]<br>[ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md)<br>ECDH-ES with AES-128 Key Wrap algorithm |
-| [ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md) | [androidJvm]<br>[ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md)<br>ECDH-ES with AES-192 Key Wrap algorithm |
-| [ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md) | [androidJvm]<br>[ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md)<br>ECDH-ES with AES-256 Key Wrap algorithm |
+| [ECDH_ES](-e-c-d-h_-e-s/index.md) | [release]<br>[ECDH_ES](-e-c-d-h_-e-s/index.md)<br>Elliptic Curve Diffie-Hellman Ephemeral Static key agreement |
+| [ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md) | [release]<br>[ECDH_ES_A128KW](-e-c-d-h_-e-s_-a128-k-w/index.md)<br>ECDH-ES with AES-128 Key Wrap algorithm |
+| [ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md) | [release]<br>[ECDH_ES_A192KW](-e-c-d-h_-e-s_-a192-k-w/index.md)<br>ECDH-ES with AES-192 Key Wrap algorithm |
+| [ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md) | [release]<br>[ECDH_ES_A256KW](-e-c-d-h_-e-s_-a256-k-w/index.md)<br>ECDH-ES with AES-256 Key Wrap algorithm |
 
 ## Types
 
 | Name | Summary |
 |---|---|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
+| [Companion](-companion/index.md) | [release]<br>object [Companion](-companion/index.md) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [entries](entries.md) | [androidJvm]<br>val [entries](entries.md): [EnumEntries](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.enums/-enum-entries/index.html)&lt;[EncryptionAlgorithm](index.md)&gt;<br>Returns a representation of an immutable list of all enum entries, in the order they're declared. |
-| [name](../-encryption-method/-x-c20-p/index.md#-372974862%2FProperties%2F1615067946) | [androidJvm]<br>val [name](../-encryption-method/-x-c20-p/index.md#-372974862%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
-| [ordinal](../-encryption-method/-x-c20-p/index.md#-739389684%2FProperties%2F1615067946) | [androidJvm]<br>val [ordinal](../-encryption-method/-x-c20-p/index.md#-739389684%2FProperties%2F1615067946): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) |
+| [entries](entries.md) | [release]<br>val [entries](entries.md): [EnumEntries](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.enums/-enum-entries/index.html)&lt;[EncryptionAlgorithm](index.md)&gt;<br>Returns a representation of an immutable list of all enum entries, in the order they're declared. |
+| [name](../-encryption-method/-x-c20-p/index.md#-372974862%2FProperties%2F-946843593) | [release]<br>val [name](../-encryption-method/-x-c20-p/index.md#-372974862%2FProperties%2F-946843593): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [ordinal](../-encryption-method/-x-c20-p/index.md#-739389684%2FProperties%2F-946843593) | [release]<br>val [ordinal](../-encryption-method/-x-c20-p/index.md#-739389684%2FProperties%2F-946843593): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [valueOf](value-of.md) | [androidJvm]<br>fun [valueOf](value-of.md)(value: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): [EncryptionAlgorithm](index.md)<br>Returns the enum constant of this type with the specified name. The string must match exactly an identifier used to declare an enum constant in this type. (Extraneous whitespace characters are not permitted.) |
-| [values](values.md) | [androidJvm]<br>fun [values](values.md)(): [Array](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-array/index.html)&lt;[EncryptionAlgorithm](index.md)&gt;<br>Returns an array containing the constants of this enum type, in the order they're declared. |
+| [valueOf](value-of.md) | [release]<br>fun [valueOf](value-of.md)(value: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [EncryptionAlgorithm](index.md)<br>Returns the enum constant of this type with the specified name. The string must match exactly an identifier used to declare an enum constant in this type. (Extraneous whitespace characters are not permitted.) |
+| [values](values.md) | [release]<br>fun [values](values.md)(): [Array](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-array/index.html)&lt;[EncryptionAlgorithm](index.md)&gt;<br>Returns an array containing the constants of this enum type, in the order they're declared. |

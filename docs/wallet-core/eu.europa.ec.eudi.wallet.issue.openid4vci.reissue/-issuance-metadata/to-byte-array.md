@@ -2,10 +2,10 @@
 
 # toByteArray
 
-[androidJvm]\
-fun [toByteArray](to-byte-array.md)(): [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)
+[release]\
+fun [toByteArray](to-byte-array.md)(): [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)
 
-Serializes this [IssuanceMetadata](index.md) to a [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html) for storage.
+Serializes this [IssuanceMetadata](index.md) to a [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html) for storage.
 
 This method converts the issuance metadata into a JSON-encoded ByteArray that can be stored in a multipaz Storage table. Use [fromByteArray](-companion/from-byte-array.md) to deserialize.
 

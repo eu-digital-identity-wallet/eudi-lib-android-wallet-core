@@ -2,5 +2,5 @@
 
 # REQUIRED
 
-[androidJvm]\
-const val [REQUIRED](-r-e-q-u-i-r-e-d.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 4
+[release]\
+const val [REQUIRED](-r-e-q-u-i-r-e-d.md): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 4

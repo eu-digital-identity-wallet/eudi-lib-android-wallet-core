@@ -2,5 +2,5 @@
 
 # tokenTimestamp
 
-[androidJvm]\
-val [tokenTimestamp](token-timestamp.md): [Long](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-long/index.html)
+[release]\
+val [tokenTimestamp](token-timestamp.md): [Long](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-long/index.html)

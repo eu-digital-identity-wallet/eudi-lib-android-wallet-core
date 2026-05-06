@@ -2,5 +2,5 @@
 
 # BrowserAuthorizationHandler
 
-[androidJvm]\
+[release]\
 constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)

@@ -2,8 +2,8 @@
 
 # configureDocumentKeyCreation
 
-[androidJvm]\
-fun [configureDocumentKeyCreation](configure-document-key-creation.md)(userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = false, userAuthenticationTimeout: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html) = 0.milliseconds, useStrongBoxForKeys: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html) = true): &lt;Error class: unknown class&gt;
+[release]\
+fun [configureDocumentKeyCreation](configure-document-key-creation.md)(userAuthenticationRequired: [Boolean](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html) = false, userAuthenticationTimeout: [Duration](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/index.html) = 0.milliseconds, useStrongBoxForKeys: [Boolean](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html) = true): [EudiWalletConfig](index.md)
 
 Configure the document key creation. This allows to configure if user authentication is required to unlock key usage, the user authentication timeout and whether to use the strong box for keys. These values are used to create the eu.europa.ec.eudi.wallet.document.CreateDocumentSettings using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings](../../eu.europa.ec.eudi.wallet.document/-document-extensions/get-default-create-document-settings.md) method.
 
@@ -22,7 +22,7 @@ The default values are:
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

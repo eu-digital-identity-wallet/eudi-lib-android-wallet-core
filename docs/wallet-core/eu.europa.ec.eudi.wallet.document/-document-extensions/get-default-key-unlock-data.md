@@ -2,7 +2,7 @@
 
 # getDefaultKeyUnlockData
 
-[androidJvm]\
+[release]\
 suspend fun IssuedDocument.[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(): AndroidKeystoreKeyUnlockData?
 
 Returns the default AndroidKeystoreKeyUnlockData for the IssuedDocument. The default key unlock data is based on the IssuedDocument.findCredential
@@ -19,17 +19,17 @@ The default AndroidKeystoreKeyUnlockData for the IssuedDocument if it requires u
 
 | |
 |---|
-| [DocumentExtensions.getDefaultKeyUnlockData](get-default-key-unlock-data.md) |
+| [getDefaultKeyUnlockData](get-default-key-unlock-data.md) |
 
 #### Throws
 
 | | |
 |---|---|
-| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if the document is not managed by AndroidKeystoreSecureArea. |
+| [IllegalArgumentException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-argument-exception/index.html) | if the document is not managed by AndroidKeystoreSecureArea. |
 
-[androidJvm]\
+[release]\
 
-@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockDataForDocument&quot;)
+@[JvmName](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockDataForDocument&quot;)
 
 suspend fun [getDefaultKeyUnlockData](get-default-key-unlock-data.md)(document: IssuedDocument): AndroidKeystoreKeyUnlockData?
 
@@ -41,7 +41,7 @@ The AndroidKeystoreKeyUnlockData for the document if it requires user authentica
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -58,15 +58,15 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if the document is not managed by AndroidKeystoreSecureArea. |
+| [IllegalArgumentException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-argument-exception/index.html) | if the document is not managed by AndroidKeystoreSecureArea. |
 
-[androidJvm]\
+[release]\
 
-@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
+@[JvmName](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(documentId: &lt;Error class: unknown class&gt;): AndroidKeystoreKeyUnlockData?
+fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultKeyUnlockData](get-default-key-unlock-data.md)(documentId: DocumentId): AndroidKeystoreKeyUnlockData?
 
 Returns the default AndroidKeystoreKeyUnlockData for the given DocumentId. The default key unlock data is based on the Document.keyAlias of the found document. This is applicable only if the document's key requires user authentication.
 
@@ -80,7 +80,7 @@ The default AndroidKeystoreKeyUnlockData for the given DocumentId if the documen
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -97,11 +97,11 @@ androidJvm
 
 | | |
 |---|---|
-| NoSuchElementException | if the document is not found by the DocumentId. |
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea. |
+| [NoSuchElementException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-no-such-element-exception/index.html) | if the document is not found by the DocumentId. |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if the Document is not managed by AndroidKeystoreSecureArea. |
 
-[androidJvm]\
-fun [getDefaultKeyUnlockData](get-default-key-unlock-data.md)(secureArea: SecureArea, keyAlias: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): AndroidKeystoreKeyUnlockData?
+[release]\
+fun [getDefaultKeyUnlockData](get-default-key-unlock-data.md)(secureArea: SecureArea, keyAlias: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): AndroidKeystoreKeyUnlockData?
 
 Returns the default AndroidKeystoreKeyUnlockData for the given SecureArea and [keyAlias](get-default-key-unlock-data.md) if the [secureArea](get-default-key-unlock-data.md) is an instance of AndroidKeystoreSecureArea.
 
@@ -111,7 +111,7 @@ The default AndroidKeystoreKeyUnlockData if the [secureArea](get-default-key-unl
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

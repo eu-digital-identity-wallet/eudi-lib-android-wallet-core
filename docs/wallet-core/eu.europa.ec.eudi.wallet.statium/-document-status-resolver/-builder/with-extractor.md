@@ -2,8 +2,8 @@
 
 # withExtractor
 
-[androidJvm]\
-fun [withExtractor](with-extractor.md)(extractor: [StatusReferenceExtractor](../../-status-reference-extractor/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withExtractor](with-extractor.md)(extractor: [StatusReferenceExtractor](../../-status-reference-extractor/index.md)): [DocumentStatusResolver.Builder](index.md)
 
 Sets the instance of [StatusReferenceExtractor](../../-status-reference-extractor/index.md) to extract the status reference from the document
 
@@ -13,7 +13,7 @@ the builder instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

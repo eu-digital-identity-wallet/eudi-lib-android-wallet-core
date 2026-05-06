@@ -2,14 +2,14 @@
 
 # log
 
-[androidJvm]\
+[release]\
 abstract fun [log](log.md)(record: [Logger.Record](-record/index.md))
 
 Log a record
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -19,4 +19,4 @@ androidJvm
 
 | |
 |---|
-| [Logger.Record](-record/index.md) |
+| [Record](-record/index.md) |

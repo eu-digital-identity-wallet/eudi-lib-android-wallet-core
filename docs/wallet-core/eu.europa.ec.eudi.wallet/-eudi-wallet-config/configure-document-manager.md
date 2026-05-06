@@ -2,11 +2,11 @@
 
 # configureDocumentManager
 
-[androidJvm]\
+[release]\
 
-@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)
+@[JvmOverloads](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)
 
-fun [configureDocumentManager](configure-document-manager.md)(storagePath: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), identifier: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null): &lt;Error class: unknown class&gt;
+fun [configureDocumentManager](configure-document-manager.md)(storagePath: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), identifier: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)? = null): [EudiWalletConfig](index.md)
 
 Configure the built-in document manager.
 
@@ -18,7 +18,7 @@ the [EudiWalletConfig](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

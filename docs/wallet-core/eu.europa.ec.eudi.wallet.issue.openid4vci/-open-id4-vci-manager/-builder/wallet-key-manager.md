@@ -2,8 +2,8 @@
 
 # walletKeyManager
 
-[androidJvm]\
-fun [walletKeyManager](wallet-key-manager.md)(keyManager: [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [walletKeyManager](wallet-key-manager.md)(keyManager: [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)): [OpenId4VciManager.Builder](index.md)
 
 Configures the [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md) responsible for managing cryptographic keys.
 
@@ -13,11 +13,11 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | keyManager | The instance handling local key lifecycle and signing operations. |
 
-[androidJvm]\
+[release]\
 var [walletKeyManager](wallet-key-manager.md): [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)?

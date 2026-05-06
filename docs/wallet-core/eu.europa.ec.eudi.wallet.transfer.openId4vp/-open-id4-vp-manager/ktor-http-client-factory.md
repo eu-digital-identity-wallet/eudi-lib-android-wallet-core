@@ -2,5 +2,5 @@
 
 # ktorHttpClientFactory
 
-[androidJvm]\
-val [ktorHttpClientFactory](ktor-http-client-factory.md): () -&gt; HttpClient? = null
+[release]\
+val [ktorHttpClientFactory](ktor-http-client-factory.md): () -&gt; HttpClient?

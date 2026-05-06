@@ -2,5 +2,5 @@
 
 # extractIssuerMetadata
 
-[androidJvm]\
+[release]\
 fun [Offer.OfferedDocument](../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/index.md).[extractIssuerMetadata](extract-issuer-metadata.md)(): IssuerMetadata

@@ -2,7 +2,7 @@
 
 # DocumentNotReady
 
-[androidJvm]\
+[release]\
 data class [DocumentNotReady](index.md)(val document: DeferredDocument) : [DeferredIssueResult](../index.md), DocumentDetails
 
 Document issuance deferred.
@@ -11,13 +11,13 @@ Document issuance deferred.
 
 | | |
 |---|---|
-| [DocumentNotReady](-document-not-ready.md) | [androidJvm]<br>constructor(document: DeferredDocument) |
+| [DocumentNotReady](-document-not-ready.md) | [release]<br>constructor(document: DeferredDocument) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [docType](../doc-type.md) | [androidJvm]<br>open override val [docType](../doc-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>the document type |
-| [document](document.md) | [androidJvm]<br>open override val [document](document.md): DeferredDocument |
-| [documentId](../document-id.md) | [androidJvm]<br>open override val [documentId](../document-id.md): &lt;Error class: unknown class&gt;<br>the id of the document |
-| [name](../name.md) | [androidJvm]<br>open override val [name](../name.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>the name of the document |
+| [docType](../doc-type.md) | [release]<br>open override val [docType](../doc-type.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)<br>the document type |
+| [document](document.md) | [release]<br>open override val [document](document.md): DeferredDocument |
+| [documentId](../document-id.md) | [release]<br>open override val [documentId](../document-id.md): DocumentId<br>the id of the document |
+| [name](../name.md) | [release]<br>open override val [name](../name.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)<br>the name of the document |

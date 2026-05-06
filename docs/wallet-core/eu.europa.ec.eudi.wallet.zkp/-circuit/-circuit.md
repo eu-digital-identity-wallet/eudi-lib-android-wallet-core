@@ -2,5 +2,5 @@
 
 # Circuit
 
-[androidJvm]\
-constructor(filename: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), bytes: ByteString)
+[release]\
+constructor(filename: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), bytes: ByteString)

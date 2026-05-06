@@ -2,5 +2,5 @@
 
 # DcqlRequestProcessor
 
-[androidJvm]\
+[release]\
 constructor(documentManager: DocumentManager, openid4VpX509CertificateTrust: [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md))

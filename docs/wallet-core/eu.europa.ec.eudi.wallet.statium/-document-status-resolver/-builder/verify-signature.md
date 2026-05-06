@@ -2,5 +2,5 @@
 
 # verifySignature
 
-[androidJvm]\
+[release]\
 var [verifySignature](verify-signature.md): VerifyStatusListTokenJwtSignature

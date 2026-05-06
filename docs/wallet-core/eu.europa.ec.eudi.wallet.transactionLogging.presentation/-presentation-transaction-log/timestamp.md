@@ -2,5 +2,5 @@
 
 # timestamp
 
-[androidJvm]\
+[release]\
 val [timestamp](timestamp.md): [Instant](https://developer.android.com/reference/kotlin/java/time/Instant.html)

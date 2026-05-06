@@ -2,7 +2,7 @@
 
 # reject
 
-[androidJvm]\
+[release]\
 fun [reject](reject.md)()
 
 Called when the USER cancels-rejects the transaction from the UI. Uses the cached resolved request object to send the rejection.

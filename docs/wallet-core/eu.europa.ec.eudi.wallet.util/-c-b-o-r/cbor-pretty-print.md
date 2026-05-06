@@ -2,11 +2,11 @@
 
 # cborPrettyPrint
 
-[androidJvm]\
+[release]\
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [cborPrettyPrint](cbor-pretty-print.md)(encodedBytes: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+fun [cborPrettyPrint](cbor-pretty-print.md)(encodedBytes: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 Pretty prints a given CBOR byte array.
 
@@ -16,7 +16,7 @@ A string representing the pretty-printed CBOR data.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -26,4 +26,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | If decoding fails. |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | If decoding fails. |

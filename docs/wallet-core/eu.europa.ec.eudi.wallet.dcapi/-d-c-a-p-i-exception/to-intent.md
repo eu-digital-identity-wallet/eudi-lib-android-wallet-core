@@ -2,5 +2,5 @@
 
 # toIntent
 
-[androidJvm]\
+[release]\
 fun [toIntent](to-intent.md)(): [Intent](https://developer.android.com/reference/kotlin/android/content/Intent.html)

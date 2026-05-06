@@ -2,8 +2,8 @@
 
 # withDCAPIRegistration
 
-[androidJvm]\
-fun [withDCAPIRegistration](with-d-c-a-p-i-registration.md)(dcapiRegistration: [DCAPIRegistration](../../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-registration/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withDCAPIRegistration](with-d-c-a-p-i-registration.md)(dcapiRegistration: [DCAPIRegistration](../../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-registration/index.md)): [EudiWallet.Builder](index.md)
 
 Configure with the given [DCAPIRegistration](../../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-registration/index.md) to use for registering credentials with the Digital Credential API (DCAPI). If not set, the default DCAPIIsoMdocRegistration will be used when the DCAPI is enabled in the configuration.
 
@@ -13,7 +13,7 @@ this [Builder](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

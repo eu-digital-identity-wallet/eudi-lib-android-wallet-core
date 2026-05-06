@@ -2,7 +2,7 @@
 
 # sendResponse
 
-[androidJvm]\
+[release]\
 open override fun [sendResponse](send-response.md)(response: Response)
 
 Sends a response using the delegate [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md) and logs the outcome.
@@ -11,7 +11,7 @@ It attempts to send the response and then logs the response details. If sending 
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -21,4 +21,4 @@ androidJvm
 
 | | |
 |---|---|
-| [Exception](https://developer.android.com/reference/kotlin/java/lang/Exception.html) | if an error occurs while sending the response via the delegate. |
+| [Exception](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-exception/index.html) | if an error occurs while sending the response via the delegate. |

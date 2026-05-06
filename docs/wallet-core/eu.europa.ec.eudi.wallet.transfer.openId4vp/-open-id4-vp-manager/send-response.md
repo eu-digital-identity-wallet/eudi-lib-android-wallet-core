@@ -2,14 +2,14 @@
 
 # sendResponse
 
-[androidJvm]\
+[release]\
 fun [sendResponse](send-response.md)(response: Response)
 
 Sends a response to the verifier. This method is asynchronous and the result is emitted through the TransferEvent.Listener interface. Every time it is called it cancels any previous response that is being sent. This will lead to the TransferEvent.Disconnected event being emitted.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

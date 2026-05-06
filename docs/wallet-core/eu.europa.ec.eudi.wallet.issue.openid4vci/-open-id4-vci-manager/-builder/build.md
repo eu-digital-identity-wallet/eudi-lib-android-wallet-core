@@ -2,7 +2,7 @@
 
 # build
 
-[androidJvm]\
+[release]\
 fun [build](build.md)(): [OpenId4VciManager](../index.md)
 
 Build the [OpenId4VciManager](../index.md)
@@ -15,4 +15,4 @@ the [OpenId4VciManager](../index.md)
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if config or documentManager is not set |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if config or documentManager is not set |

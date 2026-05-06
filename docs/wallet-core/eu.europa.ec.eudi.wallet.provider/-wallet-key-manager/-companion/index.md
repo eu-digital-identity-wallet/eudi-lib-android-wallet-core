@@ -2,11 +2,11 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [getDefault](get-default.md) | [androidJvm]<br>fun [getDefault](get-default.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)): [WalletKeyManager](../index.md)<br>Returns the default Android implementation backed by the Android Keystore. |
+| [getDefault](get-default.md) | [release]<br>fun [getDefault](get-default.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)): [WalletKeyManager](../index.md)<br>Returns the default Android implementation backed by the Android Keystore. |

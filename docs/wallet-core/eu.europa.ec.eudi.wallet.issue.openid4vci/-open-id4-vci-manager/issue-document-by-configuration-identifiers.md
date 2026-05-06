@@ -2,8 +2,8 @@
 
 # issueDocumentByConfigurationIdentifiers
 
-[androidJvm]\
-abstract fun [issueDocumentByConfigurationIdentifiers](issue-document-by-configuration-identifiers.md)(credentialConfigurationIds: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;, txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+[release]\
+abstract fun [issueDocumentByConfigurationIdentifiers](issue-document-by-configuration-identifiers.md)(credentialConfigurationIds: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)&gt;, txCode: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)? = null, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
 
 Issue a list of documents using a list of configuration identifiers.
 
@@ -11,7 +11,7 @@ The credential configuration identifier can be obtained from the [getIssuerMetad
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

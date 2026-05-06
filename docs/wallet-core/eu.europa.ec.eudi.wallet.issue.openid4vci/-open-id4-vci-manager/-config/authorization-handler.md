@@ -2,5 +2,5 @@
 
 # authorizationHandler
 
-[androidJvm]\
-val [authorizationHandler](authorization-handler.md): [AuthorizationHandler](../../-authorization-handler/index.md)? = null
+[release]\
+val [authorizationHandler](authorization-handler.md): [AuthorizationHandler](../../-authorization-handler/index.md)?

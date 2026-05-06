@@ -2,8 +2,8 @@
 
 # extractStatusReference
 
-[androidJvm]\
-abstract suspend fun [extractStatusReference](extract-status-reference.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;StatusReference&gt;
+[release]\
+abstract suspend fun [extractStatusReference](extract-status-reference.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;StatusReference&gt;
 
 Extracts revocation status data from the provided document
 
@@ -13,7 +13,7 @@ Result containing the extracted revocation status data or an error
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

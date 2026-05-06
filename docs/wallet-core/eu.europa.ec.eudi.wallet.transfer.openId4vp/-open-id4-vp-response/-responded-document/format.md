@@ -2,7 +2,7 @@
 
 # format
 
-[androidJvm]\
-val [format](format.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+val [format](format.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 The format of the document (e.g., &quot;mso_mdoc&quot;, &quot;sd_jwt_vc&quot;). Indicates the credential format used for this specific document.

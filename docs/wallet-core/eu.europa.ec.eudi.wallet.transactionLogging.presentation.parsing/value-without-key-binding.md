@@ -2,7 +2,7 @@
 
 # valueWithoutKeyBinding
 
-[androidJvm]\
-val VerifiablePresentation.Generic.[valueWithoutKeyBinding](value-without-key-binding.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+val VerifiablePresentation.Generic.[valueWithoutKeyBinding](value-without-key-binding.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 This function is used to remove the key binding from the sd-jwt due to limitations of the sd-jwt library and DefaultSdJwtOps.verify method.

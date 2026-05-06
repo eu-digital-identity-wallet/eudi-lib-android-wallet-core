@@ -2,5 +2,5 @@
 
 # invoke
 
-[androidJvm]\
+[release]\
 open operator fun [invoke](invoke.md)(result: [T](index.md))

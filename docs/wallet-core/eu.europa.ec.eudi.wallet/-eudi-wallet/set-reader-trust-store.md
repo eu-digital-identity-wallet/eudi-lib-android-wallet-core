@@ -2,7 +2,7 @@
 
 # setReaderTrustStore
 
-[androidJvm]\
+[release]\
 abstract fun [setReaderTrustStore](set-reader-trust-store.md)(readerTrustStore: ReaderTrustStore): [EudiWallet](index.md)
 
 Sets the reader trust store with the given ReaderTrustStore. This method is useful when the reader trust store is not set in the configuration object, or when the reader trust store needs to be updated at runtime.
@@ -13,7 +13,7 @@ this [EudiWallet](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

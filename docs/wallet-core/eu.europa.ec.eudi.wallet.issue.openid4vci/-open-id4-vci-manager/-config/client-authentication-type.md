@@ -2,5 +2,5 @@
 
 # clientAuthenticationType
 
-[androidJvm]\
+[release]\
 val [clientAuthenticationType](client-authentication-type.md): [OpenId4VciManager.ClientAuthenticationType](../-client-authentication-type/index.md)

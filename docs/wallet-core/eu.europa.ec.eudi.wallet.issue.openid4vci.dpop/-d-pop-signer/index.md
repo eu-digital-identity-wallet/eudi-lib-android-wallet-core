@@ -47,7 +47,7 @@ result.onSuccess { signer ->
 | Signer |
 | JWK |
 | [DPopConfig](../-d-pop-config/index.md) |
-| DPopSigner.Companion.makeIfSupported |
+| makeIfSupported |
 
 #### Inheritors
 
@@ -59,17 +59,17 @@ result.onSuccess { signer ->
 
 | Name | Summary |
 |---|---|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
+| [Companion](-companion/index.md) | [release]<br>object [Companion](-companion/index.md) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [javaAlgorithm](index.md#-1475265234%2FProperties%2F1615067946) | [androidJvm]<br>abstract val [javaAlgorithm](index.md#-1475265234%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [javaAlgorithm](index.md#-1475265234%2FProperties%2F-946843593) | [release]<br>abstract val [javaAlgorithm](index.md#-1475265234%2FProperties%2F-946843593): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [acquire](index.md#890547045%2FFunctions%2F1615067946) | [androidJvm]<br>abstract suspend fun [acquire](index.md#890547045%2FFunctions%2F1615067946)(): SignOperation&lt;JWK&gt; |
-| [release](index.md#-1674462898%2FFunctions%2F1615067946) | [androidJvm]<br>abstract suspend fun [release](index.md#-1674462898%2FFunctions%2F1615067946)(signOperation: SignOperation&lt;JWK&gt;?) |
+| [acquire](index.md#890547045%2FFunctions%2F-946843593) | [release]<br>abstract suspend fun [acquire](index.md#890547045%2FFunctions%2F-946843593)(): SignOperation&lt;JWK&gt; |
+| [release](index.md#900378213%2FFunctions%2F-946843593) | [release]<br>abstract suspend fun [release](index.md#900378213%2FFunctions%2F-946843593)(signOperation: SignOperation&lt;JWK&gt;?) |

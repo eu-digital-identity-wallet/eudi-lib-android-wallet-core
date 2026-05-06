@@ -2,7 +2,7 @@
 
 # descriptor
 
-[androidJvm]\
+[release]\
 open override val [descriptor](descriptor.md): SerialDescriptor
 
 Serial descriptor for the VerifiablePresentation structure. Defines two elements: &quot;type&quot; for the presentation type and &quot;value&quot; for the content.

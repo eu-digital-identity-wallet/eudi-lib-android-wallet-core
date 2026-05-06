@@ -16,4 +16,4 @@ interface [OpenId4VciResult](index.md)
 
 | Name | Summary |
 |---|---|
-| [Erroneous](-erroneous/index.md) | [androidJvm]<br>interface [Erroneous](-erroneous/index.md) |
+| [Erroneous](-erroneous/index.md) | [release]<br>interface [Erroneous](-erroneous/index.md) |

@@ -2,5 +2,5 @@
 
 # CredentialSetsMatcher
 
-[androidJvm]\
+[release]\
 constructor()

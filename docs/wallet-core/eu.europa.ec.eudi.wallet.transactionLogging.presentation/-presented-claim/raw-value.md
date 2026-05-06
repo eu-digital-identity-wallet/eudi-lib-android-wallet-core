@@ -2,5 +2,5 @@
 
 # rawValue
 
-[androidJvm]\
-val [rawValue](raw-value.md): [Any](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-any/index.html)
+[release]\
+val [rawValue](raw-value.md): [Any](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-any/index.html)

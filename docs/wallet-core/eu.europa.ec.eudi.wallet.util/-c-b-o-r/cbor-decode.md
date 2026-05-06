@@ -2,11 +2,11 @@
 
 # cborDecode
 
-[androidJvm]\
+[release]\
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [cborDecode](cbor-decode.md)(encodedBytes: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)): DataItem
+fun [cborDecode](cbor-decode.md)(encodedBytes: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)): DataItem
 
 Decodes a given CBOR byte array into a DataItem.
 
@@ -16,7 +16,7 @@ The decoded DataItem.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -26,4 +26,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | If decoding fails or the number of decoded items is not 1. |
+| [IllegalArgumentException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-argument-exception/index.html) | If decoding fails or the number of decoded items is not 1. |

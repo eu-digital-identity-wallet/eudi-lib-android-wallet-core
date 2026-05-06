@@ -2,5 +2,5 @@
 
 # authenticate
 
-[androidJvm]\
+[release]\
 open suspend override fun [authenticate](authenticate.md)(): BatchSignOperation&lt;JwtBindingKey&gt;

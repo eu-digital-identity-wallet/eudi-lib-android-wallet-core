@@ -2,5 +2,5 @@
 
 # logger
 
-[androidJvm]\
+[release]\
 abstract val [logger](logger.md): [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)

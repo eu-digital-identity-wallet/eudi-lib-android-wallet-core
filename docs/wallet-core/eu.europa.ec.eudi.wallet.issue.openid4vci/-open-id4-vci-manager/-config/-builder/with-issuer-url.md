@@ -2,8 +2,8 @@
 
 # withIssuerUrl
 
-[androidJvm]\
-fun [withIssuerUrl](with-issuer-url.md)(issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withIssuerUrl](with-issuer-url.md)(issuerUrl: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [OpenId4VciManager.Config.Builder](index.md)
 
 Set the issuer url
 
@@ -13,7 +13,7 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,14 +2,14 @@
 
 # issueDeferredDocument
 
-[androidJvm]\
+[release]\
 abstract fun [issueDeferredDocument](issue-deferred-document.md)(deferredDocument: DeferredDocument, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueResult: [OpenId4VciManager.OnDeferredIssueResult](-on-deferred-issue-result/index.md))
 
 Issue a deferred document
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -21,4 +21,4 @@ androidJvm
 
 | | |
 |---|---|
-| [OpenId4VciManager.OnDeferredIssueResult](-on-deferred-issue-result/index.md) | on how to handle the result |
+| [OnDeferredIssueResult](-on-deferred-issue-result/index.md) | on how to handle the result |

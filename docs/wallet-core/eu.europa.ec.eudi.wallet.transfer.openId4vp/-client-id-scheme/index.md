@@ -42,7 +42,7 @@ Client identifier schemes determine how verifiers authenticate themselves to the
 
 | Name | Summary |
 |---|---|
-| [Preregistered](-preregistered/index.md) | [androidJvm]<br>data class [Preregistered](-preregistered/index.md)(var preregisteredVerifiers: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../-preregistered-verifier/index.md)&gt;) : [ClientIdScheme](index.md)<br>Client identifier scheme for pre-registered verifiers that are known and trusted by the wallet. |
-| [RedirectUri](-redirect-uri/index.md) | [androidJvm]<br>data object [RedirectUri](-redirect-uri/index.md) : [ClientIdScheme](index.md)<br>Client identifier scheme using redirect URI validation. |
-| [X509Hash](-x509-hash/index.md) | [androidJvm]<br>data object [X509Hash](-x509-hash/index.md) : [ClientIdScheme](index.md)<br>Client identifier scheme using X.509 certificate hash validation. |
-| [X509SanDns](-x509-san-dns/index.md) | [androidJvm]<br>data object [X509SanDns](-x509-san-dns/index.md) : [ClientIdScheme](index.md)<br>Client identifier scheme using X.509 certificate validation with DNS Subject Alternative Names. |
+| [Preregistered](-preregistered/index.md) | [release]<br>data class [Preregistered](-preregistered/index.md)(var preregisteredVerifiers: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../-preregistered-verifier/index.md)&gt;) : [ClientIdScheme](index.md)<br>Client identifier scheme for pre-registered verifiers that are known and trusted by the wallet. |
+| [RedirectUri](-redirect-uri/index.md) | [release]<br>data object [RedirectUri](-redirect-uri/index.md) : [ClientIdScheme](index.md)<br>Client identifier scheme using redirect URI validation. |
+| [X509Hash](-x509-hash/index.md) | [release]<br>data object [X509Hash](-x509-hash/index.md) : [ClientIdScheme](index.md)<br>Client identifier scheme using X.509 certificate hash validation. |
+| [X509SanDns](-x509-san-dns/index.md) | [release]<br>data object [X509SanDns](-x509-san-dns/index.md) : [ClientIdScheme](index.md)<br>Client identifier scheme using X.509 certificate validation with DNS Subject Alternative Names. |

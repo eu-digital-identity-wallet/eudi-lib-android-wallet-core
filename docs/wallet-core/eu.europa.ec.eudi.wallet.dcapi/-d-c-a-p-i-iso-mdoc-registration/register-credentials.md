@@ -2,5 +2,5 @@
 
 # registerCredentials
 
-[androidJvm]\
+[release]\
 open suspend override fun [registerCredentials](register-credentials.md)()

@@ -2,11 +2,11 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [ES256](-e-s256.md) | [androidJvm]<br>val [ES256](-e-s256.md): [Format.MsoMdoc](../index.md) |
+| [ES256](-e-s256.md) | [release]<br>val [ES256](-e-s256.md): [Format.MsoMdoc](../index.md) |

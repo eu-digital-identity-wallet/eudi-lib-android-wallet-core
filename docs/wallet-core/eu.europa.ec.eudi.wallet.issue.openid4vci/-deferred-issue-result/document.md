@@ -2,5 +2,5 @@
 
 # document
 
-[androidJvm]\
+[release]\
 abstract val [document](document.md): Document

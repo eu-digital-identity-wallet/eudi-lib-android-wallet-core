@@ -2,5 +2,5 @@
 
 # listenersExecutor
 
-[androidJvm]\
+[release]\
 var [listenersExecutor](listeners-executor.md): [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)?

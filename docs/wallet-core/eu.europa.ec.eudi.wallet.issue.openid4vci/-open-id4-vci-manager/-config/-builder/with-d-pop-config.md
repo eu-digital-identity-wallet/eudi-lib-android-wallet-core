@@ -2,8 +2,8 @@
 
 # withDPopConfig
 
-[androidJvm]\
-fun [withDPopConfig](with-d-pop-config.md)(dpopConfig: [DPopConfig](../../../../eu.europa.ec.eudi.wallet.issue.openid4vci.dpop/-d-pop-config/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withDPopConfig](with-d-pop-config.md)(dpopConfig: [DPopConfig](../../../../eu.europa.ec.eudi.wallet.issue.openid4vci.dpop/-d-pop-config/index.md)): [OpenId4VciManager.Config.Builder](index.md)
 
 Sets the DPoP (Demonstrating Proof-of-Possession) configuration.
 
@@ -98,11 +98,11 @@ This builder instance for method chaining
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
-| dpopConfig | The DPoP configuration to use. Defaults to [DPopConfig.Default](../../../../eu.europa.ec.eudi.wallet.issue.openid4vci.dpop/-d-pop-config/-default/index.md)     if not specified. |
+| dpopConfig | The DPoP configuration to use. Defaults to [DPopConfig.Default](../../../../eu.europa.ec.eudi.wallet.issue.openid4vci.dpop/-d-pop-config/-default/index.md)         if not specified. |
 
 #### See also
 

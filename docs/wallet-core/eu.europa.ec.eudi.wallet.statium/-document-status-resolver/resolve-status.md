@@ -2,18 +2,18 @@
 
 # resolveStatus
 
-[androidJvm]\
-abstract suspend fun [resolveStatus](resolve-status.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;Status&gt;
+[release]\
+abstract suspend fun [resolveStatus](resolve-status.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;Status&gt;
 
 Resolves the status of the given document
 
 #### Return
 
-a [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html) containing the status of the document
+a [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html) containing the status of the document
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

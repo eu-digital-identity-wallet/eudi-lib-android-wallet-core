@@ -2,5 +2,5 @@
 
 # fromJson
 
-[androidJvm]\
-fun [fromJson](from-json.md)(jsonStr: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): [TransactionLog.Metadata](../index.md)
+[release]\
+fun [fromJson](from-json.md)(jsonStr: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [TransactionLog.Metadata](../index.md)

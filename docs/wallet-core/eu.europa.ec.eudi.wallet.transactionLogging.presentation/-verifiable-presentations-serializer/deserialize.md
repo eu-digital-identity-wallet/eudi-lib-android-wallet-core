@@ -2,7 +2,7 @@
 
 # deserialize
 
-[androidJvm]\
+[release]\
 open override fun [deserialize](deserialize.md)(decoder: Decoder): VerifiablePresentations
 
 Deserializes a VerifiablePresentations object from JSON format.
@@ -15,7 +15,7 @@ The deserialized VerifiablePresentations object
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

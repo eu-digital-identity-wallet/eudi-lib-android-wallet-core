@@ -2,7 +2,7 @@
 
 # build
 
-[androidJvm]\
+[release]\
 fun [build](build.md)(): [OpenId4VpConfig](../index.md)
 
 Builds the [OpenId4VpConfig](../index.md).

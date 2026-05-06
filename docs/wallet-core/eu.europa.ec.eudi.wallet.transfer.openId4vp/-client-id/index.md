@@ -2,8 +2,8 @@
 
 # ClientId
 
-[androidJvm]\
-typealias [ClientId](index.md) = [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+typealias [ClientId](index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 Type alias for client identifier strings used in OpenID4VP authentication.
 

@@ -2,12 +2,12 @@
 
 # Builder
 
-[androidJvm]\
+[release]\
 constructor(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html), config: [EudiWalletConfig](../../-eudi-wallet-config/index.md), walletProvider: [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)?)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

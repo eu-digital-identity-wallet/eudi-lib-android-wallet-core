@@ -2,5 +2,5 @@
 
 # requestProcessor
 
-[androidJvm]\
+[release]\
 val [requestProcessor](request-processor.md): [DcqlRequestProcessor](../../eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql/-dcql-request-processor/index.md)

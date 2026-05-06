@@ -2,5 +2,5 @@
 
 # type
 
-[androidJvm]\
+[release]\
 val [type](type.md): [TransactionLog.Type](-type/index.md)

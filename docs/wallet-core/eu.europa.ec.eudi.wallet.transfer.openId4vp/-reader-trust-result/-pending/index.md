@@ -2,5 +2,5 @@
 
 # Pending
 
-[androidJvm]\
+[release]\
 data object [Pending](index.md) : [ReaderTrustResult](../index.md)

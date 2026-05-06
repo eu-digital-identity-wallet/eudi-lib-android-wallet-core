@@ -2,8 +2,8 @@
 
 # removeAllTransferEventListeners
 
-[androidJvm]\
-open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): &lt;Error class: unknown class&gt;
+[release]\
+open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): [TransactionsDecorator](index.md)
 
 Removes all transfer event listeners from the delegate [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md) and then re-adds the internal transactionListener.
 

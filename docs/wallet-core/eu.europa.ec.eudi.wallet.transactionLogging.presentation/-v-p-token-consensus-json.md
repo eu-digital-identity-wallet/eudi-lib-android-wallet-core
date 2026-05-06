@@ -2,5 +2,5 @@
 
 # VPTokenConsensusJson
 
-[androidJvm]\
+[release]\
 val [VPTokenConsensusJson](-v-p-token-consensus-json.md): Json

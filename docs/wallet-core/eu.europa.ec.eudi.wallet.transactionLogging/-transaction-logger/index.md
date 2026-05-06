@@ -2,7 +2,7 @@
 
 # TransactionLogger
 
-[androidJvm]\
+[release]\
 fun interface [TransactionLogger](index.md)
 
 A logger for transactions.
@@ -13,4 +13,4 @@ Implementations of this interface should log transactions to some persistent sto
 
 | Name | Summary |
 |---|---|
-| [log](log.md) | [androidJvm]<br>abstract fun [log](log.md)(transaction: [TransactionLog](../-transaction-log/index.md))<br>Logs a transaction. |
+| [log](log.md) | [release]<br>abstract fun [log](log.md)(transaction: [TransactionLog](../-transaction-log/index.md))<br>Logs a transaction. |

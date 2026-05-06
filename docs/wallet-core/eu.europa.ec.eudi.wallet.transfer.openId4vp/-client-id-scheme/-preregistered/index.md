@@ -2,7 +2,7 @@
 
 # Preregistered
 
-data class [Preregistered](index.md)(var preregisteredVerifiers: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;) : [ClientIdScheme](../index.md)
+data class [Preregistered](index.md)(var preregisteredVerifiers: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;) : [ClientIdScheme](../index.md)
 
 Client identifier scheme for pre-registered verifiers that are known and trusted by the wallet.
 
@@ -18,10 +18,10 @@ This scheme allows wallets to maintain a list of trusted verifiers that have bee
 
 | | |
 |---|---|
-| [Preregistered](-preregistered.md) | [androidJvm]<br>constructor(preregisteredVerifiers: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;) |
+| [Preregistered](-preregistered.md) | [release]<br>constructor(preregisteredVerifiers: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [preregisteredVerifiers](preregistered-verifiers.md) | [androidJvm]<br>var [preregisteredVerifiers](preregistered-verifiers.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;<br>List of pre-approved verifier configurations with their client IDs, legal names, API endpoints, and cryptographic parameters |
+| [preregisteredVerifiers](preregistered-verifiers.md) | [release]<br>var [preregisteredVerifiers](preregistered-verifiers.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;<br>List of pre-approved verifier configurations with their client IDs, legal names, API endpoints, and cryptographic parameters |

@@ -2,12 +2,12 @@
 
 # ProcessedDCPAPIRequest
 
-[androidJvm]\
-constructor(processedDeviceRequest: ProcessedDeviceRequest, providerGetCredentialRequest: [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html), logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null, origin: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), requestedDocuments: RequestedDocuments)
+[release]\
+constructor(processedDeviceRequest: ProcessedDeviceRequest, providerGetCredentialRequest: [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html), logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null, origin: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), requestedDocuments: RequestedDocuments)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

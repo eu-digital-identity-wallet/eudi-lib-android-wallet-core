@@ -2,5 +2,5 @@
 
 # offeredDocument
 
-[androidJvm]\
+[release]\
 val [offeredDocument](offered-document.md): [Offer.OfferedDocument](../../-offer/-offered-document/index.md)

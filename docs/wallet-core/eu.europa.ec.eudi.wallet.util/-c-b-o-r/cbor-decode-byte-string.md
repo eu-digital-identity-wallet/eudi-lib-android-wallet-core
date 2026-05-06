@@ -2,11 +2,11 @@
 
 # cborDecodeByteString
 
-[androidJvm]\
+[release]\
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [cborDecodeByteString](cbor-decode-byte-string.md)(data: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)): [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)
+fun [cborDecodeByteString](cbor-decode-byte-string.md)(data: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)): [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)
 
 Decodes a given CBOR byte array into a byte array.
 
@@ -16,7 +16,7 @@ The decoded byte array.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

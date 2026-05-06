@@ -2,5 +2,5 @@
 
 # algorithm
 
-[androidJvm]\
-val [algorithm](algorithm.md): &lt;Error class: unknown class&gt;
+[release]\
+val [algorithm](algorithm.md): Algorithm

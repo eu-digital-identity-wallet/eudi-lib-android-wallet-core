@@ -2,7 +2,7 @@
 
 # parseVcSdJwt
 
-[androidJvm]\
+[release]\
 fun [parseVcSdJwt](parse-vc-sd-jwt.md)(vp: VerifiablePresentation.Generic, metadata: [TransactionLog.Metadata](../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/-metadata/index.md)): [PresentedDocument](../eu.europa.ec.eudi.wallet.transactionLogging.presentation/-presented-document/index.md)?
 
 Parses an SD-JWT Verifiable Credential from a Verifiable Presentation. This function extracts the SD-JWT data from the verifiable presentation, processes it to remove key binding due to library limitations, and converts it into a PresentedDocument object with all the relevant claims.
@@ -13,7 +13,7 @@ A PresentedDocument object if parsing is successful, or null if parsing fails.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

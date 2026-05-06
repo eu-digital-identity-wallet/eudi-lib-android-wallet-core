@@ -2,5 +2,5 @@
 
 # secureArea
 
-[androidJvm]\
+[release]\
 val [secureArea](secure-area.md): SecureArea

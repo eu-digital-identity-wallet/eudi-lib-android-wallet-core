@@ -2,7 +2,7 @@
 
 # DCAPIConfig
 
-[androidJvm]\
+[release]\
 class [DCAPIConfig](index.md)
 
 Configuration for the Digital Credential API (DCAPI).
@@ -11,11 +11,11 @@ Configuration for the Digital Credential API (DCAPI).
 
 | Name | Summary |
 |---|---|
-| [Builder](-builder/index.md) | [androidJvm]<br>class [Builder](-builder/index.md)<br>Builder for [DCAPIConfig](index.md). |
+| [Builder](-builder/index.md) | [release]<br>class [Builder](-builder/index.md)<br>Builder for [DCAPIConfig](index.md). |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [enabled](enabled.md) | [androidJvm]<br>val [enabled](enabled.md): [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html)<br>whether the DCAPI is enabled, defaults to false. |
-| [privilegedAllowlist](privileged-allowlist.md) | [androidJvm]<br>val [privilegedAllowlist](privileged-allowlist.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)?<br>the privileged allowlist for the DCAPI, if not set, a default value will be used, see file in assets/privilegedUserAgents.json |
+| [enabled](enabled.md) | [release]<br>val [enabled](enabled.md): [Boolean](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html)<br>whether the DCAPI is enabled, defaults to false. |
+| [privilegedAllowlist](privileged-allowlist.md) | [release]<br>val [privilegedAllowlist](privileged-allowlist.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)?<br>the privileged allowlist for the DCAPI, if not set, a default value will be used, see file in assets/privilegedUserAgents.json |

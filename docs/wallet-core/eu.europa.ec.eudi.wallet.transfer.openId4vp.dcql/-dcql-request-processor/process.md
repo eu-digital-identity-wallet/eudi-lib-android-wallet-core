@@ -2,7 +2,7 @@
 
 # process
 
-[androidJvm]\
+[release]\
 open override fun [process](process.md)(request: Request): RequestProcessor.ProcessedRequest
 
 Processes an OpenID4VP request containing DCQL queries.
@@ -28,7 +28,7 @@ Important! Currently credentials_sets and claim_sets are not supported.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

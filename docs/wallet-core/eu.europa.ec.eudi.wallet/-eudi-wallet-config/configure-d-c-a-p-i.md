@@ -2,8 +2,8 @@
 
 # configureDCAPI
 
-[androidJvm]\
-fun [configureDCAPI](configure-d-c-a-p-i.md)(dcapiConfig: [DCAPIConfig](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [configureDCAPI](configure-d-c-a-p-i.md)(dcapiConfig: [DCAPIConfig](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/index.md)): [EudiWalletConfig](index.md)
 
 Configure the DCAPI.
 
@@ -13,7 +13,7 @@ the [EudiWalletConfig](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -26,8 +26,8 @@ androidJvm
 | [DCAPIConfig](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/index.md) |
 | [DCAPIConfig.Builder](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/-builder/index.md) |
 
-[androidJvm]\
-fun [configureDCAPI](configure-d-c-a-p-i.md)(dcapiConfig: [DCAPIConfig.Builder](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)): &lt;Error class: unknown class&gt;
+[release]\
+fun [configureDCAPI](configure-d-c-a-p-i.md)(dcapiConfig: [DCAPIConfig.Builder](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/-builder/index.md).() -&gt; [Unit](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html)): [EudiWalletConfig](index.md)
 
 Configure the DCAPI using a [DCAPIConfig.Builder](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/-builder/index.md) as a lambda with receiver.
 
@@ -37,7 +37,7 @@ the [EudiWalletConfig](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

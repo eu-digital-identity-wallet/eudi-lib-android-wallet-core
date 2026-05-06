@@ -2,7 +2,7 @@
 
 # logStopped
 
-[androidJvm]\
+[release]\
 fun [logStopped](log-stopped.md)()
 
 Logs that the current transaction has been stopped.

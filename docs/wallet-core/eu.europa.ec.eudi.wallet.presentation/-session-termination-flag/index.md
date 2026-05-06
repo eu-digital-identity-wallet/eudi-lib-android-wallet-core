@@ -16,4 +16,4 @@ Annotation that defines the possible flags for session termination.
 
 | Name | Summary |
 |---|---|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md)<br>Companion object that defines the possible flags for session termination. |
+| [Companion](-companion/index.md) | [release]<br>object [Companion](-companion/index.md)<br>Companion object that defines the possible flags for session termination. |

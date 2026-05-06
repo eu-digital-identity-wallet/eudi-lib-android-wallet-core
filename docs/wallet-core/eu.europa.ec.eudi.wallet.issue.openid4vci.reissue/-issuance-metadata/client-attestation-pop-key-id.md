@@ -2,5 +2,5 @@
 
 # clientAttestationPopKeyId
 
-[androidJvm]\
-val [clientAttestationPopKeyId](client-attestation-pop-key-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null
+[release]\
+val [clientAttestationPopKeyId](client-attestation-pop-key-id.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)?

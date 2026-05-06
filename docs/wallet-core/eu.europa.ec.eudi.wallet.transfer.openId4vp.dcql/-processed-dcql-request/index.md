@@ -2,8 +2,8 @@
 
 # ProcessedDcqlRequest
 
-[androidJvm]\
-class [ProcessedDcqlRequest](index.md)(val resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), val msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
+[release]\
+class [ProcessedDcqlRequest](index.md)(val resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), val msoMdocNonce: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)) : RequestProcessor.ProcessedRequest.Success
 
 Represents a processed DCQL (Digital Credentials Query Language) request for OpenID4VP flows.
 
@@ -24,20 +24,20 @@ This class:
 
 | | |
 |---|---|
-| [ProcessedDcqlRequest](-processed-dcql-request.md) | [androidJvm]<br>constructor(resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), msoMdocNonce: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
+| [ProcessedDcqlRequest](-processed-dcql-request.md) | [release]<br>constructor(resolvedRequestObject: ResolvedRequestObject, documentManager: DocumentManager, queryMap: [RequestedDocumentsByQueryId](../-requested-documents-by-query-id/index.md), msoMdocNonce: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [msoMdocNonce](mso-mdoc-nonce.md) | [androidJvm]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>Random nonce used for MSO mdoc format presentations for security |
-| [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946) | [androidJvm]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F1615067946): RequestedDocuments |
-| [resolvedRequestObject](resolved-request-object.md) | [androidJvm]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject<br>The parsed OpenID4VP authorization request with presentation query details |
+| [msoMdocNonce](mso-mdoc-nonce.md) | [release]<br>val [msoMdocNonce](mso-mdoc-nonce.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)<br>Random nonce used for MSO mdoc format presentations for security |
+| [requestedDocuments](index.md#1436173325%2FProperties%2F-946843593) | [release]<br>val [requestedDocuments](index.md#1436173325%2FProperties%2F-946843593): RequestedDocuments |
+| [resolvedRequestObject](resolved-request-object.md) | [release]<br>val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject<br>The parsed OpenID4VP authorization request with presentation query details |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [generateResponse](generate-response.md) | [androidJvm]<br>open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult<br>Generates an OpenID4VP response with verifiable presentations for the selected documents. |
-| [getOrNull](index.md#1268647320%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrNull](index.md#1268647320%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success? |
-| [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946) | [androidJvm]<br>open fun [getOrThrow](index.md#-927339947%2FFunctions%2F1615067946)(): RequestProcessor.ProcessedRequest.Success |
+| [generateResponse](generate-response.md) | [release]<br>open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult<br>Generates an OpenID4VP response with verifiable presentations for the selected documents. |
+| [getOrNull](index.md#1268647320%2FFunctions%2F-946843593) | [release]<br>open fun [getOrNull](index.md#1268647320%2FFunctions%2F-946843593)(): RequestProcessor.ProcessedRequest.Success? |
+| [getOrThrow](index.md#-927339947%2FFunctions%2F-946843593) | [release]<br>open fun [getOrThrow](index.md#-927339947%2FFunctions%2F-946843593)(): RequestProcessor.ProcessedRequest.Success |

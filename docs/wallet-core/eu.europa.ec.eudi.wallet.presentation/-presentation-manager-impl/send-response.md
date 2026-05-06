@@ -2,7 +2,7 @@
 
 # sendResponse
 
-[androidJvm]\
+[release]\
 open override fun [sendResponse](send-response.md)(response: Response)
 
 Send a response to verifier
@@ -11,7 +11,7 @@ The response should be generated through the eu.europa.ec.eudi.iso18013.transfer
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

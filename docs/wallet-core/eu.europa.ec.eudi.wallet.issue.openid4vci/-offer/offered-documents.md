@@ -2,5 +2,5 @@
 
 # offeredDocuments
 
-[androidJvm]\
-val [offeredDocuments](offered-documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Offer.OfferedDocument](-offered-document/index.md)&gt;
+[release]\
+val [offeredDocuments](offered-documents.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Offer.OfferedDocument](-offered-document/index.md)&gt;

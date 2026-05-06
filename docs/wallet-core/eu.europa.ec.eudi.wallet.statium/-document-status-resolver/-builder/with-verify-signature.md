@@ -2,8 +2,8 @@
 
 # withVerifySignature
 
-[androidJvm]\
-fun [withVerifySignature](with-verify-signature.md)(verifySignature: VerifyStatusListTokenJwtSignature): &lt;Error class: unknown class&gt;
+[release]\
+fun [withVerifySignature](with-verify-signature.md)(verifySignature: VerifyStatusListTokenJwtSignature): [DocumentStatusResolver.Builder](index.md)
 
 Sets the function to verify the status list token signature
 
@@ -13,7 +13,7 @@ the builder instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

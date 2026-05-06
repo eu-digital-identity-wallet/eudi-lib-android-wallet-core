@@ -2,8 +2,8 @@
 
 # documentManager
 
-[androidJvm]\
-fun [documentManager](document-manager.md)(documentManager: DocumentManager): &lt;Error class: unknown class&gt;
+[release]\
+fun [documentManager](document-manager.md)(documentManager: DocumentManager): [OpenId4VciManager.Builder](index.md)
 
 Set the DocumentManager to use
 
@@ -13,11 +13,11 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | documentManager | the document manager |
 
-[androidJvm]\
+[release]\
 var [documentManager](document-manager.md): DocumentManager?

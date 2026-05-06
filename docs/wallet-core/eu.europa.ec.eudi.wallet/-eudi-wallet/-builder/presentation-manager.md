@@ -2,5 +2,5 @@
 
 # presentationManager
 
-[androidJvm]\
+[release]\
 var [presentationManager](presentation-manager.md): [PresentationManager](../../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md)?

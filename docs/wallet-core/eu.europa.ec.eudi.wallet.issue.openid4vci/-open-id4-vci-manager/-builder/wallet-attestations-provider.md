@@ -2,8 +2,8 @@
 
 # walletAttestationsProvider
 
-[androidJvm]\
-fun [walletAttestationsProvider](wallet-attestations-provider.md)(provider: [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [walletAttestationsProvider](wallet-attestations-provider.md)(provider: [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)): [OpenId4VciManager.Builder](index.md)
 
 Configures the [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)
 
@@ -13,11 +13,11 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | provider | The implementation responsible for making network calls to your Wallet Provider to fetch attestation JWTs. |
 
-[androidJvm]\
+[release]\
 var [walletAttestationsProvider](wallet-attestations-provider.md): [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)?

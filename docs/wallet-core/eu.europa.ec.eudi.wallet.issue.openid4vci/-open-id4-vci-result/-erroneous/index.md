@@ -17,4 +17,4 @@ interface [Erroneous](index.md)
 
 | Name | Summary |
 |---|---|
-| [cause](cause.md) | [androidJvm]<br>abstract val [cause](cause.md): [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html) |
+| [cause](cause.md) | [release]<br>abstract val [cause](cause.md): [Throwable](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-throwable/index.html) |

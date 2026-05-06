@@ -2,5 +2,5 @@
 
 # module
 
-[androidJvm]\
+[release]\
 val [module](module.md): SerializersModule

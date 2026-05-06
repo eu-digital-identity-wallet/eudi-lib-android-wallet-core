@@ -2,7 +2,7 @@
 
 # deserialize
 
-[androidJvm]\
+[release]\
 open override fun [deserialize](deserialize.md)(decoder: Decoder): VerifiablePresentation
 
 Deserializes a VerifiablePresentation object from the encoded data.
@@ -15,7 +15,7 @@ The deserialized VerifiablePresentation object
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

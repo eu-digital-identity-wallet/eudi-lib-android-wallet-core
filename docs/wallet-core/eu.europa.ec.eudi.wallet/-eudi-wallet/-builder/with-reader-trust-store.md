@@ -2,8 +2,8 @@
 
 # withReaderTrustStore
 
-[androidJvm]\
-fun [withReaderTrustStore](with-reader-trust-store.md)(readerTrustStore: ReaderTrustStore): &lt;Error class: unknown class&gt;
+[release]\
+fun [withReaderTrustStore](with-reader-trust-store.md)(readerTrustStore: ReaderTrustStore): [EudiWallet.Builder](index.md)
 
 Configure with the given ReaderTrustStore to use for performing reader authentication. If not set, the default reader trust store will be used which is initialized with the certificates provided in the [EudiWalletConfig.configureReaderTrustStore](../../-eudi-wallet-config/configure-reader-trust-store.md) methods.
 
@@ -13,7 +13,7 @@ this [Builder](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

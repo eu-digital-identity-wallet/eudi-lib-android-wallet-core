@@ -2,5 +2,5 @@
 
 # openId4VpConfig
 
-[androidJvm]\
+[release]\
 var [openId4VpConfig](open-id4-vp-config.md): [OpenId4VpConfig](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-config/index.md)?

@@ -2,8 +2,8 @@
 
 # SecureAreaDpopSigner
 
-[androidJvm]\
-constructor(config: [DPopConfig.Custom](../-d-pop-config/-custom/index.md), algorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)
+[release]\
+constructor(config: [DPopConfig.Custom](../-d-pop-config/-custom/index.md), algorithms: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)
 
 Creates a new DPoP signer with a fresh key in the specified secure area.
 
@@ -11,7 +11,7 @@ A new key is created immediately during construction using the provided algorith
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

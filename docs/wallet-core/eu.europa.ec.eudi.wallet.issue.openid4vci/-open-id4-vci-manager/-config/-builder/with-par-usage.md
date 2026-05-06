@@ -2,8 +2,8 @@
 
 # withParUsage
 
-[androidJvm]\
-fun [withParUsage](with-par-usage.md)(parUsage: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withParUsage](with-par-usage.md)(parUsage: [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html)): [OpenId4VciManager.Config.Builder](index.md)
 
 Set the PAR usage
 
@@ -13,7 +13,7 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

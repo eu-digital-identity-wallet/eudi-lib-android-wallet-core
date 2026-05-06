@@ -2,11 +2,11 @@
 
 # DefaultKeyUnlockData
 
-[androidJvm]\
+[release]\
 
-@get:[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
+@get:[JvmName](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultKeyUnlockData&quot;)
 
-@get:[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@get:[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
 val Document.[~~DefaultKeyUnlockData~~](-default-key-unlock-data.md): AndroidKeystoreKeyUnlockData?
 
@@ -39,4 +39,4 @@ The default AndroidKeystoreKeyUnlockData for the Document instance if document r
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if the Document is not managed by AndroidKeystoreSecureArea. |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if the Document is not managed by AndroidKeystoreSecureArea. |

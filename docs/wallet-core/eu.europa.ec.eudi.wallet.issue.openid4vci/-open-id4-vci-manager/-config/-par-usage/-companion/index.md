@@ -2,13 +2,13 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [IF_SUPPORTED](-i-f_-s-u-p-p-o-r-t-e-d.md) | [androidJvm]<br>const val [IF_SUPPORTED](-i-f_-s-u-p-p-o-r-t-e-d.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 2 |
-| [NEVER](-n-e-v-e-r.md) | [androidJvm]<br>const val [NEVER](-n-e-v-e-r.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 0 |
-| [REQUIRED](-r-e-q-u-i-r-e-d.md) | [androidJvm]<br>const val [REQUIRED](-r-e-q-u-i-r-e-d.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 4 |
+| [IF_SUPPORTED](-i-f_-s-u-p-p-o-r-t-e-d.md) | [release]<br>const val [IF_SUPPORTED](-i-f_-s-u-p-p-o-r-t-e-d.md): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 2 |
+| [NEVER](-n-e-v-e-r.md) | [release]<br>const val [NEVER](-n-e-v-e-r.md): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 0 |
+| [REQUIRED](-r-e-q-u-i-r-e-d.md) | [release]<br>const val [REQUIRED](-r-e-q-u-i-r-e-d.md): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 4 |

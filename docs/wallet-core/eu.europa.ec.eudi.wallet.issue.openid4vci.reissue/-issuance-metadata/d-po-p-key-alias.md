@@ -2,5 +2,5 @@
 
 # dPoPKeyAlias
 
-[androidJvm]\
-val [dPoPKeyAlias](d-po-p-key-alias.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null
+[release]\
+val [dPoPKeyAlias](d-po-p-key-alias.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)?

@@ -2,7 +2,7 @@
 
 # generateResponse
 
-[androidJvm]\
+[release]\
 open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult
 
 Generates an OpenID4VP response with verifiable presentations for the selected documents.
@@ -29,7 +29,7 @@ ResponseResult with prepared response or error information
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

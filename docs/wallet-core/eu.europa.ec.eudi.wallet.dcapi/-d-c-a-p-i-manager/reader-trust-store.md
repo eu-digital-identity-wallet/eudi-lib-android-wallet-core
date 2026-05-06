@@ -2,5 +2,5 @@
 
 # readerTrustStore
 
-[androidJvm]\
+[release]\
 open override var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?

@@ -2,7 +2,7 @@
 
 # ParUsage
 
-[androidJvm]\
+[release]\
 annotation class [ParUsage](index.md)
 
 PAR usage for the OpenId4Vci issuer
@@ -11,4 +11,4 @@ PAR usage for the OpenId4Vci issuer
 
 | Name | Summary |
 |---|---|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
+| [Companion](-companion/index.md) | [release]<br>object [Companion](-companion/index.md) |

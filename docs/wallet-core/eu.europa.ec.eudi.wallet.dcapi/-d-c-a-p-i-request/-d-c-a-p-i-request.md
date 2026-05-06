@@ -2,5 +2,5 @@
 
 # DCAPIRequest
 
-[androidJvm]\
+[release]\
 constructor(providerGetCredentialRequest: [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html))

@@ -2,7 +2,7 @@
 
 # OnResolvedOffer
 
-[androidJvm]\
+[release]\
 fun interface [OnResolvedOffer](index.md) : [OpenId4VciManager.OnResult](../-on-result/index.md)&lt;[OfferResult](../../-offer-result/index.md)&gt; 
 
 Callback to be called when an offer is resolved
@@ -11,5 +11,5 @@ Callback to be called when an offer is resolved
 
 | Name | Summary |
 |---|---|
-| [invoke](index.md#368840040%2FFunctions%2F1615067946) | [androidJvm]<br>open operator fun [invoke](index.md#368840040%2FFunctions%2F1615067946)(result: [OfferResult](../../-offer-result/index.md)) |
-| [onResult](index.md#1215986764%2FFunctions%2F1615067946) | [androidJvm]<br>abstract fun [onResult](index.md#1215986764%2FFunctions%2F1615067946)(result: [OfferResult](../../-offer-result/index.md)) |
+| [invoke](../-on-result/invoke.md) | [release]<br>open operator fun [invoke](../-on-result/invoke.md)(result: [OfferResult](../../-offer-result/index.md)) |
+| [onResult](../-on-result/on-result.md) | [release]<br>abstract fun [onResult](../-on-result/on-result.md)(result: [OfferResult](../../-offer-result/index.md)) |

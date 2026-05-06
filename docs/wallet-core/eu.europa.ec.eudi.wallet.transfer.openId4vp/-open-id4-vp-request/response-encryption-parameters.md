@@ -2,7 +2,7 @@
 
 # responseEncryptionParameters
 
-[androidJvm]\
+[release]\
 val [responseEncryptionParameters](response-encryption-parameters.md): EncryptionParameters?
 
 Computes the encryption parameters required to send a response (Success or Error) if the Verifier requested JARM encryption.

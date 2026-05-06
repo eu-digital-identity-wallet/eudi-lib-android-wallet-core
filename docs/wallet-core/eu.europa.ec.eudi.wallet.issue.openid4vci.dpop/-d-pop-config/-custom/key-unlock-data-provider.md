@@ -2,5 +2,5 @@
 
 # keyUnlockDataProvider
 
-[androidJvm]\
+[release]\
 val [keyUnlockDataProvider](key-unlock-data-provider.md): [KeyUnlockDataProvider](../../-key-unlock-data-provider/index.md)

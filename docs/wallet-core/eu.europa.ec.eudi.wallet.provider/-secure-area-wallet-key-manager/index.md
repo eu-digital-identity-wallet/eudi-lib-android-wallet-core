@@ -2,7 +2,7 @@
 
 # SecureAreaWalletKeyManager
 
-open class [SecureAreaWalletKeyManager](index.md)(secureArea: SecureArea, createKeySettingsProvider: suspend (Algorithm) -&gt; CreateKeySettings, keyUnlockDataProvider: suspend ([String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), SecureArea) -&gt; KeyUnlockData? = { _, _ -&gt; null }) : [WalletKeyManager](../-wallet-key-manager/index.md)
+open class [SecureAreaWalletKeyManager](index.md)(secureArea: SecureArea, createKeySettingsProvider: suspend (Algorithm) -&gt; CreateKeySettings, keyUnlockDataProvider: suspend ([String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), SecureArea) -&gt; KeyUnlockData? = { _, _ -&gt; null }) : [WalletKeyManager](../-wallet-key-manager/index.md)
 
 A generic implementation of [WalletKeyManager](../-wallet-key-manager/index.md) that delegates cryptographic operations to a provided SecureArea.
 
@@ -12,7 +12,7 @@ Checks if a key exists in the SecureArea for that alias. If it exists and matche
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -24,11 +24,11 @@ androidJvm
 
 | | |
 |---|---|
-| [SecureAreaWalletKeyManager](-secure-area-wallet-key-manager.md) | [androidJvm]<br>constructor(secureArea: SecureArea, createKeySettingsProvider: suspend (Algorithm) -&gt; CreateKeySettings, keyUnlockDataProvider: suspend ([String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), SecureArea) -&gt; KeyUnlockData? = { _, _ -&gt; null }) |
+| [SecureAreaWalletKeyManager](-secure-area-wallet-key-manager.md) | [release]<br>constructor(secureArea: SecureArea, createKeySettingsProvider: suspend (Algorithm) -&gt; CreateKeySettings, keyUnlockDataProvider: suspend ([String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), SecureArea) -&gt; KeyUnlockData? = { _, _ -&gt; null }) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [getOrCreateWalletAttestationKey](get-or-create-wallet-attestation-key.md) | [androidJvm]<br>open suspend override fun [getOrCreateWalletAttestationKey](get-or-create-wallet-attestation-key.md)(issuerUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), supportedAlgorithms: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;[WalletAttestationKey](../-wallet-attestation-key/index.md)&gt;<br>Retrieves or creates a signing key to be used for Wallet Attestation (Client Authentication). The implementation must ensure that keys are scoped to the specific Authorization Server to prevent cross-service tracking (Unlinkability). The key alias is derived from the [issuerUrl](get-or-create-wallet-attestation-key.md). |
-| [getWalletAttestationKey](get-wallet-attestation-key.md) | [androidJvm]<br>open suspend override fun [getWalletAttestationKey](get-wallet-attestation-key.md)(keyAlias: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): [WalletAttestationKey](../-wallet-attestation-key/index.md)?<br>Retrieves the existing Wallet Attestation Key for the specified Authorization Server URL. If no key exists for the given Authorization Server, it returns null. |
+| [getOrCreateWalletAttestationKey](get-or-create-wallet-attestation-key.md) | [release]<br>open suspend override fun [getOrCreateWalletAttestationKey](get-or-create-wallet-attestation-key.md)(issuerUrl: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), supportedAlgorithms: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;[WalletAttestationKey](../-wallet-attestation-key/index.md)&gt;<br>Retrieves or creates a signing key to be used for Wallet Attestation (Client Authentication). The implementation must ensure that keys are scoped to the specific Authorization Server to prevent cross-service tracking (Unlinkability). The key alias is derived from the [issuerUrl](../-wallet-key-manager/get-or-create-wallet-attestation-key.md). |
+| [getWalletAttestationKey](get-wallet-attestation-key.md) | [release]<br>open suspend override fun [getWalletAttestationKey](get-wallet-attestation-key.md)(keyAlias: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [WalletAttestationKey](../-wallet-attestation-key/index.md)?<br>Retrieves the existing Wallet Attestation Key for the specified Authorization Server URL. If no key exists for the given Authorization Server, it returns null. |

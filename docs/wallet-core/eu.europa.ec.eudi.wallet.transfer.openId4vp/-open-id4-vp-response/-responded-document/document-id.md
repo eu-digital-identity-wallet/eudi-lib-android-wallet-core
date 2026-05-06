@@ -2,7 +2,7 @@
 
 # documentId
 
-[androidJvm]\
-val [documentId](document-id.md): &lt;Error class: unknown class&gt;
+[release]\
+val [documentId](document-id.md): DocumentId
 
 The unique identifier of the document that was responded.

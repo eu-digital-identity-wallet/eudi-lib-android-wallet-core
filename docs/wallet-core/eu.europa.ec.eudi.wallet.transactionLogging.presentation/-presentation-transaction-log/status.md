@@ -2,5 +2,5 @@
 
 # status
 
-[androidJvm]\
+[release]\
 val [status](status.md): [TransactionLog.Status](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/-status/index.md)

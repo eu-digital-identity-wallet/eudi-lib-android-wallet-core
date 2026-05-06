@@ -2,5 +2,5 @@
 
 # documentId
 
-[androidJvm]\
-abstract val [documentId](document-id.md): &lt;Error class: unknown class&gt;
+[release]\
+abstract val [documentId](document-id.md): DocumentId

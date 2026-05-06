@@ -2,5 +2,5 @@
 
 # secureAreas
 
-[androidJvm]\
-var [secureAreas](secure-areas.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;SecureArea&gt;?
+[release]\
+var [secureAreas](secure-areas.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;SecureArea&gt;?

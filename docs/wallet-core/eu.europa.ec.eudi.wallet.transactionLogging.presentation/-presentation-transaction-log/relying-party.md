@@ -2,5 +2,5 @@
 
 # relyingParty
 
-[androidJvm]\
+[release]\
 val [relyingParty](relying-party.md): [TransactionLog.RelyingParty](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/-relying-party/index.md)

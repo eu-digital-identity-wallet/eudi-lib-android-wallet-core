@@ -2,7 +2,7 @@
 
 # build
 
-[androidJvm]\
+[release]\
 fun [build](build.md)(): [DocumentStatusResolver](../index.md)
 
 Builds the [DocumentStatusResolver](../index.md) instance

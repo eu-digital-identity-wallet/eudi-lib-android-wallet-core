@@ -18,5 +18,5 @@ Callback to be called for [OpenId4VciManager.issueDocumentByDocType](../issue-do
 
 | Name | Summary |
 |---|---|
-| [invoke](invoke.md) | [androidJvm]<br>open operator fun [invoke](invoke.md)(result: [T](index.md)) |
-| [onResult](on-result.md) | [androidJvm]<br>abstract fun [onResult](on-result.md)(result: [T](index.md)) |
+| [invoke](invoke.md) | [release]<br>open operator fun [invoke](invoke.md)(result: [T](index.md)) |
+| [onResult](on-result.md) | [release]<br>abstract fun [onResult](on-result.md)(result: [T](index.md)) |

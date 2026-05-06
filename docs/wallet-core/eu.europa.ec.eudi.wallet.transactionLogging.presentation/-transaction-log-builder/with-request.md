@@ -2,7 +2,7 @@
 
 # withRequest
 
-[androidJvm]\
+[release]\
 fun [withRequest](with-request.md)(log: [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md), request: Request): [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)
 
 Updates the provided [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) with information from a Request.
@@ -24,7 +24,7 @@ An updated [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-t
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -35,4 +35,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalArgumentException](https://developer.android.com/reference/kotlin/java/lang/IllegalArgumentException.html) | if an [OpenId4VpRequest](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-request/index.md) does not conform to expected subtypes. |
+| [IllegalArgumentException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-argument-exception/index.html) | if an [OpenId4VpRequest](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-request/index.md) does not conform to expected subtypes. |

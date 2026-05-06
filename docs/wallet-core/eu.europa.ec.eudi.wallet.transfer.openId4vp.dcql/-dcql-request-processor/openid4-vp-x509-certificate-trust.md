@@ -2,5 +2,5 @@
 
 # openid4VpX509CertificateTrust
 
-[androidJvm]\
+[release]\
 var [openid4VpX509CertificateTrust](openid4-vp-x509-certificate-trust.md): [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md)

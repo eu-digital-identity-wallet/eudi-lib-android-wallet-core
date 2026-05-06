@@ -2,5 +2,5 @@
 
 # withWalletKeyManager
 
-[androidJvm]\
+[release]\
 fun [withWalletKeyManager](with-wallet-key-manager.md)(walletKeyManager: [WalletKeyManager](../../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)): [EudiWallet.Builder](index.md)

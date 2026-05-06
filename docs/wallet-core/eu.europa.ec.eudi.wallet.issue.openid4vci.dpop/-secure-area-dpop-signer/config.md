@@ -2,5 +2,5 @@
 
 # config
 
-[androidJvm]\
+[release]\
 val [config](config.md): [DPopConfig.Custom](../-d-pop-config/-custom/index.md)

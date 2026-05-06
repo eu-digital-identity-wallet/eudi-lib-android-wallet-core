@@ -2,5 +2,5 @@
 
 # verifierApi
 
-[androidJvm]\
+[release]\
 var [verifierApi](verifier-api.md): [VerifierApi](../-verifier-api/index.md)

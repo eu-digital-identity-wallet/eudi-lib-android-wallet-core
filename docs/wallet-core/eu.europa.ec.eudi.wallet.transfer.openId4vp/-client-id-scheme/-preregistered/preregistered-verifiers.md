@@ -2,5 +2,5 @@
 
 # preregisteredVerifiers
 
-[androidJvm]\
-var [preregisteredVerifiers](preregistered-verifiers.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;
+[release]\
+var [preregisteredVerifiers](preregistered-verifiers.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PreregisteredVerifier](../../-preregistered-verifier/index.md)&gt;

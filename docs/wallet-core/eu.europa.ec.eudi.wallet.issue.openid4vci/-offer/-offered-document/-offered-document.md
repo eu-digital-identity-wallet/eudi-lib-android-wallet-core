@@ -2,5 +2,5 @@
 
 # OfferedDocument
 
-[androidJvm]\
+[release]\
 constructor(offer: [Offer](../index.md), configurationIdentifier: CredentialConfigurationIdentifier, configuration: CredentialConfiguration)

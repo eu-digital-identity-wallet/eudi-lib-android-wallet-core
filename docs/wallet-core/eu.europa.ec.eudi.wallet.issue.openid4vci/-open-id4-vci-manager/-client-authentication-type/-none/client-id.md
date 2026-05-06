@@ -2,12 +2,12 @@
 
 # clientId
 
-[androidJvm]\
-val [clientId](client-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+val [clientId](client-id.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

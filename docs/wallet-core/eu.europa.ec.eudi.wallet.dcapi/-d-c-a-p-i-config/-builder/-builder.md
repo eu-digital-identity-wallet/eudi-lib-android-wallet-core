@@ -2,5 +2,5 @@
 
 # Builder
 
-[androidJvm]\
+[release]\
 constructor()

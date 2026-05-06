@@ -2,5 +2,5 @@
 
 # jwsAlgorithm
 
-[androidJvm]\
+[release]\
 var [jwsAlgorithm](jws-algorithm.md): Algorithm

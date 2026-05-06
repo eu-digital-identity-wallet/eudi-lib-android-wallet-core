@@ -2,7 +2,7 @@
 
 # Success
 
-[androidJvm]\
+[release]\
 data class [Success](index.md)(val offer: [Offer](../../-offer/index.md)) : [OfferResult](../index.md)
 
 The offer was successful.
@@ -11,10 +11,10 @@ The offer was successful.
 
 | | |
 |---|---|
-| [Success](-success.md) | [androidJvm]<br>constructor(offer: [Offer](../../-offer/index.md)) |
+| [Success](-success.md) | [release]<br>constructor(offer: [Offer](../../-offer/index.md)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [offer](offer.md) | [androidJvm]<br>val [offer](offer.md): [Offer](../../-offer/index.md)<br>the offer |
+| [offer](offer.md) | [release]<br>val [offer](offer.md): [Offer](../../-offer/index.md)<br>the offer |

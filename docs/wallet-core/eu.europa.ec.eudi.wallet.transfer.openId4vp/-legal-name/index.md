@@ -2,8 +2,8 @@
 
 # LegalName
 
-[androidJvm]\
-typealias [LegalName](index.md) = [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+typealias [LegalName](index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 Type alias for legal name strings of verifier organizations.
 

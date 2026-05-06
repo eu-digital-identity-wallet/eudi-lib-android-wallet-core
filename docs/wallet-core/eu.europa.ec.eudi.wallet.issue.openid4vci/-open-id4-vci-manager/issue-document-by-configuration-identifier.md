@@ -2,8 +2,8 @@
 
 # issueDocumentByConfigurationIdentifier
 
-[androidJvm]\
-abstract fun [~~issueDocumentByConfigurationIdentifier~~](issue-document-by-configuration-identifier.md)(credentialConfigurationId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+[release]\
+abstract fun [~~issueDocumentByConfigurationIdentifier~~](issue-document-by-configuration-identifier.md)(credentialConfigurationId: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), txCode: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)? = null, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
 
 ---
 
@@ -19,7 +19,7 @@ The credential configuration identifier can be obtained from the [getIssuerMetad
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

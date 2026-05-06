@@ -2,7 +2,7 @@
 
 # release
 
-[androidJvm]\
+[release]\
 open suspend override fun [release](release.md)(signOperation: SignOperation&lt;JWK&gt;?)
 
 Releases resources associated with a signing operation.
@@ -13,8 +13,8 @@ This method is called by the OpenID4VCI library when the signing operation is co
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
-| signOperation | The signing operation to release, or null if no operation     is currently held. This parameter is ignored in this implementation. |
+| signOperation | The signing operation to release, or null if no operation         is currently held. This parameter is ignored in this implementation. |

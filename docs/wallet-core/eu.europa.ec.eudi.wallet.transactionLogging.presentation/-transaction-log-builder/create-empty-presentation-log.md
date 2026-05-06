@@ -2,7 +2,7 @@
 
 # createEmptyPresentationLog
 
-[androidJvm]\
+[release]\
 fun [createEmptyPresentationLog](create-empty-presentation-log.md)(): [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)
 
 Creates an initial, empty [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) for a presentation.

@@ -2,8 +2,8 @@
 
 # logResponse
 
-[androidJvm]\
-fun [logResponse](log-response.md)(response: Response, error: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html)? = null)
+[release]\
+fun [logResponse](log-response.md)(response: Response, error: [Throwable](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-throwable/index.html)? = null)
 
 Logs the response after sending it to the relying party.
 
@@ -11,7 +11,7 @@ This method updates the current transaction log with the response details and an
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

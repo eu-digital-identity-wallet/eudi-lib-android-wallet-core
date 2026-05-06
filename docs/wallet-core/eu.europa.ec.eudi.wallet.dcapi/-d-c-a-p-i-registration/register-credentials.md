@@ -2,5 +2,5 @@
 
 # registerCredentials
 
-[androidJvm]\
+[release]\
 abstract suspend fun [registerCredentials](register-credentials.md)()

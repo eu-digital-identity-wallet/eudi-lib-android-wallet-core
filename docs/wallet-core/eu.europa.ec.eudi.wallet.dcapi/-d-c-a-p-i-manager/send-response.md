@@ -2,5 +2,5 @@
 
 # sendResponse
 
-[androidJvm]\
+[release]\
 fun [sendResponse](send-response.md)(response: Response)

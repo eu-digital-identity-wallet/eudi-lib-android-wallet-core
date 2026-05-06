@@ -2,5 +2,5 @@
 
 # metadata
 
-[androidJvm]\
+[release]\
 val [metadata](metadata.md): IssuerMetadata?

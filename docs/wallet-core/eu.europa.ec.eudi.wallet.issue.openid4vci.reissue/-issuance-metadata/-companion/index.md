@@ -2,11 +2,11 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [fromByteArray](from-byte-array.md) | [androidJvm]<br>fun [fromByteArray](from-byte-array.md)(bytes: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)): [IssuanceMetadata](../index.md)<br>Deserializes an [IssuanceMetadata](../index.md) from a [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html). |
+| [fromByteArray](from-byte-array.md) | [release]<br>fun [fromByteArray](from-byte-array.md)(bytes: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)): [IssuanceMetadata](../index.md)<br>Deserializes an [IssuanceMetadata](../index.md) from a [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html). |

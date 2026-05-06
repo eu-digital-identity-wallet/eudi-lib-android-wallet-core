@@ -2,5 +2,5 @@
 
 # issuerAuthAlgorithms
 
-[androidJvm]\
-val [issuerAuthAlgorithms](issuer-auth-algorithms.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;
+[release]\
+val [issuerAuthAlgorithms](issuer-auth-algorithms.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;

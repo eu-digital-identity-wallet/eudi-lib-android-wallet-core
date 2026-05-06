@@ -2,5 +2,5 @@
 
 # OpenId4VpReaderTrustImpl
 
-[androidJvm]\
+[release]\
 constructor(readerTrustStore: ReaderTrustStore? = null)

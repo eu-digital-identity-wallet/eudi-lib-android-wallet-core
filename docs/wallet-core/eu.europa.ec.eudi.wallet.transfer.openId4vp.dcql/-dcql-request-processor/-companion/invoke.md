@@ -2,5 +2,5 @@
 
 # invoke
 
-[androidJvm]\
+[release]\
 operator fun [invoke](invoke.md)(documentManager: DocumentManager, readerTrustStore: ReaderTrustStore?): [DcqlRequestProcessor](../index.md)

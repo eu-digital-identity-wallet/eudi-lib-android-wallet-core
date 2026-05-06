@@ -2,5 +2,5 @@
 
 # issuerUrl
 
-[androidJvm]\
-var [issuerUrl](issuer-url.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)?
+[release]\
+var [issuerUrl](issuer-url.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)?

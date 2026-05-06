@@ -2,5 +2,5 @@
 
 # Metadata
 
-[androidJvm]\
-constructor(issuerMetadata: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)?, format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), index: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html), queryId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null)
+[release]\
+constructor(issuerMetadata: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)?, format: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), index: [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html), queryId: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)? = null)

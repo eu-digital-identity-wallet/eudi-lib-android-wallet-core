@@ -2,5 +2,5 @@
 
 # bytes
 
-[androidJvm]\
+[release]\
 val [bytes](bytes.md): ByteString

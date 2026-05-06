@@ -2,5 +2,5 @@
 
 # addTransferEventListener
 
-[androidJvm]\
-open override fun [addTransferEventListener](add-transfer-event-listener.md)(listener: TransferEvent.Listener): &lt;Error class: unknown class&gt;
+[release]\
+open override fun [addTransferEventListener](add-transfer-event-listener.md)(listener: TransferEvent.Listener): [DCAPIManager](index.md)

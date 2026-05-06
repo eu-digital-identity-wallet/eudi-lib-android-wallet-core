@@ -2,13 +2,13 @@
 
 # None
 
-data class [None](index.md)(val clientId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) : [OpenId4VciManager.ClientAuthenticationType](../index.md)
+data class [None](index.md)(val clientId: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)) : [OpenId4VciManager.ClientAuthenticationType](../index.md)
 
 No client authentication, only client id is provided
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -18,10 +18,10 @@ androidJvm
 
 | | |
 |---|---|
-| [None](-none.md) | [androidJvm]<br>constructor(clientId: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
+| [None](-none.md) | [release]<br>constructor(clientId: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [clientId](client-id.md) | [androidJvm]<br>val [clientId](client-id.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [clientId](client-id.md) | [release]<br>val [clientId](client-id.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |

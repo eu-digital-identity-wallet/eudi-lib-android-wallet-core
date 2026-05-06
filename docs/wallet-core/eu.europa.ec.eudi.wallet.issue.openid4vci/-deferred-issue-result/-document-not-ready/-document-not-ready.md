@@ -2,5 +2,5 @@
 
 # DocumentNotReady
 
-[androidJvm]\
+[release]\
 constructor(document: DeferredDocument)

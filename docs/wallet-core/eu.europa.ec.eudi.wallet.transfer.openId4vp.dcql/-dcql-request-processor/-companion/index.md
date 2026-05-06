@@ -2,11 +2,11 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [invoke](invoke.md) | [androidJvm]<br>operator fun [invoke](invoke.md)(documentManager: DocumentManager, readerTrustStore: ReaderTrustStore?): [DcqlRequestProcessor](../index.md) |
+| [invoke](invoke.md) | [release]<br>operator fun [invoke](invoke.md)(documentManager: DocumentManager, readerTrustStore: ReaderTrustStore?): [DcqlRequestProcessor](../index.md) |

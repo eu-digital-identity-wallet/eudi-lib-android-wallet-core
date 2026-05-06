@@ -2,5 +2,5 @@
 
 # credentialOffer
 
-[androidJvm]\
+[release]\
 val [credentialOffer](credential-offer.md): CredentialOffer

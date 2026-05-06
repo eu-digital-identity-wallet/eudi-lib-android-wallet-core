@@ -2,8 +2,8 @@
 
 # extractStatusReference
 
-[androidJvm]\
-open suspend override fun [extractStatusReference](extract-status-reference.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;StatusReference&gt;
+[release]\
+open suspend override fun [extractStatusReference](extract-status-reference.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;StatusReference&gt;
 
 Extracts status reference from the provided document
 
@@ -13,7 +13,7 @@ Result containing the extracted status reference or an error
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

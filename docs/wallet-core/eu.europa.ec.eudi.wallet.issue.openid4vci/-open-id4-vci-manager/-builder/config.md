@@ -2,8 +2,8 @@
 
 # config
 
-[androidJvm]\
-fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [config](config.md)(config: [OpenId4VciManager.Config](../-config/index.md)): [OpenId4VciManager.Builder](index.md)
 
 Set the [Config](../-config/index.md) to use
 
@@ -13,11 +13,11 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | config | the config |
 
-[androidJvm]\
+[release]\
 var [config](config.md): [OpenId4VciManager.Config](../-config/index.md)?

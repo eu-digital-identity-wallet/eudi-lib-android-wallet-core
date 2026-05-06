@@ -2,5 +2,5 @@
 
 # NEVER
 
-[androidJvm]\
-const val [NEVER](-n-e-v-e-r.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 0
+[release]\
+const val [NEVER](-n-e-v-e-r.md): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 0

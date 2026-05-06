@@ -2,5 +2,5 @@
 
 # configurationIdentifier
 
-[androidJvm]\
+[release]\
 val [configurationIdentifier](configuration-identifier.md): CredentialConfigurationIdentifier

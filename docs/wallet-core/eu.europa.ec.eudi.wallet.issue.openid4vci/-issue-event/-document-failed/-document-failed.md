@@ -2,5 +2,5 @@
 
 # DocumentFailed
 
-[androidJvm]\
-constructor(document: UnsignedDocument, cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html))
+[release]\
+constructor(document: UnsignedDocument, cause: [Throwable](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-throwable/index.html))

@@ -2,5 +2,5 @@
 
 # offer
 
-[androidJvm]\
+[release]\
 val [offer](offer.md): [Offer](../../-offer/index.md)

@@ -2,5 +2,5 @@
 
 # dcapiRegistration
 
-[androidJvm]\
+[release]\
 var [dcapiRegistration](dcapi-registration.md): [DCAPIRegistration](../../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-registration/index.md)?

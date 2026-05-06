@@ -2,14 +2,14 @@
 
 # log
 
-[androidJvm]\
+[release]\
 abstract fun [log](log.md)(transaction: [TransactionLog](../-transaction-log/index.md))
 
 Logs a transaction.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

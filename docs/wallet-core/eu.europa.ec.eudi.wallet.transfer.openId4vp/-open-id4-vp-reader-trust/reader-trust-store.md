@@ -2,5 +2,5 @@
 
 # readerTrustStore
 
-[androidJvm]\
+[release]\
 abstract var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?

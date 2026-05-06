@@ -2,7 +2,7 @@
 
 # acquire
 
-[androidJvm]\
+[release]\
 open suspend override fun [acquire](acquire.md)(): SignOperation&lt;JWK&gt;
 
 Acquires a signing operation for creating DPoP proofs.

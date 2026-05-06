@@ -2,5 +2,5 @@
 
 # keyInfo
 
-[androidJvm]\
+[release]\
 val [keyInfo](key-info.md): KeyInfo

@@ -2,8 +2,8 @@
 
 # withStorage
 
-[androidJvm]\
-fun [withStorage](with-storage.md)(storage: Storage): &lt;Error class: unknown class&gt;
+[release]\
+fun [withStorage](with-storage.md)(storage: Storage): [EudiWallet.Builder](index.md)
 
 Configure with the given Storage to use for storing/retrieving documents. If not set, the default storage will be used which is AndroidStorage.
 
@@ -13,7 +13,7 @@ this [Builder](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

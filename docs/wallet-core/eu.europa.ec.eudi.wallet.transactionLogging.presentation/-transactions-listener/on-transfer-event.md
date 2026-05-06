@@ -2,7 +2,7 @@
 
 # onTransferEvent
 
-[androidJvm]\
+[release]\
 open override fun [onTransferEvent](on-transfer-event.md)(event: TransferEvent)
 
 Handles transfer events to update the transaction log.
@@ -20,7 +20,7 @@ Updates the log based on the event type:
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

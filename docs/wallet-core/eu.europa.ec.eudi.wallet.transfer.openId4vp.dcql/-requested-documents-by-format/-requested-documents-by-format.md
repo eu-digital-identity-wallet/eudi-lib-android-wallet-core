@@ -2,5 +2,5 @@
 
 # RequestedDocumentsByFormat
 
-[androidJvm]\
-constructor(format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), requestedDocuments: RequestedDocuments)
+[release]\
+constructor(format: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), requestedDocuments: RequestedDocuments)

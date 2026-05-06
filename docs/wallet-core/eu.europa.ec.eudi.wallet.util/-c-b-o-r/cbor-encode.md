@@ -2,11 +2,11 @@
 
 # cborEncode
 
-[androidJvm]\
+[release]\
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [cborEncode](cbor-encode.md)(dataItem: DataItem): [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)
+fun [cborEncode](cbor-encode.md)(dataItem: DataItem): [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)
 
 Encodes a given DataItem into a CBOR byte array.
 
@@ -16,7 +16,7 @@ A byte array representing the encoded CBOR data.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -26,4 +26,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | If encoding fails. |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | If encoding fails. |

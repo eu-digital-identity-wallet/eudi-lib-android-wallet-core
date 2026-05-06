@@ -2,7 +2,7 @@
 
 # descriptor
 
-[androidJvm]\
+[release]\
 open override val [descriptor](descriptor.md): SerialDescriptor
 
 Serial descriptor for the VerifiablePresentations structure. Defines a presentations map containing query ID keys and presentation lists.

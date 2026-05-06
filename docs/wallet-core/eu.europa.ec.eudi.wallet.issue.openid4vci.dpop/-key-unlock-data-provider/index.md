@@ -65,10 +65,10 @@ val config = DPopConfig.Custom(
 
 | Name | Summary |
 |---|---|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
+| [Companion](-companion/index.md) | [release]<br>object [Companion](-companion/index.md) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [invoke](invoke.md) | [androidJvm]<br>abstract suspend operator fun [invoke](invoke.md)(keyAlias: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), secureArea: SecureArea): KeyUnlockData? |
+| [invoke](invoke.md) | [release]<br>abstract suspend operator fun [invoke](invoke.md)(keyAlias: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), secureArea: SecureArea): KeyUnlockData? |

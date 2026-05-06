@@ -2,5 +2,5 @@
 
 # documentManager
 
-[androidJvm]\
+[release]\
 var [documentManager](document-manager.md): DocumentManager?

@@ -2,5 +2,5 @@
 
 # txCodeSpec
 
-[androidJvm]\
+[release]\
 val [txCodeSpec](tx-code-spec.md): TxCode?

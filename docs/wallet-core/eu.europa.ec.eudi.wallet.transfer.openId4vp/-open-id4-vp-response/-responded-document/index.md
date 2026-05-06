@@ -2,10 +2,10 @@
 
 # RespondedDocument
 
-[androidJvm]\
+[release]\
 @Serializable
 
-data class [RespondedDocument](index.md)(val documentId: &lt;Error class: unknown class&gt;, val format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))
+data class [RespondedDocument](index.md)(val documentId: DocumentId, val format: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html))
 
 Represents a document that was included in an OpenID4VP response.
 
@@ -15,11 +15,11 @@ This data class provides metadata about documents that were presented in respons
 
 | | |
 |---|---|
-| [RespondedDocument](-responded-document.md) | [androidJvm]<br>constructor(documentId: &lt;Error class: unknown class&gt;, format: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)) |
+| [RespondedDocument](-responded-document.md) | [release]<br>constructor(documentId: DocumentId, format: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [documentId](document-id.md) | [androidJvm]<br>val [documentId](document-id.md): &lt;Error class: unknown class&gt;<br>The unique identifier of the document that was responded. |
-| [format](format.md) | [androidJvm]<br>val [format](format.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)<br>The format of the document (e.g., &quot;mso_mdoc&quot;, &quot;sd_jwt_vc&quot;). Indicates the credential format used for this specific document. |
+| [documentId](document-id.md) | [release]<br>val [documentId](document-id.md): DocumentId<br>The unique identifier of the document that was responded. |
+| [format](format.md) | [release]<br>val [format](format.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)<br>The format of the document (e.g., &quot;mso_mdoc&quot;, &quot;sd_jwt_vc&quot;). Indicates the credential format used for this specific document. |

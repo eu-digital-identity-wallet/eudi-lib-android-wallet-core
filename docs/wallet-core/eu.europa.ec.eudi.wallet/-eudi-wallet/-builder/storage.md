@@ -2,5 +2,5 @@
 
 # storage
 
-[androidJvm]\
+[release]\
 var [storage](storage.md): Storage?

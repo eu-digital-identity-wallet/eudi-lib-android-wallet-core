@@ -2,7 +2,7 @@
 
 # deserialize
 
-[androidJvm]\
+[release]\
 open override fun [deserialize](deserialize.md)(decoder: Decoder): Consensus.PositiveConsensus
 
 Deserializes a Consensus.PositiveConsensus object from the decoder.
@@ -13,7 +13,7 @@ The deserialized PositiveConsensus object
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

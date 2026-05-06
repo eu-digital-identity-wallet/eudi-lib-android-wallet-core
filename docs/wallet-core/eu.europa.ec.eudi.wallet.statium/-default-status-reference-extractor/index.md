@@ -24,4 +24,4 @@ It delegates the extraction to the appropriate extractor based on the document f
 
 | Name | Summary |
 |---|---|
-| [extractStatusReference](extract-status-reference.md) | [androidJvm]<br>open suspend override fun [extractStatusReference](extract-status-reference.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;StatusReference&gt;<br>Extracts status reference from the provided document |
+| [extractStatusReference](extract-status-reference.md) | [release]<br>open suspend override fun [extractStatusReference](extract-status-reference.md)(document: IssuedDocument): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;StatusReference&gt;<br>Extracts status reference from the provided document |

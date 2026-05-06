@@ -2,5 +2,5 @@
 
 # build
 
-[androidJvm]\
+[release]\
 fun [build](build.md)(): [DCAPIConfig](../index.md)

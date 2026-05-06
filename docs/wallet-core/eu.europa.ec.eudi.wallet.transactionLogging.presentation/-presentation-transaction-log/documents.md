@@ -2,5 +2,5 @@
 
 # documents
 
-[androidJvm]\
-val [documents](documents.md): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedDocument](../-presented-document/index.md)&gt;
+[release]\
+val [documents](documents.md): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[PresentedDocument](../-presented-document/index.md)&gt;

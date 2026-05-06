@@ -2,5 +2,5 @@
 
 # keyLockedException
 
-[androidJvm]\
+[release]\
 var [keyLockedException](key-locked-exception.md): KeyLockedException?

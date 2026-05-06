@@ -2,8 +2,8 @@
 
 # LongfellowZkSystemRepository
 
-[androidJvm]\
-class [LongfellowZkSystemRepository](index.md)(circuits: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;)
+[release]\
+class [LongfellowZkSystemRepository](index.md)(circuits: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;)
 
 Repository builder for Longfellow zero-knowledge proof systems.
 
@@ -11,10 +11,10 @@ Repository builder for Longfellow zero-knowledge proof systems.
 
 | | |
 |---|---|
-| [LongfellowZkSystemRepository](-longfellow-zk-system-repository.md) | [androidJvm]<br>constructor(circuits: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;) |
+| [LongfellowZkSystemRepository](-longfellow-zk-system-repository.md) | [release]<br>constructor(circuits: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [build](build.md) | [androidJvm]<br>fun [build](build.md)(): ZkSystemRepository |
+| [build](build.md) | [release]<br>fun [build](build.md)(): ZkSystemRepository |

@@ -2,5 +2,5 @@
 
 # transferManager
 
-[androidJvm]\
+[release]\
 open override val [transferManager](transfer-manager.md): TransferManager

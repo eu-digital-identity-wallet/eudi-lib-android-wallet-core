@@ -2,8 +2,8 @@
 
 # determineRequestedDocuments
 
-[androidJvm]\
-fun [determineRequestedDocuments](determine-requested-documents.md)(credentials: Credentials, credentialSets: CredentialSets?, availableWalletCredentialIds: [Set](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-set/index.html)&lt;QueryId&gt;): [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, CredentialQuery&gt;
+[release]\
+fun [determineRequestedDocuments](determine-requested-documents.md)(credentials: Credentials, credentialSets: CredentialSets?, availableWalletCredentialIds: [Set](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-set/index.html)&lt;QueryId&gt;): [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, CredentialQuery&gt;
 
 Determines the final map of requested documents based on the DCQL query and the credentials available in the user's wallet.
 
@@ -20,7 +20,7 @@ A map of QueryId to the corresponding CredentialQuery for documents that should 
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,7 +2,7 @@
 
 # AttestationBased
 
-[androidJvm]\
+[release]\
 data object [AttestationBased](index.md) : [OpenId4VciManager.ClientAuthenticationType](../index.md)
 
 Attestation based client authentication using [WalletAttestationsProvider](../../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md) declared in [eu.europa.ec.eudi.wallet.EudiWallet.Builder](../../../../eu.europa.ec.eudi.wallet/-eudi-wallet/-builder/index.md)

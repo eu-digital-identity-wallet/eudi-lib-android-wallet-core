@@ -2,15 +2,15 @@
 
 # getDefaultCreateDocumentSettings
 
-[androidJvm]\
+[release]\
 
-@[JvmName](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultCreateDocumentSettings&quot;)
+@[JvmName](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;getDefaultCreateDocumentSettings&quot;)
 
-@[JvmOverloads](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)
+@[JvmOverloads](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-overloads/index.html)
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultCreateDocumentSettings](get-default-create-document-settings.md)(offeredDocument: [Offer.OfferedDocument](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/index.md), attestationChallenge: [ByteArray](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-byte-array/index.html)? = null, numberOfCredentials: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html) = 1, credentialPolicy: CreateDocumentSettings.CredentialPolicy = RotateUse, configure: AndroidKeystoreCreateKeySettings.Builder.() -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)? = null): CreateDocumentSettings
+fun [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md).[getDefaultCreateDocumentSettings](get-default-create-document-settings.md)(offeredDocument: [Offer.OfferedDocument](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/index.md), attestationChallenge: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)? = null, numberOfCredentials: [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 1, credentialPolicy: CreateDocumentSettings.CredentialPolicy = RotateUse, configure: AndroidKeystoreCreateKeySettings.Builder.() -&gt; [Unit](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html)? = null): CreateDocumentSettings
 
 Returns the default CreateDocumentSettings for the [EudiWallet](../../eu.europa.ec.eudi.wallet/-eudi-wallet/index.md) instance. The default settings are based on the [EudiWalletConfig](../../eu.europa.ec.eudi.wallet/-eudi-wallet-config/index.md) and the presence of an available AndroidKeystoreSecureArea implementation.
 
@@ -28,15 +28,15 @@ The default CreateDocumentSettings configured for the offered document.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
-| offeredDocument | The [Offer.OfferedDocument](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/index.md) for which to create the default settings.     Used to determine the maximum number of credentials allowed. |
+| offeredDocument | The [Offer.OfferedDocument](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/index.md) for which to create the default settings.                         Used to determine the maximum number of credentials allowed. |
 | attestationChallenge | The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated. |
-| numberOfCredentials | The number of credentials to pre-generate for the document.     Will be limited to not exceed [Offer.OfferedDocument.batchCredentialIssuanceSize](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/batch-credential-issuance-size.md). Defaults to 1. |
+| numberOfCredentials | The number of credentials to pre-generate for the document.                            Will be limited to not exceed [Offer.OfferedDocument.batchCredentialIssuanceSize](../../eu.europa.ec.eudi.wallet.issue.openid4vci/-offer/-offered-document/batch-credential-issuance-size.md). Defaults to 1. |
 | credentialPolicy | The policy for credential usage (OneTimeUse or RotateUse). Defaults to RotateUse. |
-| configure | A lambda to further customize the AndroidKeystoreCreateKeySettings.     If not provided, settings will use values from [EudiWalletConfig](../../eu.europa.ec.eudi.wallet/-eudi-wallet-config/index.md). |
+| configure | A lambda to further customize the AndroidKeystoreCreateKeySettings.                  If not provided, settings will use values from [EudiWalletConfig](../../eu.europa.ec.eudi.wallet/-eudi-wallet-config/index.md). |
 
 #### See also
 
@@ -51,4 +51,4 @@ androidJvm
 
 | | |
 |---|---|
-| NoSuchElementException | if no AndroidKeystoreSecureArea implementation is available. |
+| [NoSuchElementException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-no-such-element-exception/index.html) | if no AndroidKeystoreSecureArea implementation is available. |

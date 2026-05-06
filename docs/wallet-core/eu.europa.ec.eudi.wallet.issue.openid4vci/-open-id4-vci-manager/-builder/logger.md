@@ -2,8 +2,8 @@
 
 # logger
 
-[androidJvm]\
-fun [logger](logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [logger](logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): [OpenId4VciManager.Builder](index.md)
 
 Set the logger to use
 
@@ -13,11 +13,11 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | logger | the logger |
 
-[androidJvm]\
+[release]\
 var [logger](logger.md): [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)?

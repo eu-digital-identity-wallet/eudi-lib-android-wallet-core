@@ -16,13 +16,13 @@ Document issued successfully.
 
 | | |
 |---|---|
-| [DocumentIssued](-document-issued.md) | [androidJvm]<br>constructor(document: IssuedDocument) |
+| [DocumentIssued](-document-issued.md) | [release]<br>constructor(document: IssuedDocument) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [docType](../-document-deferred/index.md#-1539120442%2FProperties%2F1615067946) | [androidJvm]<br>open override val [docType](../-document-deferred/index.md#-1539120442%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
-| [document](document.md) | [androidJvm]<br>val [document](document.md): IssuedDocument<br>the issued document |
-| [documentId](../-document-deferred/index.md#-811584596%2FProperties%2F1615067946) | [androidJvm]<br>open override val [documentId](../-document-deferred/index.md#-811584596%2FProperties%2F1615067946): &lt;Error class: unknown class&gt; |
-| [name](../-document-deferred/index.md#686046743%2FProperties%2F1615067946) | [androidJvm]<br>open override val [name](../-document-deferred/index.md#686046743%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [docType](../-document-deferred/index.md#-1539120442%2FProperties%2F-946843593) | [release]<br>open override val [docType](../-document-deferred/index.md#-1539120442%2FProperties%2F-946843593): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [document](document.md) | [release]<br>val [document](document.md): IssuedDocument<br>the issued document |
+| [documentId](../-document-deferred/index.md#-811584596%2FProperties%2F-946843593) | [release]<br>open override val [documentId](../-document-deferred/index.md#-811584596%2FProperties%2F-946843593): DocumentId |
+| [name](../-document-deferred/index.md#686046743%2FProperties%2F-946843593) | [release]<br>open override val [name](../-document-deferred/index.md#686046743%2FProperties%2F-946843593): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |

@@ -22,11 +22,11 @@ This serializer handles the complex structure of verifiable presentations, which
 
 | Name | Summary |
 |---|---|
-| [descriptor](descriptor.md) | [androidJvm]<br>open override val [descriptor](descriptor.md): SerialDescriptor<br>Serial descriptor for the VerifiablePresentations structure. Defines a presentations map containing query ID keys and presentation lists. |
+| [descriptor](descriptor.md) | [release]<br>open override val [descriptor](descriptor.md): SerialDescriptor<br>Serial descriptor for the VerifiablePresentations structure. Defines a presentations map containing query ID keys and presentation lists. |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [deserialize](deserialize.md) | [androidJvm]<br>open override fun [deserialize](deserialize.md)(decoder: Decoder): VerifiablePresentations<br>Deserializes a VerifiablePresentations object from JSON format. |
-| [serialize](serialize.md) | [androidJvm]<br>open override fun [serialize](serialize.md)(encoder: Encoder, value: VerifiablePresentations)<br>Serializes a VerifiablePresentations object to JSON format. |
+| [deserialize](deserialize.md) | [release]<br>open override fun [deserialize](deserialize.md)(decoder: Decoder): VerifiablePresentations<br>Deserializes a VerifiablePresentations object from JSON format. |
+| [serialize](serialize.md) | [release]<br>open override fun [serialize](serialize.md)(encoder: Encoder, value: VerifiablePresentations)<br>Serializes a VerifiablePresentations object to JSON format. |

@@ -2,14 +2,14 @@
 
 # stopProximityPresentation
 
-[androidJvm]\
-open override fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html))
+[release]\
+open override fun [stopProximityPresentation](stop-proximity-presentation.md)(flags: [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = SEND_SESSION_TERMINATION_MESSAGE)
 
 Stops the proximity presentation using the delegate [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md) and ensures the transaction logging is appropriately finalized by calling [TransactionsListener.logStopped](../-transactions-listener/log-stopped.md).
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

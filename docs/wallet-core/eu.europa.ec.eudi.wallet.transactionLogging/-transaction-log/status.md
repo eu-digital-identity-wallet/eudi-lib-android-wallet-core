@@ -2,5 +2,5 @@
 
 # status
 
-[androidJvm]\
+[release]\
 val [status](status.md): [TransactionLog.Status](-status/index.md)

@@ -2,5 +2,5 @@
 
 # Custom
 
-[androidJvm]\
-constructor(secureArea: SecureArea, createKeySettingsBuilder: ([List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) -&gt; CreateKeySettings, keyUnlockDataProvider: [KeyUnlockDataProvider](../../-key-unlock-data-provider/index.md) = KeyUnlockDataProvider.None)
+[release]\
+constructor(secureArea: SecureArea, createKeySettingsBuilder: ([List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) -&gt; CreateKeySettings, keyUnlockDataProvider: [KeyUnlockDataProvider](../../-key-unlock-data-provider/index.md) = KeyUnlockDataProvider.None)

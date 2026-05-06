@@ -2,5 +2,5 @@
 
 # transactionLogger
 
-[androidJvm]\
+[release]\
 var [transactionLogger](transaction-logger.md): [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md)?

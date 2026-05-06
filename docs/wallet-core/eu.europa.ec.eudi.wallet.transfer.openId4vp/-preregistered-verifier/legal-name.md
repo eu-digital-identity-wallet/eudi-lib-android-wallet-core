@@ -2,5 +2,5 @@
 
 # legalName
 
-[androidJvm]\
+[release]\
 var [legalName](legal-name.md): [LegalName](../-legal-name/index.md)

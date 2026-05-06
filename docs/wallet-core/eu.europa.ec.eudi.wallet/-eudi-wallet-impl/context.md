@@ -2,5 +2,5 @@
 
 # context
 
-[androidJvm]\
+[release]\
 val [context](context.md): [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)

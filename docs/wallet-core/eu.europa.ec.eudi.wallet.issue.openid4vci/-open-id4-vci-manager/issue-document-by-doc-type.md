@@ -2,8 +2,8 @@
 
 # issueDocumentByDocType
 
-[androidJvm]\
-abstract fun [~~issueDocumentByDocType~~](issue-document-by-doc-type.md)(docType: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), txCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
+[release]\
+abstract fun [~~issueDocumentByDocType~~](issue-document-by-doc-type.md)(docType: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), txCode: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)? = null, executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onIssueEvent: [OpenId4VciManager.OnIssueEvent](-on-issue-event/index.md))
 
 ---
 
@@ -17,7 +17,7 @@ Issue a document using a document type
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

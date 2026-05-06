@@ -2,7 +2,7 @@
 
 # withError
 
-[androidJvm]\
+[release]\
 fun [withError](with-error.md)(log: [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)): [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)
 
 Updates the provided [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) to indicate an error occurred.
@@ -15,7 +15,7 @@ An updated [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-t
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,5 +2,5 @@
 
 # Offer
 
-[androidJvm]\
+[release]\
 constructor(credentialOffer: CredentialOffer)

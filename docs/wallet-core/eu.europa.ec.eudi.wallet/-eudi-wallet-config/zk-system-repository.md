@@ -2,5 +2,5 @@
 
 # zkSystemRepository
 
-[androidJvm]\
+[release]\
 var [zkSystemRepository](zk-system-repository.md): ZkSystemRepository?

@@ -2,7 +2,7 @@
 
 # DcqlRequestProcessor
 
-[androidJvm]\
+[release]\
 class [DcqlRequestProcessor](index.md)(documentManager: DocumentManager, var openid4VpX509CertificateTrust: [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md)) : RequestProcessor, ReaderTrustStoreAware
 
 Processes OpenID4VP requests using DCQL (Digital Credentials Query Language).
@@ -20,23 +20,23 @@ The processor verifies the request validity, extracts the required credentials, 
 
 | | |
 |---|---|
-| [DcqlRequestProcessor](-dcql-request-processor.md) | [androidJvm]<br>constructor(documentManager: DocumentManager, openid4VpX509CertificateTrust: [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md)) |
+| [DcqlRequestProcessor](-dcql-request-processor.md) | [release]<br>constructor(documentManager: DocumentManager, openid4VpX509CertificateTrust: [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md)) |
 
 ## Types
 
 | Name | Summary |
 |---|---|
-| [Companion](-companion/index.md) | [androidJvm]<br>object [Companion](-companion/index.md) |
+| [Companion](-companion/index.md) | [release]<br>object [Companion](-companion/index.md) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [openid4VpX509CertificateTrust](openid4-vp-x509-certificate-trust.md) | [androidJvm]<br>var [openid4VpX509CertificateTrust](openid4-vp-x509-certificate-trust.md): [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md)<br>Verifies trust in the reader's certificate for secure exchange |
-| [readerTrustStore](reader-trust-store.md) | [androidJvm]<br>open override var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?<br>The trust store used for verifying reader certificates. |
+| [openid4VpX509CertificateTrust](openid4-vp-x509-certificate-trust.md) | [release]<br>var [openid4VpX509CertificateTrust](openid4-vp-x509-certificate-trust.md): [OpenId4VpReaderTrust](../../eu.europa.ec.eudi.wallet.transfer.openId4vp/-open-id4-vp-reader-trust/index.md)<br>Verifies trust in the reader's certificate for secure exchange |
+| [readerTrustStore](reader-trust-store.md) | [release]<br>open override var [readerTrustStore](reader-trust-store.md): ReaderTrustStore?<br>The trust store used for verifying reader certificates. |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [process](process.md) | [androidJvm]<br>open override fun [process](process.md)(request: Request): RequestProcessor.ProcessedRequest<br>Processes an OpenID4VP request containing DCQL queries. |
+| [process](process.md) | [release]<br>open override fun [process](process.md)(request: Request): RequestProcessor.ProcessedRequest<br>Processes an OpenID4VP request containing DCQL queries. |

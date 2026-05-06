@@ -2,7 +2,7 @@
 
 # cancel
 
-[androidJvm]\
+[release]\
 fun [cancel](cancel.md)()
 
 Cancels any ongoing authorization request.

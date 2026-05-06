@@ -6,4 +6,4 @@
 
 | Name | Summary |
 |---|---|
-| [Logger](-logger/index.md) | [androidJvm]<br>fun interface [Logger](-logger/index.md)<br>Logger interface for the EudiWallet |
+| [Logger](-logger/index.md) | [release]<br>fun interface [Logger](-logger/index.md)<br>Logger interface for the EudiWallet |

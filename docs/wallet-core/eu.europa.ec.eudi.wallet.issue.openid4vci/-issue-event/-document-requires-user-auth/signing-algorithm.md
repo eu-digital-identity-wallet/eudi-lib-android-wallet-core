@@ -2,5 +2,5 @@
 
 # signingAlgorithm
 
-[androidJvm]\
+[release]\
 val [signingAlgorithm](signing-algorithm.md): Algorithm

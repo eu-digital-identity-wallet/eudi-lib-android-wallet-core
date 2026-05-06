@@ -2,7 +2,7 @@
 
 # resumeWithAuthorization
 
-[androidJvm]\
+[release]\
 abstract fun [resumeWithAuthorization](resume-with-authorization.md)(uri: [Uri](https://developer.android.com/reference/kotlin/android/net/Uri.html))
 
 Resume the authorization flow after the user has been redirected back to the app.
@@ -11,7 +11,7 @@ Resume the authorization flow after the user has been redirected back to the app
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -28,10 +28,10 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if no authorization request to resume or if a custom     [AuthorizationHandler](../-authorization-handler/index.md) is being used |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if no authorization request to resume or if a custom          [AuthorizationHandler](../-authorization-handler/index.md) is being used |
 
-[androidJvm]\
-abstract fun [resumeWithAuthorization](resume-with-authorization.md)(uri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))
+[release]\
+abstract fun [resumeWithAuthorization](resume-with-authorization.md)(uri: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html))
 
 Resume the authorization flow after the user has been redirected back to the app.
 
@@ -39,7 +39,7 @@ Resume the authorization flow after the user has been redirected back to the app
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -56,4 +56,4 @@ androidJvm
 
 | | |
 |---|---|
-| [IllegalStateException](https://developer.android.com/reference/kotlin/java/lang/IllegalStateException.html) | if no authorization request to resume or if a custom     [AuthorizationHandler](../-authorization-handler/index.md) is being used |
+| [IllegalStateException](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-illegal-state-exception/index.html) | if no authorization request to resume or if a custom          [AuthorizationHandler](../-authorization-handler/index.md) is being used |

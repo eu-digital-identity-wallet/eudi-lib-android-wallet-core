@@ -2,5 +2,5 @@
 
 # BatchProofSigner
 
-[androidJvm]\
-constructor(signers: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;ProofOfPossessionSigner&gt;, keyUnlockData: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), KeyUnlockData?&gt;? = null)
+[release]\
+constructor(signers: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;ProofOfPossessionSigner&gt;, keyUnlockData: [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), KeyUnlockData?&gt;? = null)

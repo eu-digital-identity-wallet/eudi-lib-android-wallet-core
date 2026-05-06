@@ -2,7 +2,7 @@
 
 # withRelyingParty
 
-[androidJvm]\
+[release]\
 fun [withRelyingParty](with-relying-party.md)(log: [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md), processedRequest: RequestProcessor.ProcessedRequest): [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md)
 
 Updates the provided [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-log/index.md) with relying party information extracted from a RequestProcessor.ProcessedRequest.
@@ -17,7 +17,7 @@ An updated [TransactionLog](../../eu.europa.ec.eudi.wallet.transactionLogging/-t
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

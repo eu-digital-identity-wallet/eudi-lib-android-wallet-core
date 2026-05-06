@@ -2,5 +2,5 @@
 
 # format
 
-[androidJvm]\
+[release]\
 val [format](format.md): DocumentFormat

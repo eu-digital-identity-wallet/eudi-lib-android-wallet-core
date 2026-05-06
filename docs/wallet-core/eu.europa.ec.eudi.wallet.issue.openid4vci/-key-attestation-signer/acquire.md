@@ -2,5 +2,5 @@
 
 # acquire
 
-[androidJvm]\
+[release]\
 open suspend override fun [acquire](acquire.md)(): SignOperation&lt;KeyAttestationJWT&gt;

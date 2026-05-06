@@ -2,8 +2,8 @@
 
 # RequestedDocumentsByQueryId
 
-[androidJvm]\
-typealias [RequestedDocumentsByQueryId](index.md) = [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [RequestedDocumentsByFormat](../-requested-documents-by-format/index.md)&gt;
+[release]\
+typealias [RequestedDocumentsByQueryId](index.md) = [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;QueryId, [RequestedDocumentsByFormat](../-requested-documents-by-format/index.md)&gt;
 
 Type alias for a map that associates DCQL query identifiers with their corresponding documents and formats.
 

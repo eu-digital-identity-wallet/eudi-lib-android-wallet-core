@@ -2,8 +2,8 @@
 
 # withAllowedClockSkew
 
-[androidJvm]\
-fun [withAllowedClockSkew](with-allowed-clock-skew.md)(allowedClockSkew: [Duration](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.time/-duration/index.html)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withAllowedClockSkew](with-allowed-clock-skew.md)(allowedClockSkew: [Duration](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/index.html)): [DocumentStatusResolver.Builder](index.md)
 
 Sets the allowed clock skew for the verification
 
@@ -13,7 +13,7 @@ the builder instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,5 +2,5 @@
 
 # dataFormat
 
-[androidJvm]\
+[release]\
 val [dataFormat](data-format.md): [TransactionLog.DataFormat](-data-format/index.md)?

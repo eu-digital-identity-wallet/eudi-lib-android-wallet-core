@@ -2,5 +2,5 @@
 
 # OpenId4VpRequest
 
-[androidJvm]\
+[release]\
 constructor(resolvedRequestObject: ResolvedRequestObject)

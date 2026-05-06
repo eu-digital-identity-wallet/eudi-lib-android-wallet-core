@@ -2,14 +2,14 @@
 
 # resolveDocumentOffer
 
-[androidJvm]\
-abstract fun [resolveDocumentOffer](resolve-document-offer.md)(offerUri: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onResolvedOffer: [OpenId4VciManager.OnResolvedOffer](-on-resolved-offer/index.md))
+[release]\
+abstract fun [resolveDocumentOffer](resolve-document-offer.md)(offerUri: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), executor: [Executor](https://developer.android.com/reference/kotlin/java/util/concurrent/Executor.html)? = null, onResolvedOffer: [OpenId4VciManager.OnResolvedOffer](-on-resolved-offer/index.md))
 
 Resolve an offer using OpenId4Vci protocol
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

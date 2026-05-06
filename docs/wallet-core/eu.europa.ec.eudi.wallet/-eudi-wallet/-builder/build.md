@@ -2,7 +2,7 @@
 
 # build
 
-[androidJvm]\
+[release]\
 fun [build](build.md)(): [EudiWallet](../index.md)
 
 Build the [EudiWallet](../index.md) instance

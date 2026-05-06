@@ -2,5 +2,5 @@
 
 # removeAllTransferEventListeners
 
-[androidJvm]\
-open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): &lt;Error class: unknown class&gt;
+[release]\
+open override fun [removeAllTransferEventListeners](remove-all-transfer-event-listeners.md)(): [PresentationManagerImpl](index.md)

@@ -2,8 +2,8 @@
 
 # VerifierApi
 
-[androidJvm]\
-typealias [VerifierApi](index.md) = [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+typealias [VerifierApi](index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)
 
 Type alias for verifier API endpoint URLs.
 

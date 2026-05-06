@@ -2,7 +2,7 @@
 
 # Disabled
 
-[androidJvm]\
+[release]\
 data object [Disabled](index.md) : [DPopConfig](../index.md)
 
 DPoP is disabled.

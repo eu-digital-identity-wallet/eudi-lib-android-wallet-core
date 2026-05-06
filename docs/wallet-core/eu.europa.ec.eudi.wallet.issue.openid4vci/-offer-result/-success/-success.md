@@ -2,5 +2,5 @@
 
 # Success
 
-[androidJvm]\
+[release]\
 constructor(offer: [Offer](../../-offer/index.md))

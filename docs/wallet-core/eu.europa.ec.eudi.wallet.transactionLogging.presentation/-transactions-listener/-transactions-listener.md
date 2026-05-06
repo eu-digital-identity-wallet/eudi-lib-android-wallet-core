@@ -2,12 +2,12 @@
 
 # TransactionsListener
 
-[androidJvm]\
+[release]\
 constructor(transactionLogger: [TransactionLogger](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md), documentManager: DocumentManager, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

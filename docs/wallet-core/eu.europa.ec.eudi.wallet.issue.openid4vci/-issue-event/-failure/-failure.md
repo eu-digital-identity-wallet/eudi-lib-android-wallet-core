@@ -2,5 +2,5 @@
 
 # Failure
 
-[androidJvm]\
-constructor(cause: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html))
+[release]\
+constructor(cause: [Throwable](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-throwable/index.html))

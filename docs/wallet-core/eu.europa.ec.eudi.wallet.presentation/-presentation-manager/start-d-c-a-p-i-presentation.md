@@ -2,14 +2,14 @@
 
 # startDCAPIPresentation
 
-[androidJvm]\
+[release]\
 abstract fun [startDCAPIPresentation](start-d-c-a-p-i-presentation.md)(intent: [Intent](https://developer.android.com/reference/kotlin/android/content/Intent.html))
 
 Starts the DCAPI presentation. This method is used to start the DCAPI presentation flow.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,7 +2,7 @@
 
 # rejectRemotePresentation
 
-[androidJvm]\
+[release]\
 open override fun [rejectRemotePresentation](reject-remote-presentation.md)()
 
 Rejects the current remote presentation request.

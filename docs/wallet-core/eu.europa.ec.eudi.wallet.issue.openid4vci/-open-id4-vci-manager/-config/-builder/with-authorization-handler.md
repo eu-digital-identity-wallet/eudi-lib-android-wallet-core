@@ -2,8 +2,8 @@
 
 # withAuthorizationHandler
 
-[androidJvm]\
-fun [withAuthorizationHandler](with-authorization-handler.md)(authorizationHandler: [AuthorizationHandler](../../../-authorization-handler/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withAuthorizationHandler](with-authorization-handler.md)(authorizationHandler: [AuthorizationHandler](../../../-authorization-handler/index.md)): [OpenId4VciManager.Config.Builder](index.md)
 
 Set the authorization handler for handling authorization requests. If not set, [BrowserAuthorizationHandler](../../../-browser-authorization-handler/index.md) will be used by default.
 
@@ -13,7 +13,7 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

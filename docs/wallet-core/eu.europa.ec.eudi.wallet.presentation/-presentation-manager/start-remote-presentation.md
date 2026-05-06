@@ -2,8 +2,8 @@
 
 # startRemotePresentation
 
-[androidJvm]\
-abstract fun [startRemotePresentation](start-remote-presentation.md)(uri: [Uri](https://developer.android.com/reference/kotlin/android/net/Uri.html), refererUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null)
+[release]\
+abstract fun [startRemotePresentation](start-remote-presentation.md)(uri: [Uri](https://developer.android.com/reference/kotlin/android/net/Uri.html), refererUrl: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)? = null)
 
 Start a remote presentation with the given URI The URI could be either
 
@@ -14,13 +14,13 @@ Start a remote presentation with the given URI The URI could be either
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | uri | the URI |
 
-[androidJvm]\
+[release]\
 abstract fun [~~startRemotePresentation~~](start-remote-presentation.md)(intent: [Intent](https://developer.android.com/reference/kotlin/android/content/Intent.html))
 
 ---
@@ -40,7 +40,7 @@ Start a remote presentation with the given intent The intent.data could either c
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

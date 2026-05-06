@@ -2,7 +2,7 @@
 
 # serialize
 
-[androidJvm]\
+[release]\
 open override fun [serialize](serialize.md)(encoder: Encoder, value: VerifiablePresentation)
 
 Serializes a VerifiablePresentation object based on its concrete type.
@@ -16,7 +16,7 @@ The method determines the presentation type and serializes both the type identif
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

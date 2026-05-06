@@ -2,5 +2,5 @@
 
 # release
 
-[androidJvm]\
+[release]\
 open suspend override fun [release](release.md)(signOps: BatchSignOperation&lt;JwtBindingKey&gt;?)

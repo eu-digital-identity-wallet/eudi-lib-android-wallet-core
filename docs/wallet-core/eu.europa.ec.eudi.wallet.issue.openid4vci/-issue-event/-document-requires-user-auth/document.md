@@ -2,5 +2,5 @@
 
 # document
 
-[androidJvm]\
+[release]\
 val [document](document.md): UnsignedDocument

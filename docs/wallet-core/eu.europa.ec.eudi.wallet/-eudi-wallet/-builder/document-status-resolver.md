@@ -2,5 +2,5 @@
 
 # documentStatusResolver
 
-[androidJvm]\
+[release]\
 var [documentStatusResolver](document-status-resolver.md): [DocumentStatusResolver](../../../eu.europa.ec.eudi.wallet.statium/-document-status-resolver/index.md)?

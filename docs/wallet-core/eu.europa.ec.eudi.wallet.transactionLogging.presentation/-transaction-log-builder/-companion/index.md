@@ -2,5 +2,5 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)

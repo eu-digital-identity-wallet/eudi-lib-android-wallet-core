@@ -6,4 +6,4 @@
 
 | Name | Summary |
 |---|---|
-| [CBOR](-c-b-o-r/index.md) | [androidJvm]<br>object [CBOR](-c-b-o-r/index.md) |
+| [CBOR](-c-b-o-r/index.md) | [release]<br>object [CBOR](-c-b-o-r/index.md) |

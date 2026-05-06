@@ -2,5 +2,5 @@
 
 # document
 
-[androidJvm]\
+[release]\
 open override val [document](document.md): IssuedDocument

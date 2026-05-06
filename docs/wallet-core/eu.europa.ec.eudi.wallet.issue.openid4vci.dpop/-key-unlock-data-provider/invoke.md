@@ -2,5 +2,5 @@
 
 # invoke
 
-[androidJvm]\
-abstract suspend operator fun [invoke](invoke.md)(keyAlias: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), secureArea: SecureArea): KeyUnlockData?
+[release]\
+abstract suspend operator fun [invoke](invoke.md)(keyAlias: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), secureArea: SecureArea): KeyUnlockData?

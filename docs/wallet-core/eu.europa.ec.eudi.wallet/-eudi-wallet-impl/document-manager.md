@@ -2,5 +2,5 @@
 
 # documentManager
 
-[androidJvm]\
+[release]\
 open override val [documentManager](document-manager.md): DocumentManager

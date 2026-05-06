@@ -2,5 +2,5 @@
 
 # Json
 
-[androidJvm]\
-val [Json](-json.md): &lt;Error class: unknown class&gt;
+[release]\
+val [Json](-json.md): Json

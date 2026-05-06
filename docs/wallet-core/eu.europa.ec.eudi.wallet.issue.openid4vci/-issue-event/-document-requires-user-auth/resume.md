@@ -2,5 +2,5 @@
 
 # resume
 
-[androidJvm]\
-val [resume](resume.md): (keyUnlockData: [Map](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[KeyAlias](../../-key-alias/index.md), KeyUnlockData?&gt;) -&gt; [Unit](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-unit/index.html)
+[release]\
+val [resume](resume.md): (keyUnlockData: [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[KeyAlias](../../-key-alias/index.md), KeyUnlockData?&gt;) -&gt; [Unit](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html)

@@ -2,7 +2,7 @@
 
 # X509SanDns
 
-[androidJvm]\
+[release]\
 data object [X509SanDns](index.md) : [ClientIdScheme](../index.md)
 
 Client identifier scheme using X.509 certificate validation with DNS Subject Alternative Names.

@@ -2,7 +2,7 @@
 
 # DocumentDeferred
 
-[androidJvm]\
+[release]\
 data class [DocumentDeferred](index.md)(val document: DeferredDocument) : [IssueEvent](../index.md), DocumentDetails
 
 Document issuance deferred.
@@ -11,13 +11,13 @@ Document issuance deferred.
 
 | | |
 |---|---|
-| [DocumentDeferred](-document-deferred.md) | [androidJvm]<br>constructor(document: DeferredDocument) |
+| [DocumentDeferred](-document-deferred.md) | [release]<br>constructor(document: DeferredDocument) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [docType](index.md#-1539120442%2FProperties%2F1615067946) | [androidJvm]<br>open override val [docType](index.md#-1539120442%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
-| [document](document.md) | [androidJvm]<br>val [document](document.md): DeferredDocument<br>the deferred document |
-| [documentId](index.md#-811584596%2FProperties%2F1615067946) | [androidJvm]<br>open override val [documentId](index.md#-811584596%2FProperties%2F1615067946): &lt;Error class: unknown class&gt; |
-| [name](index.md#686046743%2FProperties%2F1615067946) | [androidJvm]<br>open override val [name](index.md#686046743%2FProperties%2F1615067946): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html) |
+| [docType](index.md#-1539120442%2FProperties%2F-946843593) | [release]<br>open override val [docType](index.md#-1539120442%2FProperties%2F-946843593): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [document](document.md) | [release]<br>val [document](document.md): DeferredDocument<br>the deferred document |
+| [documentId](index.md#-811584596%2FProperties%2F-946843593) | [release]<br>open override val [documentId](index.md#-811584596%2FProperties%2F-946843593): DocumentId |
+| [name](index.md#686046743%2FProperties%2F-946843593) | [release]<br>open override val [name](index.md#686046743%2FProperties%2F-946843593): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |

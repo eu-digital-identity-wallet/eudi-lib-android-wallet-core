@@ -2,5 +2,5 @@
 
 # AuthorizationResponse
 
-[androidJvm]\
-constructor(authorizationCode: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html), serverState: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html))
+[release]\
+constructor(authorizationCode: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), serverState: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html))

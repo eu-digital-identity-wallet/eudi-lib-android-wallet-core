@@ -2,5 +2,5 @@
 
 # relyingParty
 
-[androidJvm]\
+[release]\
 val [relyingParty](relying-party.md): [TransactionLog.RelyingParty](-relying-party/index.md)?

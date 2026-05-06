@@ -2,5 +2,5 @@
 
 # issuanceMetadataStorage
 
-[androidJvm]\
+[release]\
 var [issuanceMetadataStorage](issuance-metadata-storage.md): Storage?

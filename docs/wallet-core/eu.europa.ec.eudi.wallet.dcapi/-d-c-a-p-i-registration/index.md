@@ -14,4 +14,4 @@ fun interface [DCAPIRegistration](index.md)
 
 | Name | Summary |
 |---|---|
-| [registerCredentials](register-credentials.md) | [androidJvm]<br>abstract suspend fun [registerCredentials](register-credentials.md)() |
+| [registerCredentials](register-credentials.md) | [release]<br>abstract suspend fun [registerCredentials](register-credentials.md)() |

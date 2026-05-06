@@ -2,8 +2,8 @@
 
 # withKtorHttpClientFactory
 
-[androidJvm]\
-fun [withKtorHttpClientFactory](with-ktor-http-client-factory.md)(ktorHttpClientFactory: () -&gt; HttpClient): &lt;Error class: unknown class&gt;
+[release]\
+fun [withKtorHttpClientFactory](with-ktor-http-client-factory.md)(ktorHttpClientFactory: () -&gt; HttpClient): [DocumentStatusResolver.Builder](index.md)
 
 Sets the factory function to create an HttpClient
 
@@ -13,7 +13,7 @@ the builder instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

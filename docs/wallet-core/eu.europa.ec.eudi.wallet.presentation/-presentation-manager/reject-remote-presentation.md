@@ -2,7 +2,7 @@
 
 # rejectRemotePresentation
 
-[androidJvm]\
+[release]\
 abstract fun [rejectRemotePresentation](reject-remote-presentation.md)()
 
 Rejects the current remote presentation request.

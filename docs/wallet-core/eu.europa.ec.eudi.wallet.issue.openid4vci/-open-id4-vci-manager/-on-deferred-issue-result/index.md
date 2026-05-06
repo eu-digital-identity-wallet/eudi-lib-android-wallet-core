@@ -2,7 +2,7 @@
 
 # OnDeferredIssueResult
 
-[androidJvm]\
+[release]\
 fun interface [OnDeferredIssueResult](index.md) : [OpenId4VciManager.OnResult](../-on-result/index.md)&lt;[DeferredIssueResult](../../-deferred-issue-result/index.md)&gt; 
 
 Callback to be called when a deferred document is issued
@@ -11,5 +11,5 @@ Callback to be called when a deferred document is issued
 
 | Name | Summary |
 |---|---|
-| [invoke](index.md#1649133642%2FFunctions%2F1615067946) | [androidJvm]<br>open operator fun [invoke](index.md#1649133642%2FFunctions%2F1615067946)(result: [DeferredIssueResult](../../-deferred-issue-result/index.md)) |
-| [onResult](index.md#-1418783954%2FFunctions%2F1615067946) | [androidJvm]<br>abstract fun [onResult](index.md#-1418783954%2FFunctions%2F1615067946)(result: [DeferredIssueResult](../../-deferred-issue-result/index.md)) |
+| [invoke](../-on-result/invoke.md) | [release]<br>open operator fun [invoke](../-on-result/invoke.md)(result: [DeferredIssueResult](../../-deferred-issue-result/index.md)) |
+| [onResult](../-on-result/on-result.md) | [release]<br>abstract fun [onResult](../-on-result/on-result.md)(result: [DeferredIssueResult](../../-deferred-issue-result/index.md)) |

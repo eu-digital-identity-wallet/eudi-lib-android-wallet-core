@@ -2,5 +2,5 @@
 
 # deviceResponseBytes
 
-[androidJvm]\
-val [deviceResponseBytes](device-response-bytes.md): &lt;Error class: unknown class&gt;
+[release]\
+val [deviceResponseBytes](device-response-bytes.md): DeviceResponseBytes

@@ -2,5 +2,5 @@
 
 # configuration
 
-[androidJvm]\
+[release]\
 val [configuration](configuration.md): CredentialConfiguration

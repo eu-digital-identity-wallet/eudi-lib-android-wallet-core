@@ -2,5 +2,5 @@
 
 # generateResponse
 
-[androidJvm]\
+[release]\
 open override fun [generateResponse](generate-response.md)(disclosedDocuments: DisclosedDocuments, signatureAlgorithm: Algorithm?): ResponseResult

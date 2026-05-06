@@ -2,5 +2,5 @@
 
 # result
 
-[androidJvm]\
+[release]\
 open override val [result](result.md): [ReaderTrustResult](../-reader-trust-result/index.md)

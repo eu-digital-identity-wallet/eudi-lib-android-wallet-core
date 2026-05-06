@@ -39,9 +39,9 @@ val config = DPopConfig.Custom(
 
 | |
 |---|
-| [DPopConfig.Disabled](-disabled/index.md) |
-| [DPopConfig.Default](-default/index.md) |
-| [DPopConfig.Custom](-custom/index.md) |
+| [Disabled](-disabled/index.md) |
+| [Default](-default/index.md) |
+| [Custom](-custom/index.md) |
 
 #### Inheritors
 
@@ -55,6 +55,6 @@ val config = DPopConfig.Custom(
 
 | Name | Summary |
 |---|---|
-| [Custom](-custom/index.md) | [androidJvm]<br>data class [Custom](-custom/index.md)(val secureArea: SecureArea, val createKeySettingsBuilder: ([List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) -&gt; CreateKeySettings, val keyUnlockDataProvider: [KeyUnlockDataProvider](../-key-unlock-data-provider/index.md) = KeyUnlockDataProvider.None) : [DPopConfig](index.md)<br>Custom DPoP configuration using a specific secure area. |
-| [Default](-default/index.md) | [androidJvm]<br>data object [Default](-default/index.md) : [DPopConfig](index.md)<br>Default DPoP configuration using Android Keystore. |
-| [Disabled](-disabled/index.md) | [androidJvm]<br>data object [Disabled](-disabled/index.md) : [DPopConfig](index.md)<br>DPoP is disabled. |
+| [Custom](-custom/index.md) | [release]<br>data class [Custom](-custom/index.md)(val secureArea: SecureArea, val createKeySettingsBuilder: ([List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;Algorithm&gt;) -&gt; CreateKeySettings, val keyUnlockDataProvider: [KeyUnlockDataProvider](../-key-unlock-data-provider/index.md) = KeyUnlockDataProvider.None) : [DPopConfig](index.md)<br>Custom DPoP configuration using a specific secure area. |
+| [Default](-default/index.md) | [release]<br>data object [Default](-default/index.md) : [DPopConfig](index.md)<br>Default DPoP configuration using Android Keystore. |
+| [Disabled](-disabled/index.md) | [release]<br>data object [Disabled](-disabled/index.md) : [DPopConfig](index.md)<br>DPoP is disabled. |

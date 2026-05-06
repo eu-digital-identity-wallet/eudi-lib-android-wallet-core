@@ -2,12 +2,12 @@
 
 # TransactionsDecorator
 
-[androidJvm]\
+[release]\
 constructor(delegate: [PresentationManager](../../eu.europa.ec.eudi.wallet.presentation/-presentation-manager/index.md), documentManager: DocumentManager, transactionLogger: [TransactionLogger](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md), logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null)
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

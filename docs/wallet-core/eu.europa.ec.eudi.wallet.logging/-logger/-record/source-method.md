@@ -2,5 +2,5 @@
 
 # sourceMethod
 
-[androidJvm]\
-val [sourceMethod](source-method.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)? = null
+[release]\
+val [sourceMethod](source-method.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)?

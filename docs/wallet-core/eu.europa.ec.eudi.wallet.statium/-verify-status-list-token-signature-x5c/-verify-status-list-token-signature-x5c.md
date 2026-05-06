@@ -2,5 +2,5 @@
 
 # VerifyStatusListTokenSignatureX5c
 
-[androidJvm]\
+[release]\
 constructor()

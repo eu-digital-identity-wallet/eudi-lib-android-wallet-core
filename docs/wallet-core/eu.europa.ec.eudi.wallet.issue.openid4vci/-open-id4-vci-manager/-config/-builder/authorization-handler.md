@@ -2,5 +2,5 @@
 
 # authorizationHandler
 
-[androidJvm]\
+[release]\
 var [authorizationHandler](authorization-handler.md): [AuthorizationHandler](../../../-authorization-handler/index.md)?

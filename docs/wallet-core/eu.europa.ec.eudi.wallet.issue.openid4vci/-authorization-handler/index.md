@@ -20,4 +20,4 @@ The default implementation [BrowserAuthorizationHandler](../-browser-authorizati
 
 | Name | Summary |
 |---|---|
-| [authorize](authorize.md) | [androidJvm]<br>abstract suspend fun [authorize](authorize.md)(authorizationUrl: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;[AuthorizationResponse](../-authorization-response/index.md)&gt;<br>Handles the authorization request by presenting the authorization URL to the user and eventually returning the authorization response. |
+| [authorize](authorize.md) | [release]<br>abstract suspend fun [authorize](authorize.md)(authorizationUrl: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;[AuthorizationResponse](../-authorization-response/index.md)&gt;<br>Handles the authorization request by presenting the authorization URL to the user and eventually returning the authorization response. |

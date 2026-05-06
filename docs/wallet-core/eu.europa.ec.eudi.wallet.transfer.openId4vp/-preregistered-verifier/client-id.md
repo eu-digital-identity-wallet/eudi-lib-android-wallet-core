@@ -2,5 +2,5 @@
 
 # clientId
 
-[androidJvm]\
+[release]\
 var [clientId](client-id.md): [ClientId](../-client-id/index.md)

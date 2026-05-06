@@ -2,5 +2,5 @@
 
 # config
 
-[androidJvm]\
+[release]\
 val [config](config.md): [OpenId4VpConfig](../-open-id4-vp-config/index.md)

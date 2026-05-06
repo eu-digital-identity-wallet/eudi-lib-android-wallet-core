@@ -2,5 +2,5 @@
 
 # vpToken
 
-[androidJvm]\
+[release]\
 val [vpToken](vp-token.md): Consensus.PositiveConsensus

@@ -2,5 +2,5 @@
 
 # grantType
 
-[androidJvm]\
-val [grantType](grant-type.md): [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)
+[release]\
+val [grantType](grant-type.md): [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)

@@ -2,5 +2,5 @@
 
 # resolvedRequestObject
 
-[androidJvm]\
+[release]\
 val [resolvedRequestObject](resolved-request-object.md): ResolvedRequestObject

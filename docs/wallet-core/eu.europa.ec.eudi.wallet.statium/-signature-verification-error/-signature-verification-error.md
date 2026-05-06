@@ -2,5 +2,5 @@
 
 # SignatureVerificationError
 
-[androidJvm]\
+[release]\
 constructor()

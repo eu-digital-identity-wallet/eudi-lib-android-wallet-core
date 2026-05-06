@@ -2,5 +2,5 @@
 
 # parUsage
 
-[androidJvm]\
-val [parUsage](par-usage.md): [Int](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html)
+[release]\
+val [parUsage](par-usage.md): [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html)

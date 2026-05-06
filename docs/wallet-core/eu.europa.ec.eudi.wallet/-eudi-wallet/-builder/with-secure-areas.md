@@ -2,8 +2,8 @@
 
 # withSecureAreas
 
-[androidJvm]\
-fun [withSecureAreas](with-secure-areas.md)(secureAreas: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;SecureArea&gt;): &lt;Error class: unknown class&gt;
+[release]\
+fun [withSecureAreas](with-secure-areas.md)(secureAreas: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;SecureArea&gt;): [EudiWallet.Builder](index.md)
 
 Configure with the given SecureArea implementations to use for documents' keys management. If not set, the default secure area will be used which is AndroidKeystoreSecureArea.
 
@@ -13,7 +13,7 @@ this [Builder](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

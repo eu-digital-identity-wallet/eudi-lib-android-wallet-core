@@ -2,8 +2,8 @@
 
 # withIssuanceMetadataStorage
 
-[androidJvm]\
-fun [withIssuanceMetadataStorage](with-issuance-metadata-storage.md)(storage: Storage?): &lt;Error class: unknown class&gt;
+[release]\
+fun [withIssuanceMetadataStorage](with-issuance-metadata-storage.md)(storage: Storage?): [OpenId4VciManager.Config.Builder](index.md)
 
 Sets the storage for issuance metadata.
 
@@ -30,7 +30,7 @@ This builder instance for method chaining
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

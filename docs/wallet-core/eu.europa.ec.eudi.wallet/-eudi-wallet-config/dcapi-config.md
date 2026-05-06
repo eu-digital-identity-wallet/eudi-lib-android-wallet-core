@@ -2,7 +2,7 @@
 
 # dcapiConfig
 
-[androidJvm]\
+[release]\
 var [dcapiConfig](dcapi-config.md): [DCAPIConfig](../../eu.europa.ec.eudi.wallet.dcapi/-d-c-a-p-i-config/index.md)?
 
 Configuration for the Digital Credential.

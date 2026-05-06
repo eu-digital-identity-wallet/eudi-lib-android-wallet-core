@@ -2,5 +2,5 @@
 
 # walletKeyManager
 
-[androidJvm]\
+[release]\
 open override val [walletKeyManager](wallet-key-manager.md): [WalletKeyManager](../../eu.europa.ec.eudi.wallet.provider/-wallet-key-manager/index.md)

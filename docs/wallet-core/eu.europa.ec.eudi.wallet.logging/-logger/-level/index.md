@@ -2,7 +2,7 @@
 
 # Level
 
-[androidJvm]\
+[release]\
 annotation class [Level](index.md)
 
 Log level annotation for configuring logging with [EudiWalletConfig.configureLogging](../../../eu.europa.ec.eudi.wallet/-eudi-wallet-config/configure-logging.md)

@@ -2,5 +2,5 @@
 
 # None
 
-[androidJvm]\
+[release]\
 val [None](-none.md): [KeyUnlockDataProvider](../index.md)

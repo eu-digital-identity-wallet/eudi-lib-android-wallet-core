@@ -2,5 +2,5 @@
 
 # EudiWalletConfig
 
-[androidJvm]\
+[release]\
 constructor()

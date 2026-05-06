@@ -2,8 +2,8 @@
 
 # withLogger
 
-[androidJvm]\
-fun [withLogger](with-logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withLogger](with-logger.md)(logger: [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)): [EudiWallet.Builder](index.md)
 
 Configure with the given [Logger](../../../eu.europa.ec.eudi.wallet.logging/-logger/index.md) to use for logging. If not set, the default logger will be used which is configured with the [EudiWalletConfig.configureLogging](../../-eudi-wallet-config/configure-logging.md).
 
@@ -13,7 +13,7 @@ this [Builder](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,27 +2,27 @@
 
 # withEncryptionMethods
 
-[androidJvm]\
-fun [withEncryptionMethods](with-encryption-methods.md)(encryptionMethods: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;): &lt;Error class: unknown class&gt;
+[release]\
+fun [withEncryptionMethods](with-encryption-methods.md)(encryptionMethods: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[EncryptionMethod](../../-encryption-method/index.md)&gt;): [OpenId4VpConfig.Builder](index.md)
 
 Sets the list of supported encryption methods.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | encryptionMethods | list of [EncryptionMethod](../../-encryption-method/index.md) |
 
-[androidJvm]\
-fun [withEncryptionMethods](with-encryption-methods.md)(vararg encryptionMethods: [EncryptionMethod](../../-encryption-method/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withEncryptionMethods](with-encryption-methods.md)(vararg encryptionMethods: [EncryptionMethod](../../-encryption-method/index.md)): [OpenId4VpConfig.Builder](index.md)
 
 Sets the list of supported encryption methods.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

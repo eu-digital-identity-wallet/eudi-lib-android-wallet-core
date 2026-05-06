@@ -2,7 +2,7 @@
 
 # X509Hash
 
-[androidJvm]\
+[release]\
 data object [X509Hash](index.md) : [ClientIdScheme](../index.md)
 
 Client identifier scheme using X.509 certificate hash validation.

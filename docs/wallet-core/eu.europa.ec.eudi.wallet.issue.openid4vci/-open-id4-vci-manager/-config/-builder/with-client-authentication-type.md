@@ -2,8 +2,8 @@
 
 # withClientAuthenticationType
 
-[androidJvm]\
-fun [withClientAuthenticationType](with-client-authentication-type.md)(clientAuthenticationType: [OpenId4VciManager.ClientAuthenticationType](../../-client-authentication-type/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withClientAuthenticationType](with-client-authentication-type.md)(clientAuthenticationType: [OpenId4VciManager.ClientAuthenticationType](../../-client-authentication-type/index.md)): [OpenId4VciManager.Config.Builder](index.md)
 
 Set the client authentication type
 
@@ -20,7 +20,7 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

@@ -2,5 +2,5 @@
 
 # transferManager
 
-[androidJvm]\
+[release]\
 abstract val [transferManager](transfer-manager.md): TransferManager

@@ -27,11 +27,11 @@ Supported presentation types:
 
 | Name | Summary |
 |---|---|
-| [descriptor](descriptor.md) | [androidJvm]<br>open override val [descriptor](descriptor.md): SerialDescriptor<br>Serial descriptor for the VerifiablePresentation structure. Defines two elements: &quot;type&quot; for the presentation type and &quot;value&quot; for the content. |
+| [descriptor](descriptor.md) | [release]<br>open override val [descriptor](descriptor.md): SerialDescriptor<br>Serial descriptor for the VerifiablePresentation structure. Defines two elements: &quot;type&quot; for the presentation type and &quot;value&quot; for the content. |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [deserialize](deserialize.md) | [androidJvm]<br>open override fun [deserialize](deserialize.md)(decoder: Decoder): VerifiablePresentation<br>Deserializes a VerifiablePresentation object from the encoded data. |
-| [serialize](serialize.md) | [androidJvm]<br>open override fun [serialize](serialize.md)(encoder: Encoder, value: VerifiablePresentation)<br>Serializes a VerifiablePresentation object based on its concrete type. |
+| [deserialize](deserialize.md) | [release]<br>open override fun [deserialize](deserialize.md)(decoder: Decoder): VerifiablePresentation<br>Deserializes a VerifiablePresentation object from the encoded data. |
+| [serialize](serialize.md) | [release]<br>open override fun [serialize](serialize.md)(encoder: Encoder, value: VerifiablePresentation)<br>Serializes a VerifiablePresentation object based on its concrete type. |

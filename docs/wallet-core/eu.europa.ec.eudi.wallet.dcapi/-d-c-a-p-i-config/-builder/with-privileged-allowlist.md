@@ -2,14 +2,14 @@
 
 # withPrivilegedAllowlist
 
-[androidJvm]\
-fun [withPrivilegedAllowlist](with-privileged-allowlist.md)(allowlist: [String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withPrivilegedAllowlist](with-privileged-allowlist.md)(allowlist: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)): [DCAPIConfig.Builder](index.md)
 
 Sets the privileged allowlist for the DCAPI.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

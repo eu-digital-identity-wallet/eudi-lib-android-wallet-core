@@ -2,5 +2,5 @@
 
 # documentManager
 
-[androidJvm]\
+[release]\
 abstract val [documentManager](document-manager.md): DocumentManager

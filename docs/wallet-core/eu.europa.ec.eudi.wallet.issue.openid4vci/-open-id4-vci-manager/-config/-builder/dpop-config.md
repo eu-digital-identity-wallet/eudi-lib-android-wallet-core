@@ -2,5 +2,5 @@
 
 # dpopConfig
 
-[androidJvm]\
+[release]\
 var [dpopConfig](dpop-config.md): [DPopConfig](../../../../eu.europa.ec.eudi.wallet.issue.openid4vci.dpop/-d-pop-config/index.md)

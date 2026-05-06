@@ -2,5 +2,5 @@
 
 # issuanceMetadataStorage
 
-[androidJvm]\
-val [issuanceMetadataStorage](issuance-metadata-storage.md): Storage? = null
+[release]\
+val [issuanceMetadataStorage](issuance-metadata-storage.md): Storage?

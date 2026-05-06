@@ -2,5 +2,5 @@
 
 # config
 
-[androidJvm]\
+[release]\
 val [config](config.md): [EudiWalletConfig](../../-eudi-wallet-config/index.md)

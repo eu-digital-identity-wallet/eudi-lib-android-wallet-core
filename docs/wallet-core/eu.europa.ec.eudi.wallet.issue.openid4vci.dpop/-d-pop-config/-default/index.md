@@ -2,7 +2,7 @@
 
 # Default
 
-[androidJvm]\
+[release]\
 data object [Default](index.md) : [DPopConfig](../index.md)
 
 Default DPoP configuration using Android Keystore.

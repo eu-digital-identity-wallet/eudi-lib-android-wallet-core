@@ -2,11 +2,11 @@
 
 # Companion
 
-[androidJvm]\
+[release]\
 object [Companion](index.md)
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [None](-none.md) | [androidJvm]<br>val [None](-none.md): [KeyUnlockDataProvider](../index.md) |
+| [None](-none.md) | [release]<br>val [None](-none.md): [KeyUnlockDataProvider](../index.md) |

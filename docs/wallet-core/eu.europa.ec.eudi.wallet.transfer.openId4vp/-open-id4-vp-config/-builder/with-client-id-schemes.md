@@ -2,27 +2,27 @@
 
 # withClientIdSchemes
 
-[androidJvm]\
-fun [withClientIdSchemes](with-client-id-schemes.md)(clientIdSchemes: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../../-client-id-scheme/index.md)&gt;): &lt;Error class: unknown class&gt;
+[release]\
+fun [withClientIdSchemes](with-client-id-schemes.md)(clientIdSchemes: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ClientIdScheme](../../-client-id-scheme/index.md)&gt;): [OpenId4VpConfig.Builder](index.md)
 
 Sets the supported client identifier schemes.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | clientIdSchemes | list of [ClientIdScheme](../../-client-id-scheme/index.md) |
 
-[androidJvm]\
-fun [withClientIdSchemes](with-client-id-schemes.md)(vararg clientIdSchemes: [ClientIdScheme](../../-client-id-scheme/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withClientIdSchemes](with-client-id-schemes.md)(vararg clientIdSchemes: [ClientIdScheme](../../-client-id-scheme/index.md)): [OpenId4VpConfig.Builder](index.md)
 
 Sets the supported client identifier schemes.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

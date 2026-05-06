@@ -2,7 +2,7 @@
 
 # serialize
 
-[androidJvm]\
+[release]\
 open override fun [serialize](serialize.md)(encoder: Encoder, value: VerifiablePresentations)
 
 Serializes a VerifiablePresentations object to JSON format.
@@ -11,7 +11,7 @@ The method converts the internal map of QueryId to VerifiablePresentation lists 
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

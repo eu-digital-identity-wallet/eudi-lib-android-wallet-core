@@ -2,5 +2,5 @@
 
 # walletProvider
 
-[androidJvm]\
+[release]\
 val [walletProvider](wallet-provider.md): [WalletAttestationsProvider](../../../eu.europa.ec.eudi.wallet.provider/-wallet-attestations-provider/index.md)?

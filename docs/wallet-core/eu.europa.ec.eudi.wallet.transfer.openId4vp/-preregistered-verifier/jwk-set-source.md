@@ -2,5 +2,5 @@
 
 # jwkSetSource
 
-[androidJvm]\
+[release]\
 var [jwkSetSource](jwk-set-source.md): [URI](https://developer.android.com/reference/kotlin/java/net/URI.html)

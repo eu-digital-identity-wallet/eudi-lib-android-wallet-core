@@ -2,14 +2,14 @@
 
 # serialize
 
-[androidJvm]\
+[release]\
 open override fun [serialize](serialize.md)(encoder: Encoder, value: Consensus.PositiveConsensus)
 
 Serializes a Consensus.PositiveConsensus object to the encoder.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

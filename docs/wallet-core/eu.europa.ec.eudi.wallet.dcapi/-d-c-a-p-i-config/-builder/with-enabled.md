@@ -2,14 +2,14 @@
 
 # withEnabled
 
-[androidJvm]\
-fun [withEnabled](with-enabled.md)(enabled: [Boolean](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withEnabled](with-enabled.md)(enabled: [Boolean](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html)): [DCAPIConfig.Builder](index.md)
 
 Sets whether the DCAPI is enabled.
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

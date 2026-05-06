@@ -2,8 +2,8 @@
 
 # getWalletAttestation
 
-[androidJvm]\
-abstract suspend fun [getWalletAttestation](get-wallet-attestation.md)(keyInfo: KeyInfo): [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html)&lt;[String](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html)&gt;
+[release]\
+abstract suspend fun [getWalletAttestation](get-wallet-attestation.md)(keyInfo: KeyInfo): [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html)&lt;[String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html)&gt;
 
 Retrieves the Wallet Instance Attestation (WIA).
 
@@ -11,11 +11,11 @@ This attestation proves that the Wallet Application is genuine, untampered with,
 
 #### Return
 
-A [Result](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-result/index.html) containing the WIA as a signed JWT string (e.g., Client Attestation JWT).
+A [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html) containing the WIA as a signed JWT string (e.g., Client Attestation JWT).
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

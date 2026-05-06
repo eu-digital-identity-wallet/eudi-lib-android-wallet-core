@@ -2,5 +2,5 @@
 
 # extractor
 
-[androidJvm]\
+[release]\
 var [extractor](extractor.md): [StatusReferenceExtractor](../../-status-reference-extractor/index.md)

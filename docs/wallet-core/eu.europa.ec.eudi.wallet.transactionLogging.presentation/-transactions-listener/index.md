@@ -10,7 +10,7 @@ Observes transfer events and logs transaction details using [TransactionLogBuild
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -20,12 +20,12 @@ androidJvm
 
 | | |
 |---|---|
-| [TransactionsListener](-transactions-listener.md) | [androidJvm]<br>constructor(transactionLogger: [TransactionLogger](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md), documentManager: DocumentManager, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null) |
+| [TransactionsListener](-transactions-listener.md) | [release]<br>constructor(transactionLogger: [TransactionLogger](../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md), documentManager: DocumentManager, logger: [Logger](../../eu.europa.ec.eudi.wallet.logging/-logger/index.md)? = null) |
 
 ## Functions
 
 | Name | Summary |
 |---|---|
-| [logResponse](log-response.md) | [androidJvm]<br>fun [logResponse](log-response.md)(response: Response, error: [Throwable](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-throwable/index.html)? = null)<br>Logs the response after sending it to the relying party. |
-| [logStopped](log-stopped.md) | [androidJvm]<br>fun [logStopped](log-stopped.md)()<br>Logs that the current transaction has been stopped. |
-| [onTransferEvent](on-transfer-event.md) | [androidJvm]<br>open override fun [onTransferEvent](on-transfer-event.md)(event: TransferEvent)<br>Handles transfer events to update the transaction log. |
+| [logResponse](log-response.md) | [release]<br>fun [logResponse](log-response.md)(response: Response, error: [Throwable](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-throwable/index.html)? = null)<br>Logs the response after sending it to the relying party. |
+| [logStopped](log-stopped.md) | [release]<br>fun [logStopped](log-stopped.md)()<br>Logs that the current transaction has been stopped. |
+| [onTransferEvent](on-transfer-event.md) | [release]<br>open override fun [onTransferEvent](on-transfer-event.md)(event: TransferEvent)<br>Handles transfer events to update the transaction log. |

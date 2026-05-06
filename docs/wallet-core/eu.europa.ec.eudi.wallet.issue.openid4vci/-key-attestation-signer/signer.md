@@ -2,5 +2,5 @@
 
 # signer
 
-[androidJvm]\
+[release]\
 val [signer](signer.md): ProofOfPossessionSigner

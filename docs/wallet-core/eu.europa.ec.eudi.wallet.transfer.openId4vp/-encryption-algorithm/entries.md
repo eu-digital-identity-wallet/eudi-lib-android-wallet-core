@@ -2,8 +2,8 @@
 
 # entries
 
-[androidJvm]\
-val [entries](entries.md): [EnumEntries](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.enums/-enum-entries/index.html)&lt;[EncryptionAlgorithm](index.md)&gt;
+[release]\
+val [entries](entries.md): [EnumEntries](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.enums/-enum-entries/index.html)&lt;[EncryptionAlgorithm](index.md)&gt;
 
 Returns a representation of an immutable list of all enum entries, in the order they're declared.
 

@@ -2,5 +2,5 @@
 
 # result
 
-[androidJvm]\
+[release]\
 abstract val [result](result.md): [ReaderTrustResult](../-reader-trust-result/index.md)

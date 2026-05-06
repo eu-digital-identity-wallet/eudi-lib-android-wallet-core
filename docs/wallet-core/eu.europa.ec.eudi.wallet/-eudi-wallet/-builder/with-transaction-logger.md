@@ -2,8 +2,8 @@
 
 # withTransactionLogger
 
-[androidJvm]\
-fun [withTransactionLogger](with-transaction-logger.md)(transactionLogger: [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md)): &lt;Error class: unknown class&gt;
+[release]\
+fun [withTransactionLogger](with-transaction-logger.md)(transactionLogger: [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md)): [EudiWallet.Builder](index.md)
 
 Configure with the given [TransactionLogger](../../../eu.europa.ec.eudi.wallet.transactionLogging/-transaction-logger/index.md) to use for logging transactions. If not set, the default transaction logger will be used which logs transactions to the console.
 
@@ -13,7 +13,7 @@ this [Builder](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|

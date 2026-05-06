@@ -2,5 +2,5 @@
 
 # resolveRequest
 
-[androidJvm]\
+[release]\
 fun [resolveRequest](resolve-request.md)(request: Request)

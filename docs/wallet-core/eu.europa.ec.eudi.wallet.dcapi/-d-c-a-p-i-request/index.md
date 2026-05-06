@@ -2,7 +2,7 @@
 
 # DCAPIRequest
 
-[androidJvm]\
+[release]\
 data class [DCAPIRequest](index.md)(val providerGetCredentialRequest: [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html)) : Request
 
 Represents a request for the Digital Credential API (DCAPI).
@@ -11,10 +11,10 @@ Represents a request for the Digital Credential API (DCAPI).
 
 | | |
 |---|---|
-| [DCAPIRequest](-d-c-a-p-i-request.md) | [androidJvm]<br>constructor(providerGetCredentialRequest: [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html)) |
+| [DCAPIRequest](-d-c-a-p-i-request.md) | [release]<br>constructor(providerGetCredentialRequest: [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html)) |
 
 ## Properties
 
 | Name | Summary |
 |---|---|
-| [providerGetCredentialRequest](provider-get-credential-request.md) | [androidJvm]<br>val [providerGetCredentialRequest](provider-get-credential-request.md): [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html)<br>The DCAPI request. |
+| [providerGetCredentialRequest](provider-get-credential-request.md) | [release]<br>val [providerGetCredentialRequest](provider-get-credential-request.md): [ProviderGetCredentialRequest](https://developer.android.com/reference/kotlin/androidx/credentials/provider/ProviderGetCredentialRequest.html)<br>The DCAPI request. |

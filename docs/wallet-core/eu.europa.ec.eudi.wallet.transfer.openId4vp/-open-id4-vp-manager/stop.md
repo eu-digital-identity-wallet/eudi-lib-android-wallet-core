@@ -2,7 +2,7 @@
 
 # stop
 
-[androidJvm]\
+[release]\
 fun [stop](stop.md)()
 
 Stops the manager and cancels all running connections made by the manager. When a connection is cancelled, the TransferEvent.Disconnected event is emitted.

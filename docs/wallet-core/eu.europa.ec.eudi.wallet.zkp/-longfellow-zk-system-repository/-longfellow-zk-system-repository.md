@@ -2,5 +2,5 @@
 
 # LongfellowZkSystemRepository
 
-[androidJvm]\
-constructor(circuits: [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;)
+[release]\
+constructor(circuits: [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;)

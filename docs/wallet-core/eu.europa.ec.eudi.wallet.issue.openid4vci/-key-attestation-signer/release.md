@@ -2,5 +2,5 @@
 
 # release
 
-[androidJvm]\
+[release]\
 open suspend override fun [release](release.md)(signOperation: SignOperation&lt;KeyAttestationJWT&gt;?)

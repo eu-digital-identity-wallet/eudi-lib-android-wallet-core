@@ -2,7 +2,7 @@
 
 # RedirectUri
 
-[androidJvm]\
+[release]\
 data object [RedirectUri](index.md) : [ClientIdScheme](../index.md)
 
 Client identifier scheme using redirect URI validation.

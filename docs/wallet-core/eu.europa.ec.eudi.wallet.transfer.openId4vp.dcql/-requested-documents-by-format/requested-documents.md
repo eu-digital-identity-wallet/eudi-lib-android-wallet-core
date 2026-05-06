@@ -2,5 +2,5 @@
 
 # requestedDocuments
 
-[androidJvm]\
+[release]\
 val [requestedDocuments](requested-documents.md): RequestedDocuments

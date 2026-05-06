@@ -2,8 +2,8 @@
 
 # get
 
-[androidJvm]\
+[release]\
 
-@[JvmStatic](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
+@[JvmStatic](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/index.html)
 
-fun [get](get.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)): [List](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;
+fun [get](get.md)(context: [Context](https://developer.android.com/reference/kotlin/android/content/Context.html)): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[Circuit](../-circuit/index.md)&gt;

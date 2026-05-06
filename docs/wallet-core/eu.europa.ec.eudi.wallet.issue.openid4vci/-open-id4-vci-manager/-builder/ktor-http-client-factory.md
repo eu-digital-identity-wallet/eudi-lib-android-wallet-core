@@ -2,8 +2,8 @@
 
 # ktorHttpClientFactory
 
-[androidJvm]\
-fun [ktorHttpClientFactory](ktor-http-client-factory.md)(factory: () -&gt; HttpClient): &lt;Error class: unknown class&gt;
+[release]\
+fun [ktorHttpClientFactory](ktor-http-client-factory.md)(factory: () -&gt; HttpClient): [OpenId4VciManager.Builder](index.md)
 
 Override the Ktor HTTP client factory
 
@@ -13,11 +13,11 @@ this builder
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
 | factory | the factory to use |
 
-[androidJvm]\
+[release]\
 var [ktorHttpClientFactory](ktor-http-client-factory.md): () -&gt; HttpClient?
