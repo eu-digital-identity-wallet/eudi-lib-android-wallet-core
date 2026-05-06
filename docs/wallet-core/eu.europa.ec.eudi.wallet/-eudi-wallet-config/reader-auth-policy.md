@@ -2,7 +2,7 @@
 
 # readerAuthPolicy
 
-[androidJvm]\
+[release]\
 var [readerAuthPolicy](reader-auth-policy.md): ReaderAuthPolicy
 
 The reader authentication enforcement policy for proximity and DCAPI presentations. This determines how the wallet handles reader authentication results when generating device responses.
@@ -23,4 +23,4 @@ The default is ReaderAuthPolicy.EnforceIfPresent.
 | |
 |---|
 | ReaderAuthPolicy |
-| [EudiWalletConfig.configureReaderTrustStore](configure-reader-trust-store.md) |
+| [configureReaderTrustStore](configure-reader-trust-store.md) |

@@ -2,8 +2,8 @@
 
 # configureReaderAuthPolicy
 
-[androidJvm]\
-fun [configureReaderAuthPolicy](configure-reader-auth-policy.md)(readerAuthPolicy: ReaderAuthPolicy): &lt;Error class: unknown class&gt;
+[release]\
+fun [configureReaderAuthPolicy](configure-reader-auth-policy.md)(readerAuthPolicy: ReaderAuthPolicy): [EudiWalletConfig](index.md)
 
 Configure the reader authentication enforcement policy. This policy controls how reader authentication results affect document disclosure during proximity and DCAPI presentations.
 
@@ -17,7 +17,7 @@ the [EudiWalletConfig](index.md) instance
 
 #### Parameters
 
-androidJvm
+release
 
 | | |
 |---|---|
@@ -28,4 +28,4 @@ androidJvm
 | |
 |---|
 | ReaderAuthPolicy |
-| [EudiWalletConfig.configureReaderTrustStore](configure-reader-trust-store.md) |
+| [configureReaderTrustStore](configure-reader-trust-store.md) |
