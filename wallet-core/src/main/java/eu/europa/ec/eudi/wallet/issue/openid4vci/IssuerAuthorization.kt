@@ -62,6 +62,7 @@ internal class IssuerAuthorization(
     /**
      * Resumes the authorization from the given [Uri].
      * This method delegates to the [BrowserAuthorizationHandler] if it's being used.
+     * If no authorization is currently pending, the call is silently ignored.
      * @throws IllegalStateException if the authorization handler is not a [BrowserAuthorizationHandler]
      */
     fun resumeFromUri(uri: Uri) {

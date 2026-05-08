@@ -35,7 +35,6 @@ import org.junit.BeforeClass
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -156,15 +155,66 @@ class BrowserAuthorizationHandlerTest {
     }
 
     @Test
-    fun `resumeWithUri throws exception when no authorization in progress`() {
+    fun `resumeWithUri ignores callback when no authorization in progress`() {
         val callbackUri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "auth_code_123"
             every { getQueryParameter("state") } returns "xyz"
         }
 
-        assertFailsWith<IllegalStateException> {
-            handler.resumeWithUri(callbackUri)
+        // Should not throw — just logs and returns
+        handler.resumeWithUri(callbackUri)
+    }
+
+    @Test
+    fun `resumeWithUri ignores duplicate callback after authorization completes`() = runTest {
+        val authorizationUrl = "https://issuer.example.com/authorize"
+        val callbackUri = mockk<Uri>(relaxed = true) {
+            every { getQueryParameter("code") } returns "auth_code_123"
+            every { getQueryParameter("state") } returns "xyz"
         }
+
+        var result: Result<AuthorizationResponse>? = null
+
+        val job = launch {
+            result = handler.authorize(authorizationUrl)
+        }
+
+        testScheduler.runCurrent()
+
+        // First callback completes the authorization
+        handler.resumeWithUri(callbackUri)
+        job.join()
+
+        assertNotNull(result)
+        assertTrue(result.isSuccess)
+
+        // Second callback (duplicate deep link delivery) should be silently ignored
+        handler.resumeWithUri(callbackUri)
+    }
+
+    @Test
+    fun `resumeWithUri ignores callback after cancellation`() = runTest {
+        val authorizationUrl = "https://issuer.example.com/authorize"
+        val callbackUri = mockk<Uri>(relaxed = true) {
+            every { getQueryParameter("code") } returns "auth_code_123"
+            every { getQueryParameter("state") } returns "xyz"
+        }
+
+        val job = launch {
+            try {
+                handler.authorize(authorizationUrl)
+            } catch (_: Exception) {
+                // Expected cancellation
+            }
+        }
+
+        testScheduler.runCurrent()
+
+        handler.cancel()
+        job.join()
+
+        // Late callback after cancellation should be silently ignored
+        handler.resumeWithUri(callbackUri)
     }
 
     @Test

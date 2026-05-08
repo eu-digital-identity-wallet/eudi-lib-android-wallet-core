@@ -72,29 +72,32 @@ class BrowserAuthorizationHandler(
      * - A failed [Result] with [IllegalArgumentException] if the authorization code parameter ('code') is missing from the URI
      * - A failed [Result] with [IllegalArgumentException] if the server state parameter ('state') is missing from the URI
      *
+     * If no authorization is currently in progress (e.g. duplicate deep link delivery),
+     * this method logs a warning and returns without effect.
+     *
      * @param uri The callback URI containing the authorization code and state parameters
-     * @throws IllegalStateException if no authorization is in progress
      *
      * @see authorize
      */
     fun resumeWithUri(uri: Uri) {
         logger?.d(TAG, "BrowserAuthorizationHandler.resumeWithUri($uri)")
-        continuation?.let { cont ->
-            val response = runCatching {
-                val authorizationCode = uri.getQueryParameter("code")
-                val serverState = uri.getQueryParameter("state")
-
-                requireNotNull(authorizationCode) { "No authorization code found" }
-                requireNotNull(serverState) { "No server state found" }
-
-                AuthorizationResponse(authorizationCode, serverState)
-            }
-            cont.resume(response.onFailure {
-                logger?.e(TAG, "resumeWithUri: ${it.message}", it)
-            })
-        } ?: throw IllegalStateException("No suspended authorization found").also {
-            logger?.e(TAG, "BrowserAuthorizationHandler.resumeWithUri failed", it)
+        val cont = continuation ?: run {
+            logger?.d(TAG, "resumeWithUri: no pending authorization, ignoring duplicate callback")
+            return
         }
+        continuation = null
+        val response = runCatching {
+            val authorizationCode = uri.getQueryParameter("code")
+            val serverState = uri.getQueryParameter("state")
+
+            requireNotNull(authorizationCode) { "No authorization code found" }
+            requireNotNull(serverState) { "No server state found" }
+
+            AuthorizationResponse(authorizationCode, serverState)
+        }
+        cont.resume(response.onFailure {
+            logger?.e(TAG, "resumeWithUri: ${it.message}", it)
+        })
     }
 
     /**

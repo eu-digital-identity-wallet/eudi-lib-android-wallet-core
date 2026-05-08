@@ -58,6 +58,7 @@ import kotlinx.serialization.json.Json
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
 import java.io.File
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executor
 
 /**
@@ -336,13 +337,19 @@ internal class DefaultOpenId4VciManager(
                 )
 
                 //  Refresh the access token using the stored refresh token.
-                //  If the refresh token is also expired (400 invalid_grant from /token),
-                //  fall back to full OAuth authorization when allowed.
+                //  Only fall back to full OAuth authorization on 400 invalid_grant
+                //  (RFC 6749 §5.2: refresh token expired/revoked). Server errors (5xx),
+                //  network failures, and other OAuth error codes are re-thrown — falling
+                //  back to authorization would hit the same broken server or mask
+                //  configuration errors.
                 var updatedAuthorizedRequest = try {
                     with(issuer) {
                         authorizedRequest.refresh().getOrThrow()
                     }
                 } catch (e: Throwable) {
+                    val isInvalidGrant = e is CredentialIssuanceError.AccessTokenRequestFailed
+                            && e.error == "invalid_grant"
+                    if (!isInvalidGrant) throw e
                     if (!allowAuthorizationFallback) {
                         throw ReissuanceAuthorizationException(
                             "Re-issuance of document $documentId requires user authorization (refresh token expired)",
@@ -423,8 +430,9 @@ internal class DefaultOpenId4VciManager(
                 listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
 
             } catch (e: Throwable) {
-                logger?.e(TAG, "Something went wrong with reissuance of $documentId", e)
-                listener(failure(e))
+                if (e !is CancellationException) {
+                    listener(failure(e))
+                }
                 coroutineScope.cancel("reissueDocument failed", e)
             }
         }
