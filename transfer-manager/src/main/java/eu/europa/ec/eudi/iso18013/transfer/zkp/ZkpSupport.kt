@@ -16,13 +16,12 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.zkp
 
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
-import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
+import org.multipaz.mdoc.request.DocRequest
 import org.multipaz.mdoc.zkp.ZkSystem
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.request.RequestedClaim
 
 /**
  * Data class representing a matched zero-knowledge proof system along with its specification.
@@ -36,39 +35,28 @@ data class MatchedZkSystem(
 )
 
 /**
- * Match a ZKP system against the claims the user selected to disclose.
+ * Match a ZKP system against the verifier's request and the claims selected for disclosure.
  *
  * Returns null when [zkSystemRepository] is not configured, the verifier did not request ZKP,
  * or no compatible system spec was found for the disclosed claim set.
  *
- * @param zkSystemRepository the ZKP system repository, or null if not configured
- * @param requestedDocument the original request carrying the verifier's ZK system specs and intentToRetain
- * @param disclosedDocument the document the user selected to disclose
- * @param docType the mdoc docType the claims belong to
+ * @param zkSystemRepository the ZKP system repository, or null if not configured.
+ * @param docRequest the verifier's [DocRequest] carrying any requested ZK system specs.
+ * @param disclosedClaims the claims the user selected to disclose
  */
 internal fun matchZkSystem(
     zkSystemRepository: ZkSystemRepository?,
-    requestedDocument: RequestedDocument,
-    disclosedDocument: DisclosedDocument,
-    docType: String,
-): MatchedZkSystem? = zkSystemRepository?.let { repo ->
-    requestedDocument.zkRequestSystemSpecs?.let { specs ->
-        val requestedClaims = disclosedDocument.disclosedItems
-            .filterIsInstance<MsoMdocItem>()
-            .map { item ->
-                MdocRequestedClaim(
-                    docType = docType,
-                    namespaceName = item.namespace,
-                    dataElementName = item.elementIdentifier,
-                    intentToRetain = requestedDocument.requestedItems[item]!!,
-                )
-            }
-        findMatchingZkSystem(
-            zkSystemRepository = repo,
-            zkSystemSpecs = specs,
-            requestedClaims = requestedClaims,
-        )
-    }
+    docRequest: DocRequest,
+    disclosedClaims: Iterable<RequestedClaim>
+): MatchedZkSystem? {
+    val repo = zkSystemRepository ?: return null
+    val specs = docRequest.docRequestInfo?.zkRequest?.systemSpecs ?: return null
+    val mdocClaims = disclosedClaims.filterIsInstance<MdocRequestedClaim>()
+    return findMatchingZkSystem(
+        zkSystemRepository = repo,
+        zkSystemSpecs = specs,
+        requestedClaims = mdocClaims
+    )
 }
 
 /**

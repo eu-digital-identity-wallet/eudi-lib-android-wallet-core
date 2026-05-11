@@ -29,6 +29,8 @@ Reader authentication is accomplished by verifying the following:
   certificate profile to ensure that they meet the predefined criteria for a trusted certificate
 - **Revocation checking**: Optional certificate revocation checking via CRL, configurable through
   `RevocationPolicy` (disabled by default for backwards compatibility).
+- **Signature verification**: Verifying the signature by generating the `ReaderAuthentication` structure and validating it 
+  against the certificate.
 
 The library is written in Kotlin and is available for Android.
 
@@ -180,25 +182,26 @@ transferManager.addTransferEventListener { event ->
         }
 
         is TransferEvent.RequestReceived -> try {
-            // assuming DeviceRequest is the request type
+            // Assuming DeviceRequest is the request type (ISO 18013-5).
             val processedRequest = event.processedRequest.getOrThrow() as ProcessedDeviceRequest
-            // the request has been received and processed
 
-            // the request processing was successful
-            // requested documents can be shown in the application
-            val requestedDocuments = processedRequest.requestedDocuments
-            // ...
-            // application must create the DisclosedDocuments object
-            val disclosedDocuments = DisclosedDocuments(
-                // DisclosedDocument(),
-                // DisclosedDocument(),
-            )
-            // generate the response
-            val response = processedRequest.generateResponse(
-                disclosedDocuments = disclosedDocuments,
-                signatureAlgorithm = Algorithm.ESP256
-            ).getOrThrow() as DeviceResponse
+            // Verifier identity & trust verdict — single source of truth.
+            val verifierName = processedRequest.trustMetadata?.displayName
+            val verifierIsTrusted = processedRequest.trustMetadata != null
 
+            // Walk the presentment tree to surface candidate matches. In ISO 18013-5
+            // the tree is effectively flat: one option and one member per credential set.
+            val matches = processedRequest.presentmentData
+                .credentialSets
+                .flatMap { set -> set.options.flatMap { o -> o.members.flatMap { m -> m.matches } } }
+
+            // Build the user's confirmed selection — here we disclose everything matched.
+            // For selective (per-claim) disclosure, see the "Receiving a request" section.
+            val selection = CredentialPresentmentSelection(matches = listOf(matches.first()))
+
+            // Generate and send the response.
+            val response = processedRequest.generateResponse(selection, emptyMap())
+                .getOrThrow() as DeviceResponse
             transferManager.sendResponse(response)
 
         } catch (e: Throwable) {
@@ -323,29 +326,122 @@ is in the foreground.
 
 ### Receiving a request and sending a response
 
-When a request is received, the `TransferManager` triggers the `TransferEvent.RequestReceived`.
-The event contains the processed request and the initial raw request. The processed request is
-validated and contains the requested documents.
+When a request is received, the `TransferManager` triggers `TransferEvent.RequestReceived`.
+The event carries the processed request and the original raw request bytes.
 
-The requested documents can be retrieved by the `ProcessedRequest.Success.requestedDocuments`
-property. Each requested document contains the DocumentId that can be used to get the document
-from the `DocumentManager`. This will allow the application to display the requested documents to
-the user.
+A successful `ProcessedDeviceRequest` exposes three pieces of state that drive consent and
+response generation:
 
-The `ProcessedRequest.Success.generateResponse(DisclosedDocuments, Algorithm?)` method is used to
-generate the response. Each DisclosedDocument in the DisclosedDocuments object must contain the
-DocumentId and the list of `DocItem`s, that are to be disclosed. There is a possibility that
-requested document's keys, that are needed to sign the response. In this case, each
-`DisclosedDocument` must contain the `keyUnlockData` property that defines the key unlocking.
+- **`presentmentData: CredentialPresentmentData`** — a tree of candidate credentials that
+  satisfy the verifier's request. The wallet UI typically lets the user pick and confirm
+  what to share.
+- **`requester: Requester`** — who is asking (X.509 certificate chain, optional `appId` and
+  web `origin`).
+- **`trustMetadata: TrustMetadata?`** — `null` when the requester isn't trust-verified;
+  otherwise carries display info (e.g. `displayName`, icon) for the UI.
+  `trustMetadata != null` means that the requester is trusted.
 
-Finally, the response is sent back to the verifier with the
-`TransferManager.sendResponse(Response)`.
+The response is produced via
+`ProcessedDeviceRequest.generateResponse(selection, keyUnlockData, signatureAlgorithm?)`:
+
+- `selection: CredentialPresentmentSelection` — the user's confirmed picks. Each entry is
+  a `CredentialPresentmentSetOptionMemberMatch` whose `claims` map carries the (filtered)
+  data elements to disclose.
+- `keyUnlockData: Map<String, KeyUnlockData>` — per-credential unlock data, keyed by
+  `match.credential.identifier`. Pass an empty map when no key unlock is required.
+
+Finally, the wire response is sent with `TransferManager.sendResponse(response)`.
 
 > **Note:** Currently, only a single request-response cycle per session is supported.
 > Sending a response automatically terminates the presentation session. To perform another
 > exchange, a new session must be started.
 
-The following example demonstrates how to handle the request and send the response.
+#### Inspecting the request
+
+```kotlin
+val processedRequest = event.processedRequest.getOrThrow() as ProcessedDeviceRequest
+
+// Verifier identity & trust
+val verifierName = processedRequest.trustMetadata?.displayName     // null if not trusted
+val verifierIsTrusted = processedRequest.trustMetadata != null
+val requesterCertChain = processedRequest.requester.certChain      // null if no reader auth
+
+// Walk the presentment tree. For ISO 18013-5 it is effectively flat — one option, one
+// member per credential set — so a single `flatMap` chain yields all candidate matches.
+val matches: List<CredentialPresentmentSetOptionMemberMatch> = processedRequest.presentmentData
+    .credentialSets
+    .flatMap { set -> set.options.flatMap { o -> o.members.flatMap { m -> m.matches } } }
+```
+
+> **ℹ️ Soft matching**: a candidate credential appears in `presentmentData` if it has
+> **at least one** of the verifier's requested data elements. Missing elements are silently
+> omitted from `match.claims`. The response may therefore be a partial disclosure.
+
+#### Building the disclosure selection
+
+For full disclosure (the user agrees to share everything that matched), just wrap the
+chosen match in a selection:
+
+```kotlin
+val fullDisclosure = CredentialPresentmentSelection(matches = listOf(matches.first()))
+```
+
+For **selective disclosure** (the user picks a subset of the matched claims), narrow the
+`match.claims` map with `match.copy`:
+
+```kotlin
+val userPickedElements = setOf("given_name", "family_name")
+val narrowedMatch = matches.first().copy(
+    claims = matches.first().claims.filterKeys { req ->
+        req is MdocRequestedClaim && req.dataElementName in userPickedElements
+    }
+)
+val selectiveDisclosure = CredentialPresentmentSelection(matches = listOf(narrowedMatch))
+```
+
+The response generator will only sign over the claims that survive this filter.
+
+#### Handling locked credentials
+
+If the credential's signing key requires unlocking (e.g. PIN-protected), provide a
+`KeyUnlockData` keyed by `match.credential.identifier`:
+
+```kotlin
+val match = matches.first()
+val keyUnlockData: Map<String, KeyUnlockData> = mapOf(
+    match.credential.identifier to SoftwareKeyUnlockData(passphrase = "1234")
+)
+val selection = CredentialPresentmentSelection(matches = listOf(match))
+
+val response = processedRequest.generateResponse(selection, keyUnlockData)
+    .getOrThrow() as DeviceResponse
+```
+
+When no key unlock is needed, pass `emptyMap()`.
+
+#### Sending the response
+
+```kotlin
+val response = processedRequest.generateResponse(selection, emptyMap())
+    .getOrThrow() as DeviceResponse
+transferManager.sendResponse(response)
+```
+
+#### Error handling
+
+`generateResponse(...)` can fail when the inputs or wallet state don't satisfy the contract.
+The failure is wrapped in `ResponseResult.Failure`; common causes:
+
+| Throwable                       | When it is raised                                                                                                                          |
+|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `IllegalArgumentException`      | ISO 18013-5 mDL constraint violated — e.g. more than two `age_over_NN` claims selected for disclosure from the `org.iso.18013.5.1` namespace. |
+| `KeyLockedException`            | The credential's signing key is locked and the matching entry in `keyUnlockData` is missing or its passphrase is wrong.                    |
+| `IllegalStateException`         | Internal invariant violated — typically credential data that could not be decoded, or a multipaz API contract not met.                     |
+
+Use `result.toKotlinResult()` to convert the result to Kotlin's `Result<ResponseResult.Success>`
+if you prefer the standard fold/onSuccess plumbing.
+
+#### End-to-end example
 
 ```kotlin
 transferManager.addTransferEventListener { event ->
@@ -353,37 +449,28 @@ transferManager.addTransferEventListener { event ->
         is TransferEvent.RequestReceived -> try {
             // DeviceRequest assumed is received
             val processedRequest = event.processedRequest.getOrThrow() as ProcessedDeviceRequest
-            // the request has been received and processed
 
-            // the request processing was successful
-            // requested documents can be shown in the application
-            val requestedDocuments = processedRequest.requestedDocuments
-            // display the requested documents so the user can confirm the disclosure
+            // Display verifier info to the user before consent.
+            val verifierName = processedRequest.trustMetadata?.displayName
 
-            // ...
+            // Surface matches to the consent UI.
+            val matches = processedRequest.presentmentData
+                .credentialSets
+                .flatMap { it.options.flatMap { o -> o.members.flatMap { m -> m.matches } } }
 
-            // Disclosed documents are constructed in ui.
-            // If document keys to use for signing response is needed and require unlocking,
-            // information about unlocking the keys should be passed to the disclosed document
-            // for the corresponding document.
-            // Here we use a software key unlock data to unlock the key, for the first requested document.
-            val disclosedDocuments = DisclosedDocuments(
-                DisclosedDocument(
-                    requestedDocuments.first(),
-                    keyUnlockData = SoftwareKeyUnlockData(passphrase = "passphrase_passed_from_ui")
-                ),
+            // After the user confirms (here: a single match, locked key, software unlock).
+            val match = matches.first()
+            val selection = CredentialPresentmentSelection(matches = listOf(match))
+            val keyUnlockData = mapOf(
+                match.credential.identifier to SoftwareKeyUnlockData("passphrase_from_ui")
             )
-            // generate the response
-            val response = processedRequest.generateResponse(
-                disclosedDocuments = disclosedDocuments,
-                signatureAlgorithm = Algorithm.ESP256
-            ).getOrThrow() as DeviceResponse
 
+            val response = processedRequest.generateResponse(selection, keyUnlockData)
+                .getOrThrow() as DeviceResponse
             transferManager.sendResponse(response)
 
         } catch (e: Throwable) {
-            // An error occurred
-            // handle the error
+            // Handle the error — see "Error handling" above for the common types.
         }
 
         else -> {
@@ -455,17 +542,19 @@ val readerTrustStore = ReaderTrustStore.getDefault(
 
 #### Reader Authentication Enforcement Policy
 
-The `ReaderAuthPolicy` controls how reader authentication results are enforced when generating a
-device response via `ProcessedDeviceRequest.generateResponse()`. It determines whether documents
-are included in the response based on their reader authentication status.
+The `ReaderAuthPolicy` controls how reader-authentication results gate response generation in
+`ProcessedDeviceRequest.generateResponse()`. Reader auth in ISO 18013-5 is signed at the
+`DeviceRequest` level (one signature for all `DocRequest`s), so the verdict is **all-or-nothing
+per request** — when a policy is violated, the response is an empty `DeviceResponse` with status
+`STATUS_GENERAL_ERROR` and no signed documents.
 
 Three policies are available:
 
 | Policy | Behavior |
 |---|---|
-| `ReaderAuthPolicy.DoNotEnforce` | Documents are always included regardless of reader authentication status. |
-| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** Documents with failed reader authentication are excluded. Documents without reader authentication (e.g., when no `ReaderTrustStore` is configured) are still included. |
-| `ReaderAuthPolicy.AlwaysRequire` | Only documents with verified reader authentication are included. Documents without reader authentication or with failed authentication are excluded. |
+| `ReaderAuthPolicy.DoNotEnforce` | The response is always produced regardless of reader-auth state. |
+| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** If the verifier supplied a reader cert chain, that chain **must** also be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. Requests without any reader auth are allowed through. |
+| `ReaderAuthPolicy.AlwaysRequire` | The request must be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. |
 
 The policy is configured when creating the `TransferManager`:
 
@@ -531,24 +620,35 @@ val readerTrustStore = ReaderTrustStoreImpl(
 )
 ```
 
-The reader authentication results are accessible through the `ReaderAuth` object received in the `RequestReceived` event, allowing you to make decisions based on the authentication status:
+Reader-authentication state is exposed on `ProcessedDeviceRequest` through two complementary
+properties:
+
+- **`requester: Requester`** — identifies who is asking. `requester.certChain` is the X.509
+  chain the verifier presented (or `null` if no reader auth was attempted); `requester.appId`
+  and `requester.origin` are populated for app-bound and web flows respectively.
+- **`trustMetadata: TrustMetadata?`** — present (non-null) when the request is fully trust-verified.
+  Carries displayName, icon, and privacy-policy URL for the consent UI.
 
 ```kotlin
 is TransferEvent.RequestReceived -> {
     val processedRequest = event.processedRequest.getOrThrow() as ProcessedDeviceRequest
-    
-    // Access reader authentication information
-    val readerAuth = processedRequest.readerAuth
-    if (readerAuth != null) {
-        val isVerified = readerAuth.isVerified
-        val readerCommonName = readerAuth.readerCommonName
-        val isTrusted = readerAuth.readerCertificatedIsTrusted
-        
-        // Make decisions based on authentication status
-        if (isVerified && isTrusted) {
+
+    val requester = processedRequest.requester
+    val trustMetadata = processedRequest.trustMetadata
+
+    when {
+        trustMetadata != null -> {
+            // Trusted reader — display name, icon, privacy policy, etc.
+            val verifierName = trustMetadata.displayName
             // Proceed with the trusted reader
-        } else {
-            // Handle untrusted reader scenario
+        }
+        requester.certChain != null -> {
+            // Reader auth was provided but did not validate (untrusted CA or bad signature).
+            // Handle as untrusted — typically warn the user before disclosing.
+        }
+        else -> {
+            // Anonymous request — no reader auth attempted.
+            // Treat as untrusted; some deployments may still allow disclosure here.
         }
     }
 }

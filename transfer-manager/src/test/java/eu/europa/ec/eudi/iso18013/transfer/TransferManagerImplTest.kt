@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import io.mockk.Runs
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -148,7 +149,7 @@ class TransferManagerImplTest {
         val manager = TransferManagerImpl(
             context = Context,
             requestProcessor = mockk() {
-                every { process(any<DeviceRequest>()) } returns mockk(relaxed = true)
+                coEvery { process(any<DeviceRequest>()) } returns mockk(relaxed = true)
             },
             retrievalMethods = retrievalMethods
         )
@@ -361,7 +362,7 @@ class TransferManagerImplTest {
     fun `setting and getting readerTrustStore delegates to requestProcessor if the latter is ReaderTrustStoreAware`() {
 
         val processor: RequestProcessor = object : RequestProcessor, ReaderTrustStoreAware {
-            override fun process(request: Request): RequestProcessor.ProcessedRequest {
+            override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
                 return mockk()
             }
 

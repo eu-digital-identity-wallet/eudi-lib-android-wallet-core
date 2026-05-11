@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,101 +16,55 @@
 
 package eu.europa.ec.eudi.iso18013.transfer
 
-
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
+import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
-import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import io.mockk.mockk
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ExtensionsTest {
 
     @Test
-    fun docItemsAsMapShouldGroupByNamespace() {
-        val docItems = listOf(
-            MsoMdocItem(namespace = "namespace1", elementIdentifier = "element1"),
-            MsoMdocItem(namespace = "namespace1", elementIdentifier = "element2"),
-            MsoMdocItem(namespace = "namespace2", elementIdentifier = "element3")
-        )
+    fun `ProcessedRequest toKotlinResult returns Result success carrying the same Success instance`() {
+        val success = mockk<RequestProcessor.ProcessedRequest.Success>(relaxed = true)
 
-        val result = docItems.asMap()
+        val result = success.toKotlinResult()
 
-        assertEquals(2, result.size)
-        assertEquals(2, result["namespace1"]?.size)
-        assertEquals(1, result["namespace2"]?.size)
+        assertTrue(result.isSuccess, "Result must be in the success state")
+        assertSame(success, result.getOrNull(), "The original Success instance must round-trip unchanged")
     }
 
     @Test
-    fun nameSpacesToDocItemsShouldConvertMapToList() {
-        val map = mapOf(
-            "namespace1" to listOf("element1", "element2"),
-            "namespace2" to listOf("element3")
-        )
+    fun `ProcessedRequest toKotlinResult returns Result failure carrying the wrapped error`() {
+        val error = IllegalStateException("malformed request")
+        val failure = RequestProcessor.ProcessedRequest.Failure(error)
 
-        val result = map.toDocItems()
+        val result = failure.toKotlinResult()
 
-        assertEquals(3, result.size)
-        assertTrue(
-            result.contains(
-                MsoMdocItem(
-                    namespace = "namespace1",
-                    elementIdentifier = "element1"
-                )
-            )
-        )
-        assertTrue(
-            result.contains(
-                MsoMdocItem(
-                    namespace = "namespace1",
-                    elementIdentifier = "element2"
-                )
-            )
-        )
-        assertTrue(
-            result.contains(
-                MsoMdocItem(
-                    namespace = "namespace2",
-                    elementIdentifier = "element3"
-                )
-            )
-        )
+        assertTrue(result.isFailure, "Result must be in the failure state")
+        assertSame(error, result.exceptionOrNull(), "The original throwable must round-trip unchanged")
     }
 
     @Test
-    fun processedRequestToKotlinResultShouldReturnSuccess() {
-        val successRequest = mockk<RequestProcessor.ProcessedRequest.Success>()
+    fun `ResponseResult toKotlinResult returns Result success carrying the same Success instance`() {
+        val success = ResponseResult.Success(mockk<Response>())
 
-        val result = successRequest.toKotlinResult()
+        val result = success.toKotlinResult()
 
-        assertTrue(result.isSuccess)
+        assertTrue(result.isSuccess, "Result must be in the success state")
+        assertSame(success, result.getOrNull(), "The original Success instance must round-trip unchanged")
     }
 
     @Test
-    fun processedRequestToKotlinResultShouldReturnFailure() {
-        val failureRequest = RequestProcessor.ProcessedRequest.Failure(Exception("Test Exception"))
+    fun `ResponseResult toKotlinResult returns Result failure carrying the wrapped throwable`() {
+        val throwable = RuntimeException("signing failed")
+        val failure = ResponseResult.Failure(throwable)
 
-        val result = failureRequest.toKotlinResult()
+        val result = failure.toKotlinResult()
 
-        assertTrue(result.isFailure)
-    }
-
-    @Test
-    fun responseResultToKotlinResultShouldReturnSuccess() {
-        val successResponse = ResponseResult.Success(mockk())
-
-        val result = successResponse.toKotlinResult()
-
-        assertTrue(result.isSuccess)
-    }
-
-    @Test
-    fun responseResultToKotlinResultShouldReturnFailure() {
-        val failureResponse = ResponseResult.Failure(Exception("Test Exception"))
-
-        val result = failureResponse.toKotlinResult()
-
-        assertTrue(result.isFailure)
+        assertTrue(result.isFailure, "Result must be in the failure state")
+        assertSame(throwable, result.exceptionOrNull(), "The original throwable must round-trip unchanged")
     }
 }

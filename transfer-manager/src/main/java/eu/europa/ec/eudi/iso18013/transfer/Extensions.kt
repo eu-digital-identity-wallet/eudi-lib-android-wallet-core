@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,39 +17,8 @@
 
 package eu.europa.ec.eudi.iso18013.transfer
 
-import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
-import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
-import eu.europa.ec.eudi.wallet.document.ElementIdentifier
-import eu.europa.ec.eudi.wallet.document.NameSpace
-
-/**
- * Converts a [List] of [DocItem] to a [Map] of [NameSpace] to [List] of [ElementIdentifier]
- * @receiver the [List] of [DocItem] to convert
- * @return the [Map] of [NameSpace] to [List] of [ElementIdentifier]
- */
-@JvmName("docItemsToNameSpaces")
-fun List<DocItem>.asMap(): Map<NameSpace, List<ElementIdentifier>> = this
-    .filterIsInstance<MsoMdocItem>()
-    .groupBy { (nameSpace, _) -> nameSpace }
-    .mapValues { (_, docItems) -> docItems.map { it.elementIdentifier } }
-
-/**
- * Converts a [Map] of [NameSpace] to [List] of [ElementIdentifier] to a [List] of [DocItem]
- * @receiver the [Map] of [NameSpace] to [List] of [ElementIdentifier] to convert
- * @return the [List] of [DocItem]
- */
-@JvmName("nameSpacesToDocItems")
-fun Map<NameSpace, List<ElementIdentifier>>.toDocItems(): List<DocItem> =
-    this.flatMap { (nameSpace, elementIdentifiers) ->
-        elementIdentifiers.map { elementIdentifier ->
-            MsoMdocItem(
-                namespace = nameSpace,
-                elementIdentifier = elementIdentifier
-            )
-        }
-    }
 
 /**
  * Converts a [RequestProcessor.ProcessedRequest] to a [Result] of [RequestProcessor.ProcessedRequest.Success]

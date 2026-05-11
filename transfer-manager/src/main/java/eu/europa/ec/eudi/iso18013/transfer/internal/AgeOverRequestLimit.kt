@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,31 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.internal
 
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
-import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.request.RequestedClaim
 
 /**
- * Asserts that the age over request limit for iso18013.5 is not exceeded
- * @throws Exception if the age over request limit is exceeded
+ * Enforces the ISO 18013-5 mDL constraint: a Device Response MUST NOT contain more than
+ * two `age_over_NN` elements from the `org.iso.18013.5.1` namespace.
+ *
+ * @throws IllegalArgumentException if the limit would be exceeded.
  */
-internal fun IssuedDocument.assertAgeOverRequestLimitForIso18013(disclosedDocument: DisclosedDocument): IssuedDocument =
-    apply {
-        val docType = (format as MsoMdocFormat).docType
-        if (id == disclosedDocument.documentId && docType == "org.iso.18013.5.1.mDL" && disclosedDocument.disclosedItems
-                .filterIsInstance<MsoMdocItem>()
-                .filter { docItem ->
-                    docItem.elementIdentifier.startsWith("age_over_") && docItem.namespace == "org.iso.18013.5.1"
-                }.size > 2
-        ) {
-            throw IllegalArgumentException("Device Response is not allowed to have more than two age_over_NN elements")
+internal fun IssuedDocument.assertAgeOverRequestLimitForIso18013(
+    requestedClaims: Iterable<RequestedClaim>,
+): IssuedDocument = apply {
+    val docType = (format as? MsoMdocFormat)?.docType ?: return@apply
+    if (docType != "org.iso.18013.5.1.mDL") return@apply
 
+    val ageOverCount = requestedClaims
+        .filterIsInstance<MdocRequestedClaim>()
+        .count {
+            it.namespaceName == "org.iso.18013.5.1" &&
+                it.dataElementName.startsWith("age_over_")
         }
+
+    require(ageOverCount <= 2) {
+        "Device Response is not allowed to have more than two age_over_NN elements"
     }
+}

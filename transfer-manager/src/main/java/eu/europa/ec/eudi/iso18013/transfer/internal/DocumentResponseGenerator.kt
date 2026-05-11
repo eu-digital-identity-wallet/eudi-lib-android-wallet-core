@@ -21,7 +21,6 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.NameSpace
 import eu.europa.ec.eudi.wallet.document.credential.CredentialIssuedData
 import eu.europa.ec.eudi.wallet.document.credential.getIssuedData
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.multipaz.document.DocumentRequest
 import org.multipaz.document.NameSpacedData
@@ -31,10 +30,17 @@ import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.prompt.Reason
 import org.multipaz.securearea.KeyUnlockData
 
-internal object DocumentResponseGenerator {
+/**
+ * Helpers for generating ISO 18013-5 Document responses from an [IssuedDocument].
+ *
+ * Public so other library modules (notably `wallet-core`'s OpenID4VP MSO mdoc VP generation)
+ * can reuse the credential-policy / unlock plumbing without re-implementing it.
+ */
+object DocumentResponseGenerator {
 
     /**
-     * Generate a device response for a given document.
+     * Generate a device response for a given document, consuming the credential according
+     * to the document's [eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy].
      *
      * Document must be in MsoMdocFormat and not have an invalidated key.
      *
@@ -45,23 +51,20 @@ internal object DocumentResponseGenerator {
      * @throws IllegalArgumentException if the document format is not MsoMdocFormat, the document key is invalidated,
      * @throws org.multipaz.securearea.KeyLockedException if the document key is locked and cannot be unlocked
      */
-    @JvmStatic
-    @JvmOverloads
-    fun generate(
+    suspend fun generate(
         document: IssuedDocument,
         transcript: ByteArray,
         elements: Map<NameSpace, List<ElementIdentifier>>? = null,
         keyUnlockData: KeyUnlockData? = null
-    ): ByteArray {
-        val provider = keyUnlockData.asProvider()
-        return runBlocking {
-            withContext(provider) {
-                document.consumingCredential {
-                    require(this is MdocCredential) { "Document must be in MsoMdocFormat" }
-                    generateDocumentBytes(this, transcript, elements)
-                }.getOrThrow()
-            }
-        }
+    ): ByteArray = withContext(keyUnlockData.asProvider()) {
+        document.consumingCredential {
+            require(this is MdocCredential) { "Document must be in MsoMdocFormat" }
+            generateDocumentBytes(
+                credential = this,
+                transcript = transcript,
+                elements = elements
+            )
+        }.getOrThrow()
     }
 
     /**
@@ -79,34 +82,26 @@ internal object DocumentResponseGenerator {
      * @throws IllegalStateException if no credential is found
      * @throws org.multipaz.securearea.KeyLockedException if the document key is locked and cannot be unlocked
      */
-    @JvmStatic
-    @JvmOverloads
-    fun generateWithoutConsuming(
+    suspend fun generateWithoutConsuming(
         document: IssuedDocument,
         transcript: ByteArray,
         elements: Map<NameSpace, List<ElementIdentifier>>? = null,
         keyUnlockData: KeyUnlockData? = null
-    ): ByteArray {
-        val provider = keyUnlockData.asProvider()
-        return runBlocking {
-            withContext(provider) {
-                val credential = checkNotNull(document.findCredential()) {
-                    "No credential found in the issued document"
-                }
-                require(credential is MdocCredential) { "Document must be in MsoMdocFormat" }
-                generateDocumentBytes(credential, transcript, elements)
-            }
+    ): ByteArray = withContext(keyUnlockData.asProvider()) {
+        val credential = checkNotNull(document.findCredential()) {
+            "No credential found in the issued document"
         }
+        require(credential is MdocCredential) { "Document must be in MsoMdocFormat" }
+        generateDocumentBytes(
+            credential = credential,
+            transcript = transcript,
+            elements = elements
+        )
     }
 
     /**
      * Generates the signed device response bytes from an [MdocCredential].
      * Shared logic used by both [generate] and [generateWithoutConsuming].
-     *
-     * @param credential the mdoc credential to generate the response from
-     * @param transcript the session transcript bytes
-     * @param elements optional map of namespaces to element identifiers to include
-     * @return the generated device response bytes
      */
     private suspend fun generateDocumentBytes(
         credential: MdocCredential,
@@ -126,7 +121,9 @@ internal object DocumentResponseGenerator {
         val request = DocumentRequest(dataElements)
 
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            request, nameSpacedData, staticAuthData
+            request = request,
+            documentData = nameSpacedData,
+            staticAuthData = staticAuthData
         )
 
         return DocumentGenerator(credential.docType, staticAuthData.issuerAuth, transcript)
@@ -141,34 +138,21 @@ internal object DocumentResponseGenerator {
     }
 
     /**
-     * Extension function to generate a device response with credential consumption.
-     * Wraps [generate] in a [Result] for safe error handling.
-     *
-     * @param transcript the transcript to use for the response
-     * @param elements the elements to include in the response
-     * @param keyUnlockData the key unlock data for unlocking the document key if needed
-     * @return a [Result] containing the generated device response bytes or the error
-     * @see generate
+     * Suspend extension wrapping [generate] in a [Result] for safe error handling.
      */
-    fun IssuedDocument.generateDocumentResponse(
+    suspend fun IssuedDocument.generateDocumentResponse(
         transcript: ByteArray,
         elements: Map<NameSpace, List<ElementIdentifier>>? = null,
         keyUnlockData: KeyUnlockData? = null
     ): Result<ByteArray> = runCatching { generate(this, transcript, elements, keyUnlockData) }
 
     /**
-     * Extension function to generate a device response without consuming the credential.
-     * Wraps [generateWithoutConsuming] in a [Result] for safe error handling.
-     *
-     * @param transcript the transcript to use for the response
-     * @param elements the elements to include in the response
-     * @param keyUnlockData the key unlock data for unlocking the document key if needed
-     * @return a [Result] containing the generated device response bytes or the error
-     * @see generateWithoutConsuming
+     * Suspend extension wrapping [generateWithoutConsuming] in a [Result] for safe error handling.
      */
-    fun IssuedDocument.generateDocumentResponseWithoutConsuming(
+    suspend fun IssuedDocument.generateDocumentResponseWithoutConsuming(
         transcript: ByteArray,
         elements: Map<NameSpace, List<ElementIdentifier>>? = null,
         keyUnlockData: KeyUnlockData? = null
-    ): Result<ByteArray> = runCatching { generateWithoutConsuming(this, transcript, elements, keyUnlockData) }
+    ): Result<ByteArray> =
+        runCatching { generateWithoutConsuming(this, transcript, elements, keyUnlockData) }
 }

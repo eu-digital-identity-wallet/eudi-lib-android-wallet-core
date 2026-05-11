@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.internal.QrEngagement
 import eu.europa.ec.eudi.iso18013.transfer.internal.TAG
 import eu.europa.ec.eudi.iso18013.transfer.internal.stopPresentation
-import eu.europa.ec.eudi.iso18013.transfer.internal.transportOptions
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
@@ -36,6 +35,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequestProcesso
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import kotlinx.coroutines.runBlocking
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.util.Constants
 
@@ -177,7 +177,9 @@ class TransferManagerImpl @JvmOverloads constructor(
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(
-                        processedRequest = requestProcessor.process(deviceRequest),
+                        processedRequest = runBlocking {
+                            requestProcessor.process(deviceRequest)
+                        },
                         request = deviceRequest
                     )
                 )
@@ -216,7 +218,9 @@ class TransferManagerImpl @JvmOverloads constructor(
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(
-                        processedRequest = requestProcessor.process(deviceRequest),
+                        processedRequest = runBlocking {
+                            requestProcessor.process(deviceRequest)
+                        },
                         request = deviceRequest
                     )
                 )

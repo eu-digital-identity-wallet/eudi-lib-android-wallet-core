@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 European Commission
+ * Copyright (c) 2023-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,12 @@ package eu.europa.ec.eudi.iso18013.transfer.internal
 import android.content.Context
 import android.os.Build
 import androidx.core.content.ContextCompat
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.wallet.document.DocType
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import org.multipaz.credential.Credential
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
 
@@ -77,24 +76,16 @@ internal suspend fun DocumentManager.getValidIssuedMsoMdocDocumentById(documentI
 }
 
 /**
- * Filters the disclosed documents to only include the requested documents and items
+ * Maps a [Credential] back to its [IssuedDocument]
  */
-internal fun DisclosedDocuments.filterWithRequestedDocuments(requestedDocuments: RequestedDocuments): DisclosedDocuments {
+internal fun Credential.toIssuedDocument(
+    documentManager: DocumentManager
+): IssuedDocument? = documentManager.getDocumentById(document.identifier) as? IssuedDocument
 
-    return DisclosedDocuments(
-        this
-        .mapNotNull { disclosedDocument ->
-            requestedDocuments.firstOrNull { it.documentId == disclosedDocument.documentId }
-                ?.let { requestedDocument ->
-                    Pair(disclosedDocument, requestedDocument)
-                }
-        }.map {
-            val disclosedDocument = it.first
-            val requestedDocument = it.second
-
-            disclosedDocument.disclosedItems
-                .filter { disclosedItem -> disclosedItem in requestedDocument.requestedItems }
-                .let { disclosedItems -> disclosedDocument.copy(disclosedItems = disclosedItems) }
-        }
-    )
-}
+/**
+ * Maps a [Credential] back to its [IssuedDocument] and throws if the lookup fails.
+ */
+internal fun Credential.requireIssuedDocument(
+    documentManager: DocumentManager
+): IssuedDocument = toIssuedDocument(documentManager)
+    ?: error("IssuedDocument not found for credential ${document.identifier}")
