@@ -61,8 +61,10 @@ import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serializeWithKeyBinding
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
 import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
 import eu.europa.ec.eudi.sdjwt.SdJwt
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
+import eu.europa.ec.eudi.openid4vp.dcql.ClaimPathElement as DcqlClaimPathElement
+import eu.europa.ec.eudi.openid4vp.dcql.fold
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath as SdJwtClaimPath
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement as SdJwtClaimPathElement
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.credential.CredentialIssuedData
@@ -386,9 +388,15 @@ internal suspend fun verifiablePresentationForSdJwtVc(
         val query = disclosedDocument.disclosedItems
             .filterIsInstance<SdJwtVcItem>()
             .map { item ->
-                val elements = item.path.map { ClaimPathElement.Claim(it) }
-
-                ClaimPath(elements.first(), *elements.drop(1).toTypedArray())
+                // Convert openid4vp ClaimPath to sd-jwt ClaimPath, preserving element types
+                val elements = item.path.value.map { element ->
+                    element.fold(
+                        ifAllArrayElements = { SdJwtClaimPathElement.AllArrayElements },
+                        ifArrayElement = { index -> SdJwtClaimPathElement.ArrayElement(index) },
+                        ifClaim = { name -> SdJwtClaimPathElement.Claim(name) }
+                    )
+                }
+                SdJwtClaimPath(elements.first(), *elements.drop(1).toTypedArray())
             }.toSet()
 
         // Check that at least one claim is disclosed, otherwise throw an error
