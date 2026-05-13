@@ -34,6 +34,7 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.util.concurrent.Executor
 
@@ -79,7 +80,7 @@ class DCAPIManager(
             DC_API_PROTOCOL_ORG_ISO_MDOC -> {
                 try {
                     logger?.d(TAG, "Processing request for protocol: $protocol")
-                    val processedRequest = requestProcessor.process(request)
+                    val processedRequest = runBlocking { requestProcessor.process(request) }
                     transferEventListeners.onTransferEvent(
                         TransferEvent.RequestReceived(
                             processedRequest = processedRequest,

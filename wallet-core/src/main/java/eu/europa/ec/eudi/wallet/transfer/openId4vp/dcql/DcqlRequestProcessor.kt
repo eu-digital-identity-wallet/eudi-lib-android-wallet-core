@@ -18,47 +18,54 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
-import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuth
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.openid4vp.Format
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
+import eu.europa.ec.eudi.openid4vp.dcql.QueryId
 import eu.europa.ec.eudi.openid4vp.dcql.metaMsoMdoc
 import eu.europa.ec.eudi.openid4vp.dcql.metaSdJwtVc
 import eu.europa.ec.eudi.openid4vp.legalName
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocClaim
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
+import eu.europa.ec.eudi.wallet.internal.toRequesterAndTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
-import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import org.multipaz.claim.Claim
+import org.multipaz.claim.JsonClaim
+import org.multipaz.claim.findMatchingClaim
+import org.multipaz.openid.dcql.DcqlCredentialQuery
+import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.request.JsonRequestedClaim
+import org.multipaz.request.Requester
+import org.multipaz.request.RequestedClaim
 
 /**
- * Processes OpenID4VP requests using DCQL (Digital Credentials Query Language).
+ * Processes OpenID4VP requests that use DCQL (Digital Credentials Query Language).
  *
- * This processor validates and processes credential presentation requests using the DCQL format.
- * It matches credential requirements against locally available documents in the wallet, handling
- * multiple document formats:
+ * For each [CredentialQuery] the processor:
+ *  - finds candidate [IssuedDocument]s matching the requested format and type;
+ *  - resolves the claims to disclose per the query's `claims` and `claim_sets` rules
+ *    (DCQL §6.4.1 first-match semantics over `claim_sets`);
+ *  - hands the resulting matches to [CredentialSetsMatcher] which applies
+ *    `credential_sets` rules and produces the [CredentialPresentmentData] tree consumed
+ *    by [ProcessedDcqlRequest] for the presentation step.
  *
- * - MSO mdoc (ISO 18013-5 mobile driving license format)
- * - SD-JWT VC (Selective Disclosure JSON Web Token Verifiable Credentials)
- *
- * The processor verifies the request validity, extracts the required credentials, and matches
- * them with documents in the wallet that satisfy the requirements.
- *
- * @property documentManager Provides access to documents stored in the wallet
- * @property openid4VpX509CertificateTrust Verifies trust in the reader's certificate for secure exchange
+ * @property documentManager Provides access to documents stored in the wallet.
+ * @property openid4VpX509CertificateTrust Verifies trust in the reader's certificate.
  */
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
@@ -74,24 +81,10 @@ class DcqlRequestProcessor(
             openid4VpX509CertificateTrust.readerTrustStore = value
         }
 
-    /**
-     * Processes an OpenID4VP request containing DCQL queries.
-     *
-     * This method performs the following steps:
-     * 1. Validates the request is a properly formatted OpenID4VP request with DCQL
-     * 2. Extracts reader authentication information
-     * 3. Processes each credential request in the query
-     * 4. Identifies matching documents in the wallet for each request
-     * 5. Maps requested claims to the document items
-     *
-     * Important! Currently credentials_sets and claim_sets are not supported.
-     *
-     * @param request The incoming presentation request
-     * @return [ProcessedDcqlRequest] containing matched documents and requested items
-     */
-    override fun process(request: Request): RequestProcessor.ProcessedRequest {
-        try {
-            // Validate request type and structure
+    private val credentialSetsMatcher = CredentialSetsMatcher()
+
+    override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
+        return try {
             require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
 
             // Temporarily reject all requests with transaction data (not yet supported)
@@ -106,292 +99,262 @@ class DcqlRequestProcessor(
             val credentials = dcql.credentials
             val credentialSets = dcql.credentialSets
 
-            val readerCommonName = request.resolvedRequestObject.client.legalName() ?: ""
-            // Extract reader authentication/trust result if available
-            // This creates a ReaderAuth object from the trust result to include with requested documents
-            val readerAuth = (openid4VpX509CertificateTrust.result as? ReaderTrustResult.Processed)
-                ?.let { (chain, isTrusted) ->
-                    ReaderAuth(
-                        readerAuth = ByteArray(0),
-                        readerSignIsValid = true,
-                        readerCertificatedIsTrusted = isTrusted,
-                        readerCertificateChain = chain,
-                        readerCommonName = readerCommonName
-                    )
+            // Resolve trust verdict and build the Requester / TrustMetadata for the Success
+            // payload. The legalName goes into TrustMetadata.displayName when the cert chain
+            // validated against the configured ReaderTrustStore.
+            val legalName = request.resolvedRequestObject.client.legalName()
+            val trustResult = openid4VpX509CertificateTrust.result
+            val (requester, trustMetadata) = when (trustResult) {
+                is ReaderTrustResult.Processed -> trustResult.toRequesterAndTrust(legalName = legalName)
+                ReaderTrustResult.Pending -> Requester(certChain = null) to null
+            }
+
+            // Find candidate matches for each credential query.
+            val matchesByQueryId: Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>> =
+                credentials.value.associate { query ->
+                    query.id to findMatchesForQuery(query)
                 }
 
-            // Process each credential in the query and match to available documents
-            val potentialMatchesMap = credentials.value
-                .associate { query ->
-                    when (val format = query.format) {
-                        Format.MsoMdoc -> {
-                            // Handle MSO mdoc format credentials
-                            val docTypeValue = query.metaMsoMdoc?.doctypeValue
-                            requireNotNull(docTypeValue) {
-                                "DocType is missing for query with id ${query.id}"
-                            }
-                            val docType = docTypeValue.value
-                            // Find all documents that match the requested docType
-                            val requestedDocuments =
-                                getRequestedMsoMdocDocuments(docType, query, readerAuth)
-
-                            query.id to RequestedDocumentsByFormat(
-                                format = format.value,
-                                requestedDocuments = requestedDocuments
-                            )
-                        }
-
-                        Format.SdJwtVc -> {
-                            // Handle SD-JWT VC format credentials
-                            val vctValues = query.metaSdJwtVc!!.vctValues
-                            require(vctValues.isNotEmpty()) {
-                                "VctValues are missing or is empty for query with id ${query.id}"
-                            }
-                            val requestedDocuments =
-                                getSdJwtVcRequestedDocuments(query, vctValues, readerAuth)
-
-                            query.id to RequestedDocumentsByFormat(
-                                format = format.value,
-                                requestedDocuments = requestedDocuments
-                            )
-                        }
-
-                        else -> throw IllegalArgumentException("Not supported format ${format.value}")
-                    }
-                }
-
-            // Get the IDs of credentials that were actually found in the wallet.
-            val availableWalletCredentialIds = potentialMatchesMap
-                .filterValues { it.requestedDocuments.isNotEmpty() }
-                .keys
-
-            // Instantiate the processor and use it to determine the final set of credential IDs
-            // that satisfy the credential_sets rules.
-            val processor = CredentialSetsMatcher()
-            val processedCredentials = processor.determineRequestedDocuments(
+            // Apply credential_sets rules to produce the presentment tree.
+            val sets = credentialSetsMatcher.toCredentialPresentmentSets(
                 credentials = credentials,
                 credentialSets = credentialSets,
-                availableWalletCredentialIds = availableWalletCredentialIds
+                matchesByQueryId = matchesByQueryId,
             )
 
-            // Filter the potential matches to create the final selection of documents for presentation.
-            // This step executes the decision made by the DcqlProcessor. If the processor returned an empty map (because a
-            // 'required' credential set could not be satisfied), this filter will also produce an empty
-            // map, ensuring no documents are returned.
-            val queryRequestedDocumentsMap = potentialMatchesMap
-                .filterKeys { it in processedCredentials.keys }
-
-            // Create and return the processed request with all matched documents and a generated nonce
-            return ProcessedDcqlRequest(
+            ProcessedDcqlRequest(
                 resolvedRequestObject = request.resolvedRequestObject,
                 documentManager = documentManager,
-                queryMap = queryRequestedDocumentsMap,
-                msoMdocNonce = generateJarmNonce() // Generate a random nonce
+                presentmentData = CredentialPresentmentData(sets),
+                requester = requester,
+                trustMetadata = trustMetadata,
+                msoMdocNonce = generateJarmNonce()
             )
         } catch (e: Throwable) {
-            return RequestProcessor.ProcessedRequest.Failure(e)
+            RequestProcessor.ProcessedRequest.Failure(e)
         }
     }
 
     /**
-     * Processes SD-JWT VC format credential requests and finds matching documents.
-     *
-     * This method takes a DCQL credential query containing SD-JWT VC format requirements and:
-     * 1. Extracts requested claims and their retention flags from the query
-     * 2. Finds all wallet documents matching any of the provided VCT (Verifiable Credential Type) values
-     * 3. For each matching document, maps either the specific requested claims or all available claims
-     *    if none were explicitly requested
-     *
-     * When no claims are specified in the query, the method automatically includes all available
-     * claims from the matched documents by traversing their claim hierarchy.
-     *
-     * @param query The credential query containing SD-JWT VC format requirements and requested claims
-     * @param vctValues List of Verifiable Credential Type values to match against wallet documents
-     * @param readerAuth Optional reader authentication information to include with the documents
-     * @return [RequestedDocuments] collection containing all matching documents with their claims
+     * Produces candidate [CredentialPresentmentSetOptionMemberMatch]es for a single
+     * [CredentialQuery]. A document is included only when its credential satisfies the
+     * verifier's claim requirements, with [resolveClaimsToDisclose] applying
+     * `claim_sets` first-match semantics (DCQL §6.4.1).
      */
-    private fun getSdJwtVcRequestedDocuments(
-        query: CredentialQuery,
-        vctValues: List<String>,
-        readerAuth: ReaderAuth?,
-    ): RequestedDocuments {
-        // Map requested claims to SdJwtVcItems
-        val requestedItems = query.claims?.associate { claim ->
-            SdJwtVcItem(path = claim.path.value.map { it.toString() }) to (claim.intentToRetain == true)
-        }
+    private suspend fun findMatchesForQuery(
+        query: CredentialQuery
+    ): List<CredentialPresentmentSetOptionMemberMatch> {
+        val dcqlQuery: DcqlCredentialQuery = query.toDcqlCredentialQuery()
+        val candidates: List<IssuedDocument> = candidateDocumentsForQuery(query)
 
-        // Find all documents that match any of the requested vctValues
-        val documents = runBlocking {
-            vctValues.flatMap {
-                findDocumentsByFormat(SdJwtVcFormat(it))
+        return candidates.mapNotNull { issuedDoc ->
+            val secureCred = issuedDoc.findCredential() ?: return@mapNotNull null
+            val credClaims: List<Claim> = runCatching {
+                secureCred.getClaims(documentTypeRepository = null)
+            }.getOrElse { return@mapNotNull null }
+
+            // Resolve which subset of the verifier's `claims` this credential must
+            // disclose, honouring `claim_sets` first-match semantics (§6.4.1).
+            val matchedClaims: Map<RequestedClaim, Claim> =
+                resolveClaimsToDisclose(dcqlQuery, credClaims) ?: return@mapNotNull null
+
+            CredentialPresentmentSetOptionMemberMatch(
+                credential = secureCred,
+                claims = matchedClaims,
+                source = CredentialMatchSourceOpenID4VP(credentialQuery = dcqlQuery),
+                transactionData = emptyList(),
+            )
+        }
+    }
+
+    /**
+     * Returns the claims a credential must disclose for [dcqlQuery], or `null` when
+     * the credential cannot satisfy the query.
+     *
+     *  - With `claim_sets` (DCQL §6.4.1): iterate sets **in order** and return the first
+     *    whose every referenced claim resolves against the credential. The returned map
+     *    contains exactly that set's claims — nothing more.
+     *
+     *  - Without `claim_sets`: require every entry of `claims` to resolve. The returned
+     *    map contains all of them.
+     *
+     * Per-claim resolution is delegated to [matchClaim].
+     */
+    private fun resolveClaimsToDisclose(
+        dcqlQuery: DcqlCredentialQuery,
+        credClaims: List<Claim>,
+    ): Map<RequestedClaim, Claim>? {
+        if (dcqlQuery.claimSets.isEmpty()) {
+            // No alternatives — every claim must be present.
+            val all = mutableMapOf<RequestedClaim, Claim>()
+            for (req in dcqlQuery.claims) {
+                val matched = matchClaim(req, credClaims) ?: return null
+                all[req] = matched
             }
+            return all
         }
 
-        val requestedDocuments = RequestedDocuments(documents.map { document ->
-            RequestedDocument(
-                documentId = document.id,
-                // If no claims are specified, use all available claims in the document
-                requestedItems = requestedItems ?: (getAllClaimPathsFrom(
-                    claims = document.data.claims.filterIsInstance<SdJwtVcClaim>(),
-                    rootPath = emptyList()
-                ).associate { path -> SdJwtVcItem(path) to false }),
-                readerAuth = readerAuth
-            )
-        })
-        return requestedDocuments
+        // First-match over claim_sets. A set is satisfied iff every claimId it references
+        // resolves to a [RequestedClaim] that has a value in this credential. The id →
+        // claim lookup is rebuilt locally because [DcqlCredentialQuery.claimIdToClaim] is
+        // not visible from this module; [DcqlQueryAdapter] populates the same map under
+        // the hood.
+        val claimIdLookup: Map<String, RequestedClaim> = dcqlQuery.claims
+            .mapNotNull { rc -> rc.id?.let { id -> id to rc } }
+            .toMap()
+
+        for (claimSet in dcqlQuery.claimSets) {
+            val resolved = mutableMapOf<RequestedClaim, Claim>()
+            var satisfied = true
+            for (claimId in claimSet.claimIdentifiers) {
+                val requested = claimIdLookup[claimId]
+                if (requested == null) {
+                    satisfied = false
+                    break
+                }
+                val matched = matchClaim(requested, credClaims)
+                if (matched == null) {
+                    satisfied = false
+                    break
+                }
+                resolved[requested] = matched
+            }
+            if (satisfied) return resolved
+        }
+        return null
     }
 
     /**
-     * Processes MSO_MDOC format credential requests and finds matching documents.
+     * Resolves a single [RequestedClaim] against the credential's claims.
      *
-     * This method takes a DCQL credential query containing MSO_MDOC format requirements and:
-     * 1. Finds all wallet documents matching the requested document type
-     * 2. Extracts requested namespace and element identifier pairs from the query
-     * 3. For each matching document, maps either the specific requested claims or all available claims
-     *    if none were explicitly requested
-     *
-     * When no claims are specified in the query, the method automatically includes all
-     * MsoMdocClaim elements from the matched documents.
-     *
-     * @param docType The document type identifier to match (e.g., "org.iso.18013.5.1.mDL")
-     * @param query The credential query containing requested claim paths
-     * @param readerAuth Optional reader authentication information to include with the documents
-     * @return [RequestedDocuments] collection containing all matching documents with their claims
+     * The primary path delegates to [Claim.findMatchingClaim], which covers top-level
+     * paths, nested object paths and explicit array-index paths. Falls back to
+     * [matchClaimViaSpecCorrectNullWildcard] when the primary path returns `null` for
+     * an SD-JWT VC request that combines a `null` wildcard in the claim path with a
+     * `values` filter — that combination requires per-element evaluation of the
+     * wildcard per OpenID4VP §7.1.
      */
-    private fun getRequestedMsoMdocDocuments(
-        docType: String,
-        query: CredentialQuery,
-        readerAuth: ReaderAuth?,
-    ): RequestedDocuments {
-        val documents =
-            runBlocking { findDocumentsByFormat(format = MsoMdocFormat(docType)) }
-
-        // Map requested claims to MsoMdocItems or use all available claims if none specified
-        val requestedItems = query.claims?.associate { claim ->
-            MsoMdocItem(
-                namespace = claim.path.value.first().toString(),
-                elementIdentifier = claim.path.value.last().toString()
-            ) to (claim.intentToRetain == true)
-        }
-
-        val requestedDocuments = RequestedDocuments(documents.map { document ->
-            RequestedDocument(
-                documentId = document.id,
-                requestedItems = requestedItems ?: document.data.claims
-                    .filterIsInstance<MsoMdocClaim>()
-                    .associate {
-                        MsoMdocItem(
-                            namespace = it.nameSpace,
-                            elementIdentifier = it.identifier
-                        ) to false
-                    },
-                readerAuth = readerAuth
-            )
-        })
-        return requestedDocuments
+    private fun matchClaim(req: RequestedClaim, credClaims: List<Claim>): Claim? {
+        val direct = credClaims.findMatchingClaim(req)
+        if (direct != null) return direct
+        return matchClaimViaSpecCorrectNullWildcard(req, credClaims)
     }
 
     /**
-     * Finds all issued documents matching the specified document format.
+     * Resolves a [JsonRequestedClaim] whose path contains a `null` wildcard and whose
+     * request carries a `values` filter, per OpenID4VP §7.1 element-by-element semantics.
      *
-     * @param format The document format to match (e.g., MsoMdocFormat, SdJwtVcFormat)
-     * @return List of [IssuedDocument]s matching the format and containing valid credentials
+     * Returns the credential's top-level claim (the one whose `claimPath[0]` matches the
+     * request's `claimPath[0]`) when at least one resolved value passes the values
+     * filter; otherwise `null`. Downstream code consumes only the request's path for
+     * disclosure-path generation — the matched [Claim] value itself is not used — so
+     * returning the root claim is sufficient to signal "satisfied".
      */
+    private fun matchClaimViaSpecCorrectNullWildcard(
+        req: RequestedClaim,
+        credClaims: List<Claim>,
+    ): Claim? {
+        if (req !is JsonRequestedClaim) return null
+        val values = req.values ?: return null
+        val hasNullWildcard = req.claimPath.any { it is JsonNull }
+        if (!hasNullWildcard) return null
+
+        val topName = (req.claimPath.firstOrNull() as? JsonPrimitive)
+            ?.takeIf { it.isString }
+            ?.content
+            ?: return null
+        val rootClaim = credClaims.filterIsInstance<JsonClaim>().firstOrNull { cc ->
+            (cc.claimPath.firstOrNull() as? JsonPrimitive)
+                ?.takeIf { it.isString }
+                ?.content == topName
+        } ?: return null
+
+        // Spec §7.1: a null wildcard expands the array into its elements; the result is a
+        // set of values. Spec §6.4.1: claim is satisfied when at least one resulting value
+        // matches any element of the `values` array.
+        val resolved = descendClaimPath(rootClaim.value, req.claimPath.drop(1))
+        return if (resolved.any { values.contains(it) }) rootClaim else null
+    }
+
+    /**
+     * Walks a SD-JWT VC claim path per OpenID4VP §7.1 semantics, returning the **set** of
+     * resolved values (each `null` element in the path expands into an iteration over
+     * every element of the current array).
+     *
+     *  - String element → object key lookup (descends into array's objects when the
+     *    current node is an array).
+     *  - Integer element → array index access.
+     *  - `null` element → "evaluate all elements" (the wildcard).
+     *
+     * Returns an empty list when the path cannot be resolved against the structure (e.g.
+     * indexing a non-array, descending into a primitive). Empty list ↔ no match.
+     */
+    private fun descendClaimPath(
+        start: JsonElement,
+        remainingPath: List<JsonElement>,
+    ): List<JsonElement> {
+        if (remainingPath.isEmpty()) return listOf(start)
+        val head = remainingPath.first()
+        val tail = remainingPath.drop(1)
+        return when {
+            head is JsonNull -> {
+                if (start is JsonArray) start.flatMap { descendClaimPath(it, tail) }
+                else emptyList()
+            }
+            head is JsonPrimitive && head.isString -> when (start) {
+                is JsonObject -> start[head.content]
+                    ?.let { descendClaimPath(it, tail) }
+                    ?: emptyList()
+                is JsonArray -> start.flatMap { element ->
+                    (element as? JsonObject)?.get(head.content)
+                        ?.let { descendClaimPath(it, tail) }
+                        ?: emptyList()
+                }
+                else -> emptyList()
+            }
+            head is JsonPrimitive && !head.isString -> {
+                val index = head.content.toIntOrNull() ?: return emptyList()
+                if (start is JsonArray && index in start.indices) {
+                    descendClaimPath(start[index], tail)
+                } else emptyList()
+            }
+            else -> emptyList()
+        }
+    }
+
+    /**
+     * Resolves the wallet's candidate [IssuedDocument]s for a [CredentialQuery]:
+     *  - `mso_mdoc`: documents whose [MsoMdocFormat.docType] equals the query's
+     *    `doctype_value`;
+     *  - `dc+sd-jwt`: documents whose [SdJwtVcFormat.vct] is in the query's `vct_values`
+     *    (exact match).
+     *
+     * Throws on unsupported formats.
+     */
+    private suspend fun candidateDocumentsForQuery(query: CredentialQuery): List<IssuedDocument> {
+        return when (query.format) {
+            Format.MsoMdoc -> {
+                val docType = requireNotNull(query.metaMsoMdoc?.doctypeValue?.value) {
+                    "DocType is missing for query with id ${query.id}"
+                }
+                findDocumentsByFormat(MsoMdocFormat(docType))
+            }
+            Format.SdJwtVc -> {
+                val vctValues = query.metaSdJwtVc?.vctValues.orEmpty()
+                require(vctValues.isNotEmpty()) {
+                    "VctValues are missing or is empty for query with id ${query.id}"
+                }
+                vctValues.flatMap { findDocumentsByFormat(SdJwtVcFormat(it)) }
+            }
+            else -> throw IllegalArgumentException("Not supported format ${query.format.value}")
+        }
+    }
+
     private suspend fun findDocumentsByFormat(format: DocumentFormat): List<IssuedDocument> {
         return documentManager.getDocuments()
             .filter { it.format == format }
             .filterIsInstance<IssuedDocument>()
             .filter { it.findCredential() != null }
-    }
-
-    /**
-     * Returns all claim paths from a hierarchy of SdJwtVcClaims, starting from a given root path.
-     *
-     * This is used to determine all available claims in an SD-JWT VC document when no specific
-     * claims are requested, allowing the presentation of all claims.
-     *
-     * @param claims The list of SdJwtVcClaim objects to search through
-     * @param rootPath The path to the root claim from which to find children (empty list for root)
-     * @return List of paths (where each path is a list of identifiers) to all child claims, excluding the rootPath itself
-     */
-    private fun getAllClaimPathsFrom(
-        claims: List<SdJwtVcClaim>,
-        rootPath: List<String>,
-    ): List<List<String>> {
-        // If the path is empty, return all paths from the root
-        if (rootPath.isEmpty()) {
-            return collectAllPaths(claims, emptyList())
-        }
-
-        // Find the claim at the rootPath
-        val rootClaim = findClaimAtPath(claims, rootPath)
-
-        // If the root claim is not found, return an empty list
-        return rootClaim?.let {
-            // Get all paths including the rootPath
-            val allPaths = collectAllPaths(listOf(it), rootPath.dropLast(1))
-            // Filter out the rootPath itself
-            allPaths.filterNot { path -> path == rootPath }
-        } ?: emptyList()
-    }
-
-    /**
-     * Recursively collects all paths from the given SdJwtVcClaims.
-     *
-     * This traverses the hierarchical structure of SD-JWT VC claims to build complete paths
-     * to each claim in the structure.
-     *
-     * @param claims The SdJwtVcClaim objects to process
-     * @param basePath The base path prefix for each claim
-     * @return List of all complete claim paths
-     */
-    private fun collectAllPaths(
-        claims: List<SdJwtVcClaim>,
-        basePath: List<String>,
-    ): List<List<String>> {
-        val result = mutableListOf<List<String>>()
-
-        for (claim in claims) {
-            val currentPath = basePath + claim.identifier
-            result.add(currentPath)
-
-            // Recursively process child claims if they exist
-            if (claim.children.isNotEmpty()) {
-                result.addAll(collectAllPaths(claim.children, currentPath))
-            }
-        }
-
-        return result
-    }
-
-    /**
-     * Finds a specific SdJwtVcClaim at the specified path in a claim hierarchy.
-     *
-     * @param claims The list of SdJwtVcClaim objects to search through
-     * @param path The path to the target claim
-     * @return The SdJwtVcClaim at the path, or null if not found
-     */
-    private fun findClaimAtPath(claims: List<SdJwtVcClaim>, path: List<String>): SdJwtVcClaim? {
-        if (path.isEmpty()) return null
-
-        var currentClaims = claims
-        var targetClaim: SdJwtVcClaim? = null
-
-        // Traverse the claim hierarchy following the path segments
-        for (i in path.indices) {
-            val segment = path[i]
-            targetClaim = currentClaims.find { it.identifier == segment }
-
-            if (targetClaim == null) {
-                return null
-            }
-
-            if (i < path.size - 1) {
-                currentClaims = targetClaim.children
-            }
-        }
-
-        return targetClaim
     }
 
     companion object {

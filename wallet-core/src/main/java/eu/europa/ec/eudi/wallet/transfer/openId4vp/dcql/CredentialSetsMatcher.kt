@@ -1,98 +1,108 @@
+/*
+ * Copyright (c) 2025 European Commission
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
-import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
-import eu.europa.ec.eudi.openid4vp.dcql.CredentialSetQuery
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialSets
 import eu.europa.ec.eudi.openid4vp.dcql.Credentials
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
+import org.multipaz.presentment.CredentialPresentmentSet
+import org.multipaz.presentment.CredentialPresentmentSetOption
+import org.multipaz.presentment.CredentialPresentmentSetOptionMember
+import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 
-class CredentialSetsMatcher {
+/**
+ * Builds the [CredentialPresentmentSet] tree that represents a verifier's DCQL
+ * `credentials` / `credential_sets` rules over the matches found for each query.
+ *
+ *  - **No `credential_sets`** (OpenID4VP §6.4.2): each [Credentials] entry is required.
+ *    Every query must have at least one match, otherwise the request is unsatisfiable
+ *    and an empty list is returned. When all queries are satisfied, each becomes its
+ *    own non-optional [CredentialPresentmentSet].
+ *
+ *  - **With `credential_sets`**: each set becomes one [CredentialPresentmentSet]. An
+ *    option is "satisfied" iff every credential id it references has at least one match.
+ *    Satisfied options become [CredentialPresentmentSetOption]s with one
+ *    [CredentialPresentmentSetOptionMember] per id. A required set with no satisfied
+ *    option makes the whole request unsatisfiable; optional sets that aren't satisfied
+ *    are omitted.
+ *
+ * Returning an empty list signals "request cannot be satisfied" to the caller.
+ */
+internal class CredentialSetsMatcher {
 
-    /**
-     * Determines the final map of requested documents based on the DCQL query and
-     * the credentials available in the user's wallet.
-     *
-     * @param credentials The list of all possible credentials defined in the request.
-     * @param credentialSets The credential_sets rules from the request, which may be null.
-     * @param availableWalletCredentialIds A set of QueryIds for credentials the wallet actually has.
-     * @return A map of QueryId to the corresponding CredentialQuery for documents that should be presented.
-     * - If all required credential sets can be satisfied, it returns the required documents
-     * plus any optional ones that can also be satisfied.
-     * - If any required set cannot be satisfied, it returns an empty map.
-     * - If 'credential_sets' is not present, it returns all credentials from the query
-     * that are available in the wallet.
-     */
-    fun determineRequestedDocuments(
+    fun toCredentialPresentmentSets(
         credentials: Credentials,
         credentialSets: CredentialSets?,
-        availableWalletCredentialIds: Set<QueryId>
-    ): Map<QueryId, CredentialQuery> {
-        // Create a lookup map for quick access to credential details by their ID.
-        val credentialsMap = credentials.value.associateBy { it.id }
-
-        // The 'credential_sets' array is missing or empty.
-        // In this case, all credentials in the 'credentials' list are considered required.
+        matchesByQueryId: Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>>
+    ): List<CredentialPresentmentSet> {
         if (credentialSets == null || credentialSets.value.isEmpty()) {
-            val allRequiredIds = credentialsMap.keys
-            // Check if the wallet has ALL the required credentials.
-            return if (availableWalletCredentialIds.containsAll(allRequiredIds)) {
-                // If yes, return all of them.
-                credentialsMap
-            } else {
-                // If the wallet is missing even one, return nothing.
-                println("Error: Wallet is missing some required credentials when credential_sets is not provided. Aborting.")
-                emptyMap()
+            // Per OpenID4VP §6.4.2: every credentials entry is required when credential_sets
+            // is absent. If any query has no matches, the request is unsatisfiable.
+            val sets = mutableListOf<CredentialPresentmentSet>()
+            for (query in credentials.value) {
+                val matches = matchesByQueryId[query.id].orEmpty()
+                if (matches.isEmpty()) return emptyList()
+                sets.add(singleQuerySet(matches))
             }
+            return sets
         }
 
-        // The 'credential_sets' array is present. Process the new logic.
-        val (requiredSets, optionalSets) = credentialSets.value.partition { it.required ?: true }
-        val satisfyingDocs = mutableSetOf<QueryId>()
+        val sets = mutableListOf<CredentialPresentmentSet>()
+        for (csq in credentialSets.value) {
+            val required = csq.requiredOrDefault
+            val options = mutableListOf<CredentialPresentmentSetOption>()
 
-        // Verify all required sets can be satisfied
-        for (set in requiredSets) {
-            // Find the first option in the set that the wallet can fully satisfy.
-            val satisfyingOption = findSatisfyingOption(set, availableWalletCredentialIds)
+            for (option in csq.options) {
+                val ids = option.value
+                val allSatisfied = ids.all { id ->
+                    !matchesByQueryId[id].isNullOrEmpty()
+                }
+                if (!allSatisfied) continue
 
-            if (satisfyingOption != null) {
-                // If a valid option is found, add its credentials to our results.
-                satisfyingDocs.addAll(satisfyingOption)
-            } else {
-                // Even if only one required set cannot be satisfied,
-                // the wallet must not return any credentials at all.
-                return emptyMap()
+                val members = ids.map { id ->
+                    CredentialPresentmentSetOptionMember(matches = matchesByQueryId.getValue(id))
+                }
+                options.add(CredentialPresentmentSetOption(members = members))
+            }
+
+            if (options.isEmpty() && required) {
+                // A required set has no satisfied option — the whole request fails.
+                return emptyList()
+            }
+            if (options.isNotEmpty()) {
+                sets.add(CredentialPresentmentSet(optional = !required, options = options))
             }
         }
-
-        // Add any optional sets that can be satisfied
-        for (set in optionalSets) {
-            val satisfyingOption = findSatisfyingOption(set, availableWalletCredentialIds)
-            if (satisfyingOption != null) {
-                satisfyingDocs.addAll(satisfyingOption)
-            }
-        }
-
-        // Build the final map from the collected document IDs ---
-        return credentialsMap.filterKeys { it in satisfyingDocs }
+        return sets
     }
 
     /**
-     * Helper function to find the first valid "option" within a CredentialSetQuery.
-     * An option is valid if the wallet holds all credentials listed in it.
-     *
-     * @param credentialSet The set to check.
-     * @param availableWalletCredentialIds The credentials the user has.
-     * @return The list of QueryIds for the first matching option, or null if no option can be satisfied.
+     * Wraps [matches] for a single credential query into a non-optional
+     * [CredentialPresentmentSet]. Used when `credential_sets` is absent — per OpenID4VP
+     * §6.4.2 every entry in `credentials` is then implicitly required.
      */
-    private fun findSatisfyingOption(
-        credentialSet: CredentialSetQuery,
-        availableWalletCredentialIds: Set<QueryId>
-    ): List<QueryId>? {
-        // credentialSet.options is a List<CredentialQueryIds>. We need to find the first
-        // CredentialQueryIds object where the wallet has all the IDs in its inner list (.value).
-        return credentialSet.options.firstOrNull { option ->
-            // An option is satisfied if the wallet contains ALL of the IDs in that option's list.
-            availableWalletCredentialIds.containsAll(option.value)
-        }?.value // Return the inner List<QueryId> of the matching option.
-    }
+    private fun singleQuerySet(
+        matches: List<CredentialPresentmentSetOptionMemberMatch>,
+    ): CredentialPresentmentSet = CredentialPresentmentSet(
+        optional = false,
+        options = listOf(
+            CredentialPresentmentSetOption(
+                members = listOf(CredentialPresentmentSetOptionMember(matches = matches))
+            )
+        )
+    )
 }

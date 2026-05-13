@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import kotlinx.serialization.json.Json
+import org.multipaz.crypto.javaX509Certificates
 import java.time.Instant
 import java.util.Base64
 
@@ -136,16 +137,16 @@ class TransactionLogBuilder(
     ): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
 
-        val requestedDocuments = processedRequest.getOrNull()?.requestedDocuments ?: return log
-        val readerAuth = requestedDocuments.firstNotNullOfOrNull { it.readerAuth }
+        val success = processedRequest.getOrNull() ?: return log
 
-        val name = readerAuth?.readerCommonName ?: "Unidentified Relying Party"
-        val certificateChain = readerAuth
-            ?.readerCertificateChain
-            ?.map { Base64.getEncoder().encodeToString(it.encoded) }
-            ?: emptyList()
-        val isVerified = readerAuth?.isVerified == true
-        val readerAuthBytes = readerAuth?.readerAuth
+        val trustMetadata = success.trustMetadata
+        val javaCertChain = success.requester.certChain?.javaX509Certificates ?: emptyList()
+
+        val name = trustMetadata?.displayName ?: "Unidentified Relying Party"
+        val certificateChain = javaCertChain.map {
+            Base64.getEncoder().encodeToString(it.encoded)
+        }
+        val isVerified = trustMetadata != null
 
         return log.copy(
             timestamp = Instant.now().toEpochMilli(),
@@ -153,7 +154,7 @@ class TransactionLogBuilder(
                 name = name,
                 certificateChain = certificateChain,
                 isVerified = isVerified,
-                readerAuth = readerAuthBytes?.let { Base64.getEncoder().encodeToString(it) }
+                readerAuth = null
             )
         )
     }

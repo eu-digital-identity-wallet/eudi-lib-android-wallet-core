@@ -25,7 +25,6 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
@@ -35,20 +34,21 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import org.json.JSONObject
 import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSet
+import org.multipaz.presentment.CredentialPresentmentSetOption
+import org.multipaz.presentment.CredentialPresentmentSetOptionMember
 
 /**
- * Processes requests for the Digital Credential API (DCAPI) by converting them into device requests
- * and processing them using the [DeviceRequestProcessor].
+ * Processes requests for the Digital Credential API (DCAPI) by delegating to the
+ * ISO 18013-5 [DeviceRequestProcessor] and narrowing its result to the credential the OS
+ * picker has already selected (via [ProviderGetCredentialRequest.selectedEntryId]).
  *
- * This implementation follows the protocol `org-iso-mdoc` as defined in the ISO/IEC TS 18013-7:2025 Annex C.
+ * The exposed [RequestProcessor.ProcessedRequest.Success.presentmentData] tree is filtered
+ * to that single credential, so the wallet UI cannot inadvertently surface other matching
+ * documents during consent.
  *
- * @property documentManager The [DocumentManager] instance used to manage documents.
- * @property readerTrustStore The [ReaderTrustStore] the reader trust store.
- * @property readerAuthPolicy The [ReaderAuthPolicy] for enforcing reader authentication results during response generation.
- * @property privilegedAllowlist The allowlist for privileged browsers/apps that are trusted.
- * @property zkSystemRepository The [ZkSystemRepository] for zero-knowledge proof systems.
- * @property logger Optional logger for logging events.
- *
+ * Follows protocol `org-iso-mdoc` per ISO/IEC TS 18013-7:2025 Annex C.
  */
 
 private const val TAG = "DCAPIRequestProcessor"
@@ -60,9 +60,9 @@ internal class DCAPIRequestProcessor(
     private val privilegedAllowlist: String,
     private var zkSystemRepository: ZkSystemRepository?,
     private var logger: Logger? = null,
-    ): RequestProcessor, ReaderTrustStoreAware {
+) : RequestProcessor, ReaderTrustStoreAware {
 
-    override fun process(request: Request): RequestProcessor.ProcessedRequest {
+    override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
         require(request is DCAPIRequest) { "Request must be an DCAPIRequest" }
         logger?.d(TAG, "Processing DCAPI request")
 
@@ -73,39 +73,33 @@ internal class DCAPIRequestProcessor(
             readerTrustStore = readerTrustStore,
             readerAuthPolicy = readerAuthPolicy,
             zkSystemRepository = zkSystemRepository
-        ).process(deviceRequest) as ProcessedDeviceRequest
+        ).process(deviceRequest) as? ProcessedDeviceRequest
+            ?: return RequestProcessor.ProcessedRequest.Failure(
+                DCAPIException("DeviceRequestProcessor failed to produce a ProcessedDeviceRequest"),
+            )
 
         val credentialId = credRequest.selectedEntryId
-        logger?.d(TAG, "Selected credential ID (selectedEntryId): '$credentialId' (type=${credentialId?.let { it::class.simpleName }}, isNull=${credentialId == null})")
-        logger?.d(TAG, "Available requestedDocuments IDs: ${processedDeviceRequest.requestedDocuments.map { "'${it.documentId}'" }}")
-        logger?.d(TAG, "DocumentManager instance: ${documentManager::class.qualifiedName}@${System.identityHashCode(documentManager).toString(16)}")
+            ?: return RequestProcessor.ProcessedRequest.Failure(
+                DCAPIException("No selected credential ID in DCAPI request"),
+            )
+        logger?.d(TAG, "Filtering presentment data for credential ID: $credentialId")
 
-        // Filter the requested documents and ProcessedDeviceRequest
-        // based on the selected credential ID provided by the credential request.
-        logger?.d(TAG, "Filtering requested documents for credential ID: '$credentialId'")
-        val filteredRequestedDocuments = processedDeviceRequest.requestedDocuments.filter {
-            val matches = it.documentId == credentialId
-            logger?.d(TAG, "  Comparing documentId='${it.documentId}' == selectedEntryId='$credentialId' => $matches")
-            matches
-        }
-        if (filteredRequestedDocuments.isEmpty()) {
-            logger?.e(TAG, "No requested document found for credential ID: '$credentialId'. Available IDs: ${processedDeviceRequest.requestedDocuments.map { it.documentId }}")
+        val filteredPresentmentData = processedDeviceRequest.presentmentData
+            .filterByCredentialId(credentialId)
+        if (filteredPresentmentData.credentialSets.isEmpty()) {
+            logger?.e(TAG, "No requested document found for credential ID: $credentialId")
             return RequestProcessor.ProcessedRequest.Failure(
-                DCAPIException("No requested document found for credential ID: $credentialId")
+                DCAPIException("No requested document found for credential ID: $credentialId"),
             )
         }
-        val filteredProcessedDeviceRequest = ProcessedDeviceRequest(
-            documentManager = documentManager,
-            sessionTranscript = deviceRequest.sessionTranscriptBytes,
-            requestedDocuments = RequestedDocuments(filteredRequestedDocuments),
-            readerAuthPolicy = readerAuthPolicy,
-            zkSystemRepository = zkSystemRepository
-            )
+
         return ProcessedDCPAPIRequest(
-            processedDeviceRequest = filteredProcessedDeviceRequest,
+            processedDeviceRequest = processedDeviceRequest,
             providerGetCredentialRequest = request.providerGetCredentialRequest,
             origin = origin,
-            requestedDocuments = RequestedDocuments(filteredRequestedDocuments),
+            presentmentData = filteredPresentmentData,
+            requester = processedDeviceRequest.requester,
+            trustMetadata = processedDeviceRequest.trustMetadata,
             logger = logger
         )
     }
@@ -121,8 +115,8 @@ internal class DCAPIRequestProcessor(
         //
         // If a trusted origin is returned, use it in the response.
         //
-        // If origin is empty, the request is from an Android native app.
-        // and derive the origin from the caller's signing certificate in the form:
+        // If origin is empty, the request is from an Android native app,
+        // and we derive the origin from the caller's signing certificate in the form:
         // 'android:apk-key-hash:<encoded SHA 256 fingerprint>'
         val callingOrigin = this.callingAppInfo.getOrigin(privilegedAllowlist)
             ?: getAppOrigin(callingAppInfo.signingInfoCompat.signingCertificateHistory[0].toByteArray())
@@ -153,4 +147,29 @@ internal class DCAPIRequestProcessor(
             sessionTranscriptBytes = sessionTranscriptBytes
         ) to callingOrigin
     }
+}
+
+/**
+ * Walk a [CredentialPresentmentData] tree and keep only matches whose underlying
+ * `Credential.document.identifier` equals [credentialId].
+ */
+private fun CredentialPresentmentData.filterByCredentialId(
+    credentialId: String,
+): CredentialPresentmentData {
+    val sets = credentialSets.mapNotNull { set ->
+        val options = set.options.mapNotNull { option ->
+            val members = option.members.mapNotNull { member ->
+                val matches = member.matches.filter {
+                    it.credential.document.identifier == credentialId
+                }
+                if (matches.isEmpty()) null
+                else CredentialPresentmentSetOptionMember(matches = matches)
+            }
+            if (members.isEmpty()) null
+            else CredentialPresentmentSetOption(members = members)
+        }
+        if (options.isEmpty()) null
+        else CredentialPresentmentSet(optional = set.optional, options = options)
+    }
+    return CredentialPresentmentData(sets)
 }

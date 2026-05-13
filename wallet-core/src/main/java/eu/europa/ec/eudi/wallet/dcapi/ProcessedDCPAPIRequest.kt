@@ -25,48 +25,61 @@ import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.provider.ProviderGetCredentialRequest
 import com.upokecenter.cbor.CBORObject
 import com.upokecenter.cbor.CBORType
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
-import kotlinx.coroutines.runBlocking
 import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Algorithm
-import org.multipaz.util.fromBase64Url
 import org.multipaz.crypto.Hpke
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.request.Requester
+import org.multipaz.securearea.KeyUnlockData
+import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.util.fromBase64Url
 
 /**
- * Processes a DCAPI request by generating a response based on the provided device request and credential options.
+ * Processes a DCAPI request by delegating ISO 18013-5 device-response generation to the
+ * wrapped [ProcessedDeviceRequest] and then HPKE-encrypting the bytes for the verifier per
+ * `org-iso-mdoc` (ISO/IEC TS 18013-7:2025 Annex C).
  *
- * This implementation follows the protocol `org-iso-mdoc` as defined in the ISO/IEC TS 18013-7:2025 Annex C.
+ * The [presentmentData] exposed here is already narrowed by the OS picker's selection
+ * (see [DCAPIRequestProcessor]), so the consent UI surfaces only the selected credential.
  *
- * @property processedDeviceRequest The processed device request containing the device response.
- * @property providerGetCredentialRequest The provider get credential request containing the credential options.
- * @property logger Optional logger for logging events.
- * @param origin The origin of the request.
+ * @property processedDeviceRequest the underlying ISO 18013-5 processor — its
+ *   `generateResponse(selection, ...)` does the actual signing.
+ * @property providerGetCredentialRequest the original DCAPI request, used to re-derive the
+ *   verifier's recipient public key (from `EncryptionInfo`) and to wrap the encrypted
+ *   response back into a `DigitalCredential` intent extras.
+ * @param origin resolved verifier origin (web origin or `android:apk-key-hash:...`).
  */
-
 class ProcessedDCPAPIRequest(
     private val processedDeviceRequest: ProcessedDeviceRequest,
     private val providerGetCredentialRequest: ProviderGetCredentialRequest,
-    private val logger: Logger? = null,
     val origin: String,
-    requestedDocuments: RequestedDocuments
-): RequestProcessor.ProcessedRequest.Success(requestedDocuments) {
+    presentmentData: CredentialPresentmentData,
+    requester: Requester,
+    trustMetadata: TrustMetadata?,
+    private val logger: Logger? = null,
+) : RequestProcessor.ProcessedRequest.Success(
+    presentmentData = presentmentData,
+    requester = requester,
+    trustMetadata = trustMetadata
+) {
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
-    override fun generateResponse(
-        disclosedDocuments: DisclosedDocuments,
+    override suspend fun generateResponse(
+        selection: CredentialPresentmentSelection,
+        keyUnlockData: Map<String, KeyUnlockData>,
         signatureAlgorithm: Algorithm?
     ): ResponseResult {
-        try {
+        return try {
             val option =
                 providerGetCredentialRequest.credentialOptions[0] as GetDigitalCredentialOption
             val json = JSONObject(option.requestJson)
@@ -76,73 +89,67 @@ class ProcessedDCPAPIRequest(
             require(protocol == DC_API_PROTOCOL_ORG_ISO_MDOC) { "Unsupported protocol: $protocol" }
 
             val data = firstRequest[DATA] as JSONObject
-            val request = JSONObject(data.toString())
-            val encryptionInfoBase64 = request.getString(ENCRYPTION_INFO)
+            val encryptionInfoBase64 = data.getString(ENCRYPTION_INFO)
 
             val encryptionInfo = CBORObject.DecodeFromBytes(encryptionInfoBase64.fromBase64Url())
             if (encryptionInfo.type != CBORType.Array) {
                 logger?.e(TAG, "EncryptionInfo should be an array: $encryptionInfo")
                 throw DCAPIException("EncryptionInfo should be an array but was: ${encryptionInfo.type}")
             }
-            val recipientPublicKey =
-                Cbor.decode(
-                    encryptionInfo[1][RECIPIENT_PUBLIC_KEY].EncodeToBytes()
-                ).asCoseKey.ecPublicKey
+            val recipientPublicKey = Cbor.decode(
+                encryptionInfo[1][RECIPIENT_PUBLIC_KEY].EncodeToBytes(),
+            ).asCoseKey.ecPublicKey
 
             logger?.d(TAG, "Calling processedDeviceRequest.generateResponse() with ${disclosedDocuments.size} disclosed docs")
             disclosedDocuments.forEach { dd ->
                 logger?.d(TAG, "  DisclosedDoc: id=${dd.documentId}, items=${dd.disclosedItems.size}, keyUnlockData=${dd.keyUnlockData != null}")
             }
             val deviceResponse = processedDeviceRequest.generateResponse(
-                disclosedDocuments,
-                signatureAlgorithm
+                selection = selection,
+                keyUnlockData = keyUnlockData,
+                signatureAlgorithm = signatureAlgorithm
             ).getOrThrow() as DeviceResponse
 
             logger?.d(
                 TAG,
-                "Device response: ${Hex.toHexString(deviceResponse.deviceResponseBytes)}"
+                "Device response: ${Hex.toHexString(deviceResponse.deviceResponseBytes)}",
             )
 
-            // Encrypt the device response using HPKE
-            val (cipherText, encapsulatedPublicKey) = runBlocking {
-                val encrypter = Hpke.getEncrypter(
-                    cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,
-                    receiverPublicKey = recipientPublicKey,
-                    info = deviceResponse.sessionTranscriptBytes
-                )
-                val cipherText = encrypter.encrypt(
-                    plaintext = deviceResponse.deviceResponseBytes,
-                    aad = ByteArray(0)
-                )
-                val encapsulatedPublicKey = encrypter.encapsulatedKey.toByteArray()
-                Pair(cipherText, encapsulatedPublicKey)
-            }
+            // HPKE-encrypt the device response per ISO/IEC TS 18013-7:2025 Annex C.
+            val encrypter = Hpke.getEncrypter(
+                cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,
+                receiverPublicKey = recipientPublicKey,
+                info = deviceResponse.sessionTranscriptBytes
+            )
+            val cipherText = encrypter.encrypt(
+                plaintext = deviceResponse.deviceResponseBytes,
+                aad = ByteArray(0)
+            )
+            val encapsulatedPublicKey = encrypter.encapsulatedKey.toByteArray()
 
             val encryptedResponse = CBORObject.NewArray().apply {
                 Add(DCAPI)
-                Add(CBORObject.NewMap().apply {
-                    Add(ENC, encapsulatedPublicKey)
-                    Add(CIPHER_TEXT, cipherText)
-                })
+                Add(
+                    CBORObject.NewMap().apply {
+                        Add(ENC, encapsulatedPublicKey)
+                        Add(CIPHER_TEXT, cipherText)
+                    }
+                )
             }.EncodeToBytes()
 
-            val response = JSONObject()
-            response.put(RESPONSE, encryptedResponse.toBase64())
+            val response = JSONObject().put(RESPONSE, encryptedResponse.toBase64())
             logger?.d(TAG, "Response JSON: $response")
 
-            return ResponseResult.Success(
+            ResponseResult.Success(
                 DCAPIResponse(
                     deviceResponseBytes = deviceResponse.deviceResponseBytes,
-                    intent = createResponseIntent(
-                        protocol = protocol,
-                        data = response
-                    ),
+                    intent = createResponseIntent(protocol = protocol, data = response),
                     documentIds = deviceResponse.documentIds
                 )
             )
         } catch (e: Exception) {
             logger?.e(TAG, "Error generating response: ${e.message}", e)
-            return ResponseResult.Failure(
+            ResponseResult.Failure(
                 DCAPIException(
                     message = "Error generating response: ${e.message}",
                     cause = e
@@ -161,9 +168,7 @@ class ProcessedDCPAPIRequest(
         val resultData = Intent()
         PendingIntentHandler.setGetCredentialResponse(
             resultData,
-            GetCredentialResponse(
-                DigitalCredential(credentialJson.toString())
-            )
+            GetCredentialResponse(DigitalCredential(credentialJson.toString()))
         )
         return resultData
     }
