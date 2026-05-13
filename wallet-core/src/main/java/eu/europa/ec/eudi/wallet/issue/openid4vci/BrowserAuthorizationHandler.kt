@@ -72,18 +72,15 @@ class BrowserAuthorizationHandler(
      * - A failed [Result] with [IllegalArgumentException] if the authorization code parameter ('code') is missing from the URI
      * - A failed [Result] with [IllegalArgumentException] if the server state parameter ('state') is missing from the URI
      *
-     * If no authorization is currently in progress (e.g. duplicate deep link delivery),
-     * this method logs a warning and returns without effect.
-     *
      * @param uri The callback URI containing the authorization code and state parameters
+     * @throws IllegalStateException if no authorization is in progress
      *
      * @see authorize
      */
     fun resumeWithUri(uri: Uri) {
         logger?.d(TAG, "BrowserAuthorizationHandler.resumeWithUri($uri)")
-        val cont = continuation ?: run {
-            logger?.d(TAG, "resumeWithUri: no pending authorization, ignoring duplicate callback")
-            return
+        val cont = continuation ?: throw IllegalStateException("No suspended authorization found").also {
+            logger?.e(TAG, "BrowserAuthorizationHandler.resumeWithUri failed", it)
         }
         continuation = null
         val response = runCatching {

@@ -35,6 +35,7 @@ import org.junit.BeforeClass
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -155,18 +156,19 @@ class BrowserAuthorizationHandlerTest {
     }
 
     @Test
-    fun `resumeWithUri ignores callback when no authorization in progress`() {
+    fun `resumeWithUri throws when no authorization in progress`() {
         val callbackUri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "auth_code_123"
             every { getQueryParameter("state") } returns "xyz"
         }
 
-        // Should not throw — just logs and returns
-        handler.resumeWithUri(callbackUri)
+        assertFailsWith<IllegalStateException> {
+            handler.resumeWithUri(callbackUri)
+        }
     }
 
     @Test
-    fun `resumeWithUri ignores duplicate callback after authorization completes`() = runTest {
+    fun `resumeWithUri throws on duplicate callback after authorization completes`() = runTest {
         val authorizationUrl = "https://issuer.example.com/authorize"
         val callbackUri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "auth_code_123"
@@ -188,12 +190,14 @@ class BrowserAuthorizationHandlerTest {
         assertNotNull(result)
         assertTrue(result.isSuccess)
 
-        // Second callback (duplicate deep link delivery) should be silently ignored
-        handler.resumeWithUri(callbackUri)
+        // Second callback throws — continuation was consumed
+        assertFailsWith<IllegalStateException> {
+            handler.resumeWithUri(callbackUri)
+        }
     }
 
     @Test
-    fun `resumeWithUri ignores callback after cancellation`() = runTest {
+    fun `resumeWithUri throws on callback after cancellation`() = runTest {
         val authorizationUrl = "https://issuer.example.com/authorize"
         val callbackUri = mockk<Uri>(relaxed = true) {
             every { getQueryParameter("code") } returns "auth_code_123"
@@ -213,8 +217,10 @@ class BrowserAuthorizationHandlerTest {
         handler.cancel()
         job.join()
 
-        // Late callback after cancellation should be silently ignored
-        handler.resumeWithUri(callbackUri)
+        // Late callback after cancellation throws — continuation was cleared
+        assertFailsWith<IllegalStateException> {
+            handler.resumeWithUri(callbackUri)
+        }
     }
 
     @Test
