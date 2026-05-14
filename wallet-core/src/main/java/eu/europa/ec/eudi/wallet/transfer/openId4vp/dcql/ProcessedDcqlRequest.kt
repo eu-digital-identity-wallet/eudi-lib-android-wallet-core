@@ -95,7 +95,7 @@ class ProcessedDcqlRequest(
                 val format = dcqlQuery.format
 
                 val vp = when (format) {
-                    FORMAT_MSO_MDOC, "mso_mdoc_zk" -> verifiablePresentationForMsoMdoc(
+                    FORMAT_MSO_MDOC -> verifiablePresentationForMsoMdoc(
                         match = match,
                         documentManager = documentManager,
                         sessionTranscript = resolvedRequestObject.getSessionTranscriptBytes(),
