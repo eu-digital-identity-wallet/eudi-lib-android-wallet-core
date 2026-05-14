@@ -191,42 +191,38 @@ Attach a `TransferEvent.Listener` to handle the events during the DCAPI presenta
 eudiWallet.addTransferEventListener { event ->
     when (event) {
         is TransferEvent.RequestReceived -> try {
-            // get the processed request
-            val processedRequest = event.processedRequest.getOrThrow()
-            // the request has been received and processed
+            // get the processed request — Success carries presentmentData / requester /
+            // trustMetadata; Failure carries the error
+            val success = event.processedRequest.getOrThrow()
+                as RequestProcessor.ProcessedRequest.Success
 
-            // the request processing was successful
-            // requested documents can be shown in the application
-            val requestedDocuments = processedRequest.requestedDocuments
+            // Render the consent UI from success.presentmentData; label the verifier
+            // using success.requester / success.trustMetadata.
             // ...
-            // application must create the DisclosedDocuments object
-            val disclosedDocuments = DisclosedDocuments(
-                // assume that the document is in mso_mdoc format
-                DisclosedDocument(
-                    documentId = "document-id",
-                    disclosedItems = listOf(
-                        MsoMdocItem(
-                            namespace = "eu.europa.ec.eudi.pid.1",
-                            elementIdentifier = "first_name"
-                        ),
-                    ),
-                    // keyUnlockData is required if needed to unlock the key
-                    // in order to sign the response
-                    keyUnlockData = wallet.getDefaultKeyUnlockData("document-id")
-                ),
-                // ... rest of the disclosed documents
-            )
+
+            // Build the user's selection: one option per set, one match per member.
+            val matches = success.presentmentData.credentialSets.flatMap { set ->
+                val option = set.options.first()
+                option.members.map { member -> member.matches.first() }
+            }
+            val selection = CredentialPresentmentSelection(matches = matches)
+
+            // Per-credential unlock data, keyed by `match.credential.identifier`.
+            val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
+                match.credential.identifier to
+                    wallet.getDefaultKeyUnlockData(match.credential.identifier)
+            }
+
             // generate the response
-            val response = processedRequest.generateResponse(
-                disclosedDocuments = disclosedDocuments,
-                signatureAlgorithm = Algorithm.ES256
+            val response = success.generateResponse(
+                selection = selection,
+                keyUnlockData = keyUnlockData,
             ).getOrThrow()
 
             wallet.sendResponse(response)
 
         } catch (e: Throwable) {
-            // An error occurred
-            // handle the error
+            // An error occurred — handle the error
         }
 
         TransferEvent.IntentToSend -> {
@@ -256,9 +252,12 @@ During the DCAPI presentation, the application will receive various events that 
 of the transfer process:
 
 `TransferEvent.RequestReceived`: Indicates that a request has been received and processed.
-The processed request can be accessed through `event.processedRequest`. You can get the requested
-documents `processedRequest.requestedDocuments` and generate a response using the `processedRequest.generateResponse`
-method. See more details in [README](README.md#receiving-a-request-and-sending-a-response).
+The processed request can be accessed through `event.processedRequest`. On success, the
+`RequestProcessor.ProcessedRequest.Success` carries `presentmentData` (the candidate-credentials
+tree), `requester`, and `trustMetadata`. The application builds a
+`CredentialPresentmentSelection` from the tree and calls `success.generateResponse(...)` to
+produce the response. See more details in
+[README](README.md#receiving-a-request-and-sending-a-response).
 
 `TransferEvent.IntentToSend`: Indicates that the response intent `event.intent` is ready. Then you
 can send the response intent and finish the activity, as follows:

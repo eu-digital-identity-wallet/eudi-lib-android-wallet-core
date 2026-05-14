@@ -175,68 +175,91 @@ implementation when key unlocking is required:
 lateinit var processedRequest: RequestProcessor.ProcessedRequest.Success
 
 /**
- * Example function that demonstrates how to get information about the requested documents
- * and show them to the user. The function should be called when the request is received.
+ * Example function that demonstrates how to traverse the candidate-credentials tree
+ * and show what the verifier is asking for. The function should be called when the
+ * request is received.
  */
 fun showRequestedDocuments() {
-    // shows requested documents to user
+    // shows the requested credentials and claims to the user
 
-    processedRequest.requestedDocuments.forEach { requestedDocument ->
-        // get document if needed to show more information such as document's name and docType
-        val document =
-            wallet.getDocumentById(requestedDocument.documentId) as? IssuedDocument
-        val documentName = document?.name
-        val docType = (document?.format as? MsoMdocFormat)?.docType
+    processedRequest.presentmentData.credentialSets.forEach { set ->
+        set.options.forEach { option ->
+            option.members.forEach { member ->
+                member.matches.forEach { match ->
+                    // get document if needed to show more information such as document's
+                    // name and docType
+                    val document = wallet.getDocumentById(match.credential.identifier)
+                        as? IssuedDocument
+                    val documentName = document?.name
+                    val docType = (document?.format as? MsoMdocFormat)?.docType
 
-        // show requested fields for this document
-        val docItems =
-            requestedDocument.requestedItems.forEach { (docItem, intentToRetain) ->
-                val nameSpace = docItem.namespace
-                val elementIdentifier = docItem.elementIdentifier
+                    // show requested claims for this candidate match
+                    match.claims.keys.forEach { requestedClaim ->
+                        when (requestedClaim) {
+                            is MdocRequestedClaim -> {
+                                val nameSpace = requestedClaim.namespaceName
+                                val elementIdentifier = requestedClaim.dataElementName
+                                val intentToRetain = requestedClaim.intentToRetain
+                                // render mso_mdoc claim in the UI
+                            }
+                            is JsonRequestedClaim -> {
+                                val claimPath = requestedClaim.claimPath
+                                // render SD-JWT VC claim path in the UI
+                            }
+                        }
+                    }
+                }
             }
+        }
     }
 }
 
 /**
  * Example function that demonstrates how to generate and send a response based on the
- * selected documents. The function should be called after the user has selected the
- * documents to disclose.
+ * user's confirmed matches. The function should be called after the user has selected
+ * which candidate(s) to use.
  *
- * @param selectedDocuments A map of selected documents and the selected items to disclose
+ * @param confirmedMatches the matches the user has picked from the tree.
  */
-suspend fun discloseDocuments(selectedDocuments: Map<IssuedDocument, List<DocItem>>) {
-   val disclosedDocuments = DisclosedDocuments(
-      selectedDocuments.map { (document, docItems) ->
+suspend fun discloseDocuments(
+    confirmedMatches: List<CredentialPresentmentSetOptionMemberMatch>,
+) {
+    // For each confirmed match, build the appropriate MyKeyUnlockData and key it by
+    // `match.credential.identifier` — the response builder routes per-credential unlock
+    // data to SecureArea.sign during signing.
+    val keyUnlockData: Map<String, KeyUnlockData> =
+        confirmedMatches.associate { match ->
 
-         // should block until the user has unlock the key to sign the response
+            // should block until the user has unlocked the key to sign the response
 
-         // One can use information from document to determine how to
-         // create the MyKeyUnlockData object, such as:
+            // One can use information from the document to determine how to create the
+            // MyKeyUnlockData object, such as:
 
-         val credential = document.findCredential()!!
-         val secureArea = credential.secureArea as MySecureArea
-         val keyAlias = credential.alias
-         val keyInfo = credential.secureArea.getKeyInfo(credential.alias) as MyKeyInfo
+            val document = wallet.getDocumentById(match.credential.identifier)
+                as IssuedDocument
+            val credential = document.findCredential()!!
+            val secureArea = credential.secureArea as MySecureArea
+            val keyAlias = credential.alias
+            val keyInfo = credential.secureArea.getKeyInfo(credential.alias) as MyKeyInfo
 
-         //
-         // --> show prompt if needed to unlock the key <--
-         //
+            //
+            // --> show prompt if needed to unlock the key <--
+            //
 
-         // create and return the keyUnlockData to unlock the key of the document
-         val keyUnlockData = MyKeyUnlockData(
-            // set the extra information for the key unlock data
-            // e.g. password, biometric data, authorization tokens etc.
-         )
+            val unlockData = MyKeyUnlockData(
+                // set the extra information for the key unlock data
+                // e.g. password, biometric data, authorization tokens etc.
+            )
 
-         DisclosedDocument(
-            documentId = document.id,
-            disclosedItems = docItems,
-            keyUnlockData = keyUnlockData
-         )
-      })
+            match.credential.identifier to unlockData
+        }
 
-   val response = processedRequest.generateResponse(disclosedDocuments).getOrThrow()
-   wallet.sendResponse(response)
+    val selection = CredentialPresentmentSelection(matches = confirmedMatches)
+    val response = processedRequest.generateResponse(
+        selection = selection,
+        keyUnlockData = keyUnlockData,
+    ).getOrThrow()
+    wallet.sendResponse(response)
 }
 
 /**

@@ -113,7 +113,7 @@ The library supports the following features:
 |                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
 | **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
 |                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
-|                            | DCQL                                                                    | ✅ support for credential_sets  <br />❌ support for claim_sets <br /> ❌ multiple credentials in CredentialQuery ignored |
+|                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br /> ❌ multiple credentials in CredentialQuery ignored |
 |                            | Transaction data                                                        | ❌                                                                                                                      |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
@@ -1109,10 +1109,9 @@ This flexibility allows you to:
 
 The library provides the `OpenId4VciManager.resolveDocumentOffer` method that resolves the
 credential offer URI.
-The method returns the resolved [
-`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt) object that
-contains the offer's data. The offer's
-data can be displayed to the user.
+The method returns the resolved 
+[`Offer`](wallet-core/src/main/java/eu/europa/ec/eudi/wallet/issue/openid4vci/Offer.kt) object that
+contains the offer's data. The offer's data can be displayed to the user.
 
 The following example shows how to resolve a credential offer:
 
@@ -1759,42 +1758,40 @@ wallet.addTransferEventListener { event ->
         }
 
         is TransferEvent.RequestReceived -> try {
-            // get the processed request
-            val processedRequest = event.processedRequest.getOrThrow()
-            // the request has been received and processed
+            // get the processed request — Success carries presentmentData / requester /
+            // trustMetadata; Failure carries the error
+            val success = event.processedRequest.getOrThrow()
+                as RequestProcessor.ProcessedRequest.Success
 
-            // the request processing was successful
-            // requested documents can be shown in the application
-            val requestedDocuments = processedRequest.requestedDocuments
+            // Render the consent UI from success.presentmentData; label the verifier
+            // using success.requester / success.trustMetadata.
             // ...
-            // application must create the DisclosedDocuments object
-            val disclosedDocuments = DisclosedDocuments(
-                // assume that the document is in mso_mdoc format
-                DisclosedDocument(
-                    documentId = "document-id",
-                    disclosedItems = listOf(
-                        MsoMdocItem(
-                            namespace = "eu.europa.ec.eudi.pid.1",
-                            elementIdentifier = "first_name"
-                        ),
-                    ),
-                    // keyUnlockData is required if needed to unlock the key
-                    // in order to sign the response
-                    keyUnlockData = wallet.getDefaultKeyUnlockData("document-id")
-                ),
-                // ... rest of the disclosed documents
-            )
+
+            // Build the user's selection: one option per set, one match per member.
+            // (Or call `success.presentmentData.select(preselectedDocuments)` for a
+            // one-liner shortcut.)
+            val matches = success.presentmentData.credentialSets.flatMap { set ->
+                val option = set.options.first()
+                option.members.map { member -> member.matches.first() }
+            }
+            val selection = CredentialPresentmentSelection(matches = matches)
+
+            // Per-credential unlock data, keyed by `match.credential.identifier`.
+            val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
+                match.credential.identifier to
+                    wallet.getDefaultKeyUnlockData(match.credential.identifier)
+            }
+
             // generate the response
-            val response = processedRequest.generateResponse(
-                disclosedDocuments = disclosedDocuments,
-                signatureAlgorithm = Algorithm.ES256
+            val response = success.generateResponse(
+                selection = selection,
+                keyUnlockData = keyUnlockData
             ).getOrThrow()
 
             wallet.sendResponse(response)
 
         } catch (e: Throwable) {
-            // An error occurred
-            // handle the error
+            // An error occurred — handle the error
         }
 
         TransferEvent.ResponseSent -> {
@@ -1990,81 +1987,135 @@ wallet.addTransferEventListener { event ->
 
 #### Receiving a request and sending a response
 
-When a `TransferEvent.RequestReceived` event is triggered, the processed request can be obtained by
-calling `event.processedRequest`. If the request is successfully processed, the requested
-documents are extracted from the `processedRequest` object.
+When a `TransferEvent.RequestReceived` event is triggered, the processed request can be obtained
+by calling `event.processedRequest.getOrThrow()`. On success this returns a
+`RequestProcessor.ProcessedRequest.Success` carrying three pieces of information that the
+application consumes to render its consent UI and build the response:
 
-The application then show the requested documents to the user and later create a
-`DisclosedDocuments` object, which includes the documents to be disclosed in the response. Each
-`DisclosedDocument` must contain the `documentId` of the disclosed document, a list of `DocItem`
-objects representing the disclosed items, and `keyUnlockData` if needed to unlock the key for
-signing the response.
+| Field                                        | Purpose                                                                                                                                                                                                            |
+|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `presentmentData: CredentialPresentmentData` | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
+| `requester: Requester`                       | The verifier's transport-level identity — certificate chain when reader-auth is present, plus `appId` / `origin` if available.                                                                                     |
+| `trustMetadata: TrustMetadata?`              | Non-`null` only when the verifier's cert chain validated against the configured `ReaderTrustStore`. Carries `displayName` for trusted-verifier UI; `null` means the UI should render an "unknown verifier" branch. |
 
-After creating the `DisclosedDocuments` object, a response can be generated using the
-`processedRequest.generateResponse` method, specifying the disclosed documents and the signature
-algorithm (`Algorithm.ES256`). The generated response is then sent using the `wallet.sendResponse`
-method.
+##### The CredentialPresentmentData tree
+
+`CredentialPresentmentData` is a list of `CredentialPresentmentSet`s. Each set is a group of
+alternative ways the verifier's request can be satisfied:
+
+```
+CredentialPresentmentData
+└─ List<CredentialPresentmentSet>                         ← one per credential set in the request
+   ├─ optional: Boolean                                   ← required vs optional set
+   └─ List<CredentialPresentmentSetOption>                ← alternative options inside the set
+      └─ List<CredentialPresentmentSetOptionMember>       ← credentials required by the option
+         └─ List<CredentialPresentmentSetOptionMemberMatch>   ← candidate credentials in the wallet
+            ├─ credential: Credential                     ← the wallet's credential
+            ├─ claims: Map<RequestedClaim, Claim>         ← claims this match would disclose
+            └─ source: CredentialMatchSource              ← the originating request (DCQL / ISO 18013)
+```
+
+For each set the user accepts, the application picks exactly one option, then one match per
+member of that option, and collects them into a `CredentialPresentmentSelection`. The
+`match.claims` map already reflects the wallet's spec-compliant resolution of the verifier's
+request (DCQL `claim_sets` first-match per §6.4.1, hard-fail on missing claims) — the UI can
+display it as-is or further narrow it down if the user opts out of specific claims.
+
+##### Requested claim types
+
+Each `match.claims` map is keyed by `RequestedClaim`, which has two concrete subtypes depending
+on the credential format:
+
+| Subtype                | Fields                                                                       | Used for             |
+|------------------------|------------------------------------------------------------------------------|----------------------|
+| `MdocRequestedClaim`   | `docType`, `namespaceName`, `dataElementName`, `intentToRetain`              | ISO mdoc / mso_mdoc  |
+| `JsonRequestedClaim`   | `vctValues`, `claimPath` (a JSON-pointer-style path that may include array indices and `null` wildcards per OpenID4VP §7.1) | SD-JWT VC           |
+
+The corresponding value (`Claim`) holds the actual disclosable data from the credential, so the
+UI can render previews next to each claim entry (e.g. "first name: Alice").
+
+##### Helpful methods on the model
+
+A few helpers reduce boilerplate when consuming the tree and rendering the consent UI:
+
+- `presentmentData.select(preselectedDocuments)` — returns a `CredentialPresentmentSelection`
+  ready for `generateResponse`. If `preselectedDocuments` is empty it picks the first
+  option / member / match of every set; otherwise it tries to match the documents the user
+  has already chosen in the UI.
+- `presentmentData.consolidate()` — flattens single-member options of each set into one
+  option that groups all their matches together, making it easier to render a simple
+  dropdown when the verifier accepts several alternative single-credential options
+  (e.g. "any of: mDL, PID, PhotoID").
+- `presentmentData.getAllSelections()` — returns every possible combination of
+  options / members / matches if the UI wants to enumerate all valid selections.
+- `claim.render()` — renders a `Claim` value as a human-readable string, taking the
+  document attribute (when known) into account. This decodes enum codes to display
+  labels (e.g. `sex = 1` → `"Male"`, country code `"GR"` → `"Greece"`), formats dates
+  with the user's locale, and handles pictures / blobs gracefully. Optionally accepts a
+  `timeZone` used only when converting UTC instants in date / date-time claims to the
+  user's local time (defaults to the system time zone).
+
+##### Building the selection and generating the response
+
+After the user has confirmed which match(es) to use, the application builds a
+`CredentialPresentmentSelection`, attaches any per-credential `KeyUnlockData` keyed by
+`match.credential.identifier`, and calls `generateResponse`:
 
 ```kotlin
 val transferEventListener = TransferEvent.Listener { event ->
     when (event) {
 
         is TransferEvent.RequestReceived -> try {
-            // get the processed request
-            val processedRequest = event.processedRequest.getOrThrow()
-            // the request has been received and processed
+            // get the processed request — Success carries presentmentData / requester /
+            // trustMetadata; Failure carries the error
+            val success = event.processedRequest.getOrThrow()
+                as RequestProcessor.ProcessedRequest.Success
 
-            // the request processing was successful
-            // requested documents can be shown in the application
-            val requestedDocuments = processedRequest.requestedDocuments
-            // ...
-            // application must create the DisclosedDocuments object
-            // Here for simplicity we assume that the first document is the only requested document
-            // and we disclose only the first name
-
-            // get the first document by id
-            val firstDocumentId = requestedDocuments.first().documentId
-
-            val firstDocument = wallet.getDocumentById(firstDocumentId) as IssuedDocument
-            // We also assume that it requires user authentication
-            // so we create the keyUnlockData to unlock the key
-            val keyUnlockData = firstDocument.DefaultKeyUnlockData
-            val cryptoObject = keyUnlockData.getCryptoObjectForSigning(Algorithm.ES256)
-            // authenticate the user using the cryptoObject
+            // render the consent UI from success.presentmentData (and use
+            // success.requester / success.trustMetadata to label the verifier)
             // ...
 
-            val disclosedDocuments = DisclosedDocuments(
-                DisclosedDocument(
-                    documentId = firstDocumentId,
-                    disclosedItems = listOf(
-                        MsoMdocItem(
-                            namespace = "eu.europa.ec.eudi.pid.1",
-                            elementIdentifier = "first_name"
-                        ),
-                    ),
-                    // keyUnlockData is required if needed to unlock the key
-                    // in order to sign the response
-                    keyUnlockData = keyUnlockData
-                ),
-                // ... rest of the disclosed documents
-            )
+            // For each set the user agreed to, pick one option and one match per member.
+            // Here, for simplicity, we take the first option of every set and the first
+            // match of every member as the user's confirmed choice. The one-liner
+            // `success.presentmentData.select(preselectedDocuments)` does the same
+            // (and can match the user's pre-selected documents when supplied).
+            val matches = success.presentmentData.credentialSets.flatMap { set ->
+                val option = set.options.first()
+                option.members.map { member -> member.matches.first() }
+            }
+            val selection = CredentialPresentmentSelection(matches = matches)
+
+            // If any picked credential requires unlock data (e.g. PIN-locked keys),
+            // build a map keyed by `match.credential.identifier`.
+            val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
+                val document = wallet.getDocumentById(...) as IssuedDocument
+                val unlockData = document.DefaultKeyUnlockData
+                // authenticate the user using unlockData.getCryptoObjectForSigning(...)
+                // if biometric / device-credential gating is required
+                match.credential.identifier to unlockData
+            }
+
             // generate the response
-            val response = processedRequest.generateResponse(
-                disclosedDocuments = disclosedDocuments,
-                signatureAlgorithm = Algorithm.ES256
+            val response = success.generateResponse(
+                selection = selection,
+                keyUnlockData = keyUnlockData,
             ).getOrThrow()
 
             wallet.sendResponse(response)
 
         } catch (e: Throwable) {
-            // An error occurred
-            // handle the error
+            // An error occurred — handle the error
         }
         // handle other events
         else -> {}
     }
 }
 ```
+
+Note: Empty matches in `presentmentData.credentialSets` mean the request cannot be satisfied
+with the credentials currently in the wallet — render an appropriate error state and do 
+not call `generateResponse`.
 
 #### Rejecting a Presentation
 To reject a remote presentation request and notify the Verifier that the user has declined, call the `wallet.rejectRemotePresentation()` method
