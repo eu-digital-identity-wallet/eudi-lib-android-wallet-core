@@ -111,7 +111,6 @@ class DeviceRequestProcessorTest {
             val result = processed.generateResponse(
                 selection = selection,
                 keyUnlockData = emptyMap(),
-                signatureAlgorithm = null,
             )
 
             val success = assertIs<ResponseResult.Success>(result)
@@ -150,7 +149,6 @@ class DeviceRequestProcessorTest {
             val result = processed.generateResponse(
                 selection = CredentialPresentmentSelection(matches = listOf(narrowedMatch)),
                 keyUnlockData = emptyMap(),
-                signatureAlgorithm = null,
             )
 
             val response = assertIs<DeviceResponse>(assertIs<ResponseResult.Success>(result).response)
@@ -181,7 +179,6 @@ class DeviceRequestProcessorTest {
             val result = processed.generateResponse(
                 selection = CredentialPresentmentSelection(matches = listOf(match)),
                 keyUnlockData = keyUnlockData,
-                signatureAlgorithm = null,
             )
 
             val response = assertIs<DeviceResponse>(assertIs<ResponseResult.Success>(result).response)

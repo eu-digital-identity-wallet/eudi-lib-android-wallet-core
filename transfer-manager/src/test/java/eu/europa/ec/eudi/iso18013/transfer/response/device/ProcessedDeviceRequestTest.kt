@@ -170,7 +170,6 @@ class ProcessedDeviceRequestTest {
         val result = processed.generateResponse(
             selection = CredentialPresentmentSelection(matches = listOf(openId4VpMatch)),
             keyUnlockData = emptyMap(),
-            signatureAlgorithm = null,
         )
 
         val success = assertIs<ResponseResult.Success>(result)
@@ -189,7 +188,6 @@ class ProcessedDeviceRequestTest {
         val result = generateResponse(
             selection = CredentialPresentmentSelection(matches = emptyList()),
             keyUnlockData = emptyMap(),
-            signatureAlgorithm = null,
         )
         val success = assertIs<ResponseResult.Success>(result)
         return assertIs<DeviceResponse>(success.response)

@@ -30,7 +30,6 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import org.multipaz.cbor.Cbor
-import org.multipaz.crypto.Algorithm
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.response.MdocDocument
 import org.multipaz.mdoc.zkp.ZkSystemRepository
@@ -101,14 +100,12 @@ class ProcessedDeviceRequest(
      *   `claims` map is expected to already reflect the user's disclosure choice.
      * @param keyUnlockData per-credential unlock data, keyed by `match.credential.identifier`.
      *   Empty when no credential keys require unlocking.
-     * @param signatureAlgorithm optional override for the device signature algorithm.
      * @return a [ResponseResult.Success] wrapping the signed [DeviceResponse], or
      *   [ResponseResult.Failure] if any per-match generation throws.
      */
     override suspend fun generateResponse(
         selection: CredentialPresentmentSelection,
-        keyUnlockData: Map<String, KeyUnlockData>,
-        signatureAlgorithm: Algorithm?
+        keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
         return try {
 

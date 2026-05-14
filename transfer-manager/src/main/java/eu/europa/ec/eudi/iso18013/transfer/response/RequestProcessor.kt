@@ -16,7 +16,6 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.response
 
-import org.multipaz.crypto.Algorithm
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.Requester
@@ -68,13 +67,11 @@ fun interface RequestProcessor {
              *   [presentmentData] tree.
              * @param keyUnlockData per-credential unlock data, keyed by the
              *   `Credential.identifier`. Empty by default.
-             * @param signatureAlgorithm optional signature algorithm override for the response.
              * @return the response result containing the wire response or an error.
              */
             abstract suspend fun generateResponse(
                 selection: CredentialPresentmentSelection,
-                keyUnlockData: Map<String, KeyUnlockData> = emptyMap(),
-                signatureAlgorithm: Algorithm? = null
+                keyUnlockData: Map<String, KeyUnlockData> = emptyMap()
             ): ResponseResult
         }
 
