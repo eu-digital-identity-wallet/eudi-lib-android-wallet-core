@@ -55,7 +55,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
-import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
@@ -310,8 +309,7 @@ internal suspend fun verifiablePresentationForSdJwtVc(
     resolvedRequestObject: ResolvedRequestObject,
     match: CredentialPresentmentSetOptionMemberMatch,
     documentManager: DocumentManager,
-    keyUnlockData: KeyUnlockData?,
-    signatureAlgorithm: Algorithm
+    keyUnlockData: KeyUnlockData?
 ): VerifiablePresentation.Generic {
     val document = match.credential.requireIssuedDocument(documentManager)
     return document.consumingCredential {
@@ -363,8 +361,7 @@ internal suspend fun verifiablePresentationForMsoMdoc(
     match: CredentialPresentmentSetOptionMemberMatch,
     documentManager: DocumentManager,
     sessionTranscript: ByteArray,
-    keyUnlockData: KeyUnlockData?,
-    signatureAlgorithm: Algorithm
+    keyUnlockData: KeyUnlockData?
 ): VerifiablePresentation.Generic {
     val document = match.credential.requireIssuedDocument(documentManager)
 

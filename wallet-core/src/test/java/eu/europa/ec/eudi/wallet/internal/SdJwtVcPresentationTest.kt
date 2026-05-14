@@ -92,8 +92,7 @@ class SdJwtVcPresentationTest {
                 resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
                 match = match,
                 documentManager = documentManager,
-                keyUnlockData = null,
-                signatureAlgorithm = Algorithm.ESP256,
+                keyUnlockData = null
             )
         }
     }
@@ -149,8 +148,7 @@ class SdJwtVcPresentationTest {
             resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
             match = match,
             documentManager = documentManager,
-            keyUnlockData = null,
-            signatureAlgorithm = Algorithm.ESP256,
+            keyUnlockData = null
         )
 
         // The compact form is non-empty and terminates with `~` (the SD-JWT framing tilde).
@@ -215,7 +213,6 @@ class SdJwtVcPresentationTest {
             match = match,
             documentManager = documentManager,
             keyUnlockData = null,
-            signatureAlgorithm = Algorithm.ESP256,
         )
 
         // Parse the produced SD-JWT and recreate the disclosed claim set by verifying

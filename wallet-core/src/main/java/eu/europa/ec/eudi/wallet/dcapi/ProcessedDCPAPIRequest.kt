@@ -35,7 +35,6 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
 import org.multipaz.cbor.Cbor
-import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Hpke
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
@@ -76,8 +75,7 @@ class ProcessedDCPAPIRequest(
     @OptIn(ExperimentalDigitalCredentialApi::class)
     override suspend fun generateResponse(
         selection: CredentialPresentmentSelection,
-        keyUnlockData: Map<String, KeyUnlockData>,
-        signatureAlgorithm: Algorithm?
+        keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
         return try {
             val option =
@@ -106,8 +104,7 @@ class ProcessedDCPAPIRequest(
             }
             val deviceResponse = processedDeviceRequest.generateResponse(
                 selection = selection,
-                keyUnlockData = keyUnlockData,
-                signatureAlgorithm = signatureAlgorithm
+                keyUnlockData = keyUnlockData
             ).getOrThrow() as DeviceResponse
 
             logger?.d(

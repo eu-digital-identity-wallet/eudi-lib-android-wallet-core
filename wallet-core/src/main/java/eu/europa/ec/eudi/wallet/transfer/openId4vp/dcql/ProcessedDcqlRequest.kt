@@ -31,7 +31,6 @@ import eu.europa.ec.eudi.wallet.internal.requireIssuedDocument
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
-import org.multipaz.crypto.Algorithm
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
@@ -81,11 +80,9 @@ class ProcessedDcqlRequest(
      */
     override suspend fun generateResponse(
         selection: CredentialPresentmentSelection,
-        keyUnlockData: Map<String, KeyUnlockData>,
-        signatureAlgorithm: Algorithm?,
+        keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
         return try {
-            val algorithm = signatureAlgorithm ?: Algorithm.ESP256
             val verifiablePresentationsMap =
                 mutableMapOf<QueryId, MutableList<VerifiablePresentation>>()
             val respondedDocumentsMap =
@@ -102,16 +99,14 @@ class ProcessedDcqlRequest(
                         match = match,
                         documentManager = documentManager,
                         sessionTranscript = resolvedRequestObject.getSessionTranscriptBytes(),
-                        keyUnlockData = keyUnlockData[match.credential.identifier],
-                        signatureAlgorithm = algorithm
+                        keyUnlockData = keyUnlockData[match.credential.identifier]
                     )
 
                     FORMAT_SD_JWT_VC -> verifiablePresentationForSdJwtVc(
                         resolvedRequestObject = resolvedRequestObject,
                         match = match,
                         documentManager = documentManager,
-                        keyUnlockData = keyUnlockData[match.credential.identifier],
-                        signatureAlgorithm = algorithm
+                        keyUnlockData = keyUnlockData[match.credential.identifier]
                     )
 
                     else -> throw IllegalArgumentException("Unsupported format: $format")
