@@ -119,12 +119,12 @@ class SdJwtVcTest {
         for ((path, value, selectivelyDisclosable) in claimValueList) {
             var current = sdJwtVcClaims
             for (key in path.value) {
-                val existingNode = current.find { it.identifier == key.toString() }
+                val existingNode = current.find { it.pathElement == key }
                 if (existingNode != null) {
                     current = existingNode.children
                 } else {
                     val newClaim = MutableSdJwtClaim(
-                        identifier = key.toString(),
+                        pathElement = key,
                         value = value?.parse(),
                         rawValue = value?.toString() ?: "",
                         selectivelyDisclosable = selectivelyDisclosable,
@@ -167,7 +167,7 @@ class SdJwtVcTest {
 
     private fun printSdJwtVcClaims(sdJwtVcClaims: List<MutableSdJwtClaim>, indent: String = "") {
         for (sdJwtVcClaim in sdJwtVcClaims) {
-            println("$indent- Identifier: ${sdJwtVcClaim.identifier}")
+            println("$indent- PathElement: ${sdJwtVcClaim.pathElement}")
             if (sdJwtVcClaim.value != null) println("$indent  Value: ${sdJwtVcClaim.value}")
             if (sdJwtVcClaim.rawValue.isNotEmpty()) println("$indent  Raw Value: ${sdJwtVcClaim.rawValue}")
             println("$indent  Selectively Disclosable: ${sdJwtVcClaim.selectivelyDisclosable}")

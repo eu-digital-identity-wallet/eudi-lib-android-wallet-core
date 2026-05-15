@@ -514,21 +514,94 @@ val invalidatedKeys: Map<String, Boolean> = issuedDocument?.getCredentials()
 
 Access document data in various formats:
 
+A common use case is reading a single named claim — for example, the user's first
+name to display on the home screen. Here is an example of how to do that for mso_mdoc and SD-JWT VC:
+
 ```kotlin
-val issuedDocument = documentManager.getDocumentById("document_id") as? IssuedDocument
+val pidDocument = documentManager.getDocumentById("pid_document_id") as IssuedDocument
 
-requireNotNull(issuedDocument)
-// Access the given_name claim from the document
-val givenNameClaim = when (val data = issuedDocument.data) {
-  is MsoMdocData -> data.claims
-    .find { it.nameSpace == "eu.europa.ec.eudi.pid.1" && it.identifier == "given_name" }
+// Pull `given_name` out of the PID, regardless of format.
+val givenNameClaim: String? = when (val data = pidDocument.data) {
+    // mso_mdoc: data element name within a namespace.
+    is MsoMdocData -> data.claims
+        .find {
+            it.nameSpace == "eu.europa.ec.eudi.pid.1" &&
+                it.dataElementName == "given_name"
+        }
 
-  is SdJwtVcData -> data.claims
-    .find { it.identifier == "given_name" }
+    // SD-JWT VC: top-level claim by name.
+    is SdJwtVcData -> data.claims
+        .find { it.claimName == "given_name" }
 }
+
 val givenName = givenNameClaim?.value as String
 val givenNameDisplay = givenNameClaim.issuerMetadata?.display
-  ?.find { it.locale == Locale.getDefault() }
+    ?.find { it.locale == Locale.getDefault() }
+```
+
+Notes:
+ - `dataElementName` is the ISO mdoc data-element identifier within a namespace.
+ - `claimName` returns the top-level object key for SD-JWT VC claims; it is `null`
+   for array indices and the wildcard. When you need to handle those, switch on
+   `pathElement` directly (`ClaimPathElement.Claim` / `ArrayElement` /
+   `AllArrayElements`).
+ - Nested SD-JWT VC claims (e.g. `place_of_birth.country`) are reachable via
+   `SdJwtVcClaim.children`.
+
+##### Nested SD-JWT VC claims
+
+A nested object such as `place_of_birth = { country, locality, region }` is stored
+as one `SdJwtVcClaim` whose `children` list holds the inner claims:
+
+```kotlin
+val birthCountry: String? = (pidDocument.data as? SdJwtVcData)?.claims
+    .orEmpty()
+    .find { it.claimName == "place_of_birth" }
+    ?.children
+    ?.find { it.claimName == "country" }
+    ?.value as? String
+```
+
+The same shape extends to deeper nesting — keep chaining `.children` and matching
+by `claimName`.
+
+##### SD-JWT VC array elements
+
+An array such as `nationalities = ["GR", "SE"]` is stored as one parent
+`SdJwtVcClaim` whose `children` are per-index entries. The convenience property
+`arrayIndex` returns the integer when `pathElement` is a
+`ClaimPathElement.ArrayElement`:
+
+```kotlin
+// First nationality.
+val primaryNationality: String? = (pidDocument.data as? SdJwtVcData)?.claims
+    .orEmpty()
+    .find { it.claimName == "nationalities" }
+    ?.children
+    ?.find { it.arrayIndex == 0 }
+    ?.value as? String
+
+// All nationalities.
+val nationalities: List<String> = (pidDocument.data as? SdJwtVcData)?.claims
+    .orEmpty()
+    .find { it.claimName == "nationalities" }
+    ?.children
+    ?.mapNotNull { it.value as? String }
+    .orEmpty()
+```
+
+For arrays of objects (e.g. `addresses[0].city`), combine the two: descend into
+the indexed child, then into its named grand-child:
+
+```kotlin
+val firstAddressCity: String? = (pidDocument.data as? SdJwtVcData)?.claims
+    .orEmpty()
+    .find { it.claimName == "addresses" }
+    ?.children
+    ?.find { it.arrayIndex == 0 }
+    ?.children
+    ?.find { it.claimName == "city" }
+    ?.value as? String
 ```
 
 ### Other features

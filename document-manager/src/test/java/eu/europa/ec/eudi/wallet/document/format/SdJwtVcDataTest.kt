@@ -74,7 +74,7 @@ class SdJwtVcDataTest {
 
     private fun printSdJwtVcClaims(sdJwtVcClaims: List<SdJwtVcClaim>, indent: String = "") {
         for (sdJwtVcClaim in sdJwtVcClaims) {
-            println("$indent- Identifier: ${sdJwtVcClaim.identifier}")
+            println("$indent- PathElement: ${sdJwtVcClaim.pathElement}")
             if (sdJwtVcClaim.value != null) println("$indent  Value: ${sdJwtVcClaim.value}")
             if (sdJwtVcClaim.rawValue.isNotEmpty()) println("$indent  Raw Value: ${sdJwtVcClaim.rawValue}")
             println("$indent  Selectively Disclosable: ${sdJwtVcClaim.selectivelyDisclosable}")

@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.document.format
 
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.query
 import eu.europa.ec.eudi.wallet.document.NameSpace
 import eu.europa.ec.eudi.wallet.document.NameSpacedValues
@@ -66,13 +67,17 @@ sealed interface DocumentData {
 
 /**
  * Represents a claim of a document.
- * @property identifier The identifier of the claim.
+ *
+ * Format-specific identification is held by the subclasses:
+ *  - [MsoMdocClaim.dataElementName] (with [MsoMdocClaim.nameSpace]) for ISO mdoc
+ *  - [SdJwtVcClaim.pathElement] for SD-JWT VC, typed per OpenID4VP §7.1 (object key,
+ *    array index, or wildcard)
+ *
  * @property value The value of the claim.
  * @property rawValue The raw value of the claim.
  * @property issuerMetadata The metadata of the claim provided by the issuer.
  */
 sealed class DocumentClaim(
-    open val identifier: String,
     open val value: Any?,
     open val rawValue: Any?,
     open val issuerMetadata: IssuerMetadata.Claim? = null
@@ -97,13 +102,13 @@ data class MsoMdocData(
 
     override val claims: List<MsoMdocClaim>
         get() = nameSpacedData.nameSpaceNames.flatMap { nameSpace ->
-            nameSpacedData.getDataElementNames(nameSpace).map { identifier ->
-                val metadataClaimName = listOf(nameSpace, identifier)
+            nameSpacedData.getDataElementNames(nameSpace).map { dataElementName ->
+                val metadataClaimName = listOf(nameSpace, dataElementName)
                 MsoMdocClaim(
                     nameSpace = nameSpace,
-                    identifier = identifier,
-                    value = nameSpacedData.getDataElement(nameSpace, identifier).toObject(),
-                    rawValue = nameSpacedData.getDataElement(nameSpace, identifier),
+                    dataElementName = dataElementName,
+                    value = nameSpacedData.getDataElement(nameSpace, dataElementName).toObject(),
+                    rawValue = nameSpacedData.getDataElement(nameSpace, dataElementName),
                     issuerMetadata = issuerMetadata?.claims?.find { it.path == metadataClaimName }
                 )
             }
@@ -119,7 +124,7 @@ data class MsoMdocData(
 
     val nameSpacedDataDecoded: NameSpacedValues<Any?>
         get() = claims.groupBy { it.nameSpace }
-            .mapValues { it.value.associate { claim -> claim.identifier to claim.value } }
+            .mapValues { it.value.associate { claim -> claim.dataElementName to claim.value } }
 
     val nameSpaces: NameSpaces
         get() = nameSpacedDataInBytes.mapValues { it.value.keys.toList() }
@@ -144,18 +149,18 @@ data class MsoMdocData(
 /**
  * Represents a claim of a document in the MsoMdoc format.
  * @property nameSpace The name-space of the claim.
- * @property identifier The identifier of the claim.
+ * @property dataElementName The data-element identifier within [nameSpace].
  * @property value The value of the claim.
  * @property rawValue The raw value of the claim in bytes.
  * @property issuerMetadata The metadata of the claim provided by the issuer.
  */
 data class MsoMdocClaim(
     val nameSpace: NameSpace,
-    override val identifier: String,
+    val dataElementName: String,
     override val value: Any?,
     override val rawValue: ByteArray,
-    override val issuerMetadata: IssuerMetadata.Claim?,
-) : DocumentClaim(identifier, value, rawValue, issuerMetadata) {
+    override val issuerMetadata: IssuerMetadata.Claim?
+) : DocumentClaim(value, rawValue, issuerMetadata) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -164,7 +169,7 @@ data class MsoMdocClaim(
         other as MsoMdocClaim
 
         if (nameSpace != other.nameSpace) return false
-        if (identifier != other.identifier) return false
+        if (dataElementName != other.dataElementName) return false
         if (value != other.value) return false
         if (!rawValue.contentEquals(other.rawValue)) return false
         if (issuerMetadata != other.issuerMetadata) return false
@@ -174,7 +179,7 @@ data class MsoMdocClaim(
 
     override fun hashCode(): Int {
         var result = nameSpace.hashCode()
-        result = 31 * result + identifier.hashCode()
+        result = 31 * result + dataElementName.hashCode()
         result = 31 * result + (value?.hashCode() ?: 0)
         result = 31 * result + rawValue.contentHashCode()
         result = 31 * result + (issuerMetadata?.hashCode() ?: 0)
@@ -215,8 +220,11 @@ data class SdJwtVcData(
                 var current = sdJwtVcClaims
 
                 for (key in path.value) {
-                    // check if the current path element is already present in the current list of claims
-                    val existingNode = current.find { it.identifier == key.toString() }
+                    // each `key` is a typed ClaimPathElement (Claim name, ArrayElement
+                    // index, or AllArrayElements wildcard); we preserve that type in the
+                    // tree so downstream consumers can tell an object key apart from an
+                    // array index without parsing strings.
+                    val existingNode = current.find { it.pathElement == key }
 
                     // if the path element is already present, move to the children of the existing node
                     if (existingNode != null) {
@@ -224,7 +232,7 @@ data class SdJwtVcData(
                     } else {
                         // if the path element is not present, create a new claim and add it to the current list of claims
                         val newClaim = MutableSdJwtClaim(
-                            identifier = key.toString(),
+                            pathElement = key,
                             value = value?.parse(),
                             rawValue = value?.toString() ?: "",
                             selectivelyDisclosable = selectivelyDisclosable,
@@ -254,7 +262,16 @@ data class SdJwtVcData(
 
 /**
  * Represents a claim of a document in the SdJwtVc format.
- * @property identifier The identifier of the claim.
+ *
+ * The claim is identified by its [pathElement] — a typed
+ * [ClaimPathElement] per the SD-JWT VC claims path pointer (cross-referenced from
+ * OpenID4VP §7.1). Three element kinds are possible:
+ *  - [ClaimPathElement.Claim] — an object key (e.g. `"family_name"`)
+ *  - [ClaimPathElement.ArrayElement] — an array index (e.g. `0`)
+ *  - [ClaimPathElement.AllArrayElements] — the wildcard `null` (rare in stored
+ *    issuance claims; primarily relevant in verifier requests)
+ *
+ * @property pathElement The typed path element identifying this node.
  * @property value The value of the claim.
  * @property rawValue The raw value of the claim.
  * @property selectivelyDisclosable Whether the claim is selectively disclosable.
@@ -262,20 +279,37 @@ data class SdJwtVcData(
  * @property issuerMetadata The metadata of the claim provided by the issuer.
  */
 data class SdJwtVcClaim(
-    override val identifier: String,
+    val pathElement: ClaimPathElement,
     override val value: Any?,
     override val rawValue: String,
     override val issuerMetadata: IssuerMetadata.Claim?,
     val selectivelyDisclosable: Boolean,
     val children: List<SdJwtVcClaim>
-) : DocumentClaim(identifier, value, rawValue, issuerMetadata)
+) : DocumentClaim(value, rawValue, issuerMetadata) {
+
+    /**
+     * Object-key name of this node when [pathElement] is a [ClaimPathElement.Claim];
+     * `null` for array indices and the wildcard. Use for plain by-name look-ups
+     * (e.g. `claims.find { it.claimName == "family_name" }`).
+     */
+    val claimName: String?
+        get() = (pathElement as? ClaimPathElement.Claim)?.name
+
+    /**
+     * Array index of this node when [pathElement] is a [ClaimPathElement.ArrayElement];
+     * `null` for object keys and the wildcard. Use for indexed array look-ups
+     * (e.g. `children.find { it.arrayIndex == 0 }`).
+     */
+    val arrayIndex: Int?
+        get() = (pathElement as? ClaimPathElement.ArrayElement)?.index
+}
 
 /**
  * Internal class for SdJwtVcClaim that can be mutated.
  * Mutation is needed to build the list of claims.
  */
 internal class MutableSdJwtClaim(
-    val identifier: String,
+    val pathElement: ClaimPathElement,
     val value: Any?,
     val rawValue: String,
     val metadata: IssuerMetadata.Claim?,
@@ -284,7 +318,7 @@ internal class MutableSdJwtClaim(
 ) {
     fun toSdJwtVcClaim(): SdJwtVcClaim {
         return SdJwtVcClaim(
-            identifier = identifier,
+            pathElement = pathElement,
             value = value,
             rawValue = rawValue,
             issuerMetadata = metadata,

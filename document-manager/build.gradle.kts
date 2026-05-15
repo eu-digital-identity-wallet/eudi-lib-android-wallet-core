@@ -25,7 +25,7 @@ dependencies {
     implementation(libs.upokecenter.cbor)
     implementation(libs.cose.java)
 
-    implementation(libs.eudi.lib.jvm.sdjwt.kt)
+    api(libs.eudi.lib.jvm.sdjwt.kt)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.content.negotiation)
