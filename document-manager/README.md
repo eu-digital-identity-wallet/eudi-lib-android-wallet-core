@@ -542,67 +542,52 @@ val givenNameDisplay = givenNameClaim.issuerMetadata?.display
 Notes:
  - `dataElementName` is the ISO mdoc data-element identifier within a namespace.
  - `claimName` returns the top-level object key for SD-JWT VC claims; it is `null`
-   for array indices and the wildcard. When you need to handle those, switch on
-   `pathElement` directly (`ClaimPathElement.Claim` / `ArrayElement` /
-   `AllArrayElements`).
- - Nested SD-JWT VC claims (e.g. `place_of_birth.country`) are reachable via
-   `SdJwtVcClaim.children`.
+   for array indices and the wildcard. Use `pathElement` directly when you need to
+   handle those (`ClaimPathElement.Claim` / `ArrayElement` / `AllArrayElements`).
 
-##### Nested SD-JWT VC claims
+#### Resolving SD-JWT VC claim paths
 
-A nested object such as `place_of_birth = { country, locality, region }` is stored
-as one `SdJwtVcClaim` whose `children` list holds the inner claims:
+`SdJwtVcData.findByPath` looks up a claim by its full path — useful when the
+claim you want is inside a nested object (e.g. `place_of_birth.country`), at a
+specific array index (e.g. `nationalities[0]`), or across every element of an
+array.
 
-```kotlin
-val birthCountry: String? = (pidDocument.data as? SdJwtVcData)?.claims
-    .orEmpty()
-    .find { it.claimName == "place_of_birth" }
-    ?.children
-    ?.find { it.claimName == "country" }
-    ?.value as? String
-```
+A path is built from three kinds of elements:
 
-The same shape extends to deeper nesting — keep chaining `.children` and matching
-by `claimName`.
+ - `ClaimPathElement.Claim(name)` — an object key.
+ - `ClaimPathElement.ArrayElement(i)` — a specific array index.
+ - `ClaimPathElement.AllArrayElements` — every element of an array (the
+   `null` wildcard in OpenID4VP claim paths).
 
-##### SD-JWT VC array elements
-
-An array such as `nationalities = ["GR", "SE"]` is stored as one parent
-`SdJwtVcClaim` whose `children` are per-index entries. The convenience property
-`arrayIndex` returns the integer when `pathElement` is a
-`ClaimPathElement.ArrayElement`:
+The function returns one `SdJwtVcClaim` per match, or an empty list if no claim
+exists at that path. Paths with a wildcard return one claim per array entry.
 
 ```kotlin
-// First nationality.
-val primaryNationality: String? = (pidDocument.data as? SdJwtVcData)?.claims
-    .orEmpty()
-    .find { it.claimName == "nationalities" }
-    ?.children
-    ?.find { it.arrayIndex == 0 }
-    ?.value as? String
+val sdJwtData = (pidDocument.data as? SdJwtVcData) ?: return
 
-// All nationalities.
-val nationalities: List<String> = (pidDocument.data as? SdJwtVcData)?.claims
-    .orEmpty()
-    .find { it.claimName == "nationalities" }
-    ?.children
-    ?.mapNotNull { it.value as? String }
-    .orEmpty()
+// Nested object: place_of_birth.country  →  "Greece"
+val birthCountry = sdJwtData
+    .findByPath(ClaimPath(Claim("place_of_birth"), Claim("country")))
+    .firstOrNull()?.value as? String
+
+// Indexed array: nationalities[0]  →  "GR"
+val primaryNationality = sdJwtData
+    .findByPath(ClaimPath(Claim("nationalities"), ArrayElement(0)))
+    .firstOrNull()?.value as? String
+
+// Trailing wildcard: every nationality  →  ["GR", "SE"]
+val nationalities = sdJwtData
+    .findByPath(ClaimPath(Claim("nationalities"), AllArrayElements))
+    .mapNotNull { it.value as? String }
+
+// Non-trailing wildcard: city of every address  →  ["Athens", "Berlin"]
+val addressCities = sdJwtData
+    .findByPath(ClaimPath(Claim("addresses"), AllArrayElements, Claim("city")))
+    .mapNotNull { it.value as? String }
 ```
 
-For arrays of objects (e.g. `addresses[0].city`), combine the two: descend into
-the indexed child, then into its named grand-child:
-
-```kotlin
-val firstAddressCity: String? = (pidDocument.data as? SdJwtVcData)?.claims
-    .orEmpty()
-    .find { it.claimName == "addresses" }
-    ?.children
-    ?.find { it.arrayIndex == 0 }
-    ?.children
-    ?.find { it.claimName == "city" }
-    ?.value as? String
-```
+Each returned node is a full `SdJwtVcClaim` — value, `issuerMetadata`, `children`,
+and `selectivelyDisclosable` are all available for rendering.
 
 ### Other features
 

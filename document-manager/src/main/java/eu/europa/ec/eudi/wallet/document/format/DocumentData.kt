@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.document.format
 
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
+import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
 import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.query
 import eu.europa.ec.eudi.wallet.document.NameSpace
@@ -248,6 +249,32 @@ data class SdJwtVcData(
         }.map { it.toSdJwtVcClaim() }
     }
 
+    /**
+     * Resolve a [ClaimPath] against the stored claim tree.
+     *
+     * Path elements are matched against [SdJwtVcClaim.pathElement] at each level:
+     *  - [ClaimPathElement.Claim] matches the same object key by name.
+     *  - [ClaimPathElement.ArrayElement] matches the same array index.
+     *  - [ClaimPathElement.AllArrayElements] expands to every array-element child
+     *    at that level (one match per index).
+     *
+     * Examples — for a credential carrying
+     * `nationalities = ["GR", "SE"]` and
+     * `addresses = [{ city = "Athens" }, { city = "Berlin" }]`:
+     *
+     *  - `ClaimPath(Claim("given_name"))` → 1 leaf claim with the user's first name.
+     *  - `ClaimPath(Claim("nationalities"), ArrayElement(0))` → 1 leaf (`"GR"`).
+     *  - `ClaimPath(Claim("nationalities"), AllArrayElements)` → 2 leaves (`"GR"`, `"SE"`).
+     *  - `ClaimPath(Claim("addresses"), AllArrayElements, Claim("city"))` → 2 leaves
+     *    (`"Athens"`, `"Berlin"`).
+     *
+     * Returns an empty list when no path element matches. The returned nodes carry
+     * the full [SdJwtVcClaim] (value, issuer metadata, children, selectively-
+     * disclosable flag) so the caller can render them directly.
+     */
+    fun findByPath(path: ClaimPath): List<SdJwtVcClaim> =
+        findInTree(claims, path.value)
+
     companion object {
         internal val ExcludedIdentifiers = arrayOf(
             "cnf",
@@ -258,6 +285,28 @@ data class SdJwtVcData(
             "assurance_level",
         )
     }
+}
+
+/**
+ * Walks [remaining] path elements over [nodes], descending into children as needed.
+ * When `remaining` is empty, returns the current matched [nodes].
+ */
+private fun findInTree(
+    nodes: List<SdJwtVcClaim>,
+    remaining: List<ClaimPathElement>,
+): List<SdJwtVcClaim> {
+    if (remaining.isEmpty()) return nodes
+    val head = remaining.first()
+    val tail = remaining.drop(1)
+    val matched = nodes.filter { it.matches(head) }
+    return if (tail.isEmpty()) matched
+    else matched.flatMap { findInTree(it.children, tail) }
+}
+
+private fun SdJwtVcClaim.matches(element: ClaimPathElement): Boolean = when (element) {
+    is ClaimPathElement.Claim -> claimName == element.name
+    is ClaimPathElement.ArrayElement -> arrayIndex == element.index
+    ClaimPathElement.AllArrayElements -> pathElement is ClaimPathElement.ArrayElement
 }
 
 /**
