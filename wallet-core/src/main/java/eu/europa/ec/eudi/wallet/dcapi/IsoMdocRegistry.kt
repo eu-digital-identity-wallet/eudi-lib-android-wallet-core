@@ -127,7 +127,7 @@ internal class IsoMdocRegistry private constructor(
                                     elements.forEach { element ->
                                         val displayName = element.issuerMetadata?.display?.find {
                                             it.locale?.language == context.getLocale().language
-                                        }?.name ?: element.identifier
+                                        }?.name ?: element.dataElementName
                                         val displayedValue =
                                             if (Cbor.toDiagnostics(element.rawValue).startsWith("h'")) {
                                                 "${element.rawValue.size} bytes"
@@ -138,7 +138,7 @@ internal class IsoMdocRegistry private constructor(
                                             Add(displayName)
                                             Add(displayedValue)
                                         }
-                                        namespaceBuilder.Add(element.identifier, elementBuilder)
+                                        namespaceBuilder.Add(element.dataElementName, elementBuilder)
                                     }
                                     Add(nameSpace, namespaceBuilder)
                                 }

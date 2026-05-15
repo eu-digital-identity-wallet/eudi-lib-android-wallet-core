@@ -29,7 +29,8 @@ dependencies {
     implementation(libs.eudi.lib.jvm.siop.openid4vp.kt) {
         exclude(group = "org.bouncycastle")
     }
-    implementation(libs.eudi.lib.jvm.sdjwt.kt)
+    // SD-JWT VC library
+    api(libs.eudi.lib.jvm.sdjwt.kt)
 
     api(libs.eudi.lib.kmp.statium)
 

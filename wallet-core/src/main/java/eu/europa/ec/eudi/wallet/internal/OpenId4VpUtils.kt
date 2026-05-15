@@ -54,6 +54,8 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.mdoc.response.DeviceResponseGenerator
@@ -296,14 +298,17 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
     }
 
 /**
- * Builds a verifiable presentation for an SD-JWT VC credential from a single
- * [CredentialPresentmentSetOptionMemberMatch].
+ * Builds a verifiable presentation for an SD-JWT VC credential from a single match.
  *
- * Disclosure paths are taken from the match's [JsonRequestedClaim.claimPath] entries.
+ * Each request path from [JsonRequestedClaim.claimPath] is matched against the SD-JWT
+ * disclosure paths through [pathMatches], honouring OpenID4VP §7.1 semantics for
+ * string keys, integer array indices, and `null` wildcards. Parent disclosures
+ * required to reconstruct a selected child are pulled in automatically.
+ *
  * When the issuer-signed JWT carries a `cnf` claim, an SD-JWT+KB is produced by signing
- * a KB-JWT with the credential's key; otherwise the filtered SD-JWT is returned without
- * key binding. Empty `match.claims` corresponds to OpenID4VP §6.4.1 "claims=null"
- * semantics (mandatory disclosure only).
+ * a KB-JWT with the credential's key; otherwise the filtered SD-JWT is returned
+ * without key binding. Empty `match.claims` corresponds to OpenID4VP §6.4.1
+ * "claims=null" semantics (mandatory disclosure only).
  */
 internal suspend fun verifiablePresentationForSdJwtVc(
     resolvedRequestObject: ResolvedRequestObject,
@@ -321,11 +326,13 @@ internal suspend fun verifiablePresentationForSdJwtVc(
             sdJwtVcCredential.issuerProvidedData.decodeToString()
         )
 
-        val pathsToDisclose = match.claims.keys
+        val requestPaths = match.claims.keys
             .filterIsInstance<JsonRequestedClaim>()
-            .map { it.claimPath.truncateAtFirstNonClaim() }
+            .map { it.claimPath }
 
-        val filteredSdJwt = sdJwt.filter(pathsToDisclose)
+        val filteredSdJwt = sdJwt.filter { emittedPath, _ ->
+            requestPaths.any { requestPath -> pathMatches(requestPath, emittedPath) }
+        }
 
         val serialized = if (filteredSdJwt.kbKey != null) {
             val signingKey = AsymmetricKey.anonymous(
@@ -386,21 +393,43 @@ internal suspend fun verifiablePresentationForMsoMdoc(
 }
 
 /**
- * Truncates an SD-JWT VC claim path at the first non-string element.
+ * Matches a DCQL claim path against an SD-JWT disclosure path emitted during the
+ * filter pass. Honours OpenID4VP §7.1:
  *
- * Path elements that are string [JsonPrimitive]s are treated as object keys (claim
- * names) and kept; the first element that is a [kotlinx.serialization.json.JsonNull]
- * wildcard or a numeric array index ends the truncation. The resulting path targets
- * the parent storage claim, which releases the matching disclosure together with all
- * nested per-element disclosures.
+ *  - String key matches the same string key.
+ *  - Integer index matches the same integer index.
+ *  - [JsonNull] wildcard matches any integer index.
  *
- * Trailing wildcards or indices behave per spec. For non-trailing wildcards or indices
- * (e.g. `["addresses", null, "city"]`) the disclosure is coarser than per-element
- * addressing — the whole parent array is released.
+ * Returns true iff every position the two paths share matches element-by-element.
+ * Emitted paths are accepted in three positions relative to the request:
+ *
+ *  - Equal → exact match.
+ *  - Longer than the request → descendant disclosure; releases every field of
+ *    the targeted node (request `["addresses", 0]` also releases
+ *    `["addresses", 0, "city"]`).
+ *  - Shorter than the request → ancestor disclosure; required because SD-JWT
+ *    array-element disclosures cannot be reconstructed by the verifier without
+ *    their parent-array disclosure. Ancestor envelopes carry only child digests
+ *    and no extra data beyond what the request already authorises.
  */
-private fun JsonArray.truncateAtFirstNonClaim(): JsonArray {
-    val truncated = takeWhile { element ->
-        element is JsonPrimitive && element.isString
+private fun pathMatches(request: JsonArray, emittedPath: JsonArray): Boolean {
+    val requestElements = request.toList()
+    val emittedElements = emittedPath.toList()
+    val common = minOf(requestElements.size, emittedElements.size)
+    for (i in 0 until common) {
+        if (!elementMatches(requestElements[i], emittedElements[i])) return false
     }
-    return if (truncated.size == size) this else JsonArray(truncated)
+    return true
 }
+
+private fun elementMatches(request: JsonElement, emitted: JsonElement): Boolean =
+    when (request) {
+        is JsonNull -> emitted is JsonPrimitive && !emitted.isString
+        is JsonPrimitive if request.isString ->
+            emitted is JsonPrimitive && emitted.isString && request.content == emitted.content
+
+        is JsonPrimitive if !request.isString ->
+            emitted is JsonPrimitive && !emitted.isString && request.content == emitted.content
+
+        else -> false
+    }

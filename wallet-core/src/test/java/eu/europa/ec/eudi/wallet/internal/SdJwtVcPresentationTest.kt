@@ -40,6 +40,7 @@ import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -51,8 +52,9 @@ import kotlin.test.assertTrue
  *    must short-circuit with [IllegalStateException].
  *  - **no-cnf happy path**: a real SD-JWT (built inline via [SdJwt.create]) without
  *    `cnf` flows through to [SdJwt.compactSerialization] — no KB-JWT is appended.
- *  - **trailing wildcard disclosure**: a request path ending in `null` discloses the
- *    parent array claim.
+ *  - **claim-path semantics** (OpenID4VP §7.1): request paths containing string keys,
+ *    integer array indices, trailing wildcards, and non-trailing wildcards must each
+ *    yield the spec-correct subset of disclosures and nothing more.
  *
  * Mocking strategy: the test stubs the wallet credential chain
  * ([match.credential][CredentialPresentmentSetOptionMemberMatch.credential] →
@@ -238,6 +240,195 @@ class SdJwtVcPresentationTest {
             nationalitiesValue is JsonArray && nationalitiesValue.size == 2,
             "Expected the entire nationalities array (2 entries) to be disclosed; was $nationalitiesValue",
         )
+    }
+
+    /**
+     * Trailing integer index: request `["addresses", 0]` must disclose exactly the
+     * first address element with every nested field underneath it, and nothing from
+     * the second address. Verifies that the matcher does not over-disclose to the
+     * full parent array (regression for P0.1).
+     */
+    @Test
+    fun `trailing integer index discloses only the requested element`(): Unit = runBlocking {
+        val issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256)
+        val realSdJwt = SdJwt.create(
+            issuerKey = issuerKey,
+            kbKey = null,
+            claims = """{"addresses":[{"city":"Athens","street":"S1"},{"city":"Berlin","street":"S2"}]}""",
+            nonSdClaims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1"}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = realSdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("addresses")
+                add(JsonPrimitive(0))
+            },
+        )
+
+        val result = verifiablePresentationForSdJwtVc(
+            resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+            match = match,
+            documentManager = documentManager,
+            keyUnlockData = null,
+        )
+
+        val disclosed = SdJwt.fromCompactSerialization(result.value)
+            .verify(issuerKey.publicKey)
+        val addresses = disclosed["addresses"] as? JsonArray
+        // SD-JWT arrays omit non-disclosed elements entirely (unlike objects, which
+        // keep `_sd` placeholders). The reconstructed array should hold just the
+        // one element the verifier asked for.
+        assertTrue(
+            addresses != null && addresses.size == 1,
+            "Expected only the requested element in the reconstructed array; size=${addresses?.size}",
+        )
+        val first = addresses[0] as? kotlinx.serialization.json.JsonObject
+        assertTrue(
+            first != null && first["city"]?.toString()?.contains("Athens") == true,
+            "First address must be disclosed in full: $first",
+        )
+        assertEquals(
+            first["street"]?.toString()?.contains("S1"),
+            true,
+            "All fields of the targeted element must be released: $first"
+        )
+        // Berlin (the second address) must not appear anywhere in the array.
+        assertTrue(
+            addresses.none { (it as? kotlinx.serialization.json.JsonObject)?.toString()?.contains("Berlin") == true },
+            "Second address element must not be disclosed; addresses=$addresses",
+        )
+    }
+
+    /**
+     * Non-trailing integer index: request `["addresses", 0, "city"]` must disclose
+     * only the city of the first address, not the street of the same address and
+     * not anything from the second address.
+     */
+    @Test
+    fun `non-trailing integer index discloses only the targeted field`(): Unit = runBlocking {
+        val issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256)
+        val realSdJwt = SdJwt.create(
+            issuerKey = issuerKey,
+            kbKey = null,
+            claims = """{"addresses":[{"city":"Athens","street":"S1"},{"city":"Berlin","street":"S2"}]}""",
+            nonSdClaims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1"}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = realSdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("addresses")
+                add(JsonPrimitive(0))
+                add("city")
+            },
+        )
+
+        val result = verifiablePresentationForSdJwtVc(
+            resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+            match = match,
+            documentManager = documentManager,
+            keyUnlockData = null,
+        )
+
+        val disclosed = SdJwt.fromCompactSerialization(result.value)
+            .verify(issuerKey.publicKey)
+        val first = (disclosed["addresses"] as? JsonArray)?.getOrNull(0)
+                as? kotlinx.serialization.json.JsonObject
+        assertTrue(
+            first != null && first["city"]?.toString()?.contains("Athens") == true,
+            "city of first address must be disclosed: $first",
+        )
+        assertEquals(
+            first["street"],
+            null,
+            "street of first address must NOT be disclosed (over-disclosure): $first"
+        )
+        val second = (disclosed["addresses"] as? JsonArray)?.getOrNull(1)
+                as? kotlinx.serialization.json.JsonObject
+        assertTrue(
+            second == null || second["city"] == null,
+            "Second address must not be disclosed; was $second",
+        )
+    }
+
+    /**
+     * Non-trailing wildcard: request `["addresses", null, "city"]` must disclose the
+     * city of every address, but never the street of any address. Confirms the matcher
+     * fans the wildcard across all existing indices.
+     */
+    @Test
+    fun `non-trailing wildcard discloses the targeted field of every array element`(): Unit = runBlocking {
+        val issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256)
+        val realSdJwt = SdJwt.create(
+            issuerKey = issuerKey,
+            kbKey = null,
+            claims = """{"addresses":[{"city":"Athens","street":"S1"},{"city":"Berlin","street":"S2"}]}""",
+            nonSdClaims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1"}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = realSdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("addresses")
+                add(JsonNull)
+                add("city")
+            },
+        )
+
+        val result = verifiablePresentationForSdJwtVc(
+            resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+            match = match,
+            documentManager = documentManager,
+            keyUnlockData = null,
+        )
+
+        val disclosed = SdJwt.fromCompactSerialization(result.value)
+            .verify(issuerKey.publicKey as EcPublicKey)
+        val addresses = disclosed["addresses"] as? JsonArray
+        assertTrue(addresses != null && addresses.size == 2, "addresses shell missing")
+        for (i in 0..1) {
+            val obj = addresses[i] as? kotlinx.serialization.json.JsonObject
+            assertTrue(
+                obj != null && obj["city"] != null,
+                "city of address[$i] must be disclosed: $obj",
+            )
+            assertEquals(
+                obj["street"],
+                null,
+                "street of address[$i] must NOT be disclosed (over-disclosure): $obj"
+            )
+        }
+    }
+
+    /**
+     * Builds a synthetic [CredentialPresentmentSetOptionMemberMatch] with a single
+     * [JsonRequestedClaim] keyed by [requestPath], together with the
+     * [DocumentManager] needed to dereference it.
+     */
+    private fun matchForRequest(
+        issuerCompact: String,
+        requestPath: JsonArray,
+    ): Pair<CredentialPresentmentSetOptionMemberMatch, DocumentManager> {
+        val credentialId = "cred-${requestPath.hashCode()}"
+        val issuerBytes = ByteString(issuerCompact.encodeToByteArray())
+        val matchCredential = mockCredential(documentId = credentialId)
+        val sdJwtCredential = mockk<SecureAreaBoundCredential>(
+            moreInterfaces = arrayOf(SdJwtVcCredential::class),
+        ) {
+            every { identifier } returns credentialId
+            every { (this@mockk as SdJwtVcCredential).issuerProvidedData } returns issuerBytes
+        }
+        val issuedDocument = mockIssuedDocumentForwardingTo(sdJwtCredential)
+        val documentManager = mockk<DocumentManager> {
+            every { getDocumentById(credentialId) } returns issuedDocument
+        }
+        val requested = JsonRequestedClaim(
+            vctValues = listOf("urn:eudi:pid:1"),
+            claimPath = requestPath,
+        )
+        val match = mockk<CredentialPresentmentSetOptionMemberMatch> {
+            every { credential } returns matchCredential
+            every { claims } returns mapOf(requested to mockk(relaxed = true))
+        }
+        return match to documentManager
     }
 
     /**

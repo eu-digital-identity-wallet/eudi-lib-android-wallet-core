@@ -45,6 +45,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import org.junit.Test
 import org.multipaz.cbor.Tstr
 import org.multipaz.claim.Claim
@@ -496,6 +498,313 @@ class DcqlRequestProcessorTest {
             actual = disclosedPaths,
             message = "SD-JWT first-satisfied claim_set must yield ONLY its claim. If " +
                 "`family_name` also surfaces, the SD-JWT path is over-disclosing.",
+        )
+    }
+
+    /**
+     * §6.3 `values` filter at the top level: verifier asks for `family_name`
+     * restricted to `"Smith"`. A credential whose `family_name` is `"Smith"`
+     * must surface as a match.
+     */
+    @Test
+    fun `sdjwt top-level claim with values filter matches when value is in list`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("family_name"),
+                                path = ClaimPath(listOf(ClaimPathElement.Claim("family_name"))),
+                                values = JsonArray(listOf(JsonPrimitive("Smith"))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(vct, claimName = "family_name", value = JsonPrimitive("Smith")),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        success.assertSingleMatch()
+    }
+
+    /**
+     * §6.3 `values` filter negative case: same query as above, but the credential
+     * carries `family_name = "Brown"`. The wallet must NOT surface this
+     * credential — and per §6.4.2 "every credentials entry is required" the whole
+     * request becomes unsatisfiable, so the resulting presentment tree is empty.
+     */
+    @Test
+    fun `sdjwt top-level claim with values filter rejects when value is not in list`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("family_name"),
+                                path = ClaimPath(listOf(ClaimPathElement.Claim("family_name"))),
+                                values = JsonArray(listOf(JsonPrimitive("Smith"))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(vct, claimName = "family_name", value = JsonPrimitive("Brown")),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        assertNoMatches(success)
+    }
+
+    /**
+     * Nested path + `values`: verifier asks for `place_of_birth.country` restricted
+     * to `"Greece"`. The credential's nested `country` claim equals `"Greece"` and
+     * must produce a match.
+     */
+    @Test
+    fun `sdjwt nested claim with values filter matches when nested value is in list`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("country"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("place_of_birth"),
+                                        ClaimPathElement.Claim("country"),
+                                    ),
+                                ),
+                                values = JsonArray(listOf(JsonPrimitive("Greece"))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "place_of_birth",
+                value = buildJsonObject {
+                    put("country", JsonPrimitive("Greece"))
+                    put("city", JsonPrimitive("Athens"))
+                },
+            ),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        success.assertSingleMatch()
+    }
+
+    /**
+     * Nested path + `values` negative case: same query, but the credential's
+     * `place_of_birth.country` is `"France"`. The processor must NOT surface this
+     * credential — `values` filtering must apply end-to-end, not just at the top
+     * level.
+     */
+    @Test
+    fun `sdjwt nested claim with values filter rejects when nested value is not in list`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("country"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("place_of_birth"),
+                                        ClaimPathElement.Claim("country"),
+                                    ),
+                                ),
+                                values = JsonArray(listOf(JsonPrimitive("Greece"))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "place_of_birth",
+                value = buildJsonObject {
+                    put("country", JsonPrimitive("France"))
+                    put("city", JsonPrimitive("Paris"))
+                },
+            ),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        assertNoMatches(success)
+    }
+
+    /**
+     * Non-trailing wildcard + `values`: verifier asks for `addresses[*].city`
+     * restricted to `"Athens"`. The credential's `addresses` array contains an
+     * element whose `city` equals `"Athens"`, so per §6.4.1 + §7.1 element-by-
+     * element semantics the credential must match.
+     *
+     * Handled by the wallet's `matchClaimViaSpecCorrectNullWildcard` fallback,
+     * which covers the wildcard + values combination.
+     */
+    @Test
+    fun `sdjwt non-trailing wildcard with values filter matches when any element matches`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("city_anywhere"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("addresses"),
+                                        ClaimPathElement.AllArrayElements,
+                                        ClaimPathElement.Claim("city"),
+                                    ),
+                                ),
+                                values = JsonArray(listOf(JsonPrimitive("Athens"))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "addresses",
+                value = buildJsonArray {
+                    add(buildJsonObject { put("city", JsonPrimitive("Berlin")) })
+                    add(buildJsonObject { put("city", JsonPrimitive("Athens")) })
+                },
+            ),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        success.assertSingleMatch()
+    }
+
+    /**
+     * Non-trailing wildcard + `values` negative case: none of the `addresses[*].city`
+     * entries equals `"Athens"`, so the credential must not surface as a match.
+     */
+    @Test
+    fun `sdjwt non-trailing wildcard with values filter rejects when no element matches`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("city_anywhere"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("addresses"),
+                                        ClaimPathElement.AllArrayElements,
+                                        ClaimPathElement.Claim("city"),
+                                    ),
+                                ),
+                                values = JsonArray(listOf(JsonPrimitive("Athens"))),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "addresses",
+                value = buildJsonArray {
+                    add(buildJsonObject { put("city", JsonPrimitive("Berlin")) })
+                    add(buildJsonObject { put("city", JsonPrimitive("Paris")) })
+                },
+            ),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        assertNoMatches(success)
+    }
+
+    /**
+     * Asserts that [processed]'s presentment tree contains no matches at all.
+     * Used by the values-filter negative-case tests: when the only credential the
+     * wallet holds fails the filter, §6.4.2 makes the whole request unsatisfiable
+     * and the matcher must return an empty set of credential sets.
+     */
+    private fun assertNoMatches(processed: ProcessedDcqlRequest) {
+        val matches = processed.presentmentData
+            .credentialSets.flatMap { it.options }
+            .flatMap { it.members }
+            .flatMap { it.matches }
+        assertEquals(
+            expected = 0,
+            actual = matches.size,
+            message = "Expected zero matches; got $matches",
         )
     }
 
