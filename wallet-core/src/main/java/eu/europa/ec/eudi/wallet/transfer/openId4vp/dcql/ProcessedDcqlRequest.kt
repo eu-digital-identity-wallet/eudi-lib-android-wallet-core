@@ -101,6 +101,17 @@ class ProcessedDcqlRequest(
         selection: CredentialPresentmentSelection,
         keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
+        // Confirm the user's consent-UI changes did not break the original DCQL
+        // request — e.g. a deselected credential leaves a required query uncovered,
+        // or a deselected claim breaks the source query's `claims` / `claim_sets`
+        // satisfaction. The caller should treat this failure as a denial and either
+        // re-prompt the user or return access_denied to the verifier.
+        validateSelection(selection, resolvedRequestObject.query)?.let { error ->
+            return ResponseResult.Failure(
+                IllegalStateException("Selection does not satisfy verifier request: $error"),
+            )
+        }
+
         return try {
             val verifiablePresentationsMap =
                 mutableMapOf<QueryId, MutableList<VerifiablePresentation>>()
