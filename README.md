@@ -113,7 +113,7 @@ The library supports the following features:
 |                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
 | **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
 |                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
-|                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag                       |
+|                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |
 |                            | Transaction data                                                        | ❌                                                                                                                      |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package

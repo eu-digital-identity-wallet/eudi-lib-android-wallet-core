@@ -459,6 +459,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("given_name"),
@@ -516,6 +517,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("family_name"),
@@ -556,6 +558,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("family_name"),
@@ -595,6 +598,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("country"),
@@ -647,6 +651,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("country"),
@@ -702,6 +707,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("city_anywhere"),
@@ -753,6 +759,7 @@ class DcqlRequestProcessorTest {
                     CredentialQuery.sdJwtVc(
                         id = QueryId("query_0"),
                         sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
                         claims = listOf(
                             ClaimsQuery.sdJwtVc(
                                 id = ClaimId("city_anywhere"),
@@ -911,6 +918,13 @@ class DcqlRequestProcessorTest {
      * SD-JWT analogue of [buildProcessor]. The mocked [IssuedDocument] reports
      * [SdJwtVcFormat] for the given `vct`, and its credential exposes the passed
      * [credentialClaims] (typed [Claim] so callers can mix [JsonClaim] subtypes).
+     *
+     * The mocked credential is a [SecureAreaBoundCredential] only — it does not
+     * implement [org.multipaz.sdjwt.credential.SdJwtVcCredential], so the
+     * processor's `cnf` filter (applied when the verifier requires cryptographic
+     * holder binding) would reject it. SD-JWT test queries therefore set
+     * `requireCryptographicHolderBinding = false` to opt out of the filter and
+     * focus on the matching logic each test is exercising.
      */
     private fun buildSdJwtProcessor(
         vct: String,

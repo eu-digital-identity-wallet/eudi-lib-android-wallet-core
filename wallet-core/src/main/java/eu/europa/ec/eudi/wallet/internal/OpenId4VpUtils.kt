@@ -305,10 +305,16 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
  * string keys, integer array indices, and `null` wildcards. Parent disclosures
  * required to reconstruct a selected child are pulled in automatically.
  *
- * When the issuer-signed JWT carries a `cnf` claim, an SD-JWT+KB is produced by signing
- * a KB-JWT with the credential's key; otherwise the filtered SD-JWT is returned
- * without key binding. Empty `match.claims` corresponds to OpenID4VP §6.4.1
- * "claims=null" semantics (mandatory disclosure only).
+ * Key Binding JWT is emitted whenever the issuer-signed JWT carries a `cnf` claim,
+ * regardless of the verifier's `require_cryptographic_holder_binding` flag.
+ * Verifiers that did not request the proof can ignore it.
+ * The flag is honoured at match time in [DcqlRequestProcessor], which
+ * filters out credentials lacking `cnf` when the verifier requires holder binding —
+ * so the bare-SD-JWT branch below runs only when the verifier explicitly accepts
+ * presentations without holder binding.
+ *
+ * Empty `match.claims` corresponds to OpenID4VP §6.4.1 "claims=null" semantics
+ * (mandatory disclosure only).
  */
 internal suspend fun verifiablePresentationForSdJwtVc(
     resolvedRequestObject: ResolvedRequestObject,

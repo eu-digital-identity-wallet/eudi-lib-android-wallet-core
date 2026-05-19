@@ -37,6 +37,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -52,6 +53,8 @@ import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.request.RequestedClaim
+import org.multipaz.sdjwt.SdJwt
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
 
 /**
  * Processes OpenID4VP requests that use DCQL (Digital Credentials Query Language).
@@ -154,6 +157,22 @@ class DcqlRequestProcessor(
 
         return candidates.mapNotNull { issuedDoc ->
             val secureCred = issuedDoc.findCredential() ?: return@mapNotNull null
+
+            // When the verifier requires a cryptographic holder binding proof, an
+            // SD-JWT credential without a `cnf` claim cannot satisfy the request —
+            // it has no key to sign the KB-JWT with. Skip such credentials so they
+            // do not appear in the consent UI. mdoc credentials are not filtered;
+            // they always carry a device key.
+            if (query.requireCryptographicHolderBindingOrDefault) {
+                when (query.format) {
+                    Format.SdJwtVc -> {
+                        if ((secureCred as? SdJwtVcCredential)?.hasCnfClaim() != true) {
+                            return@mapNotNull null
+                        }
+                    }
+                }
+            }
+
             val credClaims: List<Claim> = runCatching {
                 secureCred.getClaims(documentTypeRepository = null)
             }.getOrElse { return@mapNotNull null }
@@ -170,6 +189,18 @@ class DcqlRequestProcessor(
                 transactionData = emptyList(),
             )
         }
+    }
+
+    /**
+     * Returns `true` when the issuer-signed JWT carries a `cnf` claim — the
+     * prerequisite for producing a Key Binding JWT at presentation time. Returns
+     * `false` when the issuer-signed JWT cannot be parsed.
+     */
+    private suspend fun SdJwtVcCredential.hasCnfClaim(): Boolean {
+        return runCatching {
+            SdJwt.fromCompactSerialization(this.issuerProvidedData.decodeToString())
+                .kbKey != null
+        }.getOrElse { false }
     }
 
     /**
