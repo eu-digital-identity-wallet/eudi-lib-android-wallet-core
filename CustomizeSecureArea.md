@@ -175,38 +175,34 @@ implementation when key unlocking is required:
 lateinit var processedRequest: RequestProcessor.ProcessedRequest.Success
 
 /**
- * Example function that demonstrates how to traverse the candidate-credentials tree
- * and show what the verifier is asking for. The function should be called when the
- * request is received.
+ * Example function that demonstrates how to iterate the selection variants the
+ * consent UI can render and show what the verifier is asking for. The function
+ * should be called when the request is received.
  */
 fun showRequestedDocuments() {
     // shows the requested credentials and claims to the user
 
-    processedRequest.presentmentData.credentialSets.forEach { set ->
-        set.options.forEach { option ->
-            option.members.forEach { member ->
-                member.matches.forEach { match ->
-                    // get document if needed to show more information such as document's
-                    // name and docType
-                    val document = wallet.getDocumentById(match.credential.identifier)
-                        as? IssuedDocument
-                    val documentName = document?.name
-                    val docType = (document?.format as? MsoMdocFormat)?.docType
+    processedRequest.presentmentSelections.forEach { selection ->
+        selection.matches.forEach { match ->
+            // get document if needed to show more information such as document's
+            // name and docType
+            val document = wallet.getDocumentById(match.credential.identifier)
+                as? IssuedDocument
+            val documentName = document?.name
+            val docType = (document?.format as? MsoMdocFormat)?.docType
 
-                    // show requested claims for this candidate match
-                    match.claims.keys.forEach { requestedClaim ->
-                        when (requestedClaim) {
-                            is MdocRequestedClaim -> {
-                                val nameSpace = requestedClaim.namespaceName
-                                val elementIdentifier = requestedClaim.dataElementName
-                                val intentToRetain = requestedClaim.intentToRetain
-                                // render mso_mdoc claim in the UI
-                            }
-                            is JsonRequestedClaim -> {
-                                val claimPath = requestedClaim.claimPath
-                                // render SD-JWT VC claim path in the UI
-                            }
-                        }
+            // show requested claims for this candidate match
+            match.claims.keys.forEach { requestedClaim ->
+                when (requestedClaim) {
+                    is MdocRequestedClaim -> {
+                        val nameSpace = requestedClaim.namespaceName
+                        val elementIdentifier = requestedClaim.dataElementName
+                        val intentToRetain = requestedClaim.intentToRetain
+                        // render mso_mdoc claim in the UI
+                    }
+                    is JsonRequestedClaim -> {
+                        val claimPath = requestedClaim.claimPath
+                        // render SD-JWT VC claim path in the UI
                     }
                 }
             }
@@ -216,19 +212,20 @@ fun showRequestedDocuments() {
 
 /**
  * Example function that demonstrates how to generate and send a response based on the
- * user's confirmed matches. The function should be called after the user has selected
- * which candidate(s) to use.
+ * selection the user picked from `presentmentSelections`. The function should be called
+ * after the user has chosen which variant to share.
  *
- * @param confirmedMatches the matches the user has picked from the tree.
+ * @param selection the variant from `processedRequest.presentmentSelections` the user
+ *   approved in the consent UI.
  */
 suspend fun discloseDocuments(
-    confirmedMatches: List<CredentialPresentmentSetOptionMemberMatch>,
+    selection: CredentialPresentmentSelection,
 ) {
-    // For each confirmed match, build the appropriate MyKeyUnlockData and key it by
-    // `match.credential.identifier` — the response builder routes per-credential unlock
-    // data to SecureArea.sign during signing.
+    // For each match in the chosen selection, build the appropriate MyKeyUnlockData
+    // and key it by `match.credential.identifier` — the response builder routes
+    // per-credential unlock data to SecureArea.sign during signing.
     val keyUnlockData: Map<String, KeyUnlockData> =
-        confirmedMatches.associate { match ->
+        selection.matches.associate { match ->
 
             // should block until the user has unlocked the key to sign the response
 
@@ -254,7 +251,6 @@ suspend fun discloseDocuments(
             match.credential.identifier to unlockData
         }
 
-    val selection = CredentialPresentmentSelection(matches = confirmedMatches)
     val response = processedRequest.generateResponse(
         selection = selection,
         keyUnlockData = keyUnlockData,
