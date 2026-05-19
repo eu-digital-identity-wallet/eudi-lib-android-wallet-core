@@ -53,6 +53,10 @@ import org.multipaz.trustmanagement.TrustMetadata
  *   [eu.europa.ec.eudi.wallet.document.IssuedDocument].
  * @property msoMdocNonce nonce used for both MSO mdoc handover binding and JARM
  *   encryption.
+ * @property multipleByQueryId the `multiple` flag for each query. Drives
+ *   [presentmentSelections]: when `multiple = false`, each candidate credential becomes
+ *   its own option; when `multiple = true`, all candidates of the query are grouped into
+ *   one option.
  */
 class ProcessedDcqlRequest(
     val resolvedRequestObject: ResolvedRequestObject,
@@ -60,12 +64,27 @@ class ProcessedDcqlRequest(
     presentmentData: CredentialPresentmentData,
     requester: Requester,
     trustMetadata: TrustMetadata?,
-    val msoMdocNonce: String
+    val msoMdocNonce: String,
+    private val multipleByQueryId: Map<QueryId, Boolean> = emptyMap()
 ) : RequestProcessor.ProcessedRequest.Success(
     presentmentData = presentmentData,
     requester = requester,
     trustMetadata = trustMetadata
 ) {
+
+    /**
+     * The options the user can choose from. For a query with `multiple = false` (the
+     * default), each candidate credential becomes its own option; for `multiple = true`,
+     * all candidates of the query are grouped into one option. Falls back to the default
+     * behaviour when no per-query flags were supplied.
+     */
+    override val presentmentSelections: List<CredentialPresentmentSelection> by lazy {
+        if (multipleByQueryId.isEmpty()) {
+            super.presentmentSelections
+        } else {
+            buildMultipleAwareSelections(presentmentData, multipleByQueryId)
+        }
+    }
 
     /**
      * Generates an [OpenId4VpResponse] with one [VerifiablePresentation] per selected

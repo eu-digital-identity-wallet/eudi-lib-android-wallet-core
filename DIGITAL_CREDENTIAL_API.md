@@ -196,16 +196,12 @@ eudiWallet.addTransferEventListener { event ->
             val success = event.processedRequest.getOrThrow()
                 as RequestProcessor.ProcessedRequest.Success
 
-            // Render the consent UI from success.presentmentData; label the verifier
-            // using success.requester / success.trustMetadata.
-            // ...
-
-            // Build the user's selection: one option per set, one match per member.
-            val matches = success.presentmentData.credentialSets.flatMap { set ->
-                val option = set.options.first()
-                option.members.map { member -> member.matches.first() }
-            }
-            val selection = CredentialPresentmentSelection(matches = matches)
+            // `success.presentmentSelections` contains the options the consent UI can
+            // render. In the DCAPI flow the underlying tree is already narrowed by the
+            // OS picker, so there's a single option that gathers every match the wallet
+            // should disclose.
+            val selection = success.presentmentSelections.single()
+            val matches = selection.matches
 
             // Per-credential unlock data, keyed by `match.credential.identifier`.
             val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
@@ -253,10 +249,10 @@ of the transfer process:
 
 `TransferEvent.RequestReceived`: Indicates that a request has been received and processed.
 The processed request can be accessed through `event.processedRequest`. On success, the
-`RequestProcessor.ProcessedRequest.Success` carries `presentmentData` (the candidate-credentials
-tree), `requester`, and `trustMetadata`. The application builds a
-`CredentialPresentmentSelection` from the tree and calls `success.generateResponse(...)` to
-produce the response. See more details in
+`RequestProcessor.ProcessedRequest.Success` carries `presentmentSelections` (the options the
+consent UI renders), `presentmentData` (the underlying tree), `requester`, and `trustMetadata`.
+The application picks a `CredentialPresentmentSelection` from `presentmentSelections` and
+calls `success.generateResponse(...)` to produce the response. See more details in
 [README](README.md#receiving-a-request-and-sending-a-response).
 
 `TransferEvent.IntentToSend`: Indicates that the response intent `event.intent` is ready. Then you

@@ -113,7 +113,7 @@ The library supports the following features:
 |                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
 | **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
 |                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
-|                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br /> ❌ multiple credentials in CredentialQuery ignored |
+|                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag                       |
 |                            | Transaction data                                                        | ❌                                                                                                                      |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
@@ -1767,14 +1767,16 @@ wallet.addTransferEventListener { event ->
             // using success.requester / success.trustMetadata.
             // ...
 
-            // Build the user's selection: one option per set, one match per member.
-            // (Or call `success.presentmentData.select(preselectedDocuments)` for a
-            // one-liner shortcut.)
-            val matches = success.presentmentData.credentialSets.flatMap { set ->
-                val option = set.options.first()
-                option.members.map { member -> member.matches.first() }
-            }
-            val selection = CredentialPresentmentSelection(matches = matches)
+            // `presentmentSelections` contains one entry per disclosable variant. The
+            // application renders them to the user (typically as separate pages in a
+            // pager) and forwards the confirmed one to `generateResponse`.
+            val variants: List<CredentialPresentmentSelection> = success.presentmentSelections
+
+            // The index the user picked in the consent UI (e.g. the active page of
+            // a pager).
+            val userSelectedIndex = 0
+            val selection: CredentialPresentmentSelection = variants[userSelectedIndex]
+            val matches = selection.matches
 
             // Per-credential unlock data, keyed by `match.credential.identifier`.
             val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
@@ -1992,11 +1994,12 @@ by calling `event.processedRequest.getOrThrow()`. On success this returns a
 `RequestProcessor.ProcessedRequest.Success` carrying three pieces of information that the
 application consumes to render its consent UI and build the response:
 
-| Field                                        | Purpose                                                                                                                                                                                                            |
-|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `presentmentData: CredentialPresentmentData` | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
-| `requester: Requester`                       | The verifier's transport-level identity — certificate chain when reader-auth is present, plus `appId` / `origin` if available.                                                                                     |
-| `trustMetadata: TrustMetadata?`              | Non-`null` only when the verifier's cert chain validated against the configured `ReaderTrustStore`. Carries `displayName` for trusted-verifier UI; `null` means the UI should render an "unknown verifier" branch. |
+| Field                                                              | Purpose                                                                                                                                                                                                            |
+|--------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `presentmentData: CredentialPresentmentData`                       | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
+| `presentmentSelections: List<CredentialPresentmentSelection>`      | Ready-to-use selection variants the consent UI can render directly. Each entry is one disclosable combination — the UI typically lets the user choose which variant to share, and the confirmed one is then passed to `generateResponse`. Use this instead of walking `presentmentData` unless you need fine-grained control. |
+| `requester: Requester`                                             | The verifier's transport-level identity — certificate chain when reader-auth is present, plus `appId` / `origin` if available.                                                                                     |
+| `trustMetadata: TrustMetadata?`                                    | Non-`null` only when the verifier's cert chain validated against the configured `ReaderTrustStore`. Carries `displayName` for trusted-verifier UI; `null` means the UI should render an "unknown verifier" branch. |
 
 ##### The CredentialPresentmentData tree
 
@@ -2034,27 +2037,6 @@ on the credential format:
 The corresponding value (`Claim`) holds the actual disclosable data from the credential, so the
 UI can render previews next to each claim entry (e.g. "first name: Alice").
 
-##### Helpful methods on the model
-
-A few helpers reduce boilerplate when consuming the tree and rendering the consent UI:
-
-- `presentmentData.select(preselectedDocuments)` — returns a `CredentialPresentmentSelection`
-  ready for `generateResponse`. If `preselectedDocuments` is empty it picks the first
-  option / member / match of every set; otherwise it tries to match the documents the user
-  has already chosen in the UI.
-- `presentmentData.consolidate()` — flattens single-member options of each set into one
-  option that groups all their matches together, making it easier to render a simple
-  dropdown when the verifier accepts several alternative single-credential options
-  (e.g. "any of: mDL, PID, PhotoID").
-- `presentmentData.getAllSelections()` — returns every possible combination of
-  options / members / matches if the UI wants to enumerate all valid selections.
-- `claim.render()` — renders a `Claim` value as a human-readable string, taking the
-  document attribute (when known) into account. This decodes enum codes to display
-  labels (e.g. `sex = 1` → `"Male"`, country code `"GR"` → `"Greece"`), formats dates
-  with the user's locale, and handles pictures / blobs gracefully. Optionally accepts a
-  `timeZone` used only when converting UTC instants in date / date-time claims to the
-  user's local time (defaults to the system time zone).
-
 ##### Building the selection and generating the response
 
 After the user has confirmed which match(es) to use, the application builds a
@@ -2071,20 +2053,16 @@ val transferEventListener = TransferEvent.Listener { event ->
             val success = event.processedRequest.getOrThrow()
                 as RequestProcessor.ProcessedRequest.Success
 
-            // render the consent UI from success.presentmentData (and use
-            // success.requester / success.trustMetadata to label the verifier)
-            // ...
+            // `presentmentSelections` contains one entry per disclosable variant. The
+            // application renders them to the user (e.g. as separate pages in a
+            // pager) and forwards the confirmed one to `generateResponse`.
+            val variants: List<CredentialPresentmentSelection> = success.presentmentSelections
 
-            // For each set the user agreed to, pick one option and one match per member.
-            // Here, for simplicity, we take the first option of every set and the first
-            // match of every member as the user's confirmed choice. The one-liner
-            // `success.presentmentData.select(preselectedDocuments)` does the same
-            // (and can match the user's pre-selected documents when supplied).
-            val matches = success.presentmentData.credentialSets.flatMap { set ->
-                val option = set.options.first()
-                option.members.map { member -> member.matches.first() }
-            }
-            val selection = CredentialPresentmentSelection(matches = matches)
+            // The index the user picked in the consent UI (e.g. the active page of
+            // a pager).
+            val userSelectedIndex = 0
+            val selection: CredentialPresentmentSelection = variants[userSelectedIndex]
+            val matches = selection.matches
 
             // If any picked credential requires unlock data (e.g. PIN-locked keys),
             // build a map keyed by `match.credential.identifier`.

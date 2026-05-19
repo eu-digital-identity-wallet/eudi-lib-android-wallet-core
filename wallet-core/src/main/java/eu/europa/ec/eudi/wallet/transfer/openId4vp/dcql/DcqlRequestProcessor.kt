@@ -115,6 +115,10 @@ class DcqlRequestProcessor(
                     query.id to findMatchesForQuery(query)
                 }
 
+            // Each query's `multiple` flag, forwarded to [ProcessedDcqlRequest]
+            val multipleByQueryId: Map<QueryId, Boolean> = credentials.value
+                .associate { query -> query.id to query.multipleOrDefault }
+
             // Apply credential_sets rules to produce the presentment tree.
             val sets = credentialSetsMatcher.toCredentialPresentmentSets(
                 credentials = credentials,
@@ -128,7 +132,8 @@ class DcqlRequestProcessor(
                 presentmentData = CredentialPresentmentData(sets),
                 requester = requester,
                 trustMetadata = trustMetadata,
-                msoMdocNonce = generateJarmNonce()
+                msoMdocNonce = generateJarmNonce(),
+                multipleByQueryId = multipleByQueryId
             )
         } catch (e: Throwable) {
             RequestProcessor.ProcessedRequest.Failure(e)
