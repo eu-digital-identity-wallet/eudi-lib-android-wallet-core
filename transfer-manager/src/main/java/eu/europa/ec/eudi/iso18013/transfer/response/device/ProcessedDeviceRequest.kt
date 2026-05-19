@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.iso18013.transfer.response.device
 import eu.europa.ec.eudi.iso18013.transfer.internal.DocumentResponseGenerator.generateDocumentResponse
 import eu.europa.ec.eudi.iso18013.transfer.internal.DocumentResponseGenerator.generateDocumentResponseWithoutConsuming
 import eu.europa.ec.eudi.iso18013.transfer.internal.assertAgeOverRequestLimitForIso18013
+import eu.europa.ec.eudi.iso18013.transfer.internal.flattenToSingleSelection
 import eu.europa.ec.eudi.iso18013.transfer.internal.requireIssuedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -78,6 +79,15 @@ class ProcessedDeviceRequest(
     requester = requester,
     trustMetadata = trustMetadata
 ) {
+
+    /**
+     * One option containing every credential the wallet has for the request. The consent
+     * UI shows them on a single screen; the user can select which credentials to share
+     * before [generateResponse] is called.
+     */
+    override val presentmentSelections: List<CredentialPresentmentSelection> by lazy {
+        listOf(presentmentData.flattenToSingleSelection())
+    }
 
     /**
      * Generate the device response for the user-confirmed [selection].

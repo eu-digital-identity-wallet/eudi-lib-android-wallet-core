@@ -59,6 +59,19 @@ fun interface RequestProcessor {
             val requester: Requester,
             val trustMetadata: TrustMetadata?
         ) : ProcessedRequest {
+
+            /**
+             * The list of options the user can choose from in the consent UI. Each entry
+             * groups the credentials that would be shared if the user picks it; pass the
+             * chosen one to [generateResponse].
+             *
+             * The default contains every valid choice that satisfies the request.
+             * Subclasses may produce a different list (e.g. a single grouped option). An
+             * empty list means the wallet cannot satisfy the request.
+             */
+            open val presentmentSelections: List<CredentialPresentmentSelection>
+                get() = presentmentData.getAllSelections()
+
             /**
              * Generates the response for the user-confirmed selection.
              *

@@ -189,15 +189,10 @@ transferManager.addTransferEventListener { event ->
             val verifierName = processedRequest.trustMetadata?.displayName
             val verifierIsTrusted = processedRequest.trustMetadata != null
 
-            // Walk the presentment tree to surface candidate matches. In ISO 18013-5
-            // the tree is effectively flat: one option and one member per credential set.
-            val matches = processedRequest.presentmentData
-                .credentialSets
-                .flatMap { set -> set.options.flatMap { o -> o.members.flatMap { m -> m.matches } } }
-
-            // Build the user's confirmed selection — here we disclose everything matched.
-            // For selective (per-claim) disclosure, see the "Receiving a request" section.
-            val selection = CredentialPresentmentSelection(matches = listOf(matches.first()))
+            // Take the ready-to-use selection — it already gathers every match the
+            // wallet holds for the request. For selective (per-claim) disclosure, see
+            // the "Building the disclosure selection" section.
+            val selection = processedRequest.presentmentSelections.single()
 
             // Generate and send the response.
             val response = processedRequest.generateResponse(selection, emptyMap())
@@ -329,12 +324,17 @@ is in the foreground.
 When a request is received, the `TransferManager` triggers `TransferEvent.RequestReceived`.
 The event carries the processed request and the original raw request bytes.
 
-A successful `ProcessedDeviceRequest` exposes three pieces of state that drive consent and
+A successful `ProcessedDeviceRequest` exposes four pieces of state that drive consent and
 response generation:
 
 - **`presentmentData: CredentialPresentmentData`** — a tree of candidate credentials that
   satisfy the verifier's request. The wallet UI typically lets the user pick and confirm
   what to share.
+- **`presentmentSelections: List<CredentialPresentmentSelection>`** — ready-to-use
+  selection variants the consent UI can render directly. Each entry is one disclosable
+  combination. Currently, for ISO 18013-5 the list has a single entry that contains
+  every match the wallet holds for the request; the consent UI typically lets the user
+  select which credentials to share before the selection is passed to `generateResponse`.
 - **`requester: Requester`** — who is asking (X.509 certificate chain, optional `appId` and
   web `origin`).
 - **`trustMetadata: TrustMetadata?`** — `null` when the requester isn't trust-verified;
@@ -366,18 +366,21 @@ val verifierName = processedRequest.trustMetadata?.displayName     // null if no
 val verifierIsTrusted = processedRequest.trustMetadata != null
 val requesterCertChain = processedRequest.requester.certChain      // null if no reader auth
 
-// Walk the presentment tree. For ISO 18013-5 it is effectively flat — one option, one
-// member per credential set — so a single `flatMap` chain yields all candidate matches.
-val matches: List<CredentialPresentmentSetOptionMemberMatch> = processedRequest.presentmentData
-    .credentialSets
-    .flatMap { set -> set.options.flatMap { o -> o.members.flatMap { m -> m.matches } } }
+// Get every match the wallet has for the request. For ISO 18013-5 the list contains
+// a single option that already gathers them all.
+val matches: List<CredentialPresentmentSetOptionMemberMatch> =
+    processedRequest.presentmentSelections.single().matches
 ```
 
-> **ℹ️ Soft matching**: a candidate credential appears in `presentmentData` if it has
+> **ℹ️ Soft matching**: a candidate credential appears in the matches list if it has
 > **at least one** of the verifier's requested data elements. Missing elements are silently
 > omitted from `match.claims`. The response may therefore be a partial disclosure.
 
 #### Building the disclosure selection
+
+The simplest path is to use `processedRequest.presentmentSelections.single()` directly —
+it already gathers every match the wallet has for the request. Walk the tree yourself
+only when you need fine-grained per-match decisions before building the selection.
 
 For full disclosure (the user agrees to share everything that matched), just wrap the
 chosen match in a selection:
@@ -453,10 +456,8 @@ transferManager.addTransferEventListener { event ->
             // Display verifier info to the user before consent.
             val verifierName = processedRequest.trustMetadata?.displayName
 
-            // Surface matches to the consent UI.
-            val matches = processedRequest.presentmentData
-                .credentialSets
-                .flatMap { it.options.flatMap { o -> o.members.flatMap { m -> m.matches } } }
+            // Get every match the wallet has and surface them to the consent UI.
+            val matches = processedRequest.presentmentSelections.single().matches
 
             // After the user confirms (here: a single match, locked key, software unlock).
             val match = matches.first()

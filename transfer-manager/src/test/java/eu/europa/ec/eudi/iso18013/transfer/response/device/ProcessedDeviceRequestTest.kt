@@ -27,6 +27,9 @@ import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialPresentmentSet
+import org.multipaz.presentment.CredentialPresentmentSetOption
+import org.multipaz.presentment.CredentialPresentmentSetOptionMember
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
@@ -178,6 +181,129 @@ class ProcessedDeviceRequestTest {
         assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, parseStatus(response))
     }
 
+    // ── presentmentSelections ──────────────────────────────────────────────
+    //
+    // Asserts that ProcessedDeviceRequest exposes one selection containing every
+    // available match across the request, regardless of the tree shape.
+
+    @Test
+    fun `presentmentSelections is empty selection when presentmentData has no sets`() {
+        val processed = buildProcessedRequest(
+            trustMetadata = null,
+            presentmentData = CredentialPresentmentData(credentialSets = emptyList()),
+        )
+
+        val combinations = processed.presentmentSelections
+
+        assertEquals(1, combinations.size, "expected exactly one combination even for an empty tree")
+        assertEquals(emptyList(), combinations.single().matches)
+    }
+
+    @Test
+    fun `presentmentSelections bundles the single available match`() {
+        val match = mockMatch()
+        val data = oneSetOneOptionOneMember(matches = listOf(match))
+
+        val combinations = buildProcessedRequest(
+            trustMetadata = null,
+            presentmentData = data,
+        ).presentmentSelections
+
+        assertEquals(1, combinations.size)
+        assertEquals(listOf(match), combinations.single().matches)
+    }
+
+    @Test
+    fun `presentmentSelections bundles every match of the same member into one selection`() {
+        // Two stored credentials of the same docType (e.g. two PIDs) appear together in
+        // one selection — the consent UI presents both on one screen.
+        val mdlA = mockMatch()
+        val mdlB = mockMatch()
+        val data = oneSetOneOptionOneMember(matches = listOf(mdlA, mdlB))
+
+        val combinations = buildProcessedRequest(
+            trustMetadata = null,
+            presentmentData = data,
+        ).presentmentSelections
+
+        assertEquals(1, combinations.size, "expected one combination, got ${combinations.size}")
+        assertEquals(listOf(mdlA, mdlB), combinations.single().matches)
+    }
+
+    @Test
+    fun `presentmentSelections combines matches across multiple credential sets`() {
+        val pidA = mockMatch()
+        val mdlA = mockMatch()
+        val data = CredentialPresentmentData(
+            credentialSets = listOf(
+                set(optional = false, members = listOf(listOf(pidA))),
+                set(optional = false, members = listOf(listOf(mdlA))),
+            ),
+        )
+
+        val combinations = buildProcessedRequest(
+            trustMetadata = null,
+            presentmentData = data,
+        ).presentmentSelections
+
+        assertEquals(1, combinations.size)
+        assertEquals(listOf(pidA, mdlA), combinations.single().matches)
+    }
+
+    @Test
+    fun `presentmentSelections picks only the first option in a multi-option set`() {
+        // When the verifier offers alternatives ("either A or B"), only the first
+        // option's matches are surfaced — the result stays consistent with the
+        // verifier's either/or intent.
+        val optionAMatch = mockMatch()
+        val optionBMatch = mockMatch()
+        val data = CredentialPresentmentData(
+            credentialSets = listOf(
+                CredentialPresentmentSet(
+                    optional = false,
+                    options = listOf(
+                        CredentialPresentmentSetOption(
+                            members = listOf(CredentialPresentmentSetOptionMember(matches = listOf(optionAMatch))),
+                        ),
+                        CredentialPresentmentSetOption(
+                            members = listOf(CredentialPresentmentSetOptionMember(matches = listOf(optionBMatch))),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val combinations = buildProcessedRequest(
+            trustMetadata = null,
+            presentmentData = data,
+        ).presentmentSelections
+
+        assertEquals(1, combinations.size)
+        assertEquals(listOf(optionAMatch), combinations.single().matches)
+    }
+
+    @Test
+    fun `presentmentSelections includes matches from optional sets when available`() {
+        // Optional sets contribute their matches as-is; any per-set skip affordance is
+        // the consent UI's concern.
+        val requiredMatch = mockMatch()
+        val optionalMatch = mockMatch()
+        val data = CredentialPresentmentData(
+            credentialSets = listOf(
+                set(optional = false, members = listOf(listOf(requiredMatch))),
+                set(optional = true, members = listOf(listOf(optionalMatch))),
+            ),
+        )
+
+        val combinations = buildProcessedRequest(
+            trustMetadata = null,
+            presentmentData = data,
+        ).presentmentSelections
+
+        assertEquals(1, combinations.size)
+        assertEquals(listOf(requiredMatch, optionalMatch), combinations.single().matches)
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     /**
@@ -204,13 +330,47 @@ class ProcessedDeviceRequestTest {
         trustMetadata: TrustMetadata?,
         requester: Requester = Requester(certChain = null),
         readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+        presentmentData: CredentialPresentmentData = CredentialPresentmentData(emptyList()),
     ): ProcessedDeviceRequest = ProcessedDeviceRequest(
         documentManager = mockk<DocumentManager>(relaxed = true),
         sessionTranscript = SESSION_TRANSCRIPT,
-        presentmentData = CredentialPresentmentData(emptyList()),
+        presentmentData = presentmentData,
         requester = requester,
         trustMetadata = trustMetadata,
         readerAuthPolicy = readerAuthPolicy,
+    )
+
+    /** Mock a [CredentialPresentmentSetOptionMemberMatch] with no behaviour — used as an
+     *  opaque identity token in the selection-shape assertions. */
+    private fun mockMatch(): CredentialPresentmentSetOptionMemberMatch = mockk()
+
+    /**
+     * Shorthand for the typical one-set / one-option / one-member shape that
+     * [DeviceRequestProcessor.toCredentialPresentmentSet] emits — the matches list models
+     * the wallet's stored credentials for the requested docType.
+     */
+    private fun oneSetOneOptionOneMember(
+        matches: List<CredentialPresentmentSetOptionMemberMatch>,
+        optional: Boolean = false,
+    ): CredentialPresentmentData = CredentialPresentmentData(
+        credentialSets = listOf(set(optional = optional, members = listOf(matches))),
+    )
+
+    /**
+     * Build a [CredentialPresentmentSet] with one option whose members are constructed from
+     * the per-member match lists. Used to assemble selection-shape fixtures in the tests
+     * without repeating the nested-constructor boilerplate.
+     */
+    private fun set(
+        optional: Boolean,
+        members: List<List<CredentialPresentmentSetOptionMemberMatch>>,
+    ): CredentialPresentmentSet = CredentialPresentmentSet(
+        optional = optional,
+        options = listOf(
+            CredentialPresentmentSetOption(
+                members = members.map { CredentialPresentmentSetOptionMember(matches = it) },
+            ),
+        ),
     )
 
     private companion object {
