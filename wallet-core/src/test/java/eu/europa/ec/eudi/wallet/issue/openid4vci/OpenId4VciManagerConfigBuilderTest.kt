@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -97,5 +98,20 @@ class OpenId4VciManagerConfigBuilderTest {
         val config = builder.build()
 
         assertIs<DPopConfig.Disabled>(config.dpopConfig)
+    }
+
+    @Test
+    fun `ConfigBuilder uses REQUIRED as default responseEncryptionConfig policy`() {
+        val builder = OpenId4VciManager.Config.Builder()
+            .withIssuerUrl("https://issuer.example.com")
+            .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+            .withAuthFlowRedirectionURI("app://redirect")
+
+        val config = builder.build()
+
+        assertEquals(
+            CredentialResponseEncryptionPolicy.REQUIRED,
+            config.responseEncryptionConfig.credentialResponseEncryptionPolicy
+        )
     }
 }

@@ -231,6 +231,10 @@ val config = EudiWalletConfig()
         // withDPopConfig(DPopConfig.Default) // This is the default
         // withDPopConfig(DPopConfig.Disabled) // To disable DPoP
         // withDPopConfig(customDPopConfig) // To use custom configuration
+
+        // Configure credential response encryption
+        // By default, encryption is REQUIRED with EC P-256 and RSA 2048
+        // withResponseEncryptionConfig(EncryptionSupportConfig(...))
     }
     // configuration for proximity presentation
     // the values below are the default values
@@ -1576,7 +1580,7 @@ defaults:
 val config = EudiWalletConfig()
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.com")
-        withClientId("client-id")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
         // DPoP is enabled by default with DPopConfig.Default
         // No additional configuration needed
@@ -1599,7 +1603,7 @@ If you need to disable DPoP (not recommended for production):
 val config = EudiWalletConfig()
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.com")
-        withClientId("client-id")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
         withDPopConfig(DPopConfig.Disabled)
     }
@@ -1621,7 +1625,7 @@ For advanced use cases, you can fully customize how DPoP keys are created and us
 val walletConfig = EudiWalletConfig()
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.example.com")
-        withClientId("wallet-client")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
 
         // Custom DPoP configuration
         withDPopConfig(
@@ -1643,6 +1647,41 @@ val walletConfig = EudiWalletConfig()
         )
     }
 ```
+
+#### Credential Response Encryption
+
+The library supports encrypting credential responses from the issuer, as defined in the
+[OpenID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) specification.
+This is configured via the `responseEncryptionConfig` property of `OpenId4VciManager.Config`.
+
+By default, credential response encryption is **required** (`CredentialResponseEncryptionPolicy.REQUIRED`)
+with EC P-256 and RSA 2048.
+
+##### Changing the encryption policy
+
+```kotlin
+
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        // ..............................
+
+        // Use encryption only if the issuer supports it (instead of requiring it)
+        withResponseEncryptionConfig(
+            EncryptionSupportConfig(
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
+                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+                rsaConfig = RsaConfig(rcaKeySize = 2048),
+            )
+        )
+    }
+```
+
+The available policies are:
+
+- `CredentialResponseEncryptionPolicy.REQUIRED` (default) -- encryption must be used; issuance fails
+  if the issuer does not support it.
+- `CredentialResponseEncryptionPolicy.SUPPORTED` -- encryption is used when the issuer advertises
+  support for it, but issuance proceeds unencrypted otherwise.
 
 ### Transfer documents
 

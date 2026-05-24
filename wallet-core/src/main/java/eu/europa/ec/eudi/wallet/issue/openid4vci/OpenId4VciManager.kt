@@ -19,8 +19,13 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.IntDef
+import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
+import eu.europa.ec.eudi.openid4vci.EcConfig
+import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
+import eu.europa.ec.eudi.openid4vci.RsaConfig
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -439,6 +444,14 @@ interface OpenId4VciManager {
      *
      *           @see DPopConfig for configuration options
      * @property parUsage if PAR should be used
+     * @property responseEncryptionConfig configuration for credential response encryption.
+     *           Controls whether credential responses from the issuer are encrypted, and which
+     *           algorithms are supported.
+     *
+     *           **Default:** encryption required with EC P-256 and RSA 2048
+     *
+     *           @see EncryptionSupportConfig
+     *           @see CredentialResponseEncryptionPolicy
      */
     data class Config @JvmOverloads constructor(
         val issuerUrl: String,
@@ -448,6 +461,11 @@ interface OpenId4VciManager {
         val dpopConfig: DPopConfig = DPopConfig.Default,
         @ParUsage val parUsage: Int = IF_SUPPORTED,
         val issuanceMetadataStorage: Storage? = null,
+        val responseEncryptionConfig: EncryptionSupportConfig = EncryptionSupportConfig(
+            credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.REQUIRED,
+            ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+            rsaConfig = RsaConfig(rcaKeySize = 2048),
+        ),
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -561,6 +579,12 @@ interface OpenId4VciManager {
             var parUsage: Int = IF_SUPPORTED
 
             var issuanceMetadataStorage: Storage? = null
+
+            var responseEncryptionConfig: EncryptionSupportConfig = EncryptionSupportConfig(
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.REQUIRED,
+                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+                rsaConfig = RsaConfig(rcaKeySize = 2048),
+            )
 
             /**
              * Set the issuer url
@@ -715,6 +739,23 @@ interface OpenId4VciManager {
             }
 
             /**
+             * Sets the credential response encryption configuration.
+             *
+             * Controls whether and how credential responses from the issuer are encrypted.
+             * The configuration includes the encryption policy, EC key curve, and RSA key size.
+             *
+             * **Default:** [CredentialResponseEncryptionPolicy.REQUIRED] with EC P-256 and RSA 2048
+             *
+             * @param responseEncryptionConfig The [EncryptionSupportConfig] to use
+             * @return This builder instance for method chaining
+             * @see EncryptionSupportConfig
+             * @see CredentialResponseEncryptionPolicy
+             */
+            fun withResponseEncryptionConfig(responseEncryptionConfig: EncryptionSupportConfig) = apply {
+                this.responseEncryptionConfig = responseEncryptionConfig
+            }
+
+            /**
              * Build the [Config]
              * @return the [Config]
              */
@@ -731,7 +772,8 @@ interface OpenId4VciManager {
                     authFlowRedirectionURI = authFlowRedirectionURI,
                     dpopConfig = dpopConfig,
                     parUsage = parUsage,
-                    issuanceMetadataStorage = issuanceMetadataStorage
+                    issuanceMetadataStorage = issuanceMetadataStorage,
+                    responseEncryptionConfig = responseEncryptionConfig,
                 )
             }
         }

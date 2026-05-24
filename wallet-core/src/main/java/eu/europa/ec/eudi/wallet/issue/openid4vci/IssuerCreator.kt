@@ -17,21 +17,16 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
-import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
-import eu.europa.ec.eudi.openid4vci.EcConfig
-import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import eu.europa.ec.eudi.openid4vci.ParUsage
-import eu.europa.ec.eudi.openid4vci.RsaConfig
 import eu.europa.ec.eudi.openid4vci.clientAttestationPOPJWSAlgs
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -205,11 +200,7 @@ internal class IssuerCreator(
         return OpenId4VCIConfig(
             clientAuthentication = auth,
             authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
-            encryptionSupportConfig = EncryptionSupportConfig(
-                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
-                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
-                rsaConfig = RsaConfig(rcaKeySize = 2048)
-            ),
+            encryptionSupportConfig = responseEncryptionConfig,
             dPoPSigner = if (existingDpopKeyAlias != null) {
                 // Re-issuance: reuse existing DPoP key bound to the access token
                 val resolvedConfig = when (val cfg = dpopConfig) {
