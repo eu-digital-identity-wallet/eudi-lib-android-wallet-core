@@ -440,7 +440,7 @@ class EudiWalletConfig {
         this.readerAuthPolicy = readerAuthPolicy
     }
 
-    var userAuthenticationRequired: Boolean = false
+    var userAuthenticationRequired: Boolean = true
         internal set // internal for setting the default value from the builder
     var userAuthenticationTimeout: Duration = 0.milliseconds
         private set
@@ -461,7 +461,7 @@ class EudiWalletConfig {
      * **Note**: when setting useStrongBoxForKeys to true, the device must support the StrongBox.
      *
      * The default values are:
-     * - userAuthenticationRequired: false
+     * - userAuthenticationRequired: true
      * - userAuthenticationTimeout: 0
      * - useStrongBoxForKeys: true if supported by the device
      *
@@ -471,7 +471,7 @@ class EudiWalletConfig {
      * @param useStrongBoxForKeys whether to use the strong box for keys
      */
     fun configureDocumentKeyCreation(
-        userAuthenticationRequired: Boolean = false,
+        userAuthenticationRequired: Boolean = true,
         userAuthenticationTimeout: Duration = 0.milliseconds,
         useStrongBoxForKeys: Boolean = true,
     ) = apply {

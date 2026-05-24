@@ -208,7 +208,7 @@ val config = EudiWalletConfig()
         userAuthenticationRequired = true,
         // set userAuthenticationTimeout to 30 seconds
         userAuthenticationTimeout = 30_000.milliseconds,
-        // set useStrongBoxForKeys to true to use the the device's StrongBox if available
+        // set useStrongBoxForKeys to true to use the device's StrongBox if available
         // to store the keys
         useStrongBoxForKeys = true
     )
