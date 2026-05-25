@@ -154,8 +154,6 @@ class ProcessedDeviceRequest(
                     .groupBy { it.namespaceName }
                     .mapValues { (_, claims) -> claims.map { it.dataElementName } }
 
-                val keyUnlockData = keyUnlockData[match.credential.identifier]
-
                 val matchedZkSystem = matchZkSystem(
                     zkSystemRepository = zkSystemRepository,
                     docRequest = docRequest,
@@ -166,14 +164,14 @@ class ProcessedDeviceRequest(
                     addDocumentResponse(
                         issuedDocument = issuedDocument,
                         elements = elements,
-                        keyUnlockData = keyUnlockData,
+                        keyUnlockData = keyUnlockData[match.credential.identifier],
                         deviceResponseGenerator = deviceResponseGenerator
                     )
                 } else {
                     addZkDocumentResponse(
                         issuedDocument = issuedDocument,
                         elements = elements,
-                        keyUnlockData = keyUnlockData,
+                        keyUnlockData = keyUnlockData[match.credential.identifier],
                         matchedZkSystem = matchedZkSystem,
                         deviceResponseGenerator = deviceResponseGenerator
                     )
