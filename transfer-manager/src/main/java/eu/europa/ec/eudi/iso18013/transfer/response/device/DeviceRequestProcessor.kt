@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import kotlinx.coroutines.CancellationException
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.claim.Claim
@@ -125,6 +126,8 @@ class DeviceRequestProcessor(
                 readerAuthPolicy = readerAuthPolicy,
                 zkResponsePolicy = zkResponsePolicy
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             RequestProcessor.ProcessedRequest.Failure(e)
         }
@@ -164,8 +167,13 @@ internal suspend fun DocRequest.toCredentialPresentmentSet(
         val secureCred = issuedDoc.findCredential() ?: return@mapNotNull null
         if (secureCred !is MdocCredential) return@mapNotNull null
 
-        val credClaims = runCatching { secureCred.getClaims(documentTypeRepository = null) }
-            .getOrElse { return@mapNotNull null }
+        val credClaims = try {
+            secureCred.getClaims(documentTypeRepository = null)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            return@mapNotNull null
+        }
         val matchedClaims: MutableMap<RequestedClaim, Claim> = mutableMapOf()
         for (req in requestedClaims) {
             credClaims.findMatchingClaim(req)?.let { matchedClaims[req] = it }

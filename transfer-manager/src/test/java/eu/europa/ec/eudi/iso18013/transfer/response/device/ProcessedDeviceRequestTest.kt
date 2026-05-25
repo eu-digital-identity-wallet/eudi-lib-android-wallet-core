@@ -21,9 +21,12 @@ import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import org.multipaz.credential.Credential
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.response.DeviceResponseParser
+import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
@@ -36,6 +39,7 @@ import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Constants
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 /**
@@ -179,6 +183,43 @@ class ProcessedDeviceRequestTest {
         val response = assertIs<DeviceResponse>(success.response)
         assertEquals(emptyList(), response.documentIds)
         assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, parseStatus(response))
+    }
+
+    @Test
+    fun `generateResponse propagates CancellationException from suspending work instead of returning Failure`() = runBlocking {
+        // The body of generateResponse suspends inside the per-match disclosure path. The
+        // first suspending call in the loop is match.credential.requireIssuedDocument(...),
+        // which delegates to documentManager.getDocumentById — we throw CancellationException
+        // there to simulate cancellation while signing is in progress.
+        //
+        // The outer `catch (Exception)` must NOT swallow CancellationException; the explicit
+        // `catch (CancellationException) { throw e }` placed above it is what this test
+        // regression-guards.
+        val documentManager = mockk<DocumentManager> {
+            every { getDocumentById(any()) } throws CancellationException("scope cancelled")
+        }
+        val match = mockk<CredentialPresentmentSetOptionMemberMatch> {
+            every { source } returns CredentialMatchSourceIso18013(docRequest = mockk(relaxed = true))
+            every { credential } returns mockk<Credential>(relaxed = true)
+            every { claims } returns emptyMap()
+        }
+        val processed = ProcessedDeviceRequest(
+            documentManager = documentManager,
+            sessionTranscript = SESSION_TRANSCRIPT,
+            presentmentData = CredentialPresentmentData(emptyList()),
+            requester = Requester(certChain = null),
+            // Trusted + DoNotEnforce so the policy gate doesn't short-circuit before the loop.
+            trustMetadata = TrustMetadata(displayName = "Trusted"),
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        )
+
+        val thrown = assertFailsWith<CancellationException> {
+            processed.generateResponse(
+                selection = CredentialPresentmentSelection(matches = listOf(match)),
+                keyUnlockData = emptyMap(),
+            )
+        }
+        assertEquals("scope cancelled", thrown.message)
     }
 
     // ── presentmentSelections ──────────────────────────────────────────────

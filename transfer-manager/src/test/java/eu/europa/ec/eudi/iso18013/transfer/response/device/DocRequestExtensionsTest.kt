@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.multipaz.cbor.Tstr
 import org.multipaz.claim.MdocClaim
@@ -33,6 +34,7 @@ import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.request.MdocRequestedClaim
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -212,6 +214,33 @@ class DocRequestExtensionsTest {
         // Broken candidate is skipped; healthy one survives → 1 match in the set.
         assertNotNull(set)
         assertEquals(1, set.options.single().members.single().matches.size)
+    }
+
+    @Test
+    fun `propagates CancellationException from getClaims instead of skipping the candidate`() = runBlocking {
+        // Companion to `skips candidates whose getClaims throws`: ordinary exceptions are
+        // absorbed and the matching loop moves on, but CancellationException must propagate
+        // so the parent coroutine's cancellation is honoured. Regression-guards the explicit
+        // `catch (CancellationException) { throw e }` that replaced the prior `runCatching`.
+        val brokenCred = mockk<MdocCredential>()
+        coEvery { brokenCred.getClaims(any()) } throws CancellationException("scope cancelled")
+        val brokenDoc = mockk<IssuedDocument> {
+            every { format } returns MsoMdocFormat(docType = ISO_MDL_DOC_TYPE)
+            coEvery { findCredential(any()) } returns brokenCred
+        }
+        // Add a healthy second candidate to prove the loop is NOT given the chance to
+        // continue: if cancellation were swallowed, the healthy match would survive and
+        // the call would return a non-null set instead of throwing.
+        val healthyDoc = mockMdocIssuedDocument(claims = listOf(mdocClaim("given_name")))
+        val documentManager = mockDocumentManager(documents = listOf(brokenDoc, healthyDoc))
+        val request = mockDocRequest(
+            nameSpaces = mapOf(ISO_MDL_NAMESPACE to mapOf("given_name" to false)),
+        )
+
+        val thrown = assertFailsWith<CancellationException> {
+            request.toCredentialPresentmentSet(documentManager)
+        }
+        assertEquals("scope cancelled", thrown.message)
     }
 
     @Test

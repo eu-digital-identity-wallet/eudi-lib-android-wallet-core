@@ -24,7 +24,10 @@ import eu.europa.ec.eudi.iso18013.transfer.mockAndroidLog
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
+import eu.europa.ec.eudi.wallet.document.DocumentManager
+import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.mockito.MockedStatic
 import org.multipaz.mdoc.response.DeviceResponseParser
@@ -37,6 +40,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 /**
@@ -192,6 +196,25 @@ class DeviceRequestProcessorTest {
                 encodedSessionTranscript = response.sessionTranscriptBytes,
             ).parse()
             assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, parsed.status)
+        }
+
+    @Test
+    fun `process propagates CancellationException from suspending work instead of returning Failure`(): Unit =
+        runBlocking {
+            // process() flows through DocRequest.toCredentialPresentmentSet, which calls
+            // getValidIssuedMsoMdocDocuments -> documentManager.getDocuments(). Throwing
+            // CancellationException from there exercises the outer `catch (Throwable)` —
+            // it must re-throw so the parent scope's cancellation propagates instead of
+            // being swallowed into a spurious ProcessedRequest.Failure.
+            val documentManager = mockk<DocumentManager> {
+                coEvery { getDocuments(any()) } throws CancellationException("scope cancelled")
+            }
+            val processor = DeviceRequestProcessor(documentManager)
+
+            val thrown = assertFailsWith<CancellationException> {
+                processor.process(DeviceRequest)
+            }
+            assertEquals("scope cancelled", thrown.message)
         }
 
     private fun ProcessedDeviceRequest.firstMatch(): CredentialPresentmentSetOptionMemberMatch =

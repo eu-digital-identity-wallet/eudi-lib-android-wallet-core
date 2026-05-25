@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.iso18013.transfer.zkp.matchZkSystem
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import kotlinx.coroutines.CancellationException
 import org.multipaz.cbor.Cbor
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.response.MdocDocument
@@ -186,6 +187,8 @@ class ProcessedDeviceRequest(
                     documentIds = documentIds
                 )
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             ResponseResult.Failure(e)
         }
