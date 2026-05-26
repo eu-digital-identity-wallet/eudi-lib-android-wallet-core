@@ -154,6 +154,19 @@ class ProcessedDcqlRequest(
                 )
             }
 
+            // OpenID4VP §8.1 requires a non-empty vp_token in PositiveConsensus. Fail
+            // fast — the caller should dispatch NegativeConsensus instead.
+            if (verifiablePresentationsMap.isEmpty()) {
+                return ResponseResult.Failure(
+                    IllegalStateException(
+                        "No verifiable presentations produced for the selection. " +
+                                "If the user declined or there is nothing to disclose, " +
+                                "dispatch Consensus.NegativeConsensus via OpenId4VpManager " +
+                                "instead of calling generateResponse()."
+                    )
+                )
+            }
+
             val verifiablePresentations = VerifiablePresentations(
                 verifiablePresentationsMap.mapValues { it.value.toList() }
             )

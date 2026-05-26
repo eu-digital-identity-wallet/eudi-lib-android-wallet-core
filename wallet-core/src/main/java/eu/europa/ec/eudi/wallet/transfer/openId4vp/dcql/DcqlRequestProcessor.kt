@@ -341,11 +341,6 @@ class DcqlRequestProcessor(
                 is JsonObject -> start[head.content]
                     ?.let { descendClaimPath(it, tail) }
                     ?: emptyList()
-                is JsonArray -> start.flatMap { element ->
-                    (element as? JsonObject)?.get(head.content)
-                        ?.let { descendClaimPath(it, tail) }
-                        ?: emptyList()
-                }
                 else -> emptyList()
             }
             head is JsonPrimitive && !head.isString -> {

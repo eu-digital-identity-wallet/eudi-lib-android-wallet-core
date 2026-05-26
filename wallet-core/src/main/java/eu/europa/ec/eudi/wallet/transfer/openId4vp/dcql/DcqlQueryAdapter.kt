@@ -49,9 +49,11 @@ internal fun CredentialQuery.toDcqlCredentialQuery(): DcqlCredentialQuery {
         }
         Format.SdJwtVc -> {
             mdocDocType = null
-            vctValues = metaSdJwtVc?.vctValues?.also {
-                require(it.isNotEmpty()) { "vct_values is empty for query with id $id" }
-            } ?: error("vct_values is missing for query with id $id")
+            val vct = requireNotNull(metaSdJwtVc?.vctValues) {
+                "vct_values is missing for query with id $id"
+            }
+            require(vct.isNotEmpty()) { "vct_values is empty for query with id $id" }
+            vctValues = vct
         }
         else -> throw IllegalArgumentException("Unsupported format ${format.value}")
     }
