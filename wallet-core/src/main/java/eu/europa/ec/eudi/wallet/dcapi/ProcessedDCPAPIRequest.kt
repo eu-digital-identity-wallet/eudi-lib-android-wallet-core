@@ -98,10 +98,6 @@ class ProcessedDCPAPIRequest(
                 encryptionInfo[1][RECIPIENT_PUBLIC_KEY].EncodeToBytes(),
             ).asCoseKey.ecPublicKey
 
-            logger?.d(TAG, "Calling processedDeviceRequest.generateResponse() with ${disclosedDocuments.size} disclosed docs")
-            disclosedDocuments.forEach { dd ->
-                logger?.d(TAG, "  DisclosedDoc: id=${dd.documentId}, items=${dd.disclosedItems.size}, keyUnlockData=${dd.keyUnlockData != null}")
-            }
             val deviceResponse = processedDeviceRequest.generateResponse(
                 selection = selection,
                 keyUnlockData = keyUnlockData
