@@ -7,12 +7,19 @@ the [EUDI Wallet Reference Implementation project description](https://github.co
 
 ## Overview
 
-This repository contains the EUDI Wallet Core library for Android. The library is a part
-of the EUDI Wallet Reference Implementation project.
-
-This library acts as a coordinator by orchestrating the various components that are
+The **Wallet Core** library acts as a coordinator by orchestrating the various components that are
 required to implement the EUDI Wallet functionality. On top of that, it provides a simplified API
 that can be used by the application to implement the EUDI Wallet functionality.
+
+This repository is a **monorepo** that contains the EUDI Wallet Core library for Android along with
+its companion libraries: **Document Manager** and **Transfer Manager**. All three modules are part of
+the EUDI Wallet Reference Implementation project and are published under the same version.
+
+**Note:** The `eudi-lib-android-wallet-document-manager` and
+`eudi-lib-android-iso18013-data-transfer` libraries were previously maintained in separate
+repositories. They have been consolidated into this monorepo for ease of maintenance. The
+standalone repositories are no longer maintained — all development continues here.
+
 
 ```mermaid
 %%{init: {
@@ -111,6 +118,17 @@ The library supports the following features:
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
+
+### Repository Structure
+
+This monorepo contains three Gradle modules, all published under the same version:
+
+| Module | Maven Artifact |
+|--------|----------------|
+| `:wallet-core` | `eu.europa.ec.eudi:eudi-lib-android-wallet-core` |
+| `:document-manager` | `eu.europa.ec.eudi:eudi-lib-android-wallet-document-manager` |
+| `:transfer-manager` | `eu.europa.ec.eudi:eudi-lib-android-iso18013-data-transfer` |
+
 
 ## Disclaimer
 
