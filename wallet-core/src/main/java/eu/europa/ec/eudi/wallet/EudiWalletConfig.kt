@@ -22,6 +22,7 @@ import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIConfig
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
@@ -458,13 +459,33 @@ class EudiWalletConfig {
         private set
 
     /**
+     * The policy applied when a Zero-Knowledge proof cannot be produced for a requested document.
+     *
+     * - [ZkResponsePolicy.FallbackToFullDisclosure] (default, for backwards compatibility): the
+     *   requested data is disclosed in plaintext instead.
+     * - [ZkResponsePolicy.Strict]: the response fails rather than disclosing the data, so a failed
+     *   proof never degrades into unintended disclosure.
+     *
+     * @see ZkResponsePolicy
+     */
+    var zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.FallbackToFullDisclosure
+        private set
+
+    /**
      * Configure Zero-Knowledge Proofs (ZKP) support.
      * This allows you to enable ZKP support by providing a [ZkSystemRepository].
+     *
+     * @param zkSystemRepository the ZKP system repository.
+     * @param zkResponsePolicy the behaviour when a proof cannot be produced. Defaults to
+     * [ZkResponsePolicy.FallbackToFullDisclosure]; use [ZkResponsePolicy.Strict] to fail instead of
+     * disclosing the requested data.
      */
     fun configureZkp(
-        zkSystemRepository: ZkSystemRepository
+        zkSystemRepository: ZkSystemRepository,
+        zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.FallbackToFullDisclosure
     ) = apply {
         this.zkSystemRepository = zkSystemRepository
+        this.zkResponsePolicy = zkResponsePolicy
     }
 
     companion object {
