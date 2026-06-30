@@ -948,4 +948,151 @@ class DcqlRequestProcessorTest {
         }
         return DcqlRequestProcessor(documentManager, trust)
     }
+
+    /**
+     * SD-JWT processor backed by multiple documents — one per entry in
+     * [perCredentialClaims]. Used when a test needs the wallet to hold several
+     * candidate credentials for the same query.
+     */
+    private fun buildSdJwtProcessorWithDocuments(
+        vct: String,
+        perCredentialClaims: List<List<Claim>>,
+    ): DcqlRequestProcessor {
+        val issuedDocs = perCredentialClaims.map { claims ->
+            val credential = mockk<SecureAreaBoundCredential> {
+                coEvery { getClaims(documentTypeRepository = null) } returns claims
+            }
+            mockk<IssuedDocument> {
+                every { format } returns SdJwtVcFormat(vct) as DocumentFormat
+                coEvery { findCredential(now = any()) } returns credential
+            }
+        }
+        val documentManager = mockk<DocumentManager> {
+            every { getDocuments(predicate = any()) } returns issuedDocs
+            every { getDocuments(predicate = null) } returns issuedDocs
+        }
+        val trust = mockk<OpenId4VpReaderTrust> {
+            every { result } returns ReaderTrustResult.Pending
+            every { readerTrustStore } returns null
+            every { readerTrustStore = any() } returns Unit
+        }
+        return DcqlRequestProcessor(documentManager, trust)
+    }
+
+    /**
+     * When the verifier asks for an array index the credential doesn't have, the
+     * credential is filtered out.
+     *
+     * Wallet holds a single PID with `nationalities = ["DE", "FR"]`; the query asks
+     * for index 5. Expected: zero matches.
+     */
+    @Test
+    fun `sdjwt out-of-bounds array index produces no matches`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("pid"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("nat_at_5"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("nationalities"),
+                                        ClaimPathElement.ArrayElement(5),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val credentialClaims = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "nationalities",
+                value = buildJsonArray {
+                    add(JsonPrimitive("DE"))
+                    add(JsonPrimitive("FR"))
+                },
+            ),
+        )
+        val processor = buildSdJwtProcessor(vct = vct, credentialClaims = credentialClaims)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        assertNoMatches(success)
+    }
+
+    /**
+     * When two candidate credentials hold arrays of different sizes, only the one
+     * whose array contains the requested index should match — the shorter one is
+     * filtered out without taking the rest of the request down with it.
+     *
+     * PID-A has 1 nationality; PID-B has 2. The query asks for index 1; only PID-B
+     * survives.
+     */
+    @Test
+    fun `sdjwt out-of-bounds for one of two credentials drops only that one`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("pid"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("nat_at_1"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("nationalities"),
+                                        ClaimPathElement.ArrayElement(1),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+
+        val pidA = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "nationalities",
+                value = buildJsonArray { add(JsonPrimitive("DE")) },
+            ),
+        )
+        val pidB = listOf<Claim>(
+            jsonClaim(
+                vct = vct,
+                claimName = "nationalities",
+                value = buildJsonArray {
+                    add(JsonPrimitive("DE"))
+                    add(JsonPrimitive("FR"))
+                },
+            ),
+        )
+        val processor = buildSdJwtProcessorWithDocuments(
+            vct = vct,
+            perCredentialClaims = listOf(pidA, pidB),
+        )
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val success = assertIs<ProcessedDcqlRequest>(processed)
+        success.assertSingleMatch()
+    }
 }

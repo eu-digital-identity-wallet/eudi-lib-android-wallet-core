@@ -31,8 +31,10 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.internal.toRequesterAndTrust
+import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
@@ -73,6 +75,7 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
     var openid4VpX509CertificateTrust: OpenId4VpReaderTrust,
+    private var logger: Logger? = null
 ) : RequestProcessor, ReaderTrustStoreAware {
 
     /**
@@ -139,6 +142,7 @@ class DcqlRequestProcessor(
                 multipleByQueryId = multipleByQueryId
             )
         } catch (e: Throwable) {
+            logger?.e(TAG, "DCQL process failed", e)
             RequestProcessor.ProcessedRequest.Failure(e)
         }
     }
@@ -271,8 +275,13 @@ class DcqlRequestProcessor(
      * wildcard per OpenID4VP §7.1.
      */
     private fun matchClaim(req: RequestedClaim, credClaims: List<Claim>): Claim? {
-        val direct = credClaims.findMatchingClaim(req)
-        if (direct != null) return direct
+        // Skip the credential when the requested array index is out of bounds
+        val matchedClaim = try {
+            credClaims.findMatchingClaim(req)
+        } catch (_: IndexOutOfBoundsException) {
+            null
+        }
+        if (matchedClaim != null) return matchedClaim
         return matchClaimViaSpecCorrectNullWildcard(req, credClaims)
     }
 
@@ -389,9 +398,12 @@ class DcqlRequestProcessor(
     }
 
     companion object {
+        private const val TAG = "DcqlRequestProcessor"
+
         operator fun invoke(
             documentManager: DocumentManager,
             readerTrustStore: ReaderTrustStore?,
+            logger: Logger? = null
         ): DcqlRequestProcessor {
             val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
                 readerTrustStore = readerTrustStore
@@ -399,6 +411,7 @@ class DcqlRequestProcessor(
             return DcqlRequestProcessor(
                 documentManager = documentManager,
                 openid4VpX509CertificateTrust = openId4VpReaderTrust,
+                logger = logger
             )
         }
     }
