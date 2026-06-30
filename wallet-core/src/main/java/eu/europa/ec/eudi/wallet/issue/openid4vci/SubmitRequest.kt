@@ -58,8 +58,14 @@ internal class SubmitRequest(
         offeredDocument: Offer.OfferedDocument,
         keyUnlockData: Map<KeyAlias, KeyUnlockData?>? = null,
     ): ResponseResult<SubmissionOutcome> {
-        val payload =
-            IssuanceRequestPayload.ConfigurationBased(offeredDocument.configurationIdentifier)
+        val configId = offeredDocument.configurationIdentifier
+        val payload = authorizedRequest.credentialIdentifiers
+            ?.get(configId)
+            ?.firstOrNull()
+            ?.let { credentialIdentifier ->
+                IssuanceRequestPayload.IdentifierBased(configId, credentialIdentifier)
+            }
+            ?: IssuanceRequestPayload.ConfigurationBased(configId)
         val signers = unsignedDocument.getPoPSigners().toList()
 
         val (updatedAuthorizedRequest, outcome) = when (config.clientAuthenticationType) {
