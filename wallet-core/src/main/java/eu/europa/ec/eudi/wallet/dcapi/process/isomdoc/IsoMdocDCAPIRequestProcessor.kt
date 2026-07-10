@@ -27,6 +27,7 @@ import androidx.credentials.provider.ProviderGetCredentialRequest
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
@@ -52,6 +53,8 @@ import org.multipaz.mdoc.zkp.ZkSystemRepository
  * @param readerAuthPolicy how reader authentication results affect document disclosure.
  * @param privilegedAllowlist allowlist of privileged callers permitted to set the request origin.
  * @param zkSystemRepository optional Zero-Knowledge Proof system repository.
+ * @param wrpRegistrationValidator validates the relying party registration certificate carried in the
+ *   request; when null, registration is not validated.
  * @param logger optional logger.
  */
 class IsoMdocDCAPIRequestProcessor(
@@ -61,6 +64,7 @@ class IsoMdocDCAPIRequestProcessor(
     private val privilegedAllowlist: String,
     private var zkSystemRepository: ZkSystemRepository?,
     private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
+    private val wrpRegistrationValidator: WrpRegistrationValidator? = null,
     private var logger: Logger? = null,
 ) : RequestProcessor, ReaderTrustStoreAware {
 
@@ -76,7 +80,8 @@ class IsoMdocDCAPIRequestProcessor(
             readerTrustStore = readerTrustStore,
             readerAuthPolicy = readerAuthPolicy,
             zkSystemRepository = zkSystemRepository,
-            zkResponsePolicy = zkResponsePolicy
+            zkResponsePolicy = zkResponsePolicy,
+            wrpRegistrationValidator = wrpRegistrationValidator
         ).process(deviceRequest)
         val processedDeviceRequest = processed as? ProcessedDeviceRequest
             ?: run {

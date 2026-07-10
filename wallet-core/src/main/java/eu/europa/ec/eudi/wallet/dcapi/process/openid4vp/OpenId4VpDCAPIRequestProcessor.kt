@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
+import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
@@ -58,7 +59,6 @@ import kotlinx.serialization.json.jsonObject
  * @param dcqlRequestProcessor the processor that matches the DCQL query against stored documents.
  * @param privilegedAllowlist allowlist of privileged callers permitted to set the request origin.
  * @param supportedProtocols the OpenID4VP protocols this processor will accept.
- * @param ktorHttpClientFactory optional factory for the HTTP client used during request resolution.
  * @param logger optional logger.
  */
 class OpenId4VpDCAPIRequestProcessor(
@@ -66,8 +66,8 @@ class OpenId4VpDCAPIRequestProcessor(
     private val dcqlRequestProcessor: DcqlRequestProcessor,
     private val privilegedAllowlist: String,
     private val supportedProtocols: List<DCAPIProtocol>,
-    private val ktorHttpClientFactory: (() -> HttpClient)? = null,
-    private var logger: Logger? = null
+    private var logger: Logger? = null,
+    private val registrationCertificatePolicy: RegistrationCertificatePolicy? = null
 ) : RequestProcessor, ReaderTrustStoreAware {
 
     override var readerTrustStore: ReaderTrustStore?
@@ -80,12 +80,9 @@ class OpenId4VpDCAPIRequestProcessor(
         OpenId4Vp.overDcApi(
             openId4VPConfig = makeOpenId4VPConfig(
                 openId4VpConfig,
-                dcqlRequestProcessor.openid4VpX509CertificateTrust
-            ),
-            httpClient = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
-                .wrappedWithLogging(logger)
-                .wrappedWithContentNegotiation()
-                .invoke()
+                dcqlRequestProcessor.openid4VpX509CertificateTrust,
+                registrationCertificatePolicy
+            )
         )
     }
 
