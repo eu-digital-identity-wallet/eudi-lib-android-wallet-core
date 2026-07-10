@@ -20,9 +20,13 @@ import eu.europa.ec.eudi.iso18013.transfer.internal.cn
 import eu.europa.ec.eudi.iso18013.transfer.internal.getValidIssuedMsoMdocDocuments
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
+import eu.europa.ec.eudi.iso18013.transfer.response.EU_WRPRC_REQUEST_INFO_KEY
+import eu.europa.ec.eudi.iso18013.transfer.response.MSO_MDOC_FORMAT
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
+import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -68,6 +72,8 @@ import org.multipaz.mdoc.request.DeviceRequest as MultipazDeviceRequest
  * @property readerAuthPolicy the policy for enforcing reader authentication during response generation
  * @property zkSystemRepository the ZKP system repository
  * @property zkResponsePolicy the ZK response policy to use when ZK proof generation fails
+ * @property wrpRegistrationValidator validates the relying party registration certificate carried in
+ *   the request's `euWrprc` `requestInfo`; when null, registration is not validated
  */
 class DeviceRequestProcessor(
     private val documentManager: DocumentManager,
@@ -75,6 +81,7 @@ class DeviceRequestProcessor(
     private val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
     private var zkSystemRepository: ZkSystemRepository? = null,
     internal val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
+    private val wrpRegistrationValidator: WrpRegistrationValidator? = null,
 ) : RequestProcessor, ReaderTrustStoreAware {
 
     /**
@@ -116,6 +123,25 @@ class DeviceRequestProcessor(
                 docRequest.toCredentialPresentmentSet(documentManager)
             }
 
+            // Validate the relying party registration certificate carried in the request, when a
+            // validator is configured. It is repeated in each ItemsRequest.requestInfo (ETSI TS 119
+            // 472-2 clause 5.3.2), so identical copies collapse to one; two different certificates
+            // are ambiguous and rejected.
+            val wrpRegistration = wrpRegistrationValidator?.let { validator ->
+                val certificates = parsedRequest.docRequests
+                    .mapNotNull { it.docRequestInfo?.otherInfo?.get(EU_WRPRC_REQUEST_INFO_KEY) }
+                    .mapNotNull { runCatching { it.asBstr }.getOrNull() }
+                    .distinctBy { it.toList() }
+                require(certificates.size <= 1) {
+                    "Device Request carries multiple relying party registration certificates"
+                }
+                validator.validate(
+                    registrationCertificate = certificates.firstOrNull(),
+                    readerAccessChain = readerCertChain,
+                    requestedAttestations = parsedRequest.docRequests.map { it.toRequestedAttestationInfo() },
+                )
+            }
+
             ProcessedDeviceRequest(
                 documentManager = documentManager,
                 sessionTranscript = request.sessionTranscriptBytes,
@@ -124,7 +150,8 @@ class DeviceRequestProcessor(
                 trustMetadata = trustMetadata,
                 zkSystemRepository = zkSystemRepository,
                 readerAuthPolicy = readerAuthPolicy,
-                zkResponsePolicy = zkResponsePolicy
+                zkResponsePolicy = zkResponsePolicy,
+                wrpRegistration = wrpRegistration
             )
         } catch (e: CancellationException) {
             throw e
@@ -133,6 +160,20 @@ class DeviceRequestProcessor(
         }
     }
 }
+
+/**
+ * Projects a single ISO 18013-5 [DocRequest] onto the [RequestedAttestationInfo] used to check the
+ * request against the relying party's registered scope. The mdoc claim paths take the
+ * `[namespace, element]` form.
+ */
+internal fun DocRequest.toRequestedAttestationInfo(): RequestedAttestationInfo =
+    RequestedAttestationInfo(
+        format = MSO_MDOC_FORMAT,
+        docType = docType,
+        claimPaths = nameSpaces.flatMap { (namespace, elements) ->
+            elements.keys.map { element -> listOf(namespace, element) }
+        }
+    )
 
 /**
  * Build a [CredentialPresentmentSet] from a single ISO 18013-5 [DocRequest] against the

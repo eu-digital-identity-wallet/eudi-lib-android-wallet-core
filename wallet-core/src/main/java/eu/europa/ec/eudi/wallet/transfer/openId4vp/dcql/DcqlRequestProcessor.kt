@@ -20,8 +20,11 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.openid4vp.Format
+import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
+import eu.europa.ec.eudi.openid4vp.dcql.DCQL
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
 import eu.europa.ec.eudi.openid4vp.dcql.metaMsoMdoc
 import eu.europa.ec.eudi.openid4vp.dcql.metaSdJwtVc
@@ -31,14 +34,19 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.internal.toRequesterAndTrust
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationResult
+import eu.europa.ec.eudi.wallet.registration.relyingparty.extractRegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.relyingparty.toRequestedAttestationInfos
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
+import java.security.cert.X509Certificate
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -89,6 +97,12 @@ class DcqlRequestProcessor(
 
     private val credentialSetsMatcher = CredentialSetsMatcher()
 
+    /**
+     * Validator for the relying party registration certificate. Set internally when the registration
+     * policy is enforced; when null, the registration certificate is neither validated nor surfaced.
+     */
+    internal var wrpRegistrationValidator: WrpRegistrationValidator? = null
+
     override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
         return try {
             require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
@@ -115,6 +129,14 @@ class DcqlRequestProcessor(
                 ReaderTrustResult.Pending -> Requester(certChain = null) to null
             }
 
+            // Resolve the relying party's registration information for this request.
+            val accessChain = (trustResult as? ReaderTrustResult.Processed)?.chain.orEmpty()
+            val wrpRegistration = resolveWrpRegistration(
+                resolvedRequestObject = request.resolvedRequestObject,
+                dcql = dcql,
+                accessChain = accessChain,
+            )
+
             // Find candidate matches for each credential query.
             val matchesByQueryId: Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>> =
                 credentials.value.associate { query ->
@@ -139,12 +161,39 @@ class DcqlRequestProcessor(
                 requester = requester,
                 trustMetadata = trustMetadata,
                 msoMdocNonce = generateJarmNonce(),
-                multipleByQueryId = multipleByQueryId
+                multipleByQueryId = multipleByQueryId,
+                wrpRegistration = wrpRegistration
             )
         } catch (e: Throwable) {
             logger?.e(TAG, "DCQL process failed", e)
             RequestProcessor.ProcessedRequest.Failure(e)
         }
+    }
+
+    /**
+     * Resolves and validates the relying party's registration certificate for the request, as
+     * required by ETSI TS 119 472-2 clause 4.4 (WRP-VALIDATION-01). The certificate is mandatory in
+     * the request (OIDFVP-HAIP-COMMON-REQ-RO-13); when it is absent or fails validation the result
+     * is a [WrpRegistrationResult.Failed] with a [RegistrationFailureReason], so the user can be
+     * warned (WRP-VALIDATION-02).
+     *
+     * Returns null when registration is not enforced, that is when no verifier is configured (the
+     * registration policy is [eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy.Disabled]
+     * or no ETSI trust source is available); in that case the registration is neither validated nor
+     * surfaced.
+     */
+    private suspend fun resolveWrpRegistration(
+        resolvedRequestObject: ResolvedRequestObject,
+        dcql: DCQL,
+        accessChain: List<X509Certificate>,
+    ): WrpRegistrationResult? {
+        val validator = wrpRegistrationValidator ?: return null
+        val certificate = resolvedRequestObject.verifierInfo.extractRegistrationCertificate()
+        return validator.validate(
+            registrationCertificate = certificate,
+            readerAccessChain = accessChain,
+            requestedAttestations = dcql.toRequestedAttestationInfos(),
+        ) as? WrpRegistrationResult
     }
 
     /**

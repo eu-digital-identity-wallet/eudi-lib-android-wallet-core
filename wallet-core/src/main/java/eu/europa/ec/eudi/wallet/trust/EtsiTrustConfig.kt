@@ -71,6 +71,7 @@ data class EtsiTrustConfig(
  *     loteLocations(SupportedLists(
  *         pidProviders = Uri("https://trustedlist.../PIDProviders.jwt"),
  *         wrpacProviders = Uri("https://trustedlist.../WRPACProviders.jwt"),
+ *         wrprcProviders = Uri("https://trustedlist.../WRPRCProviders.jwt"),
  *     ))
  *     classifications(AttestationClassifications(
  *         pids = AttestationIdentifierPredicate.any(setOf(
@@ -104,6 +105,7 @@ class EtsiTrustConfigBuilder {
      * loteLocations(SupportedLists(
      *     pidProviders = Uri("https://trustedlist.../PIDProviders.jwt"),
      *     wrpacProviders = Uri("https://trustedlist.../WRPACProviders.jwt"),
+     *     wrprcProviders = Uri("https://trustedlist.../WRPRCProviders.jwt"),
      * ))
      * ```
      *
