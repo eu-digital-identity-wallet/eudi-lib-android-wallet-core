@@ -57,6 +57,7 @@ class ProcessedOpenId4VpDCAPIRequest(
     presentmentData = inner.presentmentData,
     requester = inner.requester,
     trustMetadata = inner.trustMetadata,
+    wrpRegistration = inner.wrpRegistration,
 ) {
 
     override val presentmentSelections: List<CredentialPresentmentSelection>

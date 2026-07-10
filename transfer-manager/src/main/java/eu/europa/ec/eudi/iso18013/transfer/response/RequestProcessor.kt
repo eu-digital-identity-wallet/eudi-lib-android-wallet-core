@@ -53,11 +53,14 @@ fun interface RequestProcessor {
          * @property requester the entity that issued the request (cert chain, optional appId/origin).
          * @property trustMetadata metadata about the requester when its identity was successfully
          *   validated against the configured trust store; `null` for untrusted or unverified requesters.
+         * @property wrpRegistration the relying party registration information resolved for the
+         *   request; `null` when no registration validator is configured. Common to every transport.
          */
         abstract class Success(
             val presentmentData: CredentialPresentmentData,
             val requester: Requester,
-            val trustMetadata: TrustMetadata?
+            val trustMetadata: TrustMetadata?,
+            val wrpRegistration: WrpRegistrationInfo? = null
         ) : ProcessedRequest {
 
             /**

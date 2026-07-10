@@ -33,7 +33,7 @@ class OpenId4VpReaderTrustImpl(
     override val result: ReaderTrustResult
         get() = _result
 
-    override fun isTrusted(chain: List<X509Certificate>): Boolean {
+    override suspend fun isTrusted(chain: List<X509Certificate>): Boolean {
         val validationResult = readerTrustStore?.validateCertificationTrustPath(chain) != false
         _result = ReaderTrustResult.Processed(chain, validationResult)
         return validationResult
