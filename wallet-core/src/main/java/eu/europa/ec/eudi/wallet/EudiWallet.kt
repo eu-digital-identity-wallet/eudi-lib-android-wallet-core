@@ -422,11 +422,17 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             val readerTrustStoreToUse = (readerTrustStore
                 ?: config.readerTrustStore
-                ?: if (config.useEtsiReaderTrust && etsiSource != null) {
-                    etsiSource.asReaderTrustStore()
-                } else null
-                ?: config.readerTrustedCertificates?.let { certificates ->
-                    ReaderTrustStoreImpl(certificates, profileValidation = { _, _ -> true })
+                ?: when {
+                    config.useEtsiReaderTrust && etsiSource != null ->
+                        etsiSource.asReaderTrustStore()
+
+                    else -> config.readerTrustedCertificates?.let { certificates ->
+                        ReaderTrustStoreImpl(
+                            certificates,
+                            profileValidation = { _, _ -> true },
+                            revocationPolicy = config.revocationPolicy,
+                        )
+                    }
                 })?.also {
                 if (it is EtsiReaderTrustStore) it.logger = loggerToUse
             }

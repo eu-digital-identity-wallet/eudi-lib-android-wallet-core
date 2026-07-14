@@ -22,6 +22,7 @@ import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
@@ -500,6 +501,48 @@ class EudiWalletConfig {
      */
     fun configureReaderAuthPolicy(readerAuthPolicy: ReaderAuthPolicy) = apply {
         this.readerAuthPolicy = readerAuthPolicy
+    }
+
+    /**
+     * The certificate revocation checking policy used during reader authentication
+     * trust path validation.
+     *
+     * This controls how the wallet verifies whether a reader's certificate has been
+     * revoked when validating the certificate chain against the configured
+     * [ReaderTrustStore] (certificate-based path only; ETSI/LoTE-based trust stores
+     * use their own revocation logic).
+     *
+     * The available policies are:
+     * - [RevocationPolicy.NoCheck]: No revocation checking is performed.
+     * - [RevocationPolicy.HardFail]: Validation fails if a certificate is revoked
+     *   **or** if the CRL/OCSP responder cannot be reached (default).
+     * - [RevocationPolicy.SoftFail]: Validation fails if a certificate is revoked,
+     *   but tolerates CRL/OCSP unavailability.
+     *
+     * The default is [RevocationPolicy.HardFail].
+     *
+     * @see RevocationPolicy
+     * @see configureReaderTrustStore
+     */
+    var revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
+        private set
+
+    /**
+     * Configure the certificate revocation checking policy for reader authentication.
+     *
+     * This policy applies when the [ReaderTrustStore] is built from trusted certificates
+     * (i.e. using [configureReaderTrustStore] with certificate lists or raw resources).
+     * It does **not** affect ETSI/LoTE-based trust stores, which handle revocation
+     * internally.
+     *
+     * @param revocationPolicy the revocation policy to use
+     * @return the [EudiWalletConfig] instance
+     *
+     * @see RevocationPolicy
+     * @see configureReaderTrustStore
+     */
+    fun configureRevocationPolicy(revocationPolicy: RevocationPolicy) = apply {
+        this.revocationPolicy = revocationPolicy
     }
 
     var userAuthenticationRequired: Boolean = true

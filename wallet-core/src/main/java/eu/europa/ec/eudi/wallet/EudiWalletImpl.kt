@@ -69,10 +69,10 @@ class EudiWalletImpl internal constructor(
     }
 
     override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates, config.revocationPolicy))
 
     override fun setTrustedReaderCertificates(vararg rawRes: Int) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }))
+        setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }, config.revocationPolicy))
 
     /**
      * Creates an instance of [OpenId4VciManager] for interacting with the OpenID for Verifiable Credential Issuance protocol.
