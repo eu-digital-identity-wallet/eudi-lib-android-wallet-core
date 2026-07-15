@@ -391,8 +391,8 @@ class EudiWalletConfig {
      * @see RevocationPolicy
      */
     fun configureReaderTrustStore(
+        vararg readerTrustedCertificates: X509Certificate,
         revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
-        vararg readerTrustedCertificates: X509Certificate
     ) = apply {
         this.readerTrustedCertificates = readerTrustedCertificates.toList()
         this.revocationPolicy = revocationPolicy
@@ -422,8 +422,8 @@ class EudiWalletConfig {
      */
     fun configureReaderTrustStore(
         context: Context,
+        @RawRes vararg certificateRes: Int,
         revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
-        @RawRes vararg certificateRes: Int
     ) = apply {
         this.readerTrustedCertificates = certificateRes.map { context.getCertificate(it) }
         this.revocationPolicy = revocationPolicy
