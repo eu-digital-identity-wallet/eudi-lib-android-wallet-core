@@ -154,8 +154,12 @@ class EtsiTrustConfigBuilder {
     /**
      * Disables PKIX revocation checking during certificate chain validation.
      *
-     * When enabled, `isRevocationEnabled` is set to `false` on the PKIX parameters.
+     * When called, `isRevocationEnabled` is set to `false` on the PKIX parameters.
      * Use this for DEV/testing environments where CRL/OCSP endpoints may not be available.
+     *
+     * When this is **not** called (the default), PKIX revocation checking is enabled and
+     * strict — certificate chain validation will fail if a certificate is revoked or if
+     * the revocation status cannot be determined (CRL/OCSP unavailable).
      */
     fun relaxPkixRevocation() {
         this.relaxPkixRevocation = true

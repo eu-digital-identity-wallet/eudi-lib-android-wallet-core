@@ -344,47 +344,89 @@ class EudiWalletConfig {
     /**
      * Configure the built-in [ReaderTrustStore] with a list of trusted certificates.
      *
+     * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
+     * during trust path validation. The default is [RevocationPolicy.HardFail].
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     *
      * Example:
      * ```
-     * configureReaderTrustStore(listOf(certificate1, certificate2))
+     * configureReaderTrustStore(
+     *     listOf(certificate1, certificate2),
+     *     revocationPolicy = RevocationPolicy.SoftFail
+     * )
      * ```
      *
      * @param readerTrustedCertificates the reader trusted certificates
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
      * @return the [EudiWalletConfig] instance
+     * @see RevocationPolicy
      */
-    fun configureReaderTrustStore(readerTrustedCertificates: List<X509Certificate>) = apply {
+    @JvmOverloads
+    fun configureReaderTrustStore(
+        readerTrustedCertificates: List<X509Certificate>,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    ) = apply {
         this.readerTrustedCertificates = readerTrustedCertificates
+        this.revocationPolicy = revocationPolicy
     }
 
     /**
      * Configure the built-in [ReaderTrustStore] with trusted certificates.
      *
+     * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
+     * during trust path validation. The default is [RevocationPolicy.HardFail].
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     *
      * Example:
      * ```
-     * configureReaderTrustStore(certificate1, certificate2)
+     * configureReaderTrustStore(
+     *     certificate1, certificate2,
+     *     revocationPolicy = RevocationPolicy.SoftFail
+     * )
      * ```
      *
      * @param readerTrustedCertificates the reader trusted certificates
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
      * @return the [EudiWalletConfig] instance
+     * @see RevocationPolicy
      */
-    fun configureReaderTrustStore(vararg readerTrustedCertificates: X509Certificate) = apply {
+    fun configureReaderTrustStore(
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+        vararg readerTrustedCertificates: X509Certificate
+    ) = apply {
         this.readerTrustedCertificates = readerTrustedCertificates.toList()
+        this.revocationPolicy = revocationPolicy
     }
 
     /**
      * Configure the built-in [ReaderTrustStore] with certificates loaded from raw resources.
      *
+     * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
+     * during trust path validation. The default is [RevocationPolicy.HardFail].
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     *
      * Example:
      * ```
-     * configureReaderTrustStore(context, R.raw.reader_cert_1, R.raw.reader_cert_2)
+     * configureReaderTrustStore(
+     *     context,
+     *     R.raw.reader_cert_1, R.raw.reader_cert_2,
+     *     revocationPolicy = RevocationPolicy.SoftFail
+     * )
      * ```
      *
      * @param context the context
      * @param certificateRes the reader trusted certificates raw resources
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
      * @return the [EudiWalletConfig] instance
+     * @see RevocationPolicy
      */
-    fun configureReaderTrustStore(context: Context, @RawRes vararg certificateRes: Int) = apply {
+    fun configureReaderTrustStore(
+        context: Context,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+        @RawRes vararg certificateRes: Int
+    ) = apply {
         this.readerTrustedCertificates = certificateRes.map { context.getCertificate(it) }
+        this.revocationPolicy = revocationPolicy
     }
 
     /**
@@ -507,10 +549,13 @@ class EudiWalletConfig {
      * The certificate revocation checking policy used during reader authentication
      * trust path validation.
      *
-     * This controls how the wallet verifies whether a reader's certificate has been
-     * revoked when validating the certificate chain against the configured
-     * [ReaderTrustStore] (certificate-based path only; ETSI/LoTE-based trust stores
-     * use their own revocation logic).
+     * This applies only when the [ReaderTrustStore] is built from static trusted
+     * certificates (via [configureReaderTrustStore] with certificate lists or raw
+     * resources). ETSI/LoTE-based trust stores handle revocation internally via
+     * [configureEtsiTrust] with `relaxPkixRevocation()`.
+     *
+     * Set this through the `revocationPolicy` parameter of the certificate-based
+     * [configureReaderTrustStore] overloads.
      *
      * The available policies are:
      * - [RevocationPolicy.NoCheck]: No revocation checking is performed.
@@ -526,24 +571,6 @@ class EudiWalletConfig {
      */
     var revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
         private set
-
-    /**
-     * Configure the certificate revocation checking policy for reader authentication.
-     *
-     * This policy applies when the [ReaderTrustStore] is built from trusted certificates
-     * (i.e. using [configureReaderTrustStore] with certificate lists or raw resources).
-     * It does **not** affect ETSI/LoTE-based trust stores, which handle revocation
-     * internally.
-     *
-     * @param revocationPolicy the revocation policy to use
-     * @return the [EudiWalletConfig] instance
-     *
-     * @see RevocationPolicy
-     * @see configureReaderTrustStore
-     */
-    fun configureRevocationPolicy(revocationPolicy: RevocationPolicy) = apply {
-        this.revocationPolicy = revocationPolicy
-    }
 
     var userAuthenticationRequired: Boolean = true
         internal set // internal for setting the default value from the builder

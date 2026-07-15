@@ -731,7 +731,9 @@ val config = EudiWalletConfig {
 > **DEV/Testing knobs:** `relaxCertificateProfiles()` strips `endEntityProfile` constraints
 > from all provider types, useful when DEV certificates don't fully conform to ETSI profile
 > requirements. `relaxPkixRevocation()` disables CRL/OCSP revocation checks when endpoints
-> are not available in the test environment.
+> are not available in the test environment. When `relaxPkixRevocation()` is **not** called,
+> PKIX revocation checking is enabled and strict — certificate chain validation will fail if
+> a certificate is revoked or if the revocation status cannot be determined.
 
 #### Advanced: Manual Trust Anchor Resolution (LoTE)
 
@@ -1034,14 +1036,31 @@ val config = EudiWalletConfig {
 ```
 
 **Using static certificates**: The overloads that accept `X509Certificate` lists remain
-available. The reader auth policy is also set separately:
+available. The reader auth policy is set separately, and the certificate revocation checking
+policy can be configured via the `revocationPolicy` parameter (defaults to
+`RevocationPolicy.HardFail`):
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(listOf(trustedCert1, trustedCert2))
+    configureReaderTrustStore(
+        listOf(trustedCert1, trustedCert2),
+        revocationPolicy = RevocationPolicy.SoftFail
+    )
     configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
 }
 ```
+
+The available revocation policies are:
+
+| Policy | Behavior |
+|---|---|
+| `RevocationPolicy.HardFail` | **(Default)** Validation fails if a certificate is revoked **or** if the CRL/OCSP responder cannot be reached. |
+| `RevocationPolicy.SoftFail` | Validation fails if a certificate is revoked, but tolerates CRL/OCSP unavailability. |
+| `RevocationPolicy.NoCheck` | No revocation checking is performed. |
+
+> **Note:** `RevocationPolicy` only applies to the static certificate-based `configureReaderTrustStore`
+> overloads. When using ETSI/LoTE-based trust (via `configureEtsiTrust`), revocation checking is
+> controlled by `relaxPkixRevocation()` inside the `configureEtsiTrust` block instead.
 
 For advanced use cases requiring a specific verification context, create an
 `EtsiReaderTrustStore` explicitly:
