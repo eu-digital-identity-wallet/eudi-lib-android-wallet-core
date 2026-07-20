@@ -135,12 +135,6 @@ internal class ProcessDeferredOutcome(
             val cfg = ctx.config
             val tx = ctx.authorizedTransaction
 
-            val (clientId, clientAttestationJwt) = when (val auth = cfg.clientAuthentication) {
-                is ClientAuthentication.None -> auth.id to null
-                is ClientAuthentication.AttestationBased -> auth.id to null
-                else -> auth.id to null
-            }
-
             val issuanceMetadata = IssuanceMetadata(
                 credentialIssuerId = cfg.credentialIssuerId.toString(),
                 credentialConfigurationIdentifier = credentialConfigId,
@@ -148,8 +142,8 @@ internal class ProcessDeferredOutcome(
                 tokenEndpoint = cfg.tokenEndpoint.toString(),
                 authorizationServerId = cfg.authorizationServerId.toString(),
                 challengeEndpoint = cfg.challengeEndpoint?.toString(),
-                clientId = clientId,
-                clientAttestationJwt = clientAttestationJwt,
+                clientId = cfg.clientAuthentication.id,
+                clientAttestationJwt = null,
                 clientAttestationPopKeyId = deferredContext.clientAttestationPopKeyId,
                 popKeyAliases = keyAliases,
                 dPoPKeyAlias = deferredContext.dPoPKeyAlias,

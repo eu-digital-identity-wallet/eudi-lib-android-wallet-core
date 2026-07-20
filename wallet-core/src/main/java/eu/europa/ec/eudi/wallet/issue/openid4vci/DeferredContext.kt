@@ -220,23 +220,17 @@ internal fun DeferredContext.toBytes(): ByteArray {
     val tx = issuanceContext.authorizedTransaction
     val cfg = issuanceContext.config
 
-    val (clientId, attestationJwt) = when (val auth = cfg.clientAuthentication) {
-        is ClientAuthentication.None -> auth.id to null
-        is ClientAuthentication.AttestationBased -> auth.id to null
-        else -> auth.id to null
-    }
-
     val dto = StoredDeferredContext(
         credentialIssuerId = cfg.credentialIssuerId.toString(),
         deferredEndpoint = cfg.deferredEndpoint.toString(),
         tokenEndpoint = cfg.tokenEndpoint.toString(),
         authorizationServerId = cfg.authorizationServerId.toString(),
         challengeEndpoint = cfg.challengeEndpoint?.toString(),
-        clientId = clientId,
+        clientId = cfg.clientAuthentication.id,
         popKeyAliases = keyAliases,
         dPoPKeyAlias = dPoPKeyAlias,
         clientAttestationPopKeyId = clientAttestationPopKeyId,
-        clientAttestationJwt = attestationJwt,
+        clientAttestationJwt = null,
         transactionId = tx.transactionId.value,
         accessToken = tx.authorizedRequest.accessToken.accessToken,
         accessTokenType = if (tx.authorizedRequest.accessToken is AccessToken.DPoP) "DPoP" else "Bearer",
