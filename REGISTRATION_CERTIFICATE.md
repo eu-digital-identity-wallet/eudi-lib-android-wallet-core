@@ -28,7 +28,8 @@ returns the result on the processed request. The application decides how to pres
 wallet does not silently share data on the user's behalf.
 
 The certificate is carried differently per channel, but both are handed to the same validation, so
-the checks and the returned result are identical regardless of channel:
+the checks and the returned result are the same regardless of channel — save for one
+library-imposed exception on the OpenID4VP `x509_hash` path, described under [Behaviour](#behaviour):
 
 | Channel | Carrier |
 |---|---|
@@ -95,8 +96,7 @@ status-list token is verified against its own embedded `x5c` chain.
 Validation runs in two stages:
 
 1. **Authentication** — parses the certificate, verifies its signature, and checks that the signer
-   chain is trusted. This stage is always performed by the wallet (or, on the OpenID4VP path, by the
-   OpenID4VP library) and cannot be replaced.
+   chain is trusted. This stage is always performed by the wallet core and cannot be replaced.
 2. **Evaluation** — takes the authenticated registration and checks it against the request.
 
 The default evaluator (`DefaultWrpRegistrationEvaluator`) performs, in order:
@@ -158,9 +158,7 @@ eudiWallet.addTransferEventListener { event ->
     if (event is TransferEvent.RequestReceived) {
         when (val processed = event.processedRequest) {
             is RequestProcessor.ProcessedRequest.Failure -> {
-                // The request could not be processed. An authentication failure of the registration
-                // certificate (absent, malformed, invalid signature, untrusted provider) surfaces
-                // here as a whole-request failure, not as a WrpRegistrationResult.
+                // The request could not be processed.
                 val error = processed.error
             }
 
@@ -171,7 +169,7 @@ eudiWallet.addTransferEventListener { event ->
                         // result.overAskedClaims — attributes requested outside the registered scope
                     }
                     is WrpRegistrationResult.Failed -> {
-                        // result.reason — why the evaluation failed
+                        // result.reason — why validation failed (authentication or evaluation)
                         // result.registration — the parsed registration, when read before the failure
                     }
                     null -> { /* no certificate handled (policy Disabled, or no WRPRC in the request) */ }
@@ -232,40 +230,25 @@ yes/no for the consent UI, `requiresExplicitApproval` folds both axes into one g
 
 ## Behaviour
 
-With `Enabled`, the outcome falls into three groups:
+With `Enabled`, the outcome falls into two groups:
 
 - **Within scope and fully valid** → verified, no warning.
-- **Within scope but a validity check does not pass** (not bound to the requester, expired, missing a
-  status reference, revoked, or revocation status unknown), **or over-asking** → surfaced as a warning
-  for the user to approve; the presentation is not blocked.
-- **Absent, malformed, with an invalid signature, or from an untrusted provider** → the request is
-  rejected.
-
-> **Note:** Rejecting on authenticity failures is stricter than WRP-VALIDATION-02 (which asks for a
-> warning and explicit approval rather than a hard block). It is a temporary alignment with the
-> OpenID4VP path, where the underlying library rejects an `x509_hash` client whose registration
-> certificate is missing, untrusted, or malformed before the wallet's own evaluation runs.
+- **A check does not pass, or the request is over-asking** → surfaced as a `WrpRegistrationResult.Failed`
+  (or a `Verified` carrying `overAskedClaims`) on `Success.wrpRegistration` for the user to approve.
+  This covers every failure reason — the evaluation checks (not bound to the requester, expired, missing status reference, 
+  revoked, revocation status unknown, over-asking) and the authentication checks (absent, malformed, 
+  invalid signature, untrusted provider) alike.
 
 ### Failure reasons
 
-The two stages surface their failures differently:
-
-- **Evaluation failures** are returned on `Success.wrpRegistration` as
-  `WrpRegistrationResult.Failed(reason)`. The request still succeeds, the user is warned, and the
-  parsed `registration` is available to show who is asking.
-- **Authentication failures** currently fail the whole request: the validator throws, so the request
-  is reported as `RequestProcessor.ProcessedRequest.Failure`. The reason is carried only in the
-  exception message — it is **not** returned as a `WrpRegistrationResult`, and no `registration` is
-  surfaced, so the app cannot show who the request is from or a reason-specific warning.
-
-| Reason | Meaning | Stage | Surfaced to the app as |
-|---|---|---|---|
-| `CERTIFICATE_ABSENT` | The request carried no registration certificate | Authentication | `ProcessedRequest.Failure` |
-| `MALFORMED` | The certificate could not be parsed | Authentication | `ProcessedRequest.Failure` |
-| `SIGNATURE_INVALID` | The signature could not be verified | Authentication | `ProcessedRequest.Failure` |
-| `UNTRUSTED_PROVIDER` | The signer chain is not trusted | Authentication | `ProcessedRequest.Failure` |
-| `NOT_BOUND_TO_REQUESTER` | The certificate is not bound to the access certificate that signed the request | Evaluation | `Failed` on `Success.wrpRegistration` |
-| `EXPIRED` | The certificate has expired | Evaluation | `Failed` on `Success.wrpRegistration` |
-| `STATUS_MISSING` | The certificate carries no status-list reference (mandatory) | Evaluation | `Failed` on `Success.wrpRegistration` |
-| `REVOKED` | The status list reports the certificate as revoked | Evaluation | `Failed` on `Success.wrpRegistration` |
-| `REVOCATION_STATUS_UNKNOWN` | The revocation status could not be determined | Evaluation | `Failed` on `Success.wrpRegistration` |
+| Reason | Meaning | Stage |
+|---|---|---|
+| `CERTIFICATE_ABSENT` | The request carried no registration certificate | Authentication |
+| `MALFORMED` | The certificate could not be parsed | Authentication |
+| `SIGNATURE_INVALID` | The signature could not be verified | Authentication |
+| `UNTRUSTED_PROVIDER` | The signer chain is not trusted | Authentication |
+| `NOT_BOUND_TO_REQUESTER` | The certificate is not bound to the access certificate that signed the request | Evaluation |
+| `EXPIRED` | The certificate has expired | Evaluation |
+| `STATUS_MISSING` | The certificate carries no status-list reference (mandatory) | Evaluation |
+| `REVOKED` | The status list reports the certificate as revoked | Evaluation |
+| `REVOCATION_STATUS_UNKNOWN` | The revocation status could not be determined | Evaluation |

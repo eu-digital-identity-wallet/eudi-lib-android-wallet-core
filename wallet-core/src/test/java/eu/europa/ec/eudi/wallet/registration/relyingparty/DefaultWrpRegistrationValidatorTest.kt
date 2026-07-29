@@ -22,8 +22,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DefaultWrpRegistrationValidatorTest {
@@ -33,17 +33,17 @@ class DefaultWrpRegistrationValidatorTest {
     private val validator = DefaultWrpRegistrationValidator(authenticator, evaluator)
 
     @Test
-    fun `an absent certificate is rejected without authenticating anything`() = runTest {
-        // an absent certificate is rejected (thrown)
-        val error = runCatching {
-            validator.validate(
-                registrationCertificate = null,
-                readerAccessChain = emptyList(),
-                requestedAttestations = emptyList(),
-            )
-        }.exceptionOrNull()
+    fun `an absent certificate is reported as failed without authenticating anything`() = runTest {
+        val result = validator.validate(
+            registrationCertificate = null,
+            readerAccessChain = emptyList(),
+            requestedAttestations = emptyList(),
+        )
 
-        assertTrue(error is IllegalStateException)
+        assertEquals(
+            RegistrationFailureReason.CERTIFICATE_ABSENT,
+            (result as WrpRegistrationResult.Failed).reason,
+        )
         coVerify(exactly = 0) { authenticator.authenticate(any()) }
         coVerify(exactly = 0) { evaluator.evaluate(any(), any(), any()) }
     }
@@ -67,20 +67,20 @@ class DefaultWrpRegistrationValidatorTest {
     }
 
     @Test
-    fun `an inauthentic certificate is rejected without being evaluated`() = runTest {
-        // an inauthentic certificate is rejected (thrown)
+    fun `an inauthentic certificate is reported as failed without being evaluated`() = runTest {
         coEvery { authenticator.authenticate(any()) } returns
             WrprcAuthentication.Invalid(RegistrationFailureReason.SIGNATURE_INVALID)
 
-        val error = runCatching {
-            validator.validate(
-                registrationCertificate = byteArrayOf(9),
-                readerAccessChain = emptyList(),
-                requestedAttestations = emptyList(),
-            )
-        }.exceptionOrNull()
+        val result = validator.validate(
+            registrationCertificate = byteArrayOf(9),
+            readerAccessChain = emptyList(),
+            requestedAttestations = emptyList(),
+        )
 
-        assertTrue(error is IllegalStateException)
+        assertEquals(
+            RegistrationFailureReason.SIGNATURE_INVALID,
+            (result as WrpRegistrationResult.Failed).reason,
+        )
         coVerify(exactly = 0) { evaluator.evaluate(any(), any(), any()) }
     }
 }

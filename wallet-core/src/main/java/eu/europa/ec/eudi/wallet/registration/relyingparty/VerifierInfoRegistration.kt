@@ -38,9 +38,12 @@ internal fun VerifierInfo?.extractRegistrationCertificate(): ByteArray? {
             ?: return null
     if (attestation.credentialIds != null) return null
     val content = (attestation.data.value as? JsonPrimitive)?.contentOrNull ?: return null
-    return if (COMPACT_JWS.matches(content)) {
+    return decodeSerializedRegistrationCertificate(content)
+}
+
+internal fun decodeSerializedRegistrationCertificate(content: String): ByteArray? =
+    if (COMPACT_JWS.matches(content)) {
         content.toByteArray(Charsets.US_ASCII)
     } else {
         runCatching { Base64.getUrlDecoder().decode(content) }.getOrNull()
     }
-}
