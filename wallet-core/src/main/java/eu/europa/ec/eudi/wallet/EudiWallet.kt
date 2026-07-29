@@ -491,7 +491,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 )
                 val authenticator = certificateTrust?.let { DefaultWrprcAuthenticator(it, loggerToUse) }
                 wrpRegistrationValidator = authenticator?.let { DefaultWrpRegistrationValidator(it, evaluator) }
-                registrationCertificatePolicy = certificateTrust?.let {
+                registrationCertificatePolicy = authenticator?.let {
                     wrpRegistrationCertificatePolicy(it, evaluator, loggerToUse)
                 }
             }

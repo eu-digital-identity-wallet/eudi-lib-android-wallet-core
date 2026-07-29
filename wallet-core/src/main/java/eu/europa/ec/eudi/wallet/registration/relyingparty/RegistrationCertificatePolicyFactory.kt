@@ -16,61 +16,51 @@
 
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy.Authorization
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy.PolicyViolation
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
-import kotlinx.serialization.json.Json
 
 private const val TAG = "RegistrationCertVerify"
-private val json = Json { ignoreUnknownKeys = true }
 
 /**
  * Builds the [RegistrationCertificatePolicy] that the OpenID4VP library applies to the relying
  * party's registration certificate on the remote (OpenID4VP) path.
  *
- * The library verifies the certificate's presence, signature and signer-chain trust; the [apply]
- * callback hands the described registration to [evaluator]. The result is surfaced as warnings and
- * never denies the request.
+ * The library extracts the serialized registration certificate from the request and hands it over
+ * without decoding, verifying or establishing trust in it. The certificate is authenticated with
+ * [authenticator] and, on success, the described registration is evaluated against the request with
+ * [evaluator]. The result is surfaced as warnings and never denies the request.
  *
- * @param certificateTrust trust store for the registration certificate signer chain
+ * @param authenticator authenticates the serialized registration certificate: decoding, signature
+ *   verification and signer-chain trust
  * @param evaluator the evaluator applied to the authenticated registration
  * @param logger optional logger
  */
 internal fun wrpRegistrationCertificatePolicy(
-    certificateTrust: ReaderTrustStore,
+    authenticator: WrprcAuthenticator,
     evaluator: WrpRegistrationEvaluator,
     logger: Logger? = null,
-): RegistrationCertificatePolicy = RegistrationCertificatePolicy(
-    trust = { chain -> certificateTrust.validateCertificationTrustPath(chain) },
-    apply = { accessCertificate, registrationCertificate, dcql ->
-        // A payload that does not match the WRPRC data model is reported as a malformed-certificate
-        // warning.
-        val registration = runCatching {
-            json.decodeFromJsonElement(WrprcPayloadDto.serializer(), registrationCertificate)
-                .toWrpRegistration()
-        }.getOrNull()
-        val result = if (registration == null) {
-            logger?.d(TAG, "registration certificate payload is malformed")
+): RegistrationCertificatePolicy =
+    RegistrationCertificatePolicy { accessCertificate, registrationCertificate, dcql ->
+        val serialized = decodeSerializedRegistrationCertificate(registrationCertificate)
+        val result = if (serialized == null) {
             WrpRegistrationResult.Failed(RegistrationFailureReason.MALFORMED)
-        } else {
-            evaluator.evaluate(
-                registration = registration,
+        } else when (val authentication = authenticator.authenticate(serialized)) {
+            is WrprcAuthentication.Authentic -> evaluator.evaluate(
+                registration = authentication.registration,
                 accessCertificate = accessCertificate,
                 requestedAttestations = dcql.toRequestedAttestationInfos(),
-            ).also {
-                logger?.d(
-                    TAG,
-                    "relying party '${registration.name}' produced ${it.warningCount} warning(s)"
-                )
-            }
+            )
+
+            is WrprcAuthentication.Invalid ->
+                WrpRegistrationResult.Failed(authentication.reason)
         }
+        logger?.d(TAG, "registration certificate produced ${result.warningCount} warning(s)")
         result.toAuthorization()
     }
-)
 
 /**
  * Maps a [WrpRegistrationResult] to the library's [Authorization]. The request is always granted; a

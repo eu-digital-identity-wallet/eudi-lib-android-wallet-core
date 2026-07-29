@@ -172,10 +172,10 @@ class DcqlRequestProcessor(
 
     /**
      * Resolves and validates the relying party's registration certificate for the request, as
-     * required by ETSI TS 119 472-2 clause 4.4 (WRP-VALIDATION-01). The certificate is mandatory in
-     * the request (OIDFVP-HAIP-COMMON-REQ-RO-13); when it is absent or fails validation the result
-     * is a [WrpRegistrationResult.Failed] with a [RegistrationFailureReason], so the user can be
-     * warned (WRP-VALIDATION-02).
+     * required by ETSI TS 119 472-2 clause 4.4 (WRP-VALIDATION-01). The certificate is optional — it
+     * is included only when the relying party has one (OIDFVP-HAIP-COMMON-REQ-RO-13 is conditional);
+     * when it is absent or fails validation the result is a [WrpRegistrationResult.Failed] with a
+     * [RegistrationFailureReason], so the user can be warned (WRP-VALIDATION-02).
      *
      * Returns null when registration is not enforced, that is when no verifier is configured (the
      * registration policy is [eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy.Disabled]
