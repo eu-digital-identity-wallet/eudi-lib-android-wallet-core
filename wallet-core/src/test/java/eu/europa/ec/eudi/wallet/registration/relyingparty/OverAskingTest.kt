@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
 import eu.europa.ec.eudi.wallet.registration.CredentialMeta
+import eu.europa.ec.eudi.wallet.registration.OverAskedClaim
 import eu.europa.ec.eudi.wallet.registration.RegisteredClaim
 import eu.europa.ec.eudi.wallet.registration.RegisteredCredential
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate

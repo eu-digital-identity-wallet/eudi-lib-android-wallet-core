@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
+
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.CredentialMeta
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 
@@ -27,7 +29,7 @@ import java.security.cert.X509Certificate
  * proximity and DC-API paths. Authenticates the registration certificate carried in a device request
  * with a [WrprcAuthenticator] and, on success, evaluates the described registration against the
  * request with a [WrpRegistrationEvaluator]. An absent or inauthentic certificate is reported as a
- * [WrpRegistrationResult.Failed] rather than raised as an error, so the user can be warned and the
+ * [RegistrationCertificateResult.Failed] rather than raised as an error, so the user can be warned and the
  * request can proceed (WRP-VALIDATION-02).
  */
 internal class DefaultWrpRegistrationValidator(
@@ -41,7 +43,7 @@ internal class DefaultWrpRegistrationValidator(
         requestedAttestations: List<RequestedAttestationInfo>,
     ): WrpRegistrationInfo {
         val certificate = registrationCertificate
-            ?: return WrpRegistrationResult.Failed(RegistrationFailureReason.CERTIFICATE_ABSENT)
+            ?: return RegistrationCertificateResult.Failed(RegistrationFailureReason.CERTIFICATE_ABSENT)
 
         return when (val authentication = authenticator.authenticate(certificate)) {
             is WrprcAuthentication.Authentic ->
@@ -52,7 +54,7 @@ internal class DefaultWrpRegistrationValidator(
                 )
 
             is WrprcAuthentication.Invalid ->
-                WrpRegistrationResult.Failed(authentication.reason)
+                RegistrationCertificateResult.Failed(authentication.reason)
         }
     }
 }

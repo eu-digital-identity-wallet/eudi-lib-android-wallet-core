@@ -16,7 +16,7 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
-import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationResult
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.mockk.mockk
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -26,7 +26,7 @@ class ProcessedDcqlRequestTest {
 
     @Test
     fun `withPresentmentData preserves the resolved relying party registration`() {
-        val registration = WrpRegistrationResult.Verified(
+        val registration = RegistrationCertificateResult.Verified(
             registration = RegistrationCertificate(name = "Nordic Bank"),
         )
         val request = ProcessedDcqlRequest(

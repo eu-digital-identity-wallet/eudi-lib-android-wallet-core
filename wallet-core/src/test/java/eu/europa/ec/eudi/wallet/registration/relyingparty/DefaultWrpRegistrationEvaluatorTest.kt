@@ -15,17 +15,20 @@
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.wallet.registration.CertificateTrust
+import eu.europa.ec.eudi.wallet.registration.CredentialMeta
+import eu.europa.ec.eudi.wallet.registration.Intermediary
+import eu.europa.ec.eudi.wallet.registration.OverAskedClaim
+import eu.europa.ec.eudi.wallet.registration.RegisteredClaim
+import eu.europa.ec.eudi.wallet.registration.RegisteredCredential
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
+import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
+import eu.europa.ec.eudi.wallet.registration.RegistrationIdentifier
+import eu.europa.ec.eudi.wallet.registration.RevocationOutcome
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.statium.StatusIndex
 import eu.europa.ec.eudi.statium.StatusReference
-import eu.europa.ec.eudi.wallet.registration.CredentialMeta
-import eu.europa.ec.eudi.wallet.registration.Intermediary
-import eu.europa.ec.eudi.wallet.registration.RegisteredClaim
-import eu.europa.ec.eudi.wallet.registration.RegisteredCredential
-import eu.europa.ec.eudi.wallet.registration.RegistrationIdentifier
-import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
-import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.bouncycastle.asn1.x500.X500Name
@@ -63,7 +66,7 @@ class DefaultWrpRegistrationEvaluatorTest {
             requestedAttestations = emptyList(),
         )
 
-        val verified = result as WrpRegistrationResult.Verified
+        val verified = result as RegistrationCertificateResult.Verified
         assertEquals(registration, verified.registration)
         assertTrue(verified.overAskedClaims.isEmpty())
     }
@@ -77,7 +80,7 @@ class DefaultWrpRegistrationEvaluatorTest {
             requestedAttestations = emptyList(),
         )
 
-        assertEquals(RegistrationFailureReason.EXPIRED, (result as WrpRegistrationResult.Failed).reason)
+        assertEquals(RegistrationFailureReason.EXPIRED, (result as RegistrationCertificateResult.Failed).reason)
     }
 
     @Test
@@ -88,7 +91,7 @@ class DefaultWrpRegistrationEvaluatorTest {
             requestedAttestations = emptyList(),
         )
 
-        val failed = result as WrpRegistrationResult.Failed
+        val failed = result as RegistrationCertificateResult.Failed
         assertEquals(RegistrationFailureReason.NOT_BOUND_TO_REQUESTER, failed.reason)
         // the parsed registration is carried on the failure result
         assertEquals("ORG-OTHER", failed.registration?.identifiers?.single()?.value)
@@ -106,7 +109,7 @@ class DefaultWrpRegistrationEvaluatorTest {
 
         assertEquals(
             RegistrationFailureReason.NOT_BOUND_TO_REQUESTER,
-            (result as WrpRegistrationResult.Failed).reason,
+            (result as RegistrationCertificateResult.Failed).reason,
         )
     }
 
@@ -118,13 +121,13 @@ class DefaultWrpRegistrationEvaluatorTest {
             requestedAttestations = emptyList(),
         )
 
-        assertEquals(RegistrationFailureReason.STATUS_MISSING, (result as WrpRegistrationResult.Failed).reason)
+        assertEquals(RegistrationFailureReason.STATUS_MISSING, (result as RegistrationCertificateResult.Failed).reason)
     }
 
     @Test
     fun `an inconclusive revocation check is treated strictly as a failure`() = runTest {
         val revocationChecking = DefaultWrpRegistrationEvaluator(
-            statusTrust = mockk<ReaderTrustStore>(),
+            statusTrust = mockk<CertificateTrust>(),
             httpClientFactory = { throw RuntimeException("status endpoint unreachable") },
         )
 
@@ -136,7 +139,7 @@ class DefaultWrpRegistrationEvaluatorTest {
 
         assertEquals(
             RegistrationFailureReason.REVOCATION_STATUS_UNKNOWN,
-            (result as WrpRegistrationResult.Failed).reason,
+            (result as RegistrationCertificateResult.Failed).reason,
         )
     }
 
@@ -150,7 +153,7 @@ class DefaultWrpRegistrationEvaluatorTest {
             requestedAttestations = emptyList(),
         )
 
-        assertEquals(RegistrationFailureReason.REVOKED, (result as WrpRegistrationResult.Failed).reason)
+        assertEquals(RegistrationFailureReason.REVOKED, (result as RegistrationCertificateResult.Failed).reason)
     }
 
     @Test
@@ -165,7 +168,7 @@ class DefaultWrpRegistrationEvaluatorTest {
 
         assertEquals(
             RegistrationFailureReason.REVOCATION_STATUS_UNKNOWN,
-            (result as WrpRegistrationResult.Failed).reason,
+            (result as RegistrationCertificateResult.Failed).reason,
         )
     }
 
@@ -182,7 +185,7 @@ class DefaultWrpRegistrationEvaluatorTest {
                 requestedAttestations = emptyList(),
             )
 
-            assertTrue(result is WrpRegistrationResult.Verified)
+            assertTrue(result is RegistrationCertificateResult.Verified)
         }
 
     @Test
@@ -199,7 +202,7 @@ class DefaultWrpRegistrationEvaluatorTest {
 
             assertEquals(
                 RegistrationFailureReason.NOT_BOUND_TO_REQUESTER,
-                (result as WrpRegistrationResult.Failed).reason,
+                (result as RegistrationCertificateResult.Failed).reason,
             )
         }
 
@@ -211,7 +214,7 @@ class DefaultWrpRegistrationEvaluatorTest {
             requestedAttestations = emptyList(),
         )
 
-        assertTrue(result is WrpRegistrationResult.Verified)
+        assertTrue(result is RegistrationCertificateResult.Verified)
     }
 
     @Test
@@ -244,7 +247,7 @@ class DefaultWrpRegistrationEvaluatorTest {
                 ),
             )
 
-            val verified = result as WrpRegistrationResult.Verified
+            val verified = result as RegistrationCertificateResult.Verified
             assertEquals(
                 listOf(
                     OverAskedClaim(

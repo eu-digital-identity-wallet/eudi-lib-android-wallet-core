@@ -46,10 +46,13 @@ import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
+import eu.europa.ec.eudi.wallet.registration.CertificateTrust
+import eu.europa.ec.eudi.wallet.registration.asCertificateTrust
 import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrprcAuthenticator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrpRegistrationEvaluator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrpRegistrationValidator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.wrpRegistrationCertificatePolicy
+import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
@@ -386,6 +389,18 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             val etsiSource = etsiTrustProvider?.isChainTrusted
             val etsiClassifications = config.etsiTrustConfig?.classifications
 
+            // Trust for the credential issuer's registration certificate and for the status list that
+            // carries its revocation status. Both ETSI verification contexts cover an issuer as well as
+            // a verifier, so the same trusted lists serve the issuance and the presentation path.
+            val issuerRegistrationTrust = etsiSource?.asCertificateTrust(
+                VerificationContext.WalletRelyingPartyRegistrationCertificate,
+                logger = loggerToUse,
+            )
+            val issuerRegistrationStatusTrust = etsiSource?.asCertificateTrust(
+                VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                logger = loggerToUse,
+            )
+
             // Resolve deferred issuer trust config
             config.issuerTrustConfig = config.issuerTrustBlock?.let { block ->
                 IssuerTrustConfigBuilder().apply(block).build(etsiSource, etsiClassifications, loggerToUse)
@@ -457,14 +472,16 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             // against the ETSI Trusted Lists (registration certificate status context).
             val wrpRegistrationValidator: WrpRegistrationValidator?
             val registrationCertificatePolicy: RegistrationCertificatePolicy?
+            val resolvedRegistration: ResolvedWrpRegistration?
             if (config.wrpRegistrationPolicy == WrpRegistrationPolicy.Disabled) {
                 wrpRegistrationValidator = null
                 registrationCertificatePolicy = null
+                resolvedRegistration = null
             } else {
-                val certificateTrust = readerTrustStore
-                    ?: config.readerTrustStore
+                val certificateTrust: CertificateTrust? = (readerTrustStore ?: config.readerTrustStore)
+                    ?.asCertificateTrust()
                     ?: if (config.useEtsiReaderTrust && etsiSource != null) {
-                        etsiSource.asReaderTrustStore(
+                        etsiSource.asCertificateTrust(
                             VerificationContext.WalletRelyingPartyRegistrationCertificate,
                             logger = loggerToUse,
                         )
@@ -476,12 +493,12 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                                     it,
                                     profileValidation = { _, _ -> true },
                                     revocationPolicy = config.revocationPolicy,
-                                )
+                                ).asCertificateTrust()
                             }
                     }
                 val evaluator = config.wrpRegistrationEvaluator ?: DefaultWrpRegistrationEvaluator(
                     statusTrust = if (config.useEtsiReaderTrust && etsiSource != null) {
-                        etsiSource.asReaderTrustStore(
+                        etsiSource.asCertificateTrust(
                             VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
                             logger = loggerToUse,
                         )
@@ -491,8 +508,11 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 )
                 val authenticator = certificateTrust?.let { DefaultWrprcAuthenticator(it, loggerToUse) }
                 wrpRegistrationValidator = authenticator?.let { DefaultWrpRegistrationValidator(it, evaluator) }
+                // The library policy and the request processor evaluate the same certificate for a
+                // request, one after the other; the first evaluation is held for the second to reuse.
+                resolvedRegistration = if (authenticator != null) ResolvedWrpRegistration() else null
                 registrationCertificatePolicy = authenticator?.let {
-                    wrpRegistrationCertificatePolicy(it, evaluator, loggerToUse)
+                    wrpRegistrationCertificatePolicy(it, evaluator, resolvedRegistration, loggerToUse)
                 }
             }
 
@@ -508,6 +528,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 readerTrustStore = readerTrustStoreToUse,
                 registrationValidator = wrpRegistrationValidator,
                 registrationCertificatePolicy = registrationCertificatePolicy,
+                resolvedRegistration = resolvedRegistration,
                 loggerObj = loggerToUse
             ).wrapWithTrasactionLogger(documentManagerToUse, loggerToUse)
 
@@ -525,7 +546,9 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 documentStatusResolver = documentStatusResolverToUse,
                 transactionLogger = transactionLogger,
                 ktorHttpClientFactory = ktorHttpClientFactory,
-                issuanceMetadataStorage = issuanceMetadataStorage
+                issuanceMetadataStorage = issuanceMetadataStorage,
+                issuerRegistrationTrust = issuerRegistrationTrust,
+                issuerRegistrationStatusTrust = issuerRegistrationStatusTrust
             )
         }
 
@@ -544,6 +567,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             loggerObj: Logger,
             registrationValidator: WrpRegistrationValidator? = null,
             registrationCertificatePolicy: RegistrationCertificatePolicy? = null,
+            resolvedRegistration: ResolvedWrpRegistration? = null,
         ): PresentationManagerImpl {
             val openId4vpManager = config.openId4VpConfig?.let { openId4VpConfig ->
                 OpenId4VpManager(
@@ -554,11 +578,12 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         logger = loggerObj
                     ).apply {
                         wrpRegistrationValidator = registrationValidator
+                        this.resolvedRegistration = resolvedRegistration
                     },
                     logger = loggerObj,
                     ktorHttpClientFactory = ktorHttpClientFactory,
                     registrationCertificatePolicy = registrationCertificatePolicy
-                )
+                ).apply { this.resolvedRegistration = resolvedRegistration }
             }
             val dcapiManager = config.dcapiConfig?.takeIf { it.enabled }?.let { dcapiConfig ->
                 val privilegedAllowlist =
@@ -574,12 +599,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         OpenId4VpDCAPIRequestProcessor(
                             openId4VpConfig = openId4VpConfig,
                             dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore)
-                                .apply { wrpRegistrationValidator = registrationValidator },
+                                .apply {
+                                    wrpRegistrationValidator = registrationValidator
+                                    this.resolvedRegistration = resolvedRegistration
+                                },
                             privilegedAllowlist = privilegedAllowlist,
                             supportedProtocols = openId4VpSupported,
                             logger = loggerObj,
                             registrationCertificatePolicy = registrationCertificatePolicy,
-                        )
+                        ).apply { this.resolvedRegistration = resolvedRegistration }
                     }
                 DCAPIManager(
                     isoMdocRequestProcessor = IsoMdocDCAPIRequestProcessor(

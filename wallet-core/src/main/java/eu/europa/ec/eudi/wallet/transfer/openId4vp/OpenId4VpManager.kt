@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.openid4vp.EncryptionParameters
 import eu.europa.ec.eudi.openid4vp.ErrorDispatchDetails
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
+import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.asException
@@ -152,6 +153,12 @@ class OpenId4VpManager(
      * Uses IO dispatcher, supervisor job, and the exception handler above.
      */
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
+    /**
+     * Holds the registration certificate evaluation the OpenID4VP library policy produces while a
+     * request is resolved, for the request processor to reuse.
+     */
+    internal var resolvedRegistration: ResolvedWrpRegistration? = null
+
     private var resolveRequestUriJob: Job? = null
     private var sendResponseJob: Job? = null
 
@@ -164,6 +171,7 @@ class OpenId4VpManager(
      */
     fun resolveRequestUri(uri: String) {
         activeRequestObject = null
+        resolvedRegistration?.clear()
         resolveRequestUriJob?.cancel()
         resolveRequestUriJob = scope.launch {
             try {

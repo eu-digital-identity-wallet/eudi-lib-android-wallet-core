@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.wallet.registration.relyingparty
-import eu.europa.ec.eudi.wallet.registration.Intermediary
-import eu.europa.ec.eudi.wallet.registration.SupervisoryAuthority
-import eu.europa.ec.eudi.wallet.registration.RegistrationIdentifier
-import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+package eu.europa.ec.eudi.wallet.registration
+
+
+
+
 
 import android.annotation.SuppressLint
 import eu.europa.ec.eudi.statium.StatusIndex
@@ -32,7 +32,7 @@ import kotlin.time.Instant
  */
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
-internal data class WrprcPayloadDto(
+internal data class RegistrationCertificateDto(
     val sub: String? = null,
     val name: String? = null,
     @SerialName("sub_ln") val legalName: String? = null,
@@ -91,7 +91,7 @@ internal data class IntermediaryDto(
 /**
  * Maps the verified registration certificate payload to the domain [RegistrationCertificate].
  */
-internal fun WrprcPayloadDto.toWrpRegistration(): RegistrationCertificate =
+internal fun RegistrationCertificateDto.toRegistrationCertificate(): RegistrationCertificate =
     RegistrationCertificate(
         identifiers = listOfNotNull(sub?.let { RegistrationIdentifier(value = it) }),
         name = name,

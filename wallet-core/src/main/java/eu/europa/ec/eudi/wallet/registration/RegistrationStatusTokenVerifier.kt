@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.wallet.registration.relyingparty
+package eu.europa.ec.eudi.wallet.registration
 
 import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature
+
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
 import kotlin.time.Instant
@@ -32,8 +32,8 @@ import kotlin.time.Instant
  * When [statusTrust] is set, that certificate chain is additionally validated against it; when null,
  * only the signature is verified.
  */
-internal class WrprcStatusTokenVerifier(
-    private val statusTrust: ReaderTrustStore? = null,
+internal class RegistrationStatusTokenVerifier(
+    private val statusTrust: CertificateTrust? = null,
 ) : VerifyStatusListTokenJwtSignature {
 
     override suspend fun invoke(statusListToken: String, at: Instant): Result<Unit> = runCatching {
@@ -51,7 +51,7 @@ internal class WrprcStatusTokenVerifier(
         check(jwt.verify(verifier)) { "status list token signature is invalid" }
 
         if (statusTrust != null) {
-            check(statusTrust.validateCertificationTrustPath(chain)) {
+            check(statusTrust.isTrusted(chain)) {
                 "status list token certificate chain is not trusted"
             }
         }
