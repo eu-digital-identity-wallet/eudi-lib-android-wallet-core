@@ -21,9 +21,9 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.wallet.registration.CertificateTrust
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
-import io.mockk.every
+import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.bouncycastle.asn1.x500.X500Name
@@ -46,14 +46,14 @@ import com.nimbusds.jose.util.Base64 as NimbusBase64
 
 class WrprcAuthenticatorTest {
 
-    private val certificateTrust = mockk<ReaderTrustStore>()
+    private val certificateTrust = mockk<CertificateTrust>()
 
     private val providerKeyPair = ecKeyPair()
     private val providerCertificate = selfSignedCertificate(providerKeyPair, X500Name("CN=WRPRC Provider"))
 
     @Test
     fun `a well-formed trusted certificate is authenticated`() = runTest {
-        every { certificateTrust.validateCertificationTrustPath(any()) } returns true
+        coEvery { certificateTrust.isTrusted(any()) } returns true
         val serialized = wrprcJwt(providerKeyPair, providerCertificate, payload(sub = "ORG-123"))
 
         val result = DefaultWrprcAuthenticator(certificateTrust).authenticate(serialized)
@@ -93,7 +93,7 @@ class WrprcAuthenticatorTest {
 
     @Test
     fun `a certificate from an untrusted provider is rejected`() = runTest {
-        every { certificateTrust.validateCertificationTrustPath(any()) } returns false
+        coEvery { certificateTrust.isTrusted(any()) } returns false
         val serialized = wrprcJwt(providerKeyPair, providerCertificate, payload(sub = "ORG-123"))
 
         val result = DefaultWrprcAuthenticator(certificateTrust).authenticate(serialized)
@@ -103,7 +103,7 @@ class WrprcAuthenticatorTest {
 
     @Test
     fun `a failing trust evaluation is treated as untrusted`() = runTest {
-        every { certificateTrust.validateCertificationTrustPath(any()) } throws
+        coEvery { certificateTrust.isTrusted(any()) } throws
             RuntimeException("trust store unavailable")
         val serialized = wrprcJwt(providerKeyPair, providerCertificate, payload(sub = "ORG-123"))
 
@@ -114,7 +114,7 @@ class WrprcAuthenticatorTest {
 
     @Test
     fun `a certificate with an unexpected typ header is rejected as malformed`() = runTest {
-        every { certificateTrust.validateCertificationTrustPath(any()) } returns true
+        coEvery { certificateTrust.isTrusted(any()) } returns true
         // typ must be rc-wrp+jwt
         val serialized = wrprcJwt(providerKeyPair, providerCertificate, payload(sub = "ORG-123"), type = "jwt")
 

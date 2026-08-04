@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.wallet.registration.relyingparty
 
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -42,7 +43,7 @@ class DefaultWrpRegistrationValidatorTest {
 
         assertEquals(
             RegistrationFailureReason.CERTIFICATE_ABSENT,
-            (result as WrpRegistrationResult.Failed).reason,
+            (result as RegistrationCertificateResult.Failed).reason,
         )
         coVerify(exactly = 0) { authenticator.authenticate(any()) }
         coVerify(exactly = 0) { evaluator.evaluate(any(), any(), any()) }
@@ -51,7 +52,7 @@ class DefaultWrpRegistrationValidatorTest {
     @Test
     fun `an authentic certificate is evaluated and its result returned`() = runTest {
         val registration = RegistrationCertificate(name = "Nordic Bank")
-        val evaluation = WrpRegistrationResult.Verified(registration = registration)
+        val evaluation = RegistrationCertificateResult.Verified(registration = registration)
         coEvery { authenticator.authenticate(any()) } returns WrprcAuthentication.Authentic(registration)
         coEvery { evaluator.evaluate(registration, any(), any()) } returns evaluation
 
@@ -79,7 +80,7 @@ class DefaultWrpRegistrationValidatorTest {
 
         assertEquals(
             RegistrationFailureReason.SIGNATURE_INVALID,
-            (result as WrpRegistrationResult.Failed).reason,
+            (result as RegistrationCertificateResult.Failed).reason,
         )
         coVerify(exactly = 0) { evaluator.evaluate(any(), any(), any()) }
     }

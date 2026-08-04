@@ -31,6 +31,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocu
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationEvaluator
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
 import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationEvaluator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
@@ -608,7 +610,7 @@ class EudiWalletConfig {
      * A custom evaluator for the relying party's registration, applied once the registration
      * certificate has been authenticated. It receives the described registration, the requester's
      * access certificate and the requested attestations, and returns a
-     * [eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationResult].
+     * [eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult].
      *
      * This is the recommended extension point for customizing the registration checks: the same
      * evaluator governs every transport, since the wallet applies it after authenticating the
@@ -630,6 +632,51 @@ class EudiWalletConfig {
      */
     fun configureWrpRegistrationEvaluator(evaluator: WrpRegistrationEvaluator) = apply {
         this.wrpRegistrationEvaluator = evaluator
+    }
+
+    /**
+     * The issuer registration certificate policy applied during OpenID4VCI issuance;
+     * [IssuerRegistrationPolicy.Enabled] by default.
+     *
+     * @see IssuerRegistrationPolicy
+     */
+    var issuerRegistrationPolicy: IssuerRegistrationPolicy = IssuerRegistrationPolicy.Enabled
+        private set
+
+    /**
+     * Configure whether the wallet validates a credential issuer's registration certificate during
+     * issuance. Enabled by default; call with [IssuerRegistrationPolicy.Disabled] to opt out.
+     *
+     * The registration certificate is carried in the signed issuer metadata, so validation only runs
+     * when signed metadata is configured (via [configureIssuerTrust] `{ requireSignedMetadata() }`);
+     * otherwise it is silently skipped.
+     *
+     * @param policy the issuer registration policy
+     * @return the [EudiWalletConfig] instance
+     * @see IssuerRegistrationPolicy
+     */
+    fun configureIssuerRegistrationPolicy(policy: IssuerRegistrationPolicy) = apply {
+        this.issuerRegistrationPolicy = policy
+    }
+
+    /**
+     * A custom evaluator applied to an authenticated issuer registration certificate during issuance.
+     * When null, the built-in evaluator is used (validity, binding, revocation and over-providing).
+     *
+     * @see IssuerRegistrationEvaluator
+     */
+    var issuerRegistrationEvaluator: IssuerRegistrationEvaluator? = null
+        private set
+
+    /**
+     * Configure a custom issuer registration evaluator.
+     *
+     * @param evaluator the custom evaluator applied during issuance
+     * @return the [EudiWalletConfig] instance
+     * @see IssuerRegistrationEvaluator
+     */
+    fun configureIssuerRegistrationEvaluator(evaluator: IssuerRegistrationEvaluator) = apply {
+        this.issuerRegistrationEvaluator = evaluator
     }
 
     var userAuthenticationRequired: Boolean = true

@@ -15,15 +15,19 @@
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
+import eu.europa.ec.eudi.wallet.registration.CertificateTrust
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
+import eu.europa.ec.eudi.wallet.registration.RevocationOutcome
+import eu.europa.ec.eudi.wallet.registration.checkStatusListRevocation
+import eu.europa.ec.eudi.wallet.registration.validateCertificate
 
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.statium.GetStatus
 import eu.europa.ec.eudi.statium.GetStatusListToken
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.statium.StatusReference
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.HttpClient
@@ -41,17 +45,17 @@ import java.security.cert.X509Certificate
  * against the certificate's status list. A check that cannot be completed is
  * treated as a failure (REVOCATION_STATUS_UNKNOWN).
  *
- * A validity, binding or revocation failure yields a [WrpRegistrationResult.Failed] result with the
+ * A validity, binding or revocation failure yields a [RegistrationCertificateResult.Failed] result with the
  * corresponding [RegistrationFailureReason]; requested claims outside the registered scope are
- * reported as [WrpRegistrationResult.Verified.overAskedClaims] on an otherwise verified result.
+ * reported as [RegistrationCertificateResult.Verified.overAskedClaims] on an otherwise verified result.
  *
- * @param statusTrust trust store for the status list token signer chain; when null the token is
- *   verified against its own x5c chain
+ * @param statusTrust trust store for the status list token signer chain; when null only the token's
+ *   own signature is checked, without establishing that its signer is a trusted status list provider
  * @param checkRevocation the revocation check; defaults to a status-list check
  */
 
 internal class DefaultWrpRegistrationEvaluator(
-    statusTrust: ReaderTrustStore? = null,
+    statusTrust: CertificateTrust? = null,
     private val logger: Logger? = null,
     httpClientFactory: (() -> HttpClient)? = null,
     private val checkRevocation: suspend (StatusReference) -> RevocationOutcome =
@@ -62,27 +66,11 @@ internal class DefaultWrpRegistrationEvaluator(
         registration: RegistrationCertificate,
         accessCertificate: X509Certificate?,
         requestedAttestations: List<RequestedAttestationInfo>,
-    ): WrpRegistrationResult {
+    ): RegistrationCertificateResult {
 
-        // Check Binding
-        if (!registration.isBoundTo(accessCertificate)) {
-            return failed(RegistrationFailureReason.NOT_BOUND_TO_REQUESTER, registration)
-        }
-
-        // Check expiration
-        registration.expiresAt?.let { expiresAt ->
-            if (expiresAt < Clock.System.now()) return failed(RegistrationFailureReason.EXPIRED, registration)
-        }
-
-        // A status list reference is mandatory.
-        val statusReference = registration.status
-            ?: return failed(RegistrationFailureReason.STATUS_MISSING, registration)
-
-        when (checkRevocation(statusReference)) {
-            RevocationOutcome.REVOKED -> return failed(RegistrationFailureReason.REVOKED, registration)
-            RevocationOutcome.UNKNOWN, RevocationOutcome.NOT_CHECKED ->
-                return failed(RegistrationFailureReason.REVOCATION_STATUS_UNKNOWN, registration)
-            RevocationOutcome.VALID -> Unit
+        registration.validateCertificate(accessCertificate, checkRevocation)?.let { failure ->
+            logger?.d(TAG, "registration evaluation failed: ${failure.reason}")
+            return failure
         }
 
         // over-asking
@@ -100,58 +88,11 @@ internal class DefaultWrpRegistrationEvaluator(
                     }
             },
         )
-        return WrpRegistrationResult.Verified(
+        return RegistrationCertificateResult.Verified(
             registration = registration,
             overAskedClaims = overAskedClaims,
         )
     }
-
-    private fun failed(
-        reason: RegistrationFailureReason,
-        registration: RegistrationCertificate? = null,
-    ): WrpRegistrationResult {
-        logger?.d(TAG, "registration evaluation failed: $reason")
-        return WrpRegistrationResult.Failed(reason, registration)
-    }
 }
 
 private const val TAG = "DefaultWrpRegistrationE"
-
-/** The outcome of checking a registration certificate's revocation status. */
-internal enum class RevocationOutcome { VALID, REVOKED, UNKNOWN, NOT_CHECKED }
-
-/**
- * Checks the registration certificate's revocation status against its status list.
- *
- * Returns [RevocationOutcome.VALID] or [RevocationOutcome.REVOKED] according to the status list, or
- * [RevocationOutcome.UNKNOWN] when a check is attempted but cannot be completed.
- */
-private suspend fun checkStatusListRevocation(
-    statusReference: StatusReference,
-    statusTrust: ReaderTrustStore?,
-    logger: Logger?,
-    httpClientFactory: (() -> HttpClient)?,
-): RevocationOutcome {
-    return try {
-        val httpClient = (httpClientFactory ?: { HttpClient() }).invoke()
-        val getStatusListToken = GetStatusListToken.usingJwt(
-            clock = Clock.System,
-            httpClient = httpClient,
-            verifyStatusListTokenSignature = WrprcStatusTokenVerifier(statusTrust),
-            allowedClockSkew = Duration.ZERO,
-        )
-        val status = with(GetStatus(getStatusListToken)) { statusReference.currentStatus() }.getOrThrow()
-        if (status is Status.Valid) {
-            logger?.d(TAG, "registration certificate status is valid")
-            RevocationOutcome.VALID
-        } else {
-            RevocationOutcome.REVOKED
-        }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Throwable) {
-        // An inconclusive check cannot confirm the certificate is not revoked.
-        logger?.d(TAG, "registration certificate revocation status could not be determined: ${e.message}")
-        RevocationOutcome.UNKNOWN
-    }
-}

@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.registration.relyingparty
+package eu.europa.ec.eudi.wallet.registration
 
-import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.BCStyle

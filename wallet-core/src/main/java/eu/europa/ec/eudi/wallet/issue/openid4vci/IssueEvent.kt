@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyUnlockData
@@ -37,6 +38,16 @@ sealed interface IssueEvent : OpenId4VciResult {
      * @property total the total number of documents to issue
      */
     data class Started(val total: Int) : IssueEvent
+
+    /**
+     * The credential issuer's registration certificate — carried in the signed issuer metadata
+     * (`issuer_info`, ETSI TS 119 472-3) — was validated. Emitted before the issuance proceeds when
+     * issuer registration validation is enabled and the metadata carried a registration certificate.
+     * The outcome is informative and does not block issuance; the wallet may present it to the user
+     * (for example a warning when [RegistrationCertificateResult] requires explicit approval).
+     * @property result the registration validation outcome
+     */
+    data class IssuerRegistrationChecked(val result: RegistrationCertificateResult) : IssueEvent
 
     /**
      * The issuance has finished.

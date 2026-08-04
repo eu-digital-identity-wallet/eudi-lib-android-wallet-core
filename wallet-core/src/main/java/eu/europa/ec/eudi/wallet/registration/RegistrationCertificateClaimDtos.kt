@@ -13,13 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.europa.ec.eudi.wallet.registration.relyingparty
-
-import eu.europa.ec.eudi.wallet.registration.CredentialMeta
-import eu.europa.ec.eudi.wallet.registration.LocalizedText
-import eu.europa.ec.eudi.wallet.registration.ProvidedAttestation
-import eu.europa.ec.eudi.wallet.registration.RegisteredClaim
-import eu.europa.ec.eudi.wallet.registration.RegisteredCredential
+package eu.europa.ec.eudi.wallet.registration
 
 import android.annotation.SuppressLint
 import kotlinx.serialization.Serializable

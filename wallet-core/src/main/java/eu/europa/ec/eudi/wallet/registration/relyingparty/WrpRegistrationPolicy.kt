@@ -27,9 +27,8 @@ enum class WrpRegistrationPolicy {
 
     /**
      * The registration certificate is validated and its outcome is surfaced to the user (the default).
-     * A certificate that is within scope but fails a validity check (binding, expiry or revocation), and
-     * a request that asks for attributes outside the registered scope, are shown to the user as warnings
-     * to approve before sharing; an absent, malformed or untrusted certificate is rejected.
+     * A certificate that cannot be validated, and a request that asks for attributes outside the
+     * registered scope, are shown to the user as warnings to approve before sharing.
      */
     Enabled
 }
