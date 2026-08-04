@@ -28,7 +28,7 @@ import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForMsoMdoc
 import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForSdJwtVc
 import eu.europa.ec.eudi.wallet.internal.requireIssuedDocument
-import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationResult
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
@@ -70,7 +70,7 @@ class ProcessedDcqlRequest(
     trustMetadata: TrustMetadata?,
     val msoMdocNonce: String,
     private val multipleByQueryId: Map<QueryId, Boolean> = emptyMap(),
-    wrpRegistration: WrpRegistrationResult? = null
+    wrpRegistration: RegistrationCertificateResult? = null
 ) : RequestProcessor.ProcessedRequest.Success(
     presentmentData = presentmentData,
     requester = requester,
@@ -223,6 +223,6 @@ class ProcessedDcqlRequest(
             trustMetadata = trustMetadata,
             msoMdocNonce = msoMdocNonce,
             multipleByQueryId = multipleByQueryId,
-            wrpRegistration = wrpRegistration as? WrpRegistrationResult,
+            wrpRegistration = wrpRegistration as? RegistrationCertificateResult
         )
 }

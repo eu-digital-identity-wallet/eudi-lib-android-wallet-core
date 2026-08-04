@@ -39,7 +39,8 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.internal.toRequesterAndTrust
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationResult
+import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.relyingparty.extractRegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.relyingparty.toRequestedAttestationInfos
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
@@ -102,6 +103,12 @@ class DcqlRequestProcessor(
      * policy is enforced; when null, the registration certificate is neither validated nor surfaced.
      */
     internal var wrpRegistrationValidator: WrpRegistrationValidator? = null
+
+    /**
+     * Receives the registration certificate evaluation the OpenID4VP library policy produced while
+     * resolving the request.
+     */
+    internal var resolvedRegistration: ResolvedWrpRegistration? = null
 
     override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
         return try {
@@ -174,7 +181,7 @@ class DcqlRequestProcessor(
      * Resolves and validates the relying party's registration certificate for the request, as
      * required by ETSI TS 119 472-2 clause 4.4 (WRP-VALIDATION-01). The certificate is optional — it
      * is included only when the relying party has one (OIDFVP-HAIP-COMMON-REQ-RO-13 is conditional);
-     * when it is absent or fails validation the result is a [WrpRegistrationResult.Failed] with a
+     * when it is absent or fails validation the result is a [RegistrationCertificateResult.Failed] with a
      * [RegistrationFailureReason], so the user can be warned (WRP-VALIDATION-02).
      *
      * Returns null when registration is not enforced, that is when no verifier is configured (the
@@ -186,14 +193,18 @@ class DcqlRequestProcessor(
         resolvedRequestObject: ResolvedRequestObject,
         dcql: DCQL,
         accessChain: List<X509Certificate>,
-    ): WrpRegistrationResult? {
+    ): RegistrationCertificateResult? {
         val validator = wrpRegistrationValidator ?: return null
         val certificate = resolvedRequestObject.verifierInfo.extractRegistrationCertificate()
+        val requestedAttestations = dcql.toRequestedAttestationInfos()
+        resolvedRegistration
+            ?.take(certificate, accessChain.firstOrNull(), requestedAttestations)
+            ?.let { return it }
         return validator.validate(
             registrationCertificate = certificate,
             readerAccessChain = accessChain,
-            requestedAttestations = dcql.toRequestedAttestationInfos(),
-        ) as? WrpRegistrationResult
+            requestedAttestations = requestedAttestations,
+        ) as? RegistrationCertificateResult
     }
 
     /**

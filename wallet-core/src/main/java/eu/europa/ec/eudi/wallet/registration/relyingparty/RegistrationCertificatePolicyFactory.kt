@@ -21,7 +21,9 @@ import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy.Authorization
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy.PolicyViolation
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
+import eu.europa.ec.eudi.wallet.registration.decodeSerializedRegistrationCertificate
 
 private const val TAG = "RegistrationCertVerify"
 
@@ -37,41 +39,45 @@ private const val TAG = "RegistrationCertVerify"
  * @param authenticator authenticates the serialized registration certificate: decoding, signature
  *   verification and signer-chain trust
  * @param evaluator the evaluator applied to the authenticated registration
+ * @param resolvedRegistration receives the evaluation, for the request processor to reuse
  * @param logger optional logger
  */
 internal fun wrpRegistrationCertificatePolicy(
     authenticator: WrprcAuthenticator,
     evaluator: WrpRegistrationEvaluator,
+    resolvedRegistration: ResolvedWrpRegistration? = null,
     logger: Logger? = null,
 ): RegistrationCertificatePolicy =
     RegistrationCertificatePolicy { accessCertificate, registrationCertificate, dcql ->
         val serialized = decodeSerializedRegistrationCertificate(registrationCertificate)
+        val requestedAttestations = dcql.toRequestedAttestationInfos()
         val result = if (serialized == null) {
-            WrpRegistrationResult.Failed(RegistrationFailureReason.MALFORMED)
+            RegistrationCertificateResult.Failed(RegistrationFailureReason.MALFORMED)
         } else when (val authentication = authenticator.authenticate(serialized)) {
             is WrprcAuthentication.Authentic -> evaluator.evaluate(
                 registration = authentication.registration,
                 accessCertificate = accessCertificate,
-                requestedAttestations = dcql.toRequestedAttestationInfos(),
+                requestedAttestations = requestedAttestations,
             )
 
             is WrprcAuthentication.Invalid ->
-                WrpRegistrationResult.Failed(authentication.reason)
+                RegistrationCertificateResult.Failed(authentication.reason)
         }
+        serialized?.let { resolvedRegistration?.publish(it, accessCertificate, requestedAttestations, result) }
         logger?.d(TAG, "registration certificate produced ${result.warningCount} warning(s)")
         result.toAuthorization()
     }
 
 /**
- * Maps a [WrpRegistrationResult] to the library's [Authorization]. The request is always granted; a
- * failed evaluation and each over-asked claim are attached as warnings.
+ * Maps a [RegistrationCertificateResult] to the library's [Authorization]. The request is always
+ * granted; a failed validation and each over-asked claim are attached as warnings.
  */
-private fun WrpRegistrationResult.toAuthorization(): Authorization {
+private fun RegistrationCertificateResult.toAuthorization(): Authorization {
     val warnings = when (this) {
-        is WrpRegistrationResult.Failed ->
+        is RegistrationCertificateResult.Failed ->
             listOf(PolicyViolation("registration validation failed: $reason"))
 
-        is WrpRegistrationResult.Verified ->
+        is RegistrationCertificateResult.Verified ->
             overAskedClaims.map {
                 PolicyViolation("over-asking ${it.format}:${it.path.joinToString("/")}")
             }
@@ -79,8 +85,8 @@ private fun WrpRegistrationResult.toAuthorization(): Authorization {
     return Authorization.Granted(warnings)
 }
 
-private val WrpRegistrationResult.warningCount: Int
+private val RegistrationCertificateResult.warningCount: Int
     get() = when (this) {
-        is WrpRegistrationResult.Failed -> 1
-        is WrpRegistrationResult.Verified -> overAskedClaims.size
+        is RegistrationCertificateResult.Failed -> 1
+        is RegistrationCertificateResult.Verified -> overAskedClaims.size
     }

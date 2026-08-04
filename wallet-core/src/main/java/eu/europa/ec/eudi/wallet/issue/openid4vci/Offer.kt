@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.openid4vci.TxCode
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 
 /**
  * Represents an offer of credentials from an issuer.
@@ -35,10 +36,15 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
  * @property issuerMetadata issuer metadata
  * @property offeredDocuments offered documents
  * @property txCodeSpec offered documents
+ * @property issuerRegistration the outcome of validating the credential issuer's registration
+ *  certificate (`issuer_info`, ETSI TS 119 472-3) for this offer, or null when issuer registration
+ *  validation is disabled or the metadata carries no registration certificate. The result is
+ *  informative; the wallet may present it to the user before issuance proceeds.
  */
 
 data class Offer(
     val credentialOffer: CredentialOffer,
+    val issuerRegistration: RegistrationCertificateResult? = null
 ) {
 
     val issuerMetadata: CredentialIssuerMetadata

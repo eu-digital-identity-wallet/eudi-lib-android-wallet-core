@@ -41,10 +41,15 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.C
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
+import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
+import eu.europa.ec.eudi.wallet.registration.issuer.issuerRegistrationCertificatePolicy
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.ktor.client.HttpClient
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
@@ -52,6 +57,19 @@ import org.multipaz.crypto.Algorithm
 import java.net.URI
 import eu.europa.ec.eudi.openid4vci.DPoPConfig as VciDPoPConfig
 import eu.europa.ec.eudi.openid4vci.ProvisionDPoPSigner as VciProvisionDPoPSigner
+
+/**
+ * An [Issuer] together with the outcome of validating the credential issuer's registration
+ * certificate for this issuance.
+ *
+ * @property issuer the created issuer
+ * @property issuerRegistration the registration outcome to present, or null when the certificate was
+ * not evaluated and the caller is to evaluate it
+ */
+internal data class IssuerCreation(
+    val issuer: Issuer,
+    val issuerRegistration: RegistrationCertificateResult?,
+)
 
 /**
  * Creates an [Issuer] from the given [Offer].
@@ -64,6 +82,8 @@ internal class IssuerCreator(
     private val walletAttestationKeyManager: WalletKeyManager,
     private val logger: Logger?,
     private val issuerMetadataPolicy: IssuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
+    private val issuerRegistrationEnabled: Boolean = false,
+    private val issuerRegistration: IssuerRegistrationResolver? = null,
 ) {
 
     internal var clientAttestationPopKeyId: String? = null
@@ -76,24 +96,26 @@ internal class IssuerCreator(
         private set
 
     /**
-     * Creates an [Issuer] from the given [Offer].
+     * Creates an [Issuer] from the given [Offer]. A registration outcome already carried by the offer
+     * is reused, so the certificate is not evaluated again.
      * @param offer The [Offer].
-     * @return The [Issuer].
+     * @return The [Issuer] and the registration outcome.
      */
-    suspend fun createIssuer(offer: Offer): Issuer = doCreateIssuer(offer.credentialOffer)
+    suspend fun createIssuer(offer: Offer): IssuerCreation =
+        doCreateIssuer(offer.credentialOffer, offer.issuerRegistration)
 
     /**
      * Creates an [Issuer] from the given [CredentialConfigurationIdentifier]s.
      * @param issuerUrl The issuer URL.
      * @param credentialConfigurationIdentifiers The list of [CredentialConfigurationIdentifier]s.
      * @param existingDpopKeyAlias Optional alias of an existing DPoP key to reuse (for re-issuance).
-     * @return The [Issuer].
+     * @return The [Issuer] and the registration outcome.
      */
     suspend fun createIssuer(
         issuerUrl: String,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
-    ): Issuer {
+    ): IssuerCreation {
 
         val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
             .map { getIssuerMetadata(it) }
@@ -110,10 +132,10 @@ internal class IssuerCreator(
      * This method finds a suitable credential configuration based on the document format and creates an issuer.
      *
      * @param documentFormat The format of the document for which to create an issuer.
-     * @return The [Issuer] supporting the given document format.
+     * @return The [Issuer] supporting the given document format, and the registration outcome.
      * @throws IllegalStateException if no suitable configuration is found for the document format.
      */
-    suspend fun createIssuer(issuerUrl: String, documentFormat: DocumentFormat): Issuer {
+    suspend fun createIssuer(issuerUrl: String, documentFormat: DocumentFormat): IssuerCreation {
         val formatFilter = when (documentFormat) {
             is MsoMdocFormat -> DocTypeFilter(documentFormat.docType)
             is SdJwtVcFormat -> VctFilter(documentFormat.vct)
@@ -140,14 +162,20 @@ internal class IssuerCreator(
 
     private suspend fun doCreateIssuer(
         credentialOffer: CredentialOffer,
-    ): Issuer {
-        return Issuer.make(
+        resolvedRegistration: RegistrationCertificateResult? = null,
+    ): IssuerCreation {
+        var evaluatedRegistration: RegistrationCertificateResult? = null
+        val issuer = Issuer.make(
             config = config.toOpenId4VCIConfig(
                 credentialOffer.authorizationServerMetadata,
+                credentialIssuerMetadata = credentialOffer.credentialIssuerMetadata,
+                resolvedRegistration = resolvedRegistration,
+                onRegistrationEvaluated = { evaluatedRegistration = it },
             ),
             credentialOffer = credentialOffer,
             httpClient = ktorHttpClientFactory()
-        ).getOrThrow()
+        ).getOrThrow().first
+        return IssuerCreation(issuer, resolvedRegistration ?: evaluatedRegistration)
     }
 
     private suspend fun doCreateIssuer(
@@ -155,17 +183,21 @@ internal class IssuerCreator(
         authorizationServerMetadata: CIAuthorizationServerMetadata,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
-    ): Issuer {
+    ): IssuerCreation {
         return try {
-            Issuer.makeWalletInitiated(
+            var evaluatedRegistration: RegistrationCertificateResult? = null
+            val issuer = Issuer.makeWalletInitiated(
                 config = config.toOpenId4VCIConfig(
                     authorizationServerMetadata,
-                    existingDpopKeyAlias
+                    existingDpopKeyAlias,
+                    credentialIssuerMetadata,
+                    onRegistrationEvaluated = { evaluatedRegistration = it },
                 ),
                 credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
                 credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
                 httpClient = ktorHttpClientFactory()
-            ).getOrThrow()
+            ).getOrThrow().first
+            IssuerCreation(issuer, evaluatedRegistration)
         } catch (e: Throwable) {
             logger?.e(TAG, "Failed to create wallet-initiated issuer", e)
             throw e
@@ -209,6 +241,9 @@ internal class IssuerCreator(
     private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
         authorizationServerMetadata: CIAuthorizationServerMetadata,
         existingDpopKeyAlias: String? = null,
+        credentialIssuerMetadata: CredentialIssuerMetadata? = null,
+        resolvedRegistration: RegistrationCertificateResult? = null,
+        onRegistrationEvaluated: (RegistrationCertificateResult) -> Unit = {},
     ): OpenId4VCIConfig {
         val auth = authorizationServerMetadata.toClientAuthentication().getOrThrow()
         clientAuthentication = auth
@@ -257,6 +292,32 @@ internal class IssuerCreator(
             }
         }
 
+        if (issuerRegistrationEnabled && issuerMetadataPolicy !is IssuerMetadataPolicy.RequireSigned) {
+            logger?.i(
+                TAG,
+                "issuer registration validation is enabled but signed issuer metadata is not " +
+                    "configured (configureIssuerTrust { requireSignedMetadata() }); skipping it.",
+            )
+        }
+        if (issuerRegistrationEnabled && issuerRegistration == null) {
+            logger?.i(
+                TAG,
+                "issuer registration validation is enabled but no trust is available for the " +
+                    "registration certificate signer chain (needs configureEtsiTrust); skipping it.",
+            )
+        }
+
+        val registrationCertificatePolicy = issuerRegistration
+            ?.takeIf { issuerMetadataPolicy is IssuerMetadataPolicy.RequireSigned }
+            ?.let { resolver ->
+                issuerRegistrationCertificatePolicy(
+                    resolver = resolver,
+                    resolvedRegistration = resolvedRegistration,
+                    onEvaluated = onRegistrationEvaluated,
+                    logger = logger,
+                )
+            }
+
         return OpenId4VCIConfig(
             clientAuthentication = auth,
             authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
@@ -270,6 +331,8 @@ internal class IssuerCreator(
                 else -> ParUsage.IfSupported()
             },
             proofs = proofTypes.toProofsConfig(),
+            issuerMetadataPolicy = if (issuerRegistrationEnabled) issuerMetadataPolicy else IssuerMetadataPolicy.IgnoreSigned,
+            registrationCertificatePolicy = registrationCertificatePolicy,
         )
     }
 }

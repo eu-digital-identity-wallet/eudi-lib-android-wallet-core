@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
+import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
@@ -76,6 +77,12 @@ class OpenId4VpDCAPIRequestProcessor(
             dcqlRequestProcessor.readerTrustStore = value
         }
 
+    /**
+     * Holds the registration certificate evaluation the OpenID4VP library policy produces while a
+     * request is resolved, for [dcqlRequestProcessor] to reuse.
+     */
+    internal var resolvedRegistration: ResolvedWrpRegistration? = null
+
     private val openId4Vp: OpenId4Vp.OverDcAPI by lazy {
         OpenId4Vp.overDcApi(
             openId4VPConfig = makeOpenId4VPConfig(
@@ -89,6 +96,7 @@ class OpenId4VpDCAPIRequestProcessor(
     override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
         require(request is DCAPIRequest) { "Request must be a DCAPIRequest" }
         logger?.d(TAG, "Processing OpenID4VP DC API request")
+        resolvedRegistration?.clear()
 
         val credRequest = request.providerGetCredentialRequest
         val origin = credRequest.resolveOrigin(privilegedAllowlist)

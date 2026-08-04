@@ -41,6 +41,7 @@ import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import org.multipaz.crypto.Algorithm
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import io.ktor.client.HttpClient
 import java.util.concurrent.Executor
@@ -330,6 +331,8 @@ interface OpenId4VciManager {
         var walletKeyManager: WalletKeyManager? = null
         var walletAttestationsProvider: WalletAttestationsProvider? = null
         internal var issuerTrustConfig: IssuerTrustConfig? = null
+        internal var issuerRegistrationEnabled: Boolean = false
+        internal var issuerRegistration: IssuerRegistrationResolver? = null
 
         /**
          * Set the [Config] to use
@@ -394,6 +397,23 @@ interface OpenId4VciManager {
         }
 
         /**
+         * Enable or disable validation of the credential issuer's registration certificate.
+         * @return this builder
+         */
+        internal fun issuerRegistrationEnabled(enabled: Boolean) = apply {
+            this.issuerRegistrationEnabled = enabled
+        }
+
+        /**
+         * Set the resolver that authenticates and evaluates the credential issuer's registration
+         * certificate. When null the certificate is not validated.
+         * @return this builder
+         */
+        internal fun issuerRegistration(resolver: IssuerRegistrationResolver?) = apply {
+            this.issuerRegistration = resolver
+        }
+
+        /**
          * Build the [OpenId4VciManager]
          * @return the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
@@ -416,7 +436,9 @@ interface OpenId4VciManager {
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 walletProvider = walletAttestationsProvider,
                 walletAttestationKeyManager = walletKeyManager,
-                issuerTrustConfig = issuerTrustConfig
+                issuerTrustConfig = issuerTrustConfig,
+                issuerRegistrationEnabled = issuerRegistrationEnabled,
+                issuerRegistration = issuerRegistration,
             )
         }
     }
