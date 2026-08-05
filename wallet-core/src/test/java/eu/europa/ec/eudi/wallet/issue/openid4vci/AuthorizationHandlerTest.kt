@@ -174,7 +174,6 @@ class AuthorizationHandlerTest {
         val customHandler = CustomTestAuthorizationHandler()
 
         val config = OpenId4VciManager.Config {
-            withIssuerUrl("https://issuer.example.com")
             withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
             withAuthFlowRedirectionURI("eudi-wallet://callback")
             withAuthorizationHandler(customHandler)
@@ -187,7 +186,6 @@ class AuthorizationHandlerTest {
     @Test
     fun `Config builder without authorization handler defaults to null`() {
         val config = OpenId4VciManager.Config {
-            withIssuerUrl("https://issuer.example.com")
             withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
             withAuthFlowRedirectionURI("eudi-wallet://callback")
         }

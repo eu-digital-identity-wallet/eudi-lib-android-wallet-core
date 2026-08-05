@@ -24,11 +24,15 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequest
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIResponse
+import eu.europa.ec.eudi.wallet.dcapi.internal.requestJsonOrNull
+import eu.europa.ec.eudi.wallet.dcapi.IsoMdocDCAPIResponse
+import eu.europa.ec.eudi.wallet.dcapi.OpenId4VpDCAPIResponse
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import kotlinx.serialization.json.Json
+import org.multipaz.crypto.javaX509Certificates
 import java.time.Instant
 import java.util.Base64
 
@@ -101,12 +105,10 @@ class TransactionLogBuilder(
                 )
             }
 
-            is DCAPIRequest -> {
-                // TODO log dc api request
-                log.copy(
-                    timestamp = Instant.now().toEpochMilli(),
-                )
-            }
+            is DCAPIRequest -> log.copy(
+                timestamp = Instant.now().toEpochMilli(),
+                rawRequest = request.providerGetCredentialRequest.requestJsonOrNull()?.toByteArray()
+            )
 
             else -> log.copy(
                 timestamp = Instant.now().toEpochMilli(),
@@ -136,16 +138,16 @@ class TransactionLogBuilder(
     ): TransactionLog {
         if (log.type != TransactionLog.Type.Presentation) return log
 
-        val requestedDocuments = processedRequest.getOrNull()?.requestedDocuments ?: return log
-        val readerAuth = requestedDocuments.firstNotNullOfOrNull { it.readerAuth }
+        val success = processedRequest.getOrNull() ?: return log
 
-        val name = readerAuth?.readerCommonName ?: "Unidentified Relying Party"
-        val certificateChain = readerAuth
-            ?.readerCertificateChain
-            ?.map { Base64.getEncoder().encodeToString(it.encoded) }
-            ?: emptyList()
-        val isVerified = readerAuth?.isVerified == true
-        val readerAuthBytes = readerAuth?.readerAuth
+        val trustMetadata = success.trustMetadata
+        val javaCertChain = success.requester.certChain?.javaX509Certificates ?: emptyList()
+
+        val name = trustMetadata?.displayName ?: "Unidentified Relying Party"
+        val certificateChain = javaCertChain.map {
+            Base64.getEncoder().encodeToString(it.encoded)
+        }
+        val isVerified = trustMetadata != null
 
         return log.copy(
             timestamp = Instant.now().toEpochMilli(),
@@ -153,7 +155,7 @@ class TransactionLogBuilder(
                 name = name,
                 certificateChain = certificateChain,
                 isVerified = isVerified,
-                readerAuth = readerAuthBytes?.let { Base64.getEncoder().encodeToString(it) }
+                readerAuth = null
             )
         )
     }
@@ -205,11 +207,20 @@ class TransactionLogBuilder(
             }
 
             is DCAPIResponse -> {
-                log.copy(
-                    rawResponse = response.deviceResponseBytes,
-                    dataFormat = TransactionLog.DataFormat.Cbor,
-                    metadata = metadataResolver(response),
-                )
+                when (response) {
+                    is IsoMdocDCAPIResponse -> log.copy(
+                        rawResponse = response.deviceResponseBytes,
+                        dataFormat = TransactionLog.DataFormat.Cbor,
+                        metadata = metadataResolver(response),
+                    )
+
+                    is OpenId4VpDCAPIResponse -> log.copy(
+                        rawResponse = VPTokenConsensusJson.encodeToString(response.vpToken)
+                            .toByteArray(),
+                        dataFormat = TransactionLog.DataFormat.Json,
+                        metadata = metadataResolver(response),
+                    )
+                }
             }
 
             else -> throw IllegalArgumentException(

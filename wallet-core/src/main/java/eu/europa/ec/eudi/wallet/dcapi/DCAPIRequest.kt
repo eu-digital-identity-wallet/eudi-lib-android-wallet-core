@@ -20,9 +20,9 @@ import androidx.credentials.provider.ProviderGetCredentialRequest
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 
 /**
- * Represents a request for the Digital Credential API (DCAPI).
+ * A request for the Digital Credential API (DCAPI).
  *
- * @property providerGetCredentialRequest The DCAPI request.
+ * @property providerGetCredentialRequest the underlying platform credential request.
  */
 
 data class DCAPIRequest(

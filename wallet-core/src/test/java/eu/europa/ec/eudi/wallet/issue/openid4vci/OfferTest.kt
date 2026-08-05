@@ -61,15 +61,21 @@ class OfferTest {
                 setOf(
                     ProofTypeMeta.Jwt(
                         listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384),
-                        KeyAttestationRequirement.NotRequired
+                        KeyAttestationRequirement(null, null, null)
+                    ),
+                    ProofTypeMeta.Attestation(
+                        listOf(JWSAlgorithm.ES256, JWSAlgorithm.ES384),
+                        KeyAttestationRequirement(null, null, null)
                     )
                 )
             )
             every { docType } returns "testDocType"
+            every { credentialMetadata } returns null
         }
 
         mockSdJwtVcCredential = mockk<SdJwtVcCredential>(relaxed = true) {
             every { type } returns "testType"
+            every { credentialMetadata } returns null
         }
 
         mockCredentialConfigurations = listOf(mockMsoMdocCredential, mockSdJwtVcCredential)

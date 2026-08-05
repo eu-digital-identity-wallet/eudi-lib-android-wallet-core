@@ -1,0 +1,38 @@
+//[document-manager](../../index.md)/[eu.europa.ec.eudi.wallet.document](index.md)
+
+# Package-level declarations
+
+## Types
+
+| Name | Summary |
+|---|---|
+| [CreateDocumentSettings](-create-document-settings/index.md) | [release]<br>interface [CreateDocumentSettings](-create-document-settings/index.md)<br>Interface that defines the required creationSettings when creating a document with [DocumentManager.createDocument](-document-manager/create-document.md). Implementors of [DocumentManager](-document-manager/index.md) may introduce custom requirements for creating a document. |
+| [CreateDocumentSettingsImpl](-create-document-settings-impl/index.md) | [release]<br>data class [CreateDocumentSettingsImpl](-create-document-settings-impl/index.md)(val secureAreaIdentifier: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), val createKeySettings: CreateKeySettings, val numberOfCredentials: [Int](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-int/index.html) = 1, val credentialPolicy: [CreateDocumentSettings.CredentialPolicy](-create-document-settings/-credential-policy/index.md) = CredentialPolicy.RotateUse) : [CreateDocumentSettings](-create-document-settings/index.md)<br>Implementation of [CreateDocumentSettings](-create-document-settings/index.md) interface that provides configuration for document creation. |
+| [DeferredDocument](-deferred-document/index.md) | [release]<br>class [DeferredDocument](-deferred-document/index.md)(baseDocument: Document, val relatedData: [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html)) : [UnsignedDocument](-unsigned-document/index.md)<br>Represents a Deferred Document in the EUDI Wallet. |
+| [DocType](-doc-type/index.md) | [release]<br>typealias [DocType](-doc-type/index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [Document](-document/index.md) | [release]<br>sealed interface [Document](-document/index.md)<br>Base interface for all document types in the EUDI Wallet ecosystem. |
+| [DocumentId](-document-id/index.md) | [release]<br>typealias [DocumentId](-document-id/index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [DocumentManager](-document-manager/index.md) | [release]<br>interface [DocumentManager](-document-manager/index.md)<br>The DocumentManager interface is the main entry point to interact with documents in the EUDI Wallet. It is a high-level abstraction that provides a simplified API to manage digital documents like credentials, certificates, and other identity documents. |
+| [DocumentManagerImpl](-document-manager-impl/index.md) | [release]<br>class [DocumentManagerImpl](-document-manager-impl/index.md)(val identifier: [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html), val storage: Storage, val secureAreaRepository: SecureAreaRepository, val ktorHttpClientFactory: () -&gt; HttpClient? = null) : [DocumentManager](-document-manager/index.md)<br>Default implementation of the [DocumentManager](-document-manager/index.md) interface for the EUDI Wallet. |
+| [ElementIdentifier](-element-identifier/index.md) | [release]<br>typealias [ElementIdentifier](-element-identifier/index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [IssuedDocument](-issued-document/index.md) | [release]<br>class [IssuedDocument](-issued-document/index.md)(baseDocument: Document) : [Document](-document/index.md)<br>Represents an Issued Document in the EUDI Wallet. |
+| [NameSpace](-name-space/index.md) | [release]<br>typealias [NameSpace](-name-space/index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+| [NameSpacedValues](-name-spaced-values/index.md) | [release]<br>typealias [NameSpacedValues](-name-spaced-values/index.md)&lt;[T](-name-spaced-values/index.md)&gt; = [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[NameSpace](-name-space/index.md), [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[ElementIdentifier](-element-identifier/index.md), [T](-name-spaced-values/index.md)&gt;&gt; |
+| [NameSpaces](-name-spaces/index.md) | [release]<br>typealias [NameSpaces](-name-spaces/index.md) = [Map](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-map/index.html)&lt;[NameSpace](-name-space/index.md), [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[ElementIdentifier](-element-identifier/index.md)&gt;&gt; |
+| [Outcome](-outcome/index.md) | [release]<br>class [Outcome](-outcome/index.md)&lt;out [T](-outcome/index.md)&gt;<br>Outcome for encapsulating success or failure of a computation for document manager operations. Wraps a [Result](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/index.html) instance to provide Java interop. |
+| [ProofOfDeletion](-proof-of-deletion/index.md) | [release]<br>typealias [ProofOfDeletion](-proof-of-deletion/index.md) = [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html) |
+| [SharedSecret](-shared-secret/index.md) | [release]<br>typealias [SharedSecret](-shared-secret/index.md) = [ByteArray](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-byte-array/index.html) |
+| [UnsignedDocument](-unsigned-document/index.md) | [release]<br>open class [UnsignedDocument](-unsigned-document/index.md)(baseDocument: Document) : [Document](-document/index.md)<br>Represents a document that has been created but not yet fully issued. |
+| [Vct](-vct/index.md) | [release]<br>typealias [Vct](-vct/index.md) = [String](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html) |
+
+## Properties
+
+| Name | Summary |
+|---|---|
+| [nameSpacedDataJSONObject](name-spaced-data-j-s-o-n-object.md) | [release]<br>@get:[JvmName](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-name/index.html)(name = &quot;nameSpacedDataAsJSONObject&quot;)<br>val [IssuedDocument](-issued-document/index.md).[nameSpacedDataJSONObject](name-spaced-data-j-s-o-n-object.md): [JSONObject](https://developer.android.com/reference/kotlin/org/json/JSONObject.html)<br>Extension function to convert [IssuedDocument](-issued-document/index.md)'s nameSpacedData to [JSONObject](https://developer.android.com/reference/kotlin/org/json/JSONObject.html) Applicable only when [IssuedDocument.data](-issued-document/data.md) returns [MsoMdocData](../eu.europa.ec.eudi.wallet.document.format/-mso-mdoc-data/index.md) |
+
+## Functions
+
+| Name | Summary |
+|---|---|
+| [getDocuments](get-documents.md) | [release]<br>inline fun &lt;[T](get-documents.md) : [Document](-document/index.md)&gt; [DocumentManager](-document-manager/index.md).[getDocuments](get-documents.md)(): [List](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/index.html)&lt;[T](get-documents.md)&gt;<br>DocumentManager Extension function that returns a list of documents of type [T](get-documents.md). If [T](get-documents.md) is [IssuedDocument](-issued-document/index.md), then only [IssuedDocument](-issued-document/index.md) will be returned. If [T](get-documents.md) is [UnsignedDocument](-unsigned-document/index.md), then only [UnsignedDocument](-unsigned-document/index.md) will be returned, excluding [DeferredDocument](-deferred-document/index.md). If [T](get-documents.md) is [DeferredDocument](-deferred-document/index.md), then only [DeferredDocument](-deferred-document/index.md) will be returned. |

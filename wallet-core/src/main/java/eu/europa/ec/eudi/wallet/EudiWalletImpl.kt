@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 European Commission
+ * Copyright (c) 2024-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,10 +69,10 @@ class EudiWalletImpl internal constructor(
     }
 
     override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates))
+        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates, config.revocationPolicy))
 
     override fun setTrustedReaderCertificates(vararg rawRes: Int) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }))
+        setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }, config.revocationPolicy))
 
     /**
      * Creates an instance of [OpenId4VciManager] for interacting with the OpenID for Verifiable Credential Issuance protocol.
@@ -112,6 +112,7 @@ class EudiWalletImpl internal constructor(
             if (httpClientFactory != null) {
                 ktorHttpClientFactory(httpClientFactory)
             }
+            this@EudiWalletImpl.config.issuerTrustConfig?.let { issuerTrustConfig(it) }
         }
     }
 }

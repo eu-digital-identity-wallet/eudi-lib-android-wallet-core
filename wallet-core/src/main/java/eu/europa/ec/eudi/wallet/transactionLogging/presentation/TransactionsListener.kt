@@ -19,7 +19,8 @@ package eu.europa.ec.eudi.wallet.transactionLogging.presentation
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
-import eu.europa.ec.eudi.wallet.dcapi.DCAPIResponse
+import eu.europa.ec.eudi.wallet.dcapi.IsoMdocDCAPIResponse
+import eu.europa.ec.eudi.wallet.dcapi.OpenId4VpDCAPIResponse
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
@@ -74,7 +75,7 @@ class TransactionsListener(
                 }
             }
 
-            is DCAPIResponse -> response.documentIds.mapIndexed { index, id ->
+            is IsoMdocDCAPIResponse -> response.documentIds.mapIndexed { index, id ->
                 val issuerMetadata = documentManager.getDocumentById(id)
                     ?.issuerMetadata
                     ?.toJson()
@@ -84,6 +85,20 @@ class TransactionsListener(
                     index = index,
                     queryId = null,
                 ).toJson()
+            }
+
+            is OpenId4VpDCAPIResponse -> response.respondedDocuments.flatMap { (queryId, documents) ->
+                documents.mapIndexed { index, document ->
+                    val issuerMetadata = documentManager.getDocumentById(document.documentId)
+                        ?.issuerMetadata
+                        ?.toJson()
+                    TransactionLog.Metadata(
+                        issuerMetadata = issuerMetadata,
+                        format = document.format,
+                        index = index,
+                        queryId = queryId.value,
+                    ).toJson()
+                }
             }
 
             else -> null

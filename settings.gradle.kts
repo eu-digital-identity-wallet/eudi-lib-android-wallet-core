@@ -15,6 +15,7 @@
  */
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             content {
@@ -30,7 +31,6 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        mavenLocal()
         google()
         mavenCentral()
         maven {
@@ -42,3 +42,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "eudi-lib-android-wallet-core"
 include(":wallet-core")
+include(":document-manager")
+include(":transfer-manager")

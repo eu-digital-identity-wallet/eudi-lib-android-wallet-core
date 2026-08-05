@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 European Commission
+ * Copyright (c) 2024-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,14 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.IntDef
+import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
+import eu.europa.ec.eudi.openid4vci.CredentialReusePolicies
+import eu.europa.ec.eudi.openid4vci.EcConfig
+import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
+import eu.europa.ec.eudi.openid4vci.RsaConfig
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -32,7 +38,10 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.logging.Logger
 import org.multipaz.storage.Storage
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import org.multipaz.crypto.Algorithm
+import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import io.ktor.client.HttpClient
 import java.util.concurrent.Executor
 
@@ -44,9 +53,10 @@ import java.util.concurrent.Executor
 interface OpenId4VciManager {
 
     /**
-     * Provides the issuer metadata
+     * Provides the issuer metadata for the given issuer URL.
+     * @param issuerUrl the issuer URL to resolve metadata from
      */
-    suspend fun getIssuerMetadata(): Result<CredentialIssuerMetadata>
+    suspend fun getIssuerMetadata(issuerUrl: String): Result<CredentialIssuerMetadata>
 
 
     /**
@@ -63,6 +73,7 @@ interface OpenId4VciManager {
      */
     @Deprecated("Use issueDocumentByConfigurationIdentifiers that accepts a list of identifiers")
     fun issueDocumentByConfigurationIdentifier(
+        issuerUrl: String,
         credentialConfigurationId: String,
         txCode: String? = null,
         executor: Executor? = null,
@@ -82,6 +93,7 @@ interface OpenId4VciManager {
      * @param onIssueEvent the callback to be called when the document is issued
      */
     fun issueDocumentByConfigurationIdentifiers(
+        issuerUrl: String,
         credentialConfigurationIds: List<String>,
         txCode: String? = null,
         executor: Executor? = null,
@@ -97,6 +109,7 @@ interface OpenId4VciManager {
      * @param onIssueEvent the callback to be called when the document is issued
      */
     fun issueDocumentByFormat(
+        issuerUrl: String,
         format: DocumentFormat,
         txCode: String? = null,
         executor: Executor? = null,
@@ -112,8 +125,9 @@ interface OpenId4VciManager {
      * @see[IssueEvent] on how to handle the result
      * @deprecated use [issueDocumentByConfigurationIdentifier] or [issueDocumentByFormat] instead
      */
-    @Deprecated("Use issueDocumentByConfigurationIdentifier or issueDocumentByFormat instead")
+    @Deprecated("Use issueDocumentByConfigurationIdentifiers or issueDocumentByFormat instead")
     fun issueDocumentByDocType(
+        issuerUrl: String,
         docType: String,
         txCode: String? = null,
         executor: Executor? = null,
@@ -277,7 +291,8 @@ interface OpenId4VciManager {
      * Client Authentication for the OpenId4Vci issuer
      *
      * @property None no client authentication, only client id is provided
-     * @property AttestationBased attestation based client authentication using [WalletAttestationsProvider]
+     * @property AttestationBased attestation based client authentication using [WalletInstanceAttestationProvider]
+     *           declared via [EudiWallet.walletProvider][eu.europa.ec.eudi.wallet.EudiWallet.walletProvider]
      */
     sealed interface ClientAuthenticationType {
         /**
@@ -287,10 +302,13 @@ interface OpenId4VciManager {
         data class None(val clientId: String) : ClientAuthenticationType
 
         /**
-         * Attestation based client authentication using [WalletAttestationsProvider]
-         * declared in [eu.europa.ec.eudi.wallet.EudiWallet.Builder]
+         * Attestation based client authentication.
+         * Requires a [WalletInstanceAttestationProvider] to be available at runtime,
+         * typically provided via [EudiWallet.walletProvider][eu.europa.ec.eudi.wallet.EudiWallet.walletProvider]
+         * or [OpenId4VciManager.Builder.walletAttestationsProvider].
+         * @param clientId the client id
          */
-        data object AttestationBased : ClientAuthenticationType
+        data class AttestationBased(val clientId: String) : ClientAuthenticationType
     }
 
     /**
@@ -311,6 +329,7 @@ interface OpenId4VciManager {
         var ktorHttpClientFactory: (() -> HttpClient)? = null
         var walletKeyManager: WalletKeyManager? = null
         var walletAttestationsProvider: WalletAttestationsProvider? = null
+        internal var issuerTrustConfig: IssuerTrustConfig? = null
 
         /**
          * Set the [Config] to use
@@ -366,6 +385,15 @@ interface OpenId4VciManager {
         }
 
         /**
+         * Set the [IssuerTrustConfig] to use for issuer trust verification
+         * @param config the issuer trust configuration
+         * @return this builder
+         */
+        internal fun issuerTrustConfig(config: IssuerTrustConfig) = apply {
+            this.issuerTrustConfig = config
+        }
+
+        /**
          * Build the [OpenId4VciManager]
          * @return the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
@@ -387,7 +415,8 @@ interface OpenId4VciManager {
                 logger = logger,
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 walletProvider = walletAttestationsProvider,
-                walletAttestationKeyManager = walletKeyManager
+                walletAttestationKeyManager = walletKeyManager,
+                issuerTrustConfig = issuerTrustConfig
             )
         }
     }
@@ -403,10 +432,37 @@ interface OpenId4VciManager {
     }
 
     /**
+     * Declares which proof types this wallet supports, and for each, which signing algorithms.
+     *
+     * This maps internally to the vci library's `ProofsConfig` and controls:
+     * 1. Which proof types the wallet advertises to the issuer
+     * 2. Which signing algorithms the wallet can use for each proof type
+     *
+     * The default supports all three proof types with ES256/ES384/ES512.
+     * To disable a specific proof type, set its algorithms to `null`.
+     *
+     * @property isNoProofSupported Whether the wallet supports issuers that require no proof
+     * @property jwtProofAlgorithms Supported algorithms for JWT proof type, or null to disable
+     * @property attestationProofAlgorithms Supported algorithms for attestation proof type, or null to disable
+     */
+    data class SupportedProofTypes(
+        val isNoProofSupported: Boolean = true,
+        val jwtProofAlgorithms: Set<Algorithm>? = null,
+        val attestationProofAlgorithms: Set<Algorithm>? = null,
+    ) {
+        companion object {
+            val Default = SupportedProofTypes(
+                isNoProofSupported = true,
+                jwtProofAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
+                attestationProofAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
+            )
+        }
+    }
+
+    /**
      * Configuration for the OpenId4Vci issuer
      *
-     * @property issuerUrl the issuer url
-     * @property clientId the client id
+     * @property clientAuthenticationType the client authentication type
      * @property authFlowRedirectionURI the redirection URI for the authorization flow
      * @property authorizationHandler the handler for authorization requests. If null, uses [BrowserAuthorizationHandler]
      * @property dpopConfig The DPoP (Demonstrating Proof-of-Possession) configuration for credential issuance.
@@ -427,15 +483,29 @@ interface OpenId4VciManager {
      *
      *           @see DPopConfig for configuration options
      * @property parUsage if PAR should be used
+     * @property responseEncryptionConfig configuration for credential response encryption.
+     *           Controls whether credential responses from the issuer are encrypted, and which
+     *           algorithms are supported.
+     *
+     *           **Default:** encryption required with EC P-256 and RSA 2048
+     *
+     *           @see EncryptionSupportConfig
+     *           @see CredentialResponseEncryptionPolicy
      */
     data class Config @JvmOverloads constructor(
-        val issuerUrl: String,
         val clientAuthenticationType: ClientAuthenticationType,
         val authFlowRedirectionURI: String,
         val authorizationHandler: AuthorizationHandler? = null,
         val dpopConfig: DPopConfig = DPopConfig.Default,
         @ParUsage val parUsage: Int = IF_SUPPORTED,
         val issuanceMetadataStorage: Storage? = null,
+        val responseEncryptionConfig: EncryptionSupportConfig = EncryptionSupportConfig(
+            credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.REQUIRED,
+            ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+            rsaConfig = RsaConfig(rcaKeySize = 2048),
+        ),
+        val supportedCredentialReusePolicies: CredentialReusePolicies? = null,
+        val proofTypes: SupportedProofTypes = SupportedProofTypes.Default,
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -465,8 +535,7 @@ interface OpenId4VciManager {
         /**
          * Builder for [Config]
          *
-         * @property issuerUrl the issuer url
-         * @property clientId the client id
+         * @property clientAuthenticationType the client authentication type
          * @property authFlowRedirectionURI the redirection URI for the authorization flow
          * @property authorizationHandler the handler for authorization requests. If null, uses [BrowserAuthorizationHandler]
          * @property dpopConfig The DPoP configuration for credential issuance.
@@ -496,8 +565,7 @@ interface OpenId4VciManager {
          *           **Example - Using Default Configuration:**
          *           ```kotlin
          *           val config = Config.Builder()
-         *               .withIssuerUrl("https://issuer.com")
-         *               .withClientId("client-id")
+         *               .withClientAuthenticationType(ClientAuthenticationType.None("client-id"))
          *               .withAuthFlowRedirectionURI("app://callback")
          *               // DPoP is enabled by default with DPopConfig.Default
          *               .build()
@@ -518,8 +586,7 @@ interface OpenId4VciManager {
          *           )
          *
          *           val config = Config.Builder()
-         *               .withIssuerUrl("https://issuer.com")
-         *               .withClientId("client-id")
+         *               .withClientAuthenticationType(ClientAuthenticationType.None("client-id"))
          *               .withAuthFlowRedirectionURI("app://callback")
          *               .withDPopConfig(customDPopConfig)
          *               .build()
@@ -528,8 +595,7 @@ interface OpenId4VciManager {
          *           **Example - Disabling DPoP:**
          *           ```kotlin
          *           val config = Config.Builder()
-         *               .withIssuerUrl("https://issuer.com")
-         *               .withClientId("client-id")
+         *               .withClientAuthenticationType(ClientAuthenticationType.None("client-id"))
          *               .withAuthFlowRedirectionURI("app://callback")
          *               .withDPopConfig(DPopConfig.Disabled)
          *               .build()
@@ -539,7 +605,6 @@ interface OpenId4VciManager {
          * @property parUsage if PAR should be used
          */
         class Builder {
-            var issuerUrl: String? = null
             var clientAuthenticationType: ClientAuthenticationType? = null
             var authFlowRedirectionURI: String? = null
             var authorizationHandler: AuthorizationHandler? = null
@@ -550,12 +615,15 @@ interface OpenId4VciManager {
 
             var issuanceMetadataStorage: Storage? = null
 
-            /**
-             * Set the issuer url
-             * @param issuerUrl the issuer url
-             * @return this builder
-             */
-            fun withIssuerUrl(issuerUrl: String) = apply { this.issuerUrl = issuerUrl }
+            var responseEncryptionConfig: EncryptionSupportConfig = EncryptionSupportConfig(
+                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.REQUIRED,
+                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
+                rsaConfig = RsaConfig(rcaKeySize = 2048),
+            )
+
+            var supportedCredentialReusePolicies: CredentialReusePolicies? = null
+
+            var proofTypes: SupportedProofTypes = SupportedProofTypes.Default
 
             /**
              * Set the client authentication type
@@ -703,23 +771,72 @@ interface OpenId4VciManager {
             }
 
             /**
+             * Sets the credential response encryption configuration.
+             *
+             * Controls whether and how credential responses from the issuer are encrypted.
+             * The configuration includes the encryption policy, EC key curve, and RSA key size.
+             *
+             * **Default:** [CredentialResponseEncryptionPolicy.REQUIRED] with EC P-256 and RSA 2048
+             *
+             * @param responseEncryptionConfig The [EncryptionSupportConfig] to use
+             * @return This builder instance for method chaining
+             * @see EncryptionSupportConfig
+             * @see CredentialResponseEncryptionPolicy
+             */
+            fun withResponseEncryptionConfig(responseEncryptionConfig: EncryptionSupportConfig) = apply {
+                this.responseEncryptionConfig = responseEncryptionConfig
+            }
+
+            /**
+             * Sets the credential reuse policies supported by this wallet.
+             *
+             * When configured, the wallet will validate the issuer's `credential_reuse_policy`
+             * metadata against these supported policies during issuance, per ETSI TS 119 472-3.
+             *
+             * @param policies The [CredentialReusePolicies] supported by this wallet.
+             *        Use [CredentialReusePolicies.Supported] to declare supported policies,
+             *        or [CredentialReusePolicies.Required] to require at least one matching policy.
+             * @return This builder instance for method chaining
+             * @see CredentialReusePolicies
+             */
+            fun withSupportedCredentialReusePolicies(policies: CredentialReusePolicies) = apply {
+                this.supportedCredentialReusePolicies = policies
+            }
+
+            /**
+             * Sets the supported proof types and their signing algorithms.
+             *
+             * Controls which proof types the wallet advertises to the issuer and which
+             * algorithms it can use. Default is [SupportedProofTypes.Default] which supports
+             * all proof types with ES256/ES384/ES512.
+             *
+             * @param proofTypes The supported proof types configuration
+             * @return This builder instance for method chaining
+             * @see SupportedProofTypes
+             */
+            fun withSupportedProofTypes(proofTypes: SupportedProofTypes) = apply {
+                this.proofTypes = proofTypes
+            }
+
+            /**
              * Build the [Config]
              * @return the [Config]
              */
             fun build(): Config {
-                val issuerUrl = checkNotNull(issuerUrl) { "issuerUrl is required" }
                 val clientAuthenticationType =
                     checkNotNull(clientAuthenticationType) { "client authentication is required" }
                 val authFlowRedirectionURI =
                     checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
                 return Config(
-                    issuerUrl = issuerUrl!!,
                     authorizationHandler = authorizationHandler,
                     clientAuthenticationType = clientAuthenticationType,
                     authFlowRedirectionURI = authFlowRedirectionURI,
                     dpopConfig = dpopConfig,
                     parUsage = parUsage,
-                    issuanceMetadataStorage = issuanceMetadataStorage
+                    issuanceMetadataStorage = issuanceMetadataStorage,
+                    responseEncryptionConfig = responseEncryptionConfig,
+                    supportedCredentialReusePolicies = supportedCredentialReusePolicies,
+                    proofTypes = proofTypes,
                 )
             }
         }

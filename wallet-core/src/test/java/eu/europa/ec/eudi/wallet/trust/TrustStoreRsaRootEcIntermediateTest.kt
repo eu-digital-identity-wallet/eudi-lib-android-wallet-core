@@ -1,6 +1,7 @@
 package eu.europa.ec.eudi.wallet.trust
 
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Before
 import org.junit.Test
@@ -21,7 +22,8 @@ class TrustStoreRsaRootEcIntermediateTest {
 
         val trustStore = ReaderTrustStoreImpl(
             listOf(rsaTrustedRootCertificate),
-            profileValidation = { _, _ -> true }
+            profileValidation = { _, _ -> true },
+            revocationPolicy = RevocationPolicy.NoCheck,
         )
 
         val result = trustStore.validateCertificationTrustPath(certificateChain)

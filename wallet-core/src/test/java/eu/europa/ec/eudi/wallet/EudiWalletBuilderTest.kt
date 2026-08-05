@@ -66,7 +66,7 @@ class EudiWalletBuilderTest {
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -77,7 +77,7 @@ class EudiWalletBuilderTest {
         assertIs<EudiWalletImpl>(wallet)
         verify(exactly = 1) { builder.getDefaultDocumentManager(null, null) }
         verify(exactly = 1) { builder.getTransferManager(any(), null) }
-        verify(exactly = 1) { builder.getDocumentStatusResolver() }
+        verify(exactly = 1) { builder.getDocumentStatusResolver(any()) }
     }
 
     @Test
@@ -105,7 +105,7 @@ class EudiWalletBuilderTest {
                 mockk(relaxed = true)
             }
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -140,7 +140,7 @@ class EudiWalletBuilderTest {
                 mockk(relaxed = true)
             }
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -169,7 +169,7 @@ class EudiWalletBuilderTest {
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -210,7 +210,7 @@ class EudiWalletBuilderTest {
                 assertEquals(customReaderTrustStore, readerTrustStore)
                 transferManager
             }
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -249,7 +249,7 @@ class EudiWalletBuilderTest {
                     any()
                 )
             } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -281,7 +281,7 @@ class EudiWalletBuilderTest {
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 
@@ -312,7 +312,7 @@ class EudiWalletBuilderTest {
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } answers {
+            every { getDocumentStatusResolver(any()) } answers {
                 // Custom HTTP client factory should be used by DocumentStatusResolver
                 mockk(relaxed = true)
             }
@@ -356,7 +356,7 @@ class EudiWalletBuilderTest {
                     any()
                 )
             } returns defaultPresentationManager
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
             // Mock the wrapWithTrasactionLogger function to verify it's called
             every {
@@ -405,7 +405,7 @@ class EudiWalletBuilderTest {
         // Verify
         assertIs<EudiWalletImpl>(wallet)
         assertEquals(customDocumentStatusResolver, wallet.documentStatusResolver)
-        verify(exactly = 1) { builder.getDocumentStatusResolver() }
+        verify(exactly = 1) { builder.getDocumentStatusResolver(any()) }
     }
 
     @Test
@@ -435,7 +435,7 @@ class EudiWalletBuilderTest {
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
-            every { getDocumentStatusResolver() } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
             every { this@spyk.capabilities } returns capabilities
         }
 

@@ -66,7 +66,7 @@ class OpenId4VpManagerTest {
         }
 
     }
-    lateinit var openId4Vp: OpenId4Vp
+    lateinit var openId4Vp: OpenId4Vp.OverRedirects
 
     val listener = spyk(object : TransferEvent.Listener {
         override fun onTransferEvent(event: TransferEvent) {
@@ -78,8 +78,8 @@ class OpenId4VpManagerTest {
     fun beforeTests() {
         Dispatchers.setMain(testDispatcher)
         mockkObject(OpenId4Vp)
-        openId4Vp = mockk<OpenId4Vp>(relaxed = true)
-        every { OpenId4Vp(any(), any()) } returns openId4Vp
+        openId4Vp = mockk<OpenId4Vp.OverRedirects>(relaxed = true)
+        every { OpenId4Vp.overRedirects(any(), any()) } returns openId4Vp
 
         mockkStatic(::makeOpenId4VPConfig)
         every { makeOpenId4VPConfig(any(), any()) } returns mockk()

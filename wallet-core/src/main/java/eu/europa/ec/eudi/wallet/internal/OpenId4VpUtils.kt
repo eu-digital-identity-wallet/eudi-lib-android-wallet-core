@@ -29,22 +29,11 @@ package eu.europa.ec.eudi.wallet.internal
 
 import com.nimbusds.jose.JWEAlgorithm
 import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
-import com.nimbusds.jose.jca.JCAContext
-import com.nimbusds.jose.jwk.AsymmetricJWK
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.util.Base64URL
+import com.nimbusds.jose.jwk.JWKSet
 import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.iso18013.transfer.SessionTranscriptBytes
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
-import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
-import eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest
+import eu.europa.ec.eudi.iso18013.transfer.internal.DocumentResponseGenerator
 import eu.europa.ec.eudi.openid4vp.CoseAlgorithm
-import eu.europa.ec.eudi.openid4vp.JarConfiguration
-import eu.europa.ec.eudi.openid4vp.JwkSetSource.ByReference
 import eu.europa.ec.eudi.openid4vp.OpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.PreregisteredClient
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
@@ -53,38 +42,33 @@ import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdPrefix
 import eu.europa.ec.eudi.openid4vp.VPConfiguration
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
-import eu.europa.ec.eudi.openid4vp.VerifierId
 import eu.europa.ec.eudi.openid4vp.VpFormatsSupported
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.present
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serialize
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.serializeWithKeyBinding
-import eu.europa.ec.eudi.sdjwt.JwtAndClaims
-import eu.europa.ec.eudi.sdjwt.NimbusSdJwtOps
-import eu.europa.ec.eudi.sdjwt.SdJwt
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPath
-import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.credential.CredentialIssuedData
-import eu.europa.ec.eudi.wallet.document.credential.getIssuedData
-import eu.europa.ec.eudi.wallet.issue.openid4vci.toJoseEncoded
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.multipaz.credential.SecureAreaBoundCredential
-import org.multipaz.crypto.Algorithm
-import org.multipaz.prompt.Reason
+import kotlinx.io.bytestring.decodeToString
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import org.multipaz.crypto.AsymmetricKey
+import org.multipaz.mdoc.response.DeviceResponseGenerator
+import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.presentment.PresentmentUnlockReason
+import org.multipaz.request.JsonRequestedClaim
+import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.sdjwt.SdJwt
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.securearea.KeyUnlockData
+import org.multipaz.util.Constants
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
-import java.util.Date
 
 private const val SHA_256_ALGORITHM = "SHA-256"
 
@@ -180,6 +164,60 @@ internal fun generateOpenId4VpHandover(
 }
 
 /**
+ * Generates the `OpenID4VPDCAPIHandover` CBOR object for OpenID4VP over the W3C Digital
+ * Credentials API (OpenID4VP 1.0, §"Invocation via the Digital Credentials API"):
+ *
+ * ```
+ * OpenID4VPDCAPIHandover = [
+ *   "OpenID4VPDCAPIHandover",
+ *   sha256( cbor([origin, nonce, jwkThumbprint]) )
+ * ]
+ * ```
+ *
+ * @param origin The verifier Origin, NOT prefixed with `origin:`.
+ * @param nonce The request `nonce`.
+ * @param jwkThumbprint The JWK SHA-256 thumbprint (RFC 7638) of the verifier's response
+ *   encryption key for response mode `dc_api.jwt`; `null` (encoded as CBOR null) for `dc_api`.
+ */
+internal fun generateOpenId4VpDCAPIHandover(
+    origin: String,
+    nonce: String,
+    jwkThumbprint: ByteArray?,
+): CBORObject {
+
+    val handoverInfoBytes = CBORObject.NewArray().apply {
+        Add(origin)
+        Add(nonce)
+        Add(jwkThumbprint ?: CBORObject.Null)
+    }.EncodeToBytes()
+
+    val handoverInfoHash = MessageDigest.getInstance(SHA_256_ALGORITHM)
+        .digest(handoverInfoBytes)
+
+    return CBORObject.NewArray().apply {
+        Add("OpenID4VPDCAPIHandover")
+        Add(handoverInfoHash)
+    }
+}
+
+/**
+ * Generates the session transcript for OpenID4VP over the DC API:
+ * `[ null, null, OpenID4VPDCAPIHandover ]`.
+ */
+internal fun generateDCAPISessionTranscript(
+    origin: String,
+    nonce: String,
+    jwkThumbprint: ByteArray?,
+): SessionTranscriptBytes {
+    val handover = generateOpenId4VpDCAPIHandover(origin, nonce, jwkThumbprint)
+    return CBORObject.NewArray().apply {
+        Add(CBORObject.Null)
+        Add(CBORObject.Null)
+        Add(handover)
+    }.EncodeToBytes()
+}
+
+/**
  * Generates a random nonce for a generic JARM (JWT Secured Authorization Response Mode) using a secure random generator.
  *
  * @return A URL-safe base64 encoded nonce string.
@@ -202,10 +240,9 @@ internal fun makeOpenId4VPConfig(
                     verifier.clientId to PreregisteredClient(
                         clientId = verifier.clientId,
                         legalName = verifier.legalName,
-                        jarConfig = JWSAlgorithm.parse(verifier.jwsAlgorithm.joseAlgorithmIdentifier) to ByReference(
-                            verifier.jwkSetSource
-                        )
-
+                        jarConfig = verifier.jwkSet?.let { jwkSet ->
+                            JWSAlgorithm.parse(verifier.jwsAlgorithm.joseAlgorithmIdentifier) to JWKSet.parse(jwkSet)
+                        },
                     )
                 }
             )
@@ -217,7 +254,6 @@ internal fun makeOpenId4VPConfig(
     }
     return OpenId4VPConfig(
         issuer = OpenId4VPConfig.SelfIssued,
-        jarConfiguration = JarConfiguration.Default,
         responseEncryptionConfiguration = ResponseEncryptionConfiguration.Supported(
             supportedAlgorithms = config.encryptionAlgorithms.map { it.nimbus },
             supportedMethods = config.encryptionMethods.map { it.nimbus }
@@ -245,6 +281,10 @@ internal fun ResolvedRequestObject.getSessionTranscriptBytes(): SessionTranscrip
         is ResponseMode.FragmentJwt -> mode.redirectUri.toString()
         is ResponseMode.Query -> mode.redirectUri.toString()
         is ResponseMode.QueryJwt -> mode.redirectUri.toString()
+        // DC API uses the OpenID4VPDCAPIHandover, not this URI-based handover;
+        // the HTTP resolver path never yields these modes. DC API support is handled separately.
+        ResponseMode.DCApi, ResponseMode.DCApiJwt ->
+            error("DC API response mode is not supported for OpenID4VP HTTP session transcript generation")
     }
     val sessionTranscriptBytes = generateSessionTranscript(
         clientId = clientId,
@@ -254,6 +294,25 @@ internal fun ResolvedRequestObject.getSessionTranscriptBytes(): SessionTranscrip
     )
     return sessionTranscriptBytes
 }
+
+/**
+ * Session transcript for the DC API channel. For [ResponseMode.DCApi]/[ResponseMode.DCApiJwt]
+ * it builds the [OpenID4VPDCAPIHandover]-based transcript bound to [origin], the request nonce,
+ * and the verifier's response-encryption key thumbprint (null for `dc_api`). All HTTP response
+ * modes delegate to the no-arg [getSessionTranscriptBytes].
+ *
+ * @param origin The verifier Origin from the DC API call (plain, NOT prefixed with `origin:`).
+ */
+internal fun ResolvedRequestObject.getSessionTranscriptBytes(origin: String): SessionTranscriptBytes =
+    when (this.responseMode) {
+        ResponseMode.DCApi, ResponseMode.DCApiJwt -> generateDCAPISessionTranscript(
+            origin = origin,
+            nonce = nonce,
+            jwkThumbprint = responseEncryptionSpecification?.recipientKey?.computeThumbprint()?.decode()
+        )
+
+        else -> getSessionTranscriptBytes()
+    }
 
 /**
  * Converts a list of [Format]s to [VpFormats] for use in VP configuration.
@@ -313,104 +372,64 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
     }
 
 /**
- * Serializes an SD-JWT with key binding using the provided credential and signing information.
+ * Builds a verifiable presentation for an SD-JWT VC credential from a single match.
  *
- * @receiver The SD-JWT to serialize.
- * @param credential The credential used for signing.
- * @param keyUnlockData Data to unlock the signing key.
- * @param clientId The verifier's client ID.
- * @param nonce The nonce for the session.
- * @param signatureAlgorithm The algorithm to use for signing.
- * @param issueDate The date of issuance.
- * @return The serialized SD-JWT as a string.
- */
-internal suspend fun SdJwt<JwtAndClaims>.serializeWithKeyBinding(
-    credential: SecureAreaBoundCredential,
-    keyUnlockData: KeyUnlockData?,
-    clientId: VerifierId,
-    nonce: String,
-    signatureAlgorithm: Algorithm,
-    issueDate: Date,
-): String {
-    val algorithm = JWSAlgorithm.parse((signatureAlgorithm).joseAlgorithmIdentifier)
-    val publicKey = credential.secureArea.getKeyInfo(credential.alias).publicKey
-    val provider = keyUnlockData.asProvider()
-    val buildKbJwt = NimbusSdJwtOps.kbJwtIssuer(
-        signer = object : JWSSigner {
-            override fun getJCAContext(): JCAContext = JCAContext()
-            override fun supportedJWSAlgorithms(): Set<JWSAlgorithm> = setOf(algorithm)
-            override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
-                val signature = runBlocking {
-                    withContext(provider) {
-                        credential.secureArea.sign(
-                            alias = credential.alias,
-                            dataToSign = signingInput,
-                            unlockReason = Reason.Unspecified
-                        )
-                    }
-                }
-                return Base64URL.encode(signature.toJoseEncoded(algorithm))
-            }
-        },
-        signAlgorithm = algorithm,
-        publicKey = JWK.parseFromPEMEncodedObjects(publicKey.toPem()) as AsymmetricJWK
-    ) {
-        audience(clientId.clientId)
-        claim("nonce", nonce)
-        issueTime(issueDate)
-    }
-    return serializeWithKeyBinding(buildKbJwt).getOrThrow()
-}
-
-/**
- * Constructs a verifiable presentation for an SD-JWT VC credential.
+ * Each request path from [JsonRequestedClaim.claimPath] is matched against the SD-JWT
+ * disclosure paths through [pathMatches], honouring OpenID4VP §7.1 semantics for
+ * string keys, integer array indices, and `null` wildcards. Parent disclosures
+ * required to reconstruct a selected child are pulled in automatically.
  *
- * @param resolvedRequestObject The resolved OpenID4VP authorization request.
- * @param document The issued document containing the credential.
- * @param disclosedDocument The document with disclosed claims.
- * @param signatureAlgorithm The algorithm to use for signing.
- * @return The constructed [VerifiablePresentation.Generic].
- * @throws IllegalArgumentException if no claims are disclosed or presentation creation fails.
+ * Key Binding JWT is emitted whenever the issuer-signed JWT carries a `cnf` claim,
+ * regardless of the verifier's `require_cryptographic_holder_binding` flag.
+ * Verifiers that did not request the proof can ignore it.
+ * The flag is honoured at match time in [DcqlRequestProcessor], which
+ * filters out credentials lacking `cnf` when the verifier requires holder binding —
+ * so the bare-SD-JWT branch below runs only when the verifier explicitly accepts
+ * presentations without holder binding.
+ *
+ * Empty `match.claims` corresponds to OpenID4VP §6.4.1 "claims=null" semantics
+ * (mandatory disclosure only).
  */
 internal suspend fun verifiablePresentationForSdJwtVc(
     resolvedRequestObject: ResolvedRequestObject,
-    document: IssuedDocument,
-    disclosedDocument: DisclosedDocument,
-    signatureAlgorithm: Algorithm,
+    match: CredentialPresentmentSetOptionMemberMatch,
+    documentManager: DocumentManager,
+    keyUnlockData: KeyUnlockData?,
+    audience: String? = null
 ): VerifiablePresentation.Generic {
+    val document = match.credential.requireIssuedDocument(documentManager)
     return document.consumingCredential {
-        val credentialIssuedData =
-            getIssuedData<CredentialIssuedData.SdJwtVc>()
-        val issuedSdJwt = credentialIssuedData.getOrThrow().issuedSdJwt
-
-        val query = disclosedDocument.disclosedItems
-            .filterIsInstance<SdJwtVcItem>()
-            .map { item ->
-                val elements = item.path.map { ClaimPathElement.Claim(it) }
-
-                ClaimPath(elements.first(), *elements.drop(1).toTypedArray())
-            }.toSet()
-
-        // Check that at least one claim is disclosed, otherwise throw an error
-        require(!(query.isEmpty())) { "No claims to disclose" }
-
-        val presentation = issuedSdJwt.present(query)
-            ?: throw IllegalArgumentException("Failed to create SD JWT VC presentation")
-
-        val containsCnf = issuedSdJwt.jwt.second["cnf"] != null
-
-        // If the SD-JWT contains a 'cnf' claim, serialize with key binding
-        val serialized = if (containsCnf) {
-            presentation.serializeWithKeyBinding(
-                credential = this, //credential
-                keyUnlockData = disclosedDocument.keyUnlockData,
-                clientId = resolvedRequestObject.client.id,
-                nonce = resolvedRequestObject.nonce,
-                signatureAlgorithm = signatureAlgorithm,
-                issueDate = Date()
+        val sdJwtVcCredential = this as? SdJwtVcCredential
+            ?: throw IllegalStateException(
+                "Credential ${this.identifier} is not an SD-JWT VC credential"
             )
+        val sdJwt = SdJwt.fromCompactSerialization(
+            sdJwtVcCredential.issuerProvidedData.decodeToString()
+        )
+
+        val requestPaths = match.claims.keys
+            .filterIsInstance<JsonRequestedClaim>()
+            .map { it.claimPath }
+
+        val filteredSdJwt = sdJwt.filter { emittedPath, _ ->
+            requestPaths.any { requestPath -> pathMatches(requestPath, emittedPath) }
+        }
+
+        val serialized = if (filteredSdJwt.kbKey != null) {
+            val signingKey = AsymmetricKey.anonymous(
+                secureArea = this.secureArea,
+                alias = this.alias,
+                unlockReason = PresentmentUnlockReason(this)
+            )
+            withContext(keyUnlockData.asProvider()) {
+                filteredSdJwt.present(
+                    signingKey = signingKey,
+                    nonce = resolvedRequestObject.nonce,
+                    audience = audience ?: resolvedRequestObject.client.id.clientId
+                )
+            }.compactSerialization
         } else {
-            presentation.serialize()
+            filteredSdJwt.compactSerialization
         }
 
         VerifiablePresentation.Generic(serialized)
@@ -418,47 +437,80 @@ internal suspend fun verifiablePresentationForSdJwtVc(
 }
 
 /**
- * Constructs a verifiable presentation for an MSO mdoc credential.
+ * Builds a verifiable presentation for an MSO mdoc credential from a single
+ * [CredentialPresentmentSetOptionMemberMatch].
  *
- * This function creates a verifiable presentation according to the ISO 18013-5 standard by:
- * 1. Filtering the requested documents to include only the specified document
- * 2. Generating a device response with the session transcript for cryptographic binding
- * 3. Converting the binary CBOR-encoded device response to a base64url-encoded string
- *
- * The session transcript is critical as it binds the presentation to the specific request session.
- *
- * @param documentManager The document manager for retrieving the full document content and credentials
- * @param disclosedDocument The document with specific claims that the user has consented to disclose
- * @param requestedDocuments The complete set of documents requested by the verifier
- * @param sessionTranscript The session transcript bytes that cryptographically bind the response to the request
- * @param signatureAlgorithm The algorithm to use for digitally signing the presentation
- * @return The constructed [VerifiablePresentation.Generic] containing the base64url-encoded device response
- * @throws RuntimeException if the response generation fails
+ * Produces a single-document `DeviceResponse` (status OK) bound to [sessionTranscript],
+ * encoded as base64url for transport in OpenID4VP `vp_token`. Disclosed elements are
+ * taken from the match's [MdocRequestedClaim] keys, grouped by namespace; an empty claim
+ * set yields a minimal response.
  */
-internal fun verifiablePresentationForMsoMdoc(
+internal suspend fun verifiablePresentationForMsoMdoc(
+    match: CredentialPresentmentSetOptionMemberMatch,
     documentManager: DocumentManager,
-    disclosedDocument: DisclosedDocument,
-    requestedDocuments: RequestedDocuments,
     sessionTranscript: ByteArray,
-    signatureAlgorithm: Algorithm,
+    keyUnlockData: KeyUnlockData?
 ): VerifiablePresentation.Generic {
-    // Create a new RequestedDocuments instance containing only the document that was selected for disclosure
-    // This filters out any other documents that might have been in the original request
-    val deviceResponse = ProcessedDeviceRequest(
-        documentManager = documentManager,
-        sessionTranscript = sessionTranscript,  // Bind the presentation to this specific session
-        requestedDocuments = RequestedDocuments(requestedDocuments.filter { it.documentId == disclosedDocument.documentId })
-    ).generateResponse(
-        // Create a response containing only the selected document with its disclosed claims
-        disclosedDocuments = DisclosedDocuments(disclosedDocument),
-        signatureAlgorithm = signatureAlgorithm  // Use the specified algorithm to sign the response
-    ).getOrThrow() as DeviceResponse  // Unwrap the Result and cast to DeviceResponse type
+    val document = match.credential.requireIssuedDocument(documentManager)
 
-    // Convert the binary CBOR-encoded device response to a base64url-encoded string format
-    // suitable for transmission in JWT or JSON payload without padding characters
+    val elements: Map<String, List<String>> = match.claims.keys
+        .filterIsInstance<MdocRequestedClaim>()
+        .groupBy { it.namespaceName }
+        .mapValues { (_, claims) -> claims.map { it.dataElementName } }
+
+    val encodedDocument = DocumentResponseGenerator.generate(
+        document = document,
+        transcript = sessionTranscript,
+        elements = elements,
+        keyUnlockData = keyUnlockData
+    )
+    val deviceResponseBytes = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+        .addDocument(encodedDocument)
+        .generate()
+
     return VerifiablePresentation.Generic(
-        value = Base64.getUrlEncoder()
-            .withoutPadding()
-            .encodeToString(deviceResponse.deviceResponseBytes)
+        value = Base64.getUrlEncoder().withoutPadding().encodeToString(deviceResponseBytes)
     )
 }
+
+/**
+ * Matches a DCQL claim path against an SD-JWT disclosure path emitted during the
+ * filter pass. Honours OpenID4VP §7.1:
+ *
+ *  - String key matches the same string key.
+ *  - Integer index matches the same integer index.
+ *  - [JsonNull] wildcard matches any integer index.
+ *
+ * Returns true iff every position the two paths share matches element-by-element.
+ * Emitted paths are accepted in three positions relative to the request:
+ *
+ *  - Equal → exact match.
+ *  - Longer than the request → descendant disclosure; releases every field of
+ *    the targeted node (request `["addresses", 0]` also releases
+ *    `["addresses", 0, "city"]`).
+ *  - Shorter than the request → ancestor disclosure; required because SD-JWT
+ *    array-element disclosures cannot be reconstructed by the verifier without
+ *    their parent-array disclosure. Ancestor envelopes carry only child digests
+ *    and no extra data beyond what the request already authorises.
+ */
+private fun pathMatches(request: JsonArray, emittedPath: JsonArray): Boolean {
+    val requestElements = request.toList()
+    val emittedElements = emittedPath.toList()
+    val common = minOf(requestElements.size, emittedElements.size)
+    for (i in 0 until common) {
+        if (!elementMatches(requestElements[i], emittedElements[i])) return false
+    }
+    return true
+}
+
+private fun elementMatches(request: JsonElement, emitted: JsonElement): Boolean =
+    when (request) {
+        is JsonNull -> emitted is JsonPrimitive && !emitted.isString
+        is JsonPrimitive if request.isString ->
+            emitted is JsonPrimitive && emitted.isString && request.content == emitted.content
+
+        is JsonPrimitive if !request.isString ->
+            emitted is JsonPrimitive && !emitted.isString && request.content == emitted.content
+
+        else -> false
+    }

@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.CredentialReusePolicy
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -53,19 +54,17 @@ class DocumentCreatorTest {
             CredentialConfigurationIdentifier("id")
         )
         val createSettings = mockk<CreateDocumentSettings>()
+        val credentialIssuerId = CredentialIssuerId("https://issuer.example.com").getOrThrow()
+        val credentialOfferMock = mockk<CredentialOffer>(relaxed = true)
+        every { credentialOfferMock.credentialIssuerIdentifier } returns credentialIssuerId
+        val offerMock = mockk<Offer>(relaxed = true) {
+            every { credentialOffer } returns credentialOfferMock
+        }
         val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { offer } returns mockk(relaxed = true) {
-                every { credentialOffer } returns CredentialOffer(
-                    credentialIssuerIdentifier = CredentialIssuerId(
-                        value = "https://some.issuer.com"
-                    ).getOrThrow(),
-                    credentialIssuerMetadata = mockk(),
-                    authorizationServerMetadata = mockk(),
-                    credentialConfigurationIdentifiers = configurationIdentifiers,
-                )
-            }
+            every { offer } returns offerMock
             every { configurationIdentifier } returns configurationIdentifiers.first()
             every { configuration } returns credentialConfigurationMock
+            every { credentialReusePolicy } returns CredentialReusePolicy.None
             every { documentFormat } answers { callOriginal() }
         }
         val unsignedDocument = mockk<UnsignedDocument>(relaxed = true)
@@ -78,7 +77,7 @@ class DocumentCreatorTest {
         val listener = OpenId4VciManager.OnResult<IssueEvent> { event ->
             CoroutineScope(Dispatchers.Default).launch {
                 when (event) {
-                    is IssueEvent.DocumentRequiresCreateSettings -> {
+                    is IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy -> {
                         event.resume(createSettings)
                     }
 

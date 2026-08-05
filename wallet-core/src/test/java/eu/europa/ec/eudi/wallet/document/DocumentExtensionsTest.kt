@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.DefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateKeySettings
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import io.mockk.coEvery
@@ -155,7 +156,7 @@ class DocumentExtensionsTest {
     }
 
     @Test
-    fun `EudiWallet getDefaultCreateDocumentSettings should use offeredDocument batchCredentialIssuanceSize`() {
+    fun `EudiWallet getDefaultCreateDocumentSettings should pass through credentialPolicy and apply config`() {
         val secureArea: AndroidKeystoreSecureArea = mockk {
             every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
         }
@@ -176,19 +177,16 @@ class DocumentExtensionsTest {
             }
         }
 
-        // Mock Offer.OfferedDocument - specify the numberOfCredentials parameter to use batchCredentialIssuanceSize
-        val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { batchCredentialIssuanceSize } returns 3
-        }
+        val offeredDocument = mockk<Offer.OfferedDocument>()
 
-        // Test with default parameters and explicitly set numberOfCredentials=offeredDocument.batchCredentialIssuanceSize
         val result = wallet.getDefaultCreateDocumentSettings(
             offeredDocument = offeredDocument,
-            numberOfCredentials = 3 // Explicitly set to match batchCredentialIssuanceSize
+            credentialPolicy = CreateDocumentSettings.CredentialPolicy.RotatingBatch(numberOfCredentials = 3)
         )
 
         assertEquals(secureArea.identifier, result.secureAreaIdentifier)
-        assertEquals(3, result.numberOfCredentials)  // Should match the batchCredentialIssuanceSize
+        assertEquals(3, result.credentialPolicy.numberOfCredentials)
+        assertIs<CreateDocumentSettings.CredentialPolicy.RotatingBatch>(result.credentialPolicy)
         val createKeySettings = result.createKeySettings
         assertIs<AndroidKeystoreCreateKeySettings>(createKeySettings)
         assertEquals(
@@ -200,67 +198,6 @@ class DocumentExtensionsTest {
             eudiWalletConfig.userAuthenticationTimeout,
             createKeySettings.userAuthenticationTimeout
         )
-    }
-
-    @Test
-    fun `EudiWallet getDefaultCreateDocumentSettings should respect numberOfCredentials parameter if less than batchCredentialIssuanceSize`() {
-        val secureArea: AndroidKeystoreSecureArea = mockk {
-            every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
-        }
-
-        val wallet: EudiWallet = mockk {
-            every { config } returns EudiWalletConfig()
-            every { secureAreaRepository } returns mockk {
-                coEvery {
-                    getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
-                } returns secureArea
-            }
-        }
-
-        // Mock Offer.OfferedDocument with batchCredentialIssuanceSize of 5
-        val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { batchCredentialIssuanceSize } returns 5
-        }
-
-        // Test with numberOfCredentials = 2 (less than batchCredentialIssuanceSize)
-        val result = wallet.getDefaultCreateDocumentSettings(
-            offeredDocument = offeredDocument,
-            numberOfCredentials = 2,
-            credentialPolicy = CreateDocumentSettings.CredentialPolicy.OneTimeUse
-        )
-
-        assertEquals(2, result.numberOfCredentials)
-        assertEquals(CreateDocumentSettings.CredentialPolicy.OneTimeUse, result.credentialPolicy)
-    }
-
-    @Test
-    fun `EudiWallet getDefaultCreateDocumentSettings should limit numberOfCredentials to batchCredentialIssuanceSize if greater`() {
-        val secureArea: AndroidKeystoreSecureArea = mockk {
-            every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
-        }
-
-        val wallet: EudiWallet = mockk {
-            every { config } returns EudiWalletConfig()
-            every { secureAreaRepository } returns mockk {
-                coEvery {
-                    getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
-                } returns secureArea
-            }
-        }
-
-        // Mock Offer.OfferedDocument with batchCredentialIssuanceSize of 2
-        val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { batchCredentialIssuanceSize } returns 2
-        }
-
-        // Test with numberOfCredentials = 5 (greater than batchCredentialIssuanceSize)
-        val result = wallet.getDefaultCreateDocumentSettings(
-            offeredDocument = offeredDocument,
-            numberOfCredentials = 5
-        )
-
-        // Should be limited to the batchCredentialIssuanceSize
-        assertEquals(2, result.numberOfCredentials)
     }
 
     @Test
@@ -278,9 +215,7 @@ class DocumentExtensionsTest {
             }
         }
 
-        val offeredDocument = mockk<Offer.OfferedDocument> {
-            every { batchCredentialIssuanceSize } returns 1
-        }
+        val offeredDocument = mockk<Offer.OfferedDocument>()
 
         val attestationChallenge = byteArrayOf(1, 2, 3)
         val result = wallet.getDefaultCreateDocumentSettings(
@@ -304,6 +239,41 @@ class DocumentExtensionsTest {
         assertIs<AndroidKeystoreCreateKeySettings>(createKeySettings)
         assertEquals(ByteString(attestationChallenge), createKeySettings.attestationChallenge)
         assertEquals(Algorithm.ESP384, createKeySettings.algorithm)
+    }
+
+    @Test
+    fun `EudiWallet getDefaultCreateKeySettings should return secureAreaIdentifier and key settings from config`() {
+        val eudiWalletConfig = EudiWalletConfig()
+            .configureDocumentKeyCreation(
+                userAuthenticationRequired = true,
+                userAuthenticationTimeout = 1000.milliseconds,
+                useStrongBoxForKeys = true,
+            )
+
+        val wallet: EudiWallet = mockk {
+            every { config } returns eudiWalletConfig
+        }
+
+        val (secureAreaId, keySettings) = wallet.getDefaultCreateKeySettings()
+
+        assertEquals(AndroidKeystoreSecureArea.IDENTIFIER, secureAreaId)
+        assertIs<AndroidKeystoreCreateKeySettings>(keySettings)
+        assertEquals(eudiWalletConfig.userAuthenticationRequired, keySettings.userAuthenticationRequired)
+        assertEquals(eudiWalletConfig.useStrongBoxForKeys, keySettings.useStrongBox)
+        assertEquals(eudiWalletConfig.userAuthenticationTimeout, keySettings.userAuthenticationTimeout)
+    }
+
+    @Test
+    fun `EudiWallet getDefaultCreateKeySettings should use provided attestationChallenge`() {
+        val wallet: EudiWallet = mockk {
+            every { config } returns EudiWalletConfig()
+        }
+
+        val attestationChallenge = byteArrayOf(1, 2, 3)
+        val (_, keySettings) = wallet.getDefaultCreateKeySettings(attestationChallenge = attestationChallenge)
+
+        assertIs<AndroidKeystoreCreateKeySettings>(keySettings)
+        assertEquals(ByteString(attestationChallenge), keySettings.attestationChallenge)
     }
 
     @Test

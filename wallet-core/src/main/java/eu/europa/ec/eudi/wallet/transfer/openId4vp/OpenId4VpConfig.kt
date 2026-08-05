@@ -18,8 +18,8 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import eu.europa.ec.eudi.openid4vp.ResponseMode
 import org.multipaz.crypto.Algorithm
-import java.net.URI
 
 /**
  * Configuration for OpenID4VP (OpenID for Verifiable Presentations) transfer operations.
@@ -62,11 +62,15 @@ import java.net.URI
  * @property encryptionMethods List of supported encryption methods for content encryption
  * @property schemes URI schemes supported for OpenID4VP requests (default: "mdoc-openid4vp")
  * @property formats Supported credential formats (mDL/mDoc, SD-JWT VC, etc.)
+ * @property encryptionPolicy Policy enforcing `response_mode` constraints on incoming
+ *   requests (default: [EncryptionPolicy.HAIP], which accepts only encrypted response
+ *   modes — `direct_post.jwt` for OpenID4VP and `dc_api.jwt` for DC-API).
  *
  * @see ClientIdScheme
  * @see EncryptionAlgorithm
  * @see EncryptionMethod
  * @see Format
+ * @see EncryptionPolicy
  * @since 1.0.0
  */
 class OpenId4VpConfig private constructor(private val builder: Builder) {
@@ -84,6 +88,39 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         get() = builder.schemes
 
     val formats: List<Format> = builder.formats
+
+    val encryptionPolicy: EncryptionPolicy = builder.encryptionPolicy
+
+    /**
+     * Policy enforcing constraints on the `response_mode` of an incoming request.
+     */
+    fun interface EncryptionPolicy {
+
+        /**
+         * Enforces the policy on [responseMode]. Throws when the mode is not accepted.
+         */
+        fun enforce(responseMode: ResponseMode)
+
+        companion object {
+
+            /**
+             * HAIP profile — accepts only encrypted response modes:
+             *  - OpenID4VP flow: [ResponseMode.DirectPostJwt]
+             *  - DC-API flow:    [ResponseMode.DCApiJwt]
+             *
+             * Anything else is rejected.
+             */
+            val HAIP = EncryptionPolicy { responseMode ->
+                require(
+                    responseMode is ResponseMode.DirectPostJwt ||
+                        responseMode == ResponseMode.DCApiJwt
+                ) {
+                    "HAIP profile requires an encrypted response mode " +
+                        "(direct_post.jwt or dc_api.jwt); got $responseMode"
+                }
+            }
+        }
+    }
 
     /**
      * Builder for constructing [OpenId4VpConfig] instances with validation and sensible defaults.
@@ -213,6 +250,19 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         fun withFormats(vararg formats: Format) =
             withFormats(formats.toList())
 
+        var encryptionPolicy: EncryptionPolicy = EncryptionPolicy.HAIP
+            private set
+
+        /**
+         * Sets the [EncryptionPolicy] applied to the response mode of an incoming
+         * request. Defaults to [EncryptionPolicy.HAIP], which accepts only encrypted
+         * response modes.
+         *
+         * @param encryptionPolicy the policy to apply.
+         */
+        fun withEncryptionPolicy(encryptionPolicy: EncryptionPolicy) =
+            apply { this.encryptionPolicy = encryptionPolicy }
+
         /**
          * Builds the [OpenId4VpConfig].
          * @return the [OpenId4VpConfig]
@@ -311,14 +361,15 @@ sealed interface ClientIdScheme {
  * @property legalName the legal name of the client
  * @property verifierApi the verifier API
  * @property jwsAlgorithm the JWS algorithm. Default is [Algorithm.ESP256]
- * @property jwkSetSource the JWK set source. Default is the [verifierApi] with the path "/wallet/public-keys.json"
+ * @property jwkSet the verifier's public keys as a JWK Set (JSON), used to verify its signed (JAR)
+ * requests, or `null` if the verifier does not send signed requests. Must contain only public keys.
  */
 data class PreregisteredVerifier(
     var clientId: ClientId,
     var legalName: LegalName,
     var verifierApi: VerifierApi,
     var jwsAlgorithm: Algorithm = Algorithm.ESP256,
-    var jwkSetSource: URI = URI("$verifierApi/wallet/public-keys.json"),
+    var jwkSet: String? = null,
 ) {
     init {
         requireNotNull(jwsAlgorithm.joseAlgorithmIdentifier) {

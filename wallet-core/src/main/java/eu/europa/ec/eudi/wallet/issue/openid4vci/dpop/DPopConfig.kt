@@ -80,8 +80,7 @@ sealed interface DPopConfig {
      *
      * ```kotlin
      * val openId4VciConfig = OpenId4VciManager.Config.Builder()
-     *     .withIssuerUrl("https://issuer.com")
-     *     .withClientId("client-id")
+     *     .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
      *     .withAuthFlowRedirectionURI("app://callback")
      *     .withDPopConfig(DPopConfig.Default)
      *     .build()

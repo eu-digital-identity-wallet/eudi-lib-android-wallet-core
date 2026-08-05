@@ -17,12 +17,10 @@
 @file:JvmMultifileClass
 package eu.europa.ec.eudi.wallet.dcapi
 
+import eu.europa.ec.eudi.wallet.dcapi.internal.*
 import android.content.Intent
-import androidx.credentials.ExperimentalDigitalCredentialApi
-import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.exceptions.GetCredentialCustomException
 import androidx.credentials.provider.PendingIntentHandler
-import androidx.credentials.provider.ProviderGetCredentialRequest
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
@@ -31,31 +29,43 @@ import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
-import org.json.JSONObject
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executor
 
 /**
- * [DCAPIManager] is responsible for managing requests and responses for the Digital Credential API (DCAPI).
- * Currently, it supports the protocol `org-iso-mdoc` according to the ISO/IEC TS 18013-7:2025 Annex C.
+ * Manages requests and responses for the Digital Credential API (DCAPI).
  *
- * @property requestProcessor The processor that handles the requests.
- * @property logger Optional logger for logging events.
- * @property listenersExecutor Optional executor for running listener callbacks.
+ * Each incoming request is routed to the processor for its protocol: ISO mdoc requests
+ * (ISO/IEC TS 18013-7:2025 Annex C) to [isoMdocRequestProcessor], and OpenID4VP requests to
+ * [openId4VpRequestProcessor] when it is configured. A request for a protocol that is not in
+ * [supportedProtocols] is rejected.
+ *
+ * @property isoMdocRequestProcessor the processor for ISO mdoc requests.
+ * @property openId4VpRequestProcessor the processor for OpenID4VP requests, or null when OpenID4VP
+ *   over the DCAPI is not configured.
+ * @property supportedProtocols the protocols this manager will process.
+ * @property logger optional logger for logging events.
+ * @property listenersExecutor optional executor for running listener callbacks.
  */
 
 class DCAPIManager(
-    private val requestProcessor: RequestProcessor,
+    private val isoMdocRequestProcessor: RequestProcessor,
+    private val openId4VpRequestProcessor: RequestProcessor? = null,
+    private val supportedProtocols: List<DCAPIProtocol>,
     var logger: Logger? = null,
     var listenersExecutor: Executor? = null,
 ) : TransferEvent.Listenable, ReaderTrustStoreAware {
 
     override var readerTrustStore: ReaderTrustStore?
-        get() = if (requestProcessor is ReaderTrustStoreAware) requestProcessor.readerTrustStore else null
+        get() = (isoMdocRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore
+            ?: (openId4VpRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore
         set(value) {
-            if (requestProcessor is ReaderTrustStoreAware) requestProcessor.readerTrustStore = value
+            (isoMdocRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore = value
+            (openId4VpRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore = value
         }
 
     private val transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
@@ -75,49 +85,59 @@ class DCAPIManager(
     fun resolveRequest(request: Request) {
         require(request is DCAPIRequest) { "Request must be an DCAPIRequest" }
         logger?.d(TAG, "Resolving DCAPI request")
-        when (val protocol = request.providerGetCredentialRequest.getProtocol()) {
-            DC_API_PROTOCOL_ORG_ISO_MDOC -> {
-                try {
-                    logger?.d(TAG, "Processing request for protocol: $protocol")
-                    val processedRequest = requestProcessor.process(request)
-                    transferEventListeners.onTransferEvent(
-                        TransferEvent.RequestReceived(
-                            processedRequest = processedRequest,
-                            request = request
-                        )
-                    )
-                } catch (e: Exception) {
-                    logger?.e(TAG, "Error processing request for protocol: $protocol", e)
-                    transferEventListeners.onTransferEvent(
-                        TransferEvent.Error(
-                            DCAPIException("Error processing request for protocol: $protocol", e)
-                        )
-                    )
+        logger?.d(TAG, "DC API request JSON: ${request.providerGetCredentialRequest.requestJsonOrNull()}")
+        val protocol = try {
+            request.providerGetCredentialRequest.resolveDcApiRequest(supportedProtocols).protocol
+        } catch (e: Exception) {
+            emitError(e.message ?: "No supported DC API protocol found for this request", e)
+            return
+        }
+        logger?.i(TAG, "DC API request received (protocol=$protocol)")
+        when (protocol) {
+            DCAPIProtocol.ISO_MDOC.identifier ->
+                processWith(isoMdocRequestProcessor, request, protocol)
+
+            DCAPIProtocol.OPENID4VP_V1_UNSIGNED.identifier,
+            DCAPIProtocol.OPENID4VP_V1_SIGNED.identifier -> {
+                val processor = openId4VpRequestProcessor
+                if (processor == null) {
+                    emitError("OpenID4VP over DC API is not configured (missing openId4VpConfig)")
+                } else {
+                    processWith(processor, request, protocol)
                 }
             }
 
-            else -> {
-                logger?.e(TAG, "Unsupported protocol: $protocol")
-                transferEventListeners.onTransferEvent(
-                    TransferEvent.Error(
-                        DCAPIException("Unsupported protocol: $protocol")
-                    )
-                )
-            }
+            else -> emitError("Unsupported protocol: $protocol")
         }
+    }
+
+    private fun processWith(processor: RequestProcessor, request: DCAPIRequest, protocol: String) {
+        try {
+            logger?.d(TAG, "Processing request for protocol: $protocol")
+            val processedRequest = runBlocking { processor.process(request) }
+            transferEventListeners.onTransferEvent(
+                TransferEvent.RequestReceived(processedRequest = processedRequest, request = request)
+            )
+            logger?.i(TAG, "DC API request processed (protocol=$protocol); awaiting user consent")
+        } catch (e: Exception) {
+            logger?.e(TAG, "Error processing request for protocol: $protocol", e)
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(
+                    DCAPIException("Error processing request for protocol: $protocol", e)
+                )
+            )
+        }
+    }
+
+    private fun emitError(message: String, cause: Throwable? = null) {
+        logger?.e(TAG, message, cause)
+        transferEventListeners.onTransferEvent(TransferEvent.Error(DCAPIException(message, cause)))
     }
 
     fun sendResponse(response: Response) {
         require(response is DCAPIResponse) { "Response must be an DCAPIResponse" }
+        logger?.i(TAG, "Sending DC API response")
         transferEventListeners.onTransferEvent(TransferEvent.IntentToSend(response.intent))
-    }
-
-    @OptIn(ExperimentalDigitalCredentialApi::class)
-    private fun ProviderGetCredentialRequest.getProtocol(): String {
-        val option = this.credentialOptions[0] as GetDigitalCredentialOption
-        val requestJson = JSONObject(option.requestJson)
-        val firstRequest = requestJson.getJSONArray(REQUESTS).getJSONObject(0)
-        return firstRequest.getString(PROTOCOL)
     }
 
     private fun List<TransferEvent.Listener>.onTransferEvent(
@@ -129,7 +149,6 @@ class DCAPIManager(
 
     companion object {
         private const val TAG = "DCAPIManager"
-        private const val DC_API_PROTOCOL_ORG_ISO_MDOC = "org-iso-mdoc"
     }
 }
 

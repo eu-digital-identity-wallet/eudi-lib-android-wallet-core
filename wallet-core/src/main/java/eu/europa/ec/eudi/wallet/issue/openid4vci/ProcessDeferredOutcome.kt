@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 European Commission
+ * Copyright (c) 2024-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
+import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 
 internal class ProcessDeferredOutcome(
     val documentManager: DocumentManager,
@@ -37,9 +40,10 @@ internal class ProcessDeferredOutcome(
     val deferredContext: DeferredContext?,
     val logger: Logger? = null,
     val issuanceMetadataStorage: Storage? = null,
+    val issuerTrustConfig: IssuerTrustConfig? = null
 ) {
 
-    fun process(
+    suspend fun process(
         deferredDocument: DeferredDocument,
         keyAliases: List<String>,
         outcome: DeferredCredentialQueryOutcome,
@@ -77,6 +81,12 @@ internal class ProcessDeferredOutcome(
 
                 is DeferredCredentialQueryOutcome.Issued -> {
                     val credentials = outcome.credentials.map { it.credential }.zip(keyAliases)
+                    val trustResult = evaluateIssuerTrust(
+                        issuerTrustConfig = issuerTrustConfig,
+                        document = deferredDocument,
+                        credential = credentials.first().first,
+                        logger = logger,
+                    )
                     documentManager.storeIssuedDocument(deferredDocument, credentials) {
                         logger?.d(TAG, message = it)
                     }.onSuccess { document ->
@@ -94,7 +104,7 @@ internal class ProcessDeferredOutcome(
                             }
                         }
 
-                        callback(DeferredIssueResult.DocumentIssued(document))
+                        callback(DeferredIssueResult.DocumentIssued(document, trustResult))
                     }.onFailure { error ->
                         documentManager.deleteDocumentById(deferredDocument.id)
                         callback(
@@ -125,12 +135,6 @@ internal class ProcessDeferredOutcome(
             val cfg = ctx.config
             val tx = ctx.authorizedTransaction
 
-            val (clientId, clientAttestationJwt) = when (val auth = cfg.clientAuthentication) {
-                is ClientAuthentication.None -> auth.id to null
-                is ClientAuthentication.AttestationBased -> auth.id to auth.attestationJWT.jwt.serialize()
-                else -> auth.id to null
-            }
-
             val issuanceMetadata = IssuanceMetadata(
                 credentialIssuerId = cfg.credentialIssuerId.toString(),
                 credentialConfigurationIdentifier = credentialConfigId,
@@ -138,8 +142,8 @@ internal class ProcessDeferredOutcome(
                 tokenEndpoint = cfg.tokenEndpoint.toString(),
                 authorizationServerId = cfg.authorizationServerId.toString(),
                 challengeEndpoint = cfg.challengeEndpoint?.toString(),
-                clientId = clientId,
-                clientAttestationJwt = clientAttestationJwt,
+                clientId = cfg.clientAuthentication.id,
+                clientAttestationJwt = null,
                 clientAttestationPopKeyId = deferredContext.clientAttestationPopKeyId,
                 popKeyAliases = keyAliases,
                 dPoPKeyAlias = deferredContext.dPoPKeyAlias,

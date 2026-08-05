@@ -17,8 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
-import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestResolver
-import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import io.ktor.client.HttpClient
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -36,9 +34,10 @@ import kotlin.test.assertTrue
 class OfferResolverTest {
 
     private lateinit var ktorHttpClientFactory: () -> HttpClient
+    private lateinit var httpClient: HttpClient
     private lateinit var credentialOffer: CredentialOffer
     private lateinit var offerResolver: OfferResolver
-    private lateinit var credentialOfferResolver: CredentialOfferRequestResolver
+    private lateinit var config: OpenId4VciManager.Config
     private val offerUri =
         "openid-credential-offer://?credential_offer_uri=${
             URLEncoder.encode(
@@ -49,20 +48,17 @@ class OfferResolverTest {
 
     @BeforeTest
     fun setUp() {
-        val httpClient = mockk<HttpClient>(relaxed = true)
+        httpClient = mockk<HttpClient>(relaxed = true)
         ktorHttpClientFactory = { httpClient }
 
         credentialOffer = mockk(relaxed = true)
-        credentialOfferResolver = mockk()
-        mockkObject(CredentialOfferRequestResolver.Companion)
-        every {
-            CredentialOfferRequestResolver.Companion.invoke(
-                httpClient = httpClient,
-                issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned
-            )
-        } returns credentialOfferResolver
+        config = mockk(relaxed = true) {
+            every { clientAuthenticationType } returns OpenId4VciManager.ClientAuthenticationType.None("test-client-id")
+            every { authFlowRedirectionURI } returns "https://redirect.uri"
+        }
+        mockkObject(CredentialOffer.Companion)
 
-        offerResolver = OfferResolver(ktorHttpClientFactory)
+        offerResolver = OfferResolver(config, ktorHttpClientFactory)
     }
 
 
@@ -77,7 +73,13 @@ class OfferResolverTest {
             val result = offerResolver.resolve(offerUri, true)
 
             // Then
-            coVerify(exactly = 0) { credentialOfferResolver.resolve(offerUri) }
+            coVerify(exactly = 0) {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = any(),
+                )
+            }
             assertTrue(result.isSuccess)
             assertEquals(offer, result.getOrNull())
         }
@@ -87,9 +89,13 @@ class OfferResolverTest {
     fun `resolve method when useCache is true should resolve credentialOffer if not contained in cache and store it in cache`() {
         runTest {
             // Given
-            coEvery { credentialOfferResolver.resolve(offerUri) } returns Result.success(
-                credentialOffer
-            )
+            coEvery {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = offerUri,
+                )
+            } returns Result.success(credentialOffer)
             assertNull(offerResolver.cache[offerUri])
             val offer = Offer(credentialOffer)
 
@@ -97,7 +103,13 @@ class OfferResolverTest {
             val result = offerResolver.resolve(offerUri, true)
 
             // Then
-            coVerify(exactly = 1) { credentialOfferResolver.resolve(offerUri) }
+            coVerify(exactly = 1) {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = offerUri,
+                )
+            }
             assertTrue(result.isSuccess)
             assertEquals(offer, result.getOrNull())
             assertEquals(offer, offerResolver.cache[offerUri])
@@ -108,18 +120,26 @@ class OfferResolverTest {
     fun `resolve method when useCache is false should resolve credentialOffer and store it in cache`() {
         runTest {
             // Given
-            coEvery { credentialOfferResolver.resolve(offerUri) } returns Result.success(
-                credentialOffer
-            )
-            val offer = Offer(
-                credentialOffer
-            )
+            coEvery {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = offerUri,
+                )
+            } returns Result.success(credentialOffer)
+            val offer = Offer(credentialOffer)
 
             // When
             val result = offerResolver.resolve(offerUri, false)
 
             // Then
-            coVerify(exactly = 1) { credentialOfferResolver.resolve(offerUri) }
+            coVerify(exactly = 1) {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = offerUri,
+                )
+            }
             assertTrue(result.isSuccess)
             assertEquals(offer, result.getOrNull())
             assertEquals(offer, offerResolver.cache[offerUri])
@@ -130,10 +150,14 @@ class OfferResolverTest {
     fun `resolve method should remove failed offer from cache if credentialOffer resolve fails`() {
         runTest {
             // Given
-            coEvery { credentialOfferResolver.resolve(offerUri) } returns Result.failure(Exception())
-            val offer = Offer(
-                credentialOffer
-            )
+            coEvery {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = offerUri,
+                )
+            } returns Result.failure(Exception())
+            val offer = Offer(credentialOffer)
             offerResolver.cache[offerUri] = offer
             assertEquals(offer, offerResolver.cache[offerUri])
 
@@ -141,7 +165,13 @@ class OfferResolverTest {
             val result = offerResolver.resolve(offerUri, false)
 
             // Then
-            coVerify(exactly = 1) { credentialOfferResolver.resolve(offerUri) }
+            coVerify(exactly = 1) {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = any(),
+                    uri = offerUri,
+                )
+            }
             assertTrue(result.isFailure)
             assertNull(offerResolver.cache[offerUri])
         }

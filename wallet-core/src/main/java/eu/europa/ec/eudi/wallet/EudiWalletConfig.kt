@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 European Commission
+ * Copyright (c) 2023-2026 European Commission
  *  
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,11 @@ package eu.europa.ec.eudi.wallet
 import android.content.Context
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
+import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIConfig
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
@@ -29,6 +32,15 @@ import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
+import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfig
+import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
+import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.ReaderTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.StatusListTrustConfig
+import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
+import java.security.cert.TrustAnchor
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import java.security.cert.X509Certificate
 import kotlin.time.Duration
@@ -70,11 +82,9 @@ import kotlin.time.Duration.Companion.minutes
  *         ReaderAuthPolicy.EnforceIfPresent
  *     )
  *     .configureOpenId4Vci {
- *         withIssuerUrl("https://issuer.com")
- *         withClientId("client-id")
+ *         withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
  *         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
  *         withParUsage(OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED)
- *         withUseDPoPIfSupported(true)
  *     }
  *     .configureProximityPresentation(
  *         enableBlePeripheralMode = true,
@@ -101,6 +111,11 @@ import kotlin.time.Duration.Companion.minutes
  *     .configureDCAPI {
  *         withEnabled(true) // Enable DCAPI, by default it is disabled
  *         withPrivilegedAllowlist("allowlist") // your own allowlist of privileged browsers/apps that you trust
+ *         withSupportedProtocols(
+ *             DCAPIProtocol.ISO_MDOC,
+ *             DCAPIProtocol.OPENID4VP_V1_SIGNED,
+ *             DCAPIProtocol.OPENID4VP_V1_UNSIGNED
+ *         )
  *     }
  *     .configureZkp(
  *         // To enable ZKP Support provide a ZkSystemRepository, for example:
@@ -197,7 +212,7 @@ class EudiWalletConfig {
     }
 
     /**
-     * Configuration for the Digital Credential.
+     * Configuration for the Digital Credential API (DCAPI).
      */
     var dcapiConfig: DCAPIConfig? = null
         private set
@@ -321,39 +336,168 @@ class EudiWalletConfig {
     var readerTrustedCertificates: List<X509Certificate>? = null
         private set
 
+    internal var readerTrustStore: ReaderTrustStore? = null
+        private set
+
     /**
-     * Configure the built-in [ReaderTrustStore]. This allows to set the reader trusted
-     * certificates for the reader trust store.
+     * Configure the built-in [ReaderTrustStore] with a list of trusted certificates.
+     *
+     * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
+     * during trust path validation. The default is [RevocationPolicy.HardFail].
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     *
+     * Example:
+     * ```
+     * configureReaderTrustStore(
+     *     listOf(certificate1, certificate2),
+     *     revocationPolicy = RevocationPolicy.SoftFail
+     * )
+     * ```
      *
      * @param readerTrustedCertificates the reader trusted certificates
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
      * @return the [EudiWalletConfig] instance
+     * @see RevocationPolicy
      */
-    fun configureReaderTrustStore(readerTrustedCertificates: List<X509Certificate>) = apply {
+    @JvmOverloads
+    fun configureReaderTrustStore(
+        readerTrustedCertificates: List<X509Certificate>,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    ) = apply {
         this.readerTrustedCertificates = readerTrustedCertificates
+        this.revocationPolicy = revocationPolicy
     }
 
     /**
-     * Configure the built-in [ReaderTrustStore]. This allows to set the reader trusted
-     * certificates for the reader trust store.
+     * Configure the built-in [ReaderTrustStore] with trusted certificates.
+     *
+     * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
+     * during trust path validation. The default is [RevocationPolicy.HardFail].
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     *
+     * Example:
+     * ```
+     * configureReaderTrustStore(
+     *     certificate1, certificate2,
+     *     revocationPolicy = RevocationPolicy.SoftFail
+     * )
+     * ```
      *
      * @param readerTrustedCertificates the reader trusted certificates
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
      * @return the [EudiWalletConfig] instance
+     * @see RevocationPolicy
      */
-    fun configureReaderTrustStore(vararg readerTrustedCertificates: X509Certificate) = apply {
+    fun configureReaderTrustStore(
+        vararg readerTrustedCertificates: X509Certificate,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    ) = apply {
         this.readerTrustedCertificates = readerTrustedCertificates.toList()
+        this.revocationPolicy = revocationPolicy
     }
 
     /**
-     * Configure the built-in [ReaderTrustStore].
-     * This allows to set the reader trusted certificates for the reader trust store.
-     * The certificates are loaded from the raw resources.
+     * Configure the built-in [ReaderTrustStore] with certificates loaded from raw resources.
+     *
+     * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
+     * during trust path validation. The default is [RevocationPolicy.HardFail].
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     *
+     * Example:
+     * ```
+     * configureReaderTrustStore(
+     *     context,
+     *     R.raw.reader_cert_1, R.raw.reader_cert_2,
+     *     revocationPolicy = RevocationPolicy.SoftFail
+     * )
+     * ```
      *
      * @param context the context
      * @param certificateRes the reader trusted certificates raw resources
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
+     * @return the [EudiWalletConfig] instance
+     * @see RevocationPolicy
+     */
+    fun configureReaderTrustStore(
+        context: Context,
+        @RawRes vararg certificateRes: Int,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    ) = apply {
+        this.readerTrustedCertificates = certificateRes.map { context.getCertificate(it) }
+        this.revocationPolicy = revocationPolicy
+    }
+
+    /**
+     * Configure the [ReaderTrustStore] with a custom implementation.
+     *
+     * Use this to provide any custom [ReaderTrustStore] implementation.
+     * This takes priority over certificate-based configuration set via the
+     * other [configureReaderTrustStore] overloads.
+     *
+     * @param readerTrustStore the custom reader trust store implementation
      * @return the [EudiWalletConfig] instance
      */
-    fun configureReaderTrustStore(context: Context, @RawRes vararg certificateRes: Int) = apply {
-        this.readerTrustedCertificates = certificateRes.map { context.getCertificate(it) }
+    fun configureReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
+        this.readerTrustStore = readerTrustStore
+    }
+
+    /**
+     * Configure the [ReaderTrustStore] with an ETSI-backed trust source.
+     *
+     * Creates an [eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore] that delegates
+     * reader certificate chain validation to the given [IsChainTrustedForEUDIW], using the
+     * [VerificationContext.WalletRelyingPartyAccessCertificate][eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext.WalletRelyingPartyAccessCertificate]
+     * verification context. This takes priority over certificate-based configuration.
+     *
+     * Example:
+     * ```
+     * val composeChainTrust: IsChainTrustedForEUDIW<...> = // from ETSI library
+     * configureReaderTrustStore(composeChainTrust)
+     * ```
+     *
+     * @param isChainTrusted the ETSI chain trust validator
+     * @return the [EudiWalletConfig] instance
+     */
+    fun configureReaderTrustStore(
+        isChainTrusted: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>,
+    ) = apply {
+        this.readerTrustStore = isChainTrusted.asReaderTrustStore()
+    }
+
+    internal var useEtsiReaderTrust: Boolean = false
+        private set
+
+    /**
+     * Configure the [ReaderTrustStore] using the ETSI trust source from [configureEtsiTrust].
+     *
+     * Creates an [eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore] that delegates
+     * reader certificate chain validation to the centrally configured ETSI trust source.
+     * Requires [configureEtsiTrust] to be called.
+     *
+     * Example with default policy ([ReaderAuthPolicy.EnforceIfPresent]):
+     * ```
+     * configureReaderTrustStore { }
+     * ```
+     *
+     * Example requiring reader authentication for all presentations:
+     * ```
+     * configureReaderTrustStore {
+     *     readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+     * }
+     * ```
+     *
+     * @param block configuration block applied to the [ReaderTrustConfigBuilder]
+     * @return the [EudiWalletConfig] instance
+     * @see configureEtsiTrust
+     * @see ReaderTrustConfigBuilder
+     * @see ReaderAuthPolicy
+     */
+    fun configureReaderTrustStore(
+        block: ReaderTrustConfigBuilder.() -> Unit,
+    ) = apply {
+        this.useEtsiReaderTrust = true
+        val builder = ReaderTrustConfigBuilder().apply(block)
+        builder.readerAuthPolicy?.let { this.readerAuthPolicy = it }
     }
 
     /**
@@ -399,7 +543,34 @@ class EudiWalletConfig {
         this.readerAuthPolicy = readerAuthPolicy
     }
 
-    var userAuthenticationRequired: Boolean = false
+    /**
+     * The certificate revocation checking policy used during reader authentication
+     * trust path validation.
+     *
+     * This applies only when the [ReaderTrustStore] is built from static trusted
+     * certificates (via [configureReaderTrustStore] with certificate lists or raw
+     * resources). ETSI/LoTE-based trust stores handle revocation internally via
+     * [configureEtsiTrust] with `relaxPkixRevocation()`.
+     *
+     * Set this through the `revocationPolicy` parameter of the certificate-based
+     * [configureReaderTrustStore] overloads.
+     *
+     * The available policies are:
+     * - [RevocationPolicy.NoCheck]: No revocation checking is performed.
+     * - [RevocationPolicy.HardFail]: Validation fails if a certificate is revoked
+     *   **or** if the CRL/OCSP responder cannot be reached (default).
+     * - [RevocationPolicy.SoftFail]: Validation fails if a certificate is revoked,
+     *   but tolerates CRL/OCSP unavailability.
+     *
+     * The default is [RevocationPolicy.HardFail].
+     *
+     * @see RevocationPolicy
+     * @see configureReaderTrustStore
+     */
+    var revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
+        private set
+
+    var userAuthenticationRequired: Boolean = true
         internal set // internal for setting the default value from the builder
     var userAuthenticationTimeout: Duration = 0.milliseconds
         private set
@@ -420,7 +591,7 @@ class EudiWalletConfig {
      * **Note**: when setting useStrongBoxForKeys to true, the device must support the StrongBox.
      *
      * The default values are:
-     * - userAuthenticationRequired: false
+     * - userAuthenticationRequired: true
      * - userAuthenticationTimeout: 0
      * - useStrongBoxForKeys: true if supported by the device
      *
@@ -430,7 +601,7 @@ class EudiWalletConfig {
      * @param useStrongBoxForKeys whether to use the strong box for keys
      */
     fun configureDocumentKeyCreation(
-        userAuthenticationRequired: Boolean = false,
+        userAuthenticationRequired: Boolean = true,
         userAuthenticationTimeout: Duration = 0.milliseconds,
         useStrongBoxForKeys: Boolean = true,
     ) = apply {
@@ -444,6 +615,12 @@ class EudiWalletConfig {
     }
 
     var documentStatusResolverClockSkew: Duration = Duration.ZERO
+        internal set
+
+    internal var statusListTrustConfig: StatusListTrustConfig? = null
+        internal set
+
+    internal var statusResolverBlock: (DocumentStatusResolverConfigBuilder.() -> Unit)? = null
         private set
 
     /**
@@ -454,17 +631,187 @@ class EudiWalletConfig {
         this.documentStatusResolverClockSkew = clockSkewInMinutes.minutes
     }
 
+    /**
+     * Configure the document status resolver with clock skew and optional ETSI trust verification
+     * for status list token signers.
+     *
+     * When [configureEtsiTrust] is also called, `trustSource()` and `classifications()` inside
+     * the `configureTrust` block are optional — they default to the centrally configured
+     * ETSI trust source. Explicit calls override the defaults.
+     *
+     * Example:
+     * ```
+     * configureDocumentStatusResolver {
+     *     clockSkew(5)
+     *     configureTrust {
+     *         trustSource(myComposeChainTrust)
+     *         classifications(myClassifications)
+     *         policy {
+     *             default(TrustPolicy.Action.ENFORCE)
+     *         }
+     *     }
+     * }
+     * ```
+     *
+     * @param block configuration block applied to the [DocumentStatusResolverConfigBuilder]
+     * @return the [EudiWalletConfig] instance
+     * @see DocumentStatusResolverConfigBuilder
+     * @see configureEtsiTrust
+     */
+    fun configureDocumentStatusResolver(
+        block: DocumentStatusResolverConfigBuilder.() -> Unit,
+    ) = apply {
+        this.statusResolverBlock = block
+    }
+
     var zkSystemRepository: ZkSystemRepository? = null
         private set
 
     /**
-     * Configure Zero-Knowledge Proofs (ZKP) support.
-     * This allows you to enable ZKP support by providing a [ZkSystemRepository].
+     * The policy that determines behavior when ZK proof generation fails during
+     * response generation.
+     *
+     * The available policies are:
+     * - [ZkResponsePolicy.Strict]: Aborts disclosure for the document when ZK proof
+     *   generation fails, preventing unintended full document disclosure (default).
+     * - [ZkResponsePolicy.FallbackToFullDisclosure]: Falls back to sending the full
+     *   document when ZK proof generation fails.
+     *
+     * The default is [ZkResponsePolicy.Strict].
+     *
+     * @see ZkResponsePolicy
      */
+    var zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict
+        private set
+
+    /**
+     * Configure Zero-Knowledge Proofs (ZKP) support.
+     * This allows you to enable ZKP support by providing a [ZkSystemRepository]
+     * and optionally set the [ZkResponsePolicy] that determines behavior when
+     * ZK proof generation fails. The default policy is [ZkResponsePolicy.Strict].
+     *
+     * @param zkSystemRepository the ZK system repository
+     * @param zkResponsePolicy the ZK response policy (default [ZkResponsePolicy.Strict])
+     * @return the [EudiWalletConfig] instance
+     */
+    @JvmOverloads
     fun configureZkp(
-        zkSystemRepository: ZkSystemRepository
+        zkSystemRepository: ZkSystemRepository,
+        zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict
     ) = apply {
         this.zkSystemRepository = zkSystemRepository
+        this.zkResponsePolicy = zkResponsePolicy
+    }
+
+    internal var issuerTrustConfig: IssuerTrustConfig? = null
+        internal set
+
+    internal var issuerTrustBlock: (IssuerTrustConfigBuilder.() -> Unit)? = null
+        private set
+
+    /**
+     * Configure issuer trust verification for credentials issued via OpenID4VCI.
+     * Trust verification occurs after issuance, before storage. When not configured,
+     * trust verification is skipped entirely.
+     *
+     * When [configureEtsiTrust] is also called, `trustSource()` and `classifications()`
+     * are optional — they default to the centrally configured ETSI trust source.
+     * Explicit calls override the defaults.
+     *
+     * Example with [configureEtsiTrust] (trust source inherited):
+     * ```
+     * configureIssuerTrust {
+     *     policy {
+     *         default(TrustPolicy.Action.ENFORCE)
+     *     }
+     *     // requireSignedMetadata() is the default — verifies signed issuer metadata JWTs
+     *     // ignoreSignedMetadata() to skip metadata signature checks
+     * }
+     * ```
+     *
+     * Example with explicit trust source:
+     * ```
+     * configureIssuerTrust {
+     *     trustSource(myComposeChainTrust)
+     *     classifications(myClassifications)
+     *     policy {
+     *         default(TrustPolicy.Action.INFORM)
+     *         forContext(VerificationContext.PID, TrustPolicy.Action.ENFORCE)
+     *     }
+     * }
+     * ```
+     *
+     * @param block configuration block applied to the [IssuerTrustConfigBuilder]
+     * @return the [EudiWalletConfig] instance
+     * @see IssuerTrustConfigBuilder
+     * @see configureEtsiTrust
+     */
+    fun configureIssuerTrust(
+        block: IssuerTrustConfigBuilder.() -> Unit,
+    ) = apply {
+        this.issuerTrustBlock = block
+    }
+
+    internal var etsiTrustConfig: EtsiTrustConfig? = null
+        private set
+
+    /**
+     * Configure the ETSI LoTE (List of Trusted Entities) trust infrastructure.
+     *
+     * This centralizes the trust source configuration so it can be shared across all
+     * trust verification areas (issuer trust, status list trust, reader authentication).
+     * The core builds the underlying trust pipeline internally from the provided parameters.
+     *
+     * When this is configured, [configureIssuerTrust], [configureDocumentStatusResolver],
+     * and [configureReaderTrustStore] no longer require explicit `trustSource()` and
+     * `classifications()` calls — they default to the central ETSI trust source.
+     *
+     * Each trust area still needs to be explicitly enabled via its own `configure*` call.
+     *
+     * Example:
+     * ```
+     * configureEtsiTrust {
+     *     loteLocations(SupportedLists(
+     *         pidProviders = Uri("https://trustedlist.../PIDProviders.jwt"),
+     *         wrpacProviders = Uri("https://trustedlist.../WRPACProviders.jwt"),
+     *     ))
+     *     classifications(AttestationClassifications(
+     *         pids = AttestationIdentifierPredicate.any(setOf(
+     *             AttestationIdentifier.MDoc("eu.europa.ec.eudi.pid.1"),
+     *         )),
+     *     ))
+     *     // Optional:
+     *     relaxCertificateProfiles()
+     * }
+     * configureIssuerTrust {
+     *     policy { default(TrustPolicy.Action.INFORM) }
+     * }
+     * configureDocumentStatusResolver { }
+     * configureReaderTrustStore()
+     * ```
+     *
+     * @param block configuration block applied to the [EtsiTrustConfigBuilder]
+     * @return the [EudiWalletConfig] instance
+     * @see EtsiTrustConfigBuilder
+     */
+    fun configureEtsiTrust(
+        block: EtsiTrustConfigBuilder.() -> Unit,
+    ) = apply {
+        this.etsiTrustConfig = EtsiTrustConfigBuilder().apply(block).build()
+    }
+
+    /**
+     * Validates configuration that spans more than one section. OpenID4VP over the Digital
+     * Credential API reuses the wallet's OpenID4VP configuration, so enabling an OpenID4VP protocol
+     * in [DCAPIConfig.supportedProtocols] requires [openId4VpConfig] to be set.
+     */
+    private fun validateDcApiConfig() {
+        val dcapi = dcapiConfig?.takeIf { it.enabled } ?: return
+        require(openId4VpConfig != null || dcapi.supportedProtocols.none { it.isOpenId4Vp }) {
+            "DCAPIConfig.supportedProtocols includes an OpenID4VP protocol but " +
+                "EudiWalletConfig.openId4VpConfig is not set — configure OpenID4VP, or remove " +
+                "the OpenID4VP protocols from DCAPIConfig.supportedProtocols."
+        }
     }
 
     companion object {
@@ -477,7 +824,9 @@ class EudiWalletConfig {
          * @return the EudiWalletConfig instance
          */
         operator fun invoke(configure: EudiWalletConfig.() -> Unit): EudiWalletConfig =
-            EudiWalletConfig().apply(configure)
+            EudiWalletConfig().apply(configure).also {
+                it.validateDcApiConfig()
+            }
     }
 }
 

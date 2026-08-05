@@ -20,19 +20,17 @@ import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.KeyAttestationJWT
-import eu.europa.ec.eudi.openid4vci.KeyAttestationRequirement
-import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
-import eu.europa.ec.eudi.openid4vci.ProofsSpecification
+import eu.europa.ec.eudi.openid4vci.ProofSpecification
+import eu.europa.ec.eudi.openid4vci.ProofType
+import eu.europa.ec.eudi.openid4vci.ProofTypesSupported
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.credential.ProofOfPossessionSigner
-import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
-import kotlinx.coroutines.runBlocking
+import eu.europa.ec.eudi.wallet.provider.WalletKeyAttestationProvider
 import org.multipaz.securearea.KeyUnlockData
 
 internal class SubmitRequest(
-    val config: OpenId4VciManager.Config,
-    val walletAttestationsProvider: WalletAttestationsProvider?,
+    val walletKeyAttestationProvider: WalletKeyAttestationProvider?,
     val issuer: Issuer,
     authorizedRequest: AuthorizedRequest,
 ) {
@@ -60,28 +58,31 @@ internal class SubmitRequest(
     ): ResponseResult<SubmissionOutcome> {
         val payload =
             IssuanceRequestPayload.ConfigurationBased(offeredDocument.configurationIdentifier)
-        val signers = unsignedDocument.getPoPSigners().toList()
+        val signers = unsignedDocument.getPoPSigners()
+        val proofTypesSupported = offeredDocument.configuration.proofTypesSupported
 
-        val (updatedAuthorizedRequest, outcome) = when (config.clientAuthenticationType) {
-            is OpenId4VciManager.ClientAuthenticationType.None -> {
-                requestWithNoAuthentication(
-                    payload,
-                    signers,
-                    unsignedDocument,
-                    offeredDocument,
-                    keyUnlockData
+        val (updatedAuthorizedRequest, outcome) = when {
+            // Issuer requires no proof
+            proofTypesSupported == ProofTypesSupported.Empty -> {
+                with(issuer) {
+                    authorizedRequest.request(payload, ProofSpecification.NoProof)
+                }.getOrThrow()
+            }
+            // Attestation proof (if provider available & issuer supports it)
+            proofTypesSupported[ProofType.ATTESTATION] != null && walletKeyAttestationProvider != null -> {
+                requestWithAttestationProof(payload, signers)
+            }
+            // JWT proof with key attestation (if provider available & issuer supports it)
+            proofTypesSupported[ProofType.JWT] != null && walletKeyAttestationProvider != null -> {
+                authorizedRequest.requestWithJwtProofWithKeyAttestation(
+                    payload, signers, keyUnlockData,
+                    unlockResume = { updatedKeyUnlockData ->
+                        submitRequest(unsignedDocument, offeredDocument, updatedKeyUnlockData)
+                    }
                 )
             }
-
-            is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> {
-                requestWithAttestationBasedAuth(
-                    payload,
-                    signers,
-                    unsignedDocument,
-                    offeredDocument,
-                    keyUnlockData
-                )
-            }
+            //  KeyAttestationProvider is null
+            else -> error("Issuer requires proofs but no WalletKeyAttestationProvider is available")
         }
 
         this.authorizedRequest = updatedAuthorizedRequest
@@ -91,81 +92,15 @@ internal class SubmitRequest(
         )
     }
 
-    private suspend fun requestWithNoAuthentication(
-        payload: IssuanceRequestPayload,
-        signers: List<ProofOfPossessionSigner>,
-        unsignedDocument: UnsignedDocument,
-        offeredDocument: Offer.OfferedDocument,
-        keyUnlockData: Map<KeyAlias, KeyUnlockData?>?,
-    ): Pair<AuthorizedRequest, SubmissionOutcome> {
-        val canBeIssuedWithoutAttestation = offeredDocument.configuration.proofTypesSupported.values
-            .filterIsInstance<ProofTypeMeta.Jwt>()
-            .any { it.keyAttestationRequirement is KeyAttestationRequirement.NotRequired }
-
-        check(canBeIssuedWithoutAttestation) {
-            "Offered document requires attestation proof, but client authentication type is None"
-        }
-
-        return authorizedRequest.requestWithJwtProofWithoutAttestation(
-            payload, signers, keyUnlockData,
-            unlockResume = { updatedKeyUnlockData ->
-                submitRequest(unsignedDocument, offeredDocument, updatedKeyUnlockData)
-            }
-        )
-    }
-
-    private suspend fun requestWithAttestationBasedAuth(
-        payload: IssuanceRequestPayload,
-        signers: List<ProofOfPossessionSigner>,
-        unsignedDocument: UnsignedDocument,
-        offeredDocument: Offer.OfferedDocument,
-        keyUnlockData: Map<KeyAlias, KeyUnlockData?>?,
-    ): Pair<AuthorizedRequest, SubmissionOutcome> {
-
-        val proofType =
-            offeredDocument.configuration.proofTypesSupported.values.filterIsInstance<ProofTypeMeta.Attestation>()
-                .firstOrNull()
-        if (proofType != null) {
-            return requestWithAttestationProof(payload, signers)
-        }
-
-        val jwtProofTypes =
-            offeredDocument.configuration.proofTypesSupported.values.filterIsInstance<ProofTypeMeta.Jwt>()
-
-        val jwtWithAttest =
-            jwtProofTypes.firstOrNull() { it.keyAttestationRequirement is KeyAttestationRequirement.Required }
-        if (jwtWithAttest != null) {
-            return authorizedRequest.requestWithJwtProofWithAttestation(
-                payload, signers, keyUnlockData,
-                unlockResume = { updatedKeyUnlockData ->
-                    submitRequest(unsignedDocument, offeredDocument, updatedKeyUnlockData)
-                }
-            )
-        }
-
-        val jwtWithoutAttest =
-            jwtProofTypes.firstOrNull { it.keyAttestationRequirement is KeyAttestationRequirement.NotRequired }
-        if (jwtWithoutAttest != null) {
-            return authorizedRequest.requestWithJwtProofWithoutAttestation(
-                payload, signers, keyUnlockData,
-                unlockResume = { updatedKeyUnlockData ->
-                    submitRequest(unsignedDocument, offeredDocument, updatedKeyUnlockData)
-                }
-            )
-        }
-
-        throw IllegalStateException("No supported proof type found in the credential configuration")
-    }
-
     private suspend fun requestWithAttestationProof(
         payload: IssuanceRequestPayload,
         signers: List<ProofOfPossessionSigner>,
     ): Pair<AuthorizedRequest, SubmissionOutcome> {
-        val walletAttestationsProvider = checkNotNull(walletAttestationsProvider) {
-            "WalletAttestationsProvider is required for attestation based client authentication"
+        val walletKeyAttestationProvider = checkNotNull(walletKeyAttestationProvider) {
+            "WalletKeyAttestationProvider is required for attestation proof"
         }
-        val proofsSpecification = ProofsSpecification.AttestationProof { nonce ->
-            walletAttestationsProvider.getKeyAttestation(
+        val proofsSpecification = ProofSpecification.AttestationProof { nonce, _ ->
+            walletKeyAttestationProvider.getKeyAttestation(
                 signers.map { it.getKeyInfo() },
                 nonce
             )
@@ -185,32 +120,30 @@ internal class SubmitRequest(
 
     private suspend fun AuthorizedRequest.requestWithAttestationProof(
         payload: IssuanceRequestPayload,
-        proofsSpecification: ProofsSpecification.AttestationProof,
+        proofsSpecification: ProofSpecification.AttestationProof,
     ): Pair<AuthorizedRequest, SubmissionOutcome> {
         return with(issuer) {
             request(payload, proofsSpecification)
         }.getOrThrow()
     }
 
-    private suspend fun AuthorizedRequest.requestWithJwtProofWithAttestation(
+    private suspend fun AuthorizedRequest.requestWithJwtProofWithKeyAttestation(
         payload: IssuanceRequestPayload,
         signers: List<ProofOfPossessionSigner>,
         keyUnlockData: Map<String, KeyUnlockData?>?,
         unlockResume: suspend (Map<String, KeyUnlockData?>) -> ResponseResult<SubmissionOutcome>,
     ): Pair<AuthorizedRequest, SubmissionOutcome> {
-        val walletAttestationsProvider = checkNotNull(walletAttestationsProvider) {
-            "WalletAttestationsProvider is required for attestation based client authentication"
+        val walletKeyAttestationProvider = checkNotNull(walletKeyAttestationProvider) {
+            "WalletKeyAttestationProvider is required for JWT proof with key attestation"
         }
         var proofSigner: KeyAttestationSigner? = null
-        val keyIndex = 0
-        val proofsSpecification = ProofsSpecification.JwtProofs.WithKeyAttestation(
-            proofSignerProvider = { nonce ->
+        val proofsSpecification = ProofSpecification.JwtProof(
+            proofSignerProvider = { nonce, _ ->
                 val factory = KeyAttestationSigner.Factory(
-                    signers, keyIndex, walletAttestationsProvider, keyUnlockData
+                    signers, walletKeyAttestationProvider, keyUnlockData
                 )
                 factory(nonce).getOrThrow().also { proofSigner = it }
-            },
-            keyIndex = keyIndex,
+            }
         )
         try {
             return with(issuer) { request(payload, proofsSpecification) }.getOrThrow()
@@ -225,9 +158,7 @@ internal class SubmitRequest(
                     signingAlgorithm = proofSigner.signer.getKeyInfo().algorithm,
                     keysAndSecureAreas = keysAndSecureAreas,
                     resume = { keyUnlockData ->
-                        runBlocking {
-                            unlockResume(keyUnlockData)
-                        }
+                        unlockResume(keyUnlockData)
                     },
                     cause = e
                 )
@@ -236,40 +167,6 @@ internal class SubmitRequest(
             }
         }
 
-    }
-
-    private suspend fun AuthorizedRequest.requestWithJwtProofWithoutAttestation(
-        payload: IssuanceRequestPayload,
-        signers: List<ProofOfPossessionSigner>,
-        keyUnlockData: Map<String, KeyUnlockData?>?,
-        unlockResume: suspend (Map<String, KeyUnlockData?>) -> ResponseResult<SubmissionOutcome>,
-    ): Pair<AuthorizedRequest, SubmissionOutcome> {
-        var proofSigner: BatchProofSigner? = null
-        try {
-            proofSigner =
-                BatchProofSigner(signers, keyUnlockData)
-            val proofsSpecification = ProofsSpecification.JwtProofs.NoKeyAttestation(proofSigner)
-            return with(issuer) {
-                request(payload, proofsSpecification)
-            }.getOrThrow()
-        } catch (e: Throwable) {
-
-            val isUserAuthRequired = proofSigner?.keyLockedException != null
-            if (isUserAuthRequired) {
-                val keysAndSecureAreas = proofSigner.signers
-                    .associate { it.keyAlias to it.secureArea }
-                throw UserAuthRequiredException(
-                    signingAlgorithm = proofSigner.algorithm,
-                    keysAndSecureAreas = keysAndSecureAreas,
-                    resume = { keyUnlockData -> runBlocking {
-                        unlockResume(keyUnlockData)
-                    } },
-                    cause = e
-                )
-            } else {
-                throw e
-            }
-        }
     }
 
 }

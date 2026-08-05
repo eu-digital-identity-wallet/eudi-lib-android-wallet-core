@@ -27,8 +27,6 @@ class IssuerMetadataTransformationsTest {
 
     private lateinit var mockedCredentialIssuerMetadata: CredentialIssuerMetadata
 
-    private lateinit var mockCredentialOffer: CredentialOffer
-
     private lateinit var dummyOffer: Offer
     private var dummyIssuerUrl: String = "https://test.com"
     private var dummyDocumentId: String = "documentId"
@@ -42,14 +40,13 @@ class IssuerMetadataTransformationsTest {
 
         val credentialIssuerIdentifier = CredentialIssuerId.Companion.invoke(dummyIssuerUrl).getOrThrow()
 
-        mockCredentialOffer = CredentialOffer(
-            credentialIssuerIdentifier = credentialIssuerIdentifier,
-            credentialIssuerMetadata = mockedCredentialIssuerMetadata,
-            authorizationServerMetadata = mockk(),
-            credentialConfigurationIdentifiers = listOf(mockk<CredentialConfigurationIdentifier>())
-        )
+        val credentialOfferMock = mockk<CredentialOffer>(relaxed = true)
+        every { credentialOfferMock.credentialIssuerIdentifier } returns credentialIssuerIdentifier
 
-        dummyOffer = Offer(mockCredentialOffer)
+        dummyOffer = mockk<Offer> {
+            every { credentialOffer } returns credentialOfferMock
+            every { issuerMetadata } returns mockedCredentialIssuerMetadata
+        }
     }
 
     @Test

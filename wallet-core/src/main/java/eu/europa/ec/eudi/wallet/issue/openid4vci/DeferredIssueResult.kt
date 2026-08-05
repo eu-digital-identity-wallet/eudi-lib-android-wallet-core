@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2024 European Commission
+ *  Copyright (c) 2024-2026 European Commission
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import java.security.cert.TrustAnchor
 
 /**
  * Result of a deferred document issuance.
@@ -39,10 +41,12 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property documentId the id of the issued document
      * @property name the name of the document
      * @property docType the document type
+     * @property issuerTrustResult the result of issuer trust verification, or null if not configured
      * @see[DocumentId] for the document id
      */
     data class DocumentIssued(
         override val document: IssuedDocument,
+        val issuerTrustResult: CertificationChainValidation<TrustAnchor>? = null,
     ) : DeferredIssueResult, DocumentDetails by DocumentDetails(document)
 
     /**

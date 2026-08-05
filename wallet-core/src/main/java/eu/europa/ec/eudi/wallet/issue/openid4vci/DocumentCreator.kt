@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.openid4vci.CredentialReusePolicies
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
@@ -28,6 +29,7 @@ import kotlin.coroutines.resume
 internal class DocumentCreator(
     val documentManager: DocumentManager,
     val listener: OpenId4VciManager.OnResult<IssueEvent>,
+    val supportedPolicies: CredentialReusePolicies? = null,
     val logger: Logger? = null,
 ) {
 
@@ -35,7 +37,12 @@ internal class DocumentCreator(
         offer.offeredDocuments.associateBy { createDocument(it) }
 
     suspend fun createDocument(offeredDocument: Offer.OfferedDocument): UnsignedDocument {
-        val createDocumentSettings =
+        val resolvedPolicy = resolveReusePolicy(
+            offeredDocument.credentialReusePolicy,
+            supportedPolicies,
+        )
+
+        val createDocumentSettings = if (resolvedPolicy != null) {
             suspendCancellableCoroutine<CreateDocumentSettings> { continuation ->
                 continuation.invokeOnCancellation {
                     listener(
@@ -45,20 +52,56 @@ internal class DocumentCreator(
                     )
                 }
 
-                listener.onResult(IssueEvent.DocumentRequiresCreateSettings(
-                    offeredDocument = offeredDocument,
-                    resume = { createSettings ->
-                        runBlocking {
-                            continuation.resume(createSettings)
+                listener.onResult(
+                    IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy(
+                        offeredDocument = offeredDocument,
+                        resolvedReusePolicy = resolvedPolicy,
+                        resume = { secureAreaIdentifier, createKeySettings ->
+                            runBlocking {
+                                continuation.resume(
+                                    CreateDocumentSettings(
+                                        secureAreaIdentifier = secureAreaIdentifier,
+                                        createKeySettings = createKeySettings,
+                                        credentialPolicy = resolvedPolicy.credentialPolicy,
+                                    )
+                                )
+                            }
+                        },
+                        cancel = { reason ->
+                            runBlocking {
+                                continuation.cancel(reason?.let { CancellationException(it) })
+                            }
                         }
-                    },
-                    cancel = { reason ->
-                        runBlocking {
-                            continuation.cancel(reason?.let { CancellationException(it) })
-                        }
-                    }
-                ))
+                    )
+                )
             }
+        } else {
+            suspendCancellableCoroutine<CreateDocumentSettings> { continuation ->
+                continuation.invokeOnCancellation {
+                    listener(
+                        IssueEvent.Failure(
+                            RuntimeException("Document creation was cancelled")
+                        )
+                    )
+                }
+
+                listener.onResult(
+                    IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy(
+                        offeredDocument = offeredDocument,
+                        resume = { createSettings ->
+                            runBlocking {
+                                continuation.resume(createSettings)
+                            }
+                        },
+                        cancel = { reason ->
+                            runBlocking {
+                                continuation.cancel(reason?.let { CancellationException(it) })
+                            }
+                        }
+                    )
+                )
+            }
+        }
 
         return documentManager.createDocument(offeredDocument, createDocumentSettings).getOrThrow()
     }

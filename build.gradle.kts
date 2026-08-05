@@ -14,11 +14,39 @@
  * limitations under the License.
  */
 
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
+import com.github.jk1.license.filter.LicenseBundleNormalizer
+import com.github.jk1.license.filter.ReduceDuplicateLicensesFilter
+import com.github.jk1.license.render.InventoryMarkdownReportRenderer
+
 plugins {
+    alias(libs.plugins.dependency.license.report)
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.dokka) apply false
-    alias(libs.plugins.dependency.license.report) apply false
     alias(libs.plugins.dependencycheck) apply false
     alias(libs.plugins.jetbrains.kotlin.jvm) apply false
+    alias(libs.plugins.maven.publish) apply false
+}
+
+licenseReport {
+    projects = project.subprojects.toTypedArray()
+    unionParentPomLicenses = false
+    excludeBoms = true
+    excludeOwnGroup = true
+    filters = arrayOf(
+        LicenseBundleNormalizer(),
+        ReduceDuplicateLicensesFilter(),
+        ExcludeTransitiveDependenciesFilter()
+    )
+    configurations = arrayOf("releaseRuntimeClasspath")
+    renderers = arrayOf(InventoryMarkdownReportRenderer("licenses.md", "EUDI Wallet Libraries"))
+}
+
+tasks.generateLicenseReport.configure {
+    doLast {
+        copy {
+            from(layout.buildDirectory.file("reports/dependency-license/licenses.md"))
+            into(rootDir)
+        }
+    }
 }

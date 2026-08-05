@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 European Commission
+ * Copyright (c) 2024-2026 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,9 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
+import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.bytestring.ByteString
@@ -54,6 +57,7 @@ internal class ProcessResponse(
     val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
     val replacesDocumentId: DocumentId? = null,
+    val issuerTrustConfig: IssuerTrustConfig? = null
 ) {
 
     suspend fun process(response: SubmitRequest.Response) {
@@ -102,35 +106,52 @@ internal class ProcessResponse(
         }
     }
 
-    fun processSubmittedRequest(
+    suspend fun processSubmittedRequest(
         unsignedDocument: UnsignedDocument,
         keyAliases: List<String>,
         outcome: SubmissionOutcome,
     ) {
         when (outcome) {
             is SubmissionOutcome.Success -> runCatching {
+                outcome.selectedCredentialReusePolicy?.let { selectedPolicy ->
+                    logger?.d(TAG, "Issuer selected credential reuse policy: $selectedPolicy")
+                }
                 val credentials = outcome.credentials.map { it.credential }.zip(keyAliases)
-                documentManager.storeIssuedDocument(unsignedDocument, credentials) { message ->
-                    logger?.d(TAG, message)
-                }.getOrThrow()
-            }.onSuccess { document ->
-                issuedDocumentIds.add(document.id)
 
+                val trustResult = evaluateIssuerTrust(
+                    issuerTrustConfig = issuerTrustConfig,
+                    document = unsignedDocument,
+                    credential = credentials.first().first,
+                    logger = logger,
+                )
+
+                val issuedDocument = documentManager.storeIssuedDocument(
+                    unsignedDocument, credentials
+                ) { message -> logger?.d(TAG, message) }.getOrThrow()
+
+                issuedDocument to trustResult
+            }.onSuccess { (document, trustResult) ->
+                issuedDocumentIds.add(document.id)
+                listener(IssueEvent.DocumentIssued(document, trustResult))
                 // Store issuance metadata in background coroutine
                 CoroutineScope(Dispatchers.IO).launch {
-                    storeIssuanceMetadata(document.id, unsignedDocument, keyAliases)
+                    storeIssuanceMetadata(
+                        document.id,
+                        unsignedDocument,
+                        keyAliases,
+                        (outcome as? SubmissionOutcome.Success)?.selectedCredentialReusePolicy,
+                    )
                 }
 
                 outcome.notificationId?.let { notifId ->
                     notifyIssuerAsync(CredentialIssuanceEvent.Accepted(id = notifId, description = null))
                 }
-                listener(IssueEvent.DocumentIssued(document))
             }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)
+                listener(IssueEvent.DocumentFailed(unsignedDocument, error))
                 outcome.notificationId?.let { notifId ->
                     notifyIssuerAsync(CredentialIssuanceEvent.Failed(id = notifId, description = error.message))
                 }
-                listener(IssueEvent.DocumentFailed(unsignedDocument, error))
             }
 
             is SubmissionOutcome.Failed -> {
@@ -193,6 +214,7 @@ internal class ProcessResponse(
         documentId: DocumentId,
         unsignedDocument: UnsignedDocument,
         keyAliases: List<String>,
+        selectedReusePolicy: eu.europa.ec.eudi.openid4vci.EudiReusePolicy? = null,
     ) {
 
         val refreshToken = authorizedRequest.refreshToken?.refreshToken
@@ -210,7 +232,7 @@ internal class ProcessResponse(
             // Extract client ID and WIA JWT directly from ClientAuthentication
             val (clientId, clientAttestationJwt) = when (val auth = clientAuthentication) {
                 is ClientAuthentication.None -> auth.id to null
-                is ClientAuthentication.AttestationBased -> auth.id to auth.attestationJWT.jwt.serialize()
+                is ClientAuthentication.AttestationBased -> auth.id to null
                 else -> authServerMetadata.issuer.toString() to null
             }
 
@@ -238,6 +260,9 @@ internal class ProcessResponse(
                     "pre-authorized_code"
                 } else {
                     "authorization_code"
+                },
+                selectedReusePolicyType = selectedReusePolicy?.let {
+                    it::class.simpleName
                 },
             )
 

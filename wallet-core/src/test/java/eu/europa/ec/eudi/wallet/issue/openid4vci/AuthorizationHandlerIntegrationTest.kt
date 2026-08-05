@@ -43,7 +43,6 @@ class AuthorizationHandlerIntegrationTest {
         val logger = mockk<Logger>(relaxed = true)
 
         val config = OpenId4VciManager.Config {
-            withIssuerUrl("https://issuer.example.com")
             withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
             withAuthFlowRedirectionURI("eudi-wallet://callback")
         }
@@ -72,7 +71,6 @@ class AuthorizationHandlerIntegrationTest {
         val customHandler = WebViewAuthorizationHandler()
 
         val config = OpenId4VciManager.Config {
-            withIssuerUrl("https://issuer.example.com")
             withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
             withAuthFlowRedirectionURI("eudi-wallet://callback")
             withAuthorizationHandler(customHandler)
@@ -95,16 +93,13 @@ class AuthorizationHandlerIntegrationTest {
         val customHandler = WebViewAuthorizationHandler()
 
         val config = OpenId4VciManager.Config {
-            withIssuerUrl("https://issuer.example.com")
             withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("wallet-client"))
             withAuthFlowRedirectionURI("eudi-wallet://oauth-callback")
             withAuthorizationHandler(customHandler)
             withDPopConfig(DPopConfig.Disabled)
-//            withDPoPUsage(OpenId4VciManager.Config.DPoPUsage.Disabled)
             withParUsage(OpenId4VciManager.Config.ParUsage.REQUIRED)
         }
 
-        assertEquals("https://issuer.example.com", config.issuerUrl)
         assertEquals("eudi-wallet://oauth-callback", config.authFlowRedirectionURI)
         assertEquals(customHandler, config.authorizationHandler)
         assertEquals(DPopConfig.Disabled, config.dpopConfig)

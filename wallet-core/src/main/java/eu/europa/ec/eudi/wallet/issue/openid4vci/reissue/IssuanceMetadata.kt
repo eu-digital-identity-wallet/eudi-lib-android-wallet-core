@@ -81,6 +81,9 @@ data class IssuanceMetadata(
     val refreshToken: String? = null,
     val tokenTimestamp: Long, // epochSeconds
     val grantType: String, // "authorization_code" or "pre-authorized_code"
+
+    // Credential reuse policy (ETSI TS 119 472-3)
+    val selectedReusePolicyType: String? = null,
 ) {
     companion object {
         /**

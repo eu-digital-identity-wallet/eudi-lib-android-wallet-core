@@ -16,9 +16,11 @@
 
 package eu.europa.ec.eudi.wallet
 
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIProtocol
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
@@ -26,6 +28,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.PreregisteredVerifier
 import io.mockk.mockk
 import java.security.cert.X509Certificate
 import kotlin.test.Test
+import kotlin.test.assertIs
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -42,8 +45,9 @@ class EudiWalletConfigTest {
             configureLogging(Logger.LEVEL_ERROR)
             configureDocumentManager("storage/path")
             configureOpenId4Vci {
-                withIssuerUrl("https://example.com")
-                withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+                withClientAuthenticationType(
+                    OpenId4VciManager.ClientAuthenticationType.AttestationBased("test-client-id")
+                )
                 withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
             }
             configureOpenId4Vp {
@@ -75,6 +79,7 @@ class EudiWalletConfigTest {
             configureDCAPI {
                 withEnabled(true)
                 withPrivilegedAllowlist("{}")
+                withSupportedProtocols(DCAPIProtocol.ISO_MDOC, DCAPIProtocol.OPENID4VP_V1_SIGNED)
             }
         }
         assertEquals(2, config.readerTrustedCertificates?.size)
@@ -103,12 +108,15 @@ class EudiWalletConfigTest {
             EncryptionMethod.A128CBC_HS256,
             config.openId4VpConfig?.encryptionMethods?.get(0)
         )
-        assertEquals("https://example.com", config.openId4VciConfig?.issuerUrl)
-        assertEquals(OpenId4VciManager.ClientAuthenticationType.AttestationBased, config.openId4VciConfig?.clientAuthenticationType)
+        assertIs<OpenId4VciManager.ClientAuthenticationType.AttestationBased>(config.openId4VciConfig?.clientAuthenticationType)
         assertEquals("eudi-openid4ci://authorize", config.openId4VciConfig?.authFlowRedirectionURI)
 
         assertEquals(true, config.dcapiConfig?.enabled)
         assertEquals("{}", config.dcapiConfig?.privilegedAllowlist)
+        assertEquals(
+            setOf(DCAPIProtocol.ISO_MDOC, DCAPIProtocol.OPENID4VP_V1_SIGNED),
+            config.dcapiConfig?.supportedProtocols
+        )
     }
 
     @Test
@@ -132,5 +140,16 @@ class EudiWalletConfigTest {
 
         assertEquals(Logger.OFF, config.logLevel)
         assertEquals(10, config.logSizeLimit)
+    }
+
+    @Test
+    fun testConfigureReaderTrustStoreWithCustomImplementation() {
+        val customTrustStore = mockk<ReaderTrustStore>()
+        val config = EudiWalletConfig {
+            configureReaderTrustStore(customTrustStore)
+        }
+
+        assertEquals(customTrustStore, config.readerTrustStore)
+        assertNull(config.readerTrustedCertificates)
     }
 }

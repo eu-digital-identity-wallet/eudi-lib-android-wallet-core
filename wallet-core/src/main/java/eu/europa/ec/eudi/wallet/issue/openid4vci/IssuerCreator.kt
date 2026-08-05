@@ -17,36 +17,41 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import com.nimbusds.jose.jwk.Curve
 import eu.europa.ec.eudi.openid4vci.CIAuthorizationServerMetadata
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
-import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
-import eu.europa.ec.eudi.openid4vci.EcConfig
-import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
+import eu.europa.ec.eudi.openid4vci.DPoPUsage
+import eu.europa.ec.eudi.openid4vci.HttpsUrl
+import eu.europa.ec.eudi.openid4vci.JwsAlgorithm
 import eu.europa.ec.eudi.openid4vci.ParUsage
-import eu.europa.ec.eudi.openid4vci.RsaConfig
+import eu.europa.ec.eudi.openid4vci.ProofsConfig
+import eu.europa.ec.eudi.openid4vci.Signer
 import eu.europa.ec.eudi.openid4vci.clientAttestationPOPJWSAlgs
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.VctFilter
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
-import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
+import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
-import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
+import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import io.ktor.client.HttpClient
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.jwk.JWK
 import org.multipaz.crypto.Algorithm
 import java.net.URI
+import eu.europa.ec.eudi.openid4vci.DPoPConfig as VciDPoPConfig
+import eu.europa.ec.eudi.openid4vci.ProvisionDPoPSigner as VciProvisionDPoPSigner
 
 /**
  * Creates an [Issuer] from the given [Offer].
@@ -55,9 +60,10 @@ internal class IssuerCreator(
     private val context: Context,
     private val config: OpenId4VciManager.Config,
     private val ktorHttpClientFactory: () -> HttpClient,
-    private val walletProvider: WalletAttestationsProvider?,
+    private val walletInstanceAttestationProvider: WalletInstanceAttestationProvider?,
     private val walletAttestationKeyManager: WalletKeyManager,
     private val logger: Logger?,
+    private val issuerMetadataPolicy: IssuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
 ) {
 
     internal var clientAttestationPopKeyId: String? = null
@@ -127,7 +133,7 @@ internal class IssuerCreator(
 
     private suspend fun getIssuerMetadata(credentialIssuerId: CredentialIssuerId): Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>> {
         return ktorHttpClientFactory().use {
-            Issuer.metaData(it, credentialIssuerId, IssuerMetadataPolicy.IgnoreSigned)
+            Issuer.metaData(it, credentialIssuerId, issuerMetadataPolicy)
         }
     }
 
@@ -150,15 +156,20 @@ internal class IssuerCreator(
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
     ): Issuer {
-        return Issuer.makeWalletInitiated(
-            config = config.toOpenId4VCIConfig(
-                authorizationServerMetadata,
-                existingDpopKeyAlias
-            ),
-            credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
-            credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-            httpClient = ktorHttpClientFactory()
-        ).getOrThrow()
+        return try {
+            Issuer.makeWalletInitiated(
+                config = config.toOpenId4VCIConfig(
+                    authorizationServerMetadata,
+                    existingDpopKeyAlias
+                ),
+                credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
+                credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
+                httpClient = ktorHttpClientFactory()
+            ).getOrThrow()
+        } catch (e: Throwable) {
+            logger?.e(TAG, "Failed to create wallet-initiated issuer", e)
+            throw e
+        }
     }
 
     private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(): Result<ClientAuthentication> =
@@ -167,8 +178,8 @@ internal class IssuerCreator(
             when (val type = config.clientAuthenticationType) {
                 is OpenId4VciManager.ClientAuthenticationType.None -> ClientAuthentication.None(type.clientId)
                 is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> {
-                    val walletAttestationsProvider = checkNotNull(walletProvider) {
-                        "Wallet attestation provider is not provided in the IssuerCreator for attestation based client authentication"
+                    val walletAttestationsProvider = checkNotNull(walletInstanceAttestationProvider) {
+                        "WalletInstanceAttestationProvider is required for attestation-based client authentication"
                     }
                     val clientAttestationPOPJWSAlgs = clientAttestationPOPJWSAlgs
                         .takeUnless { it.isNullOrEmpty() }
@@ -183,7 +194,7 @@ internal class IssuerCreator(
                         .map {
                             clientAttestationPopKeyId = it.keyInfo.alias
                             with(it) {
-                                walletAttestationsProvider.toClientAuthentication().getOrThrow()
+                                walletAttestationsProvider.toClientAuthentication(type.clientId).getOrThrow()
                             }
                         }.getOrThrow()
                 }
@@ -201,56 +212,81 @@ internal class IssuerCreator(
     ): OpenId4VCIConfig {
         val auth = authorizationServerMetadata.toClientAuthentication().getOrThrow()
         clientAuthentication = auth
+        // Resolve DPoP usage
+        val dPoPUsage = when (dpopConfig) {
+            DPopConfig.Disabled -> DPoPUsage.Never
+
+            DPopConfig.Default, is DPopConfig.Custom -> {
+                val resolvedConfig = when (dpopConfig) {
+                    DPopConfig.Default -> DPopConfig.Default.make(context)
+                    is DPopConfig.Custom -> dpopConfig
+                    else -> error("unreachable")
+                }
+
+                val signingAlg = resolvedConfig.secureArea.supportedAlgorithms
+                    .firstOrNull { it.isSigning && it.joseAlgorithmIdentifier != null }
+                    ?: throw IllegalStateException("No signing algorithm available for DPoP")
+
+                val provisionDPoPSigner = if (existingDpopKeyAlias != null) {
+                    // Re-issuance: reuse existing DPoP key bound to the access token
+                    object : VciProvisionDPoPSigner {
+                        override val popAlgorithm = JwsAlgorithm(signingAlg.joseAlgorithmIdentifier!!)
+                        override suspend fun invoke(authorizationServer: HttpsUrl): Signer<JWK> {
+                            return SecureAreaDpopSigner.fromExistingKey(
+                                resolvedConfig, existingDpopKeyAlias, logger
+                            ).also {
+                                dpopKeyAlias = it.keyInfo.alias
+                            }
+                        }
+                    }
+                } else {
+                    // Normal issuance: create new DPoP key
+                    object : VciProvisionDPoPSigner {
+                        override val popAlgorithm = JwsAlgorithm(signingAlg.joseAlgorithmIdentifier!!)
+                        override suspend fun invoke(authorizationServer: HttpsUrl): Signer<JWK> {
+                            return SecureAreaDpopSigner(
+                                resolvedConfig, listOf(signingAlg), logger
+                            ).also {
+                                dpopKeyAlias = it.keyInfo.alias
+                            }
+                        }
+                    }
+                }
+
+                DPoPUsage.IfSupported(VciDPoPConfig(provisionDPoPSigner))
+            }
+        }
+
         return OpenId4VCIConfig(
             clientAuthentication = auth,
             authFlowRedirectionURI = URI.create(authFlowRedirectionURI),
-            encryptionSupportConfig = EncryptionSupportConfig(
-                credentialResponseEncryptionPolicy = CredentialResponseEncryptionPolicy.SUPPORTED,
-                ecConfig = EcConfig(ecKeyCurve = Curve.P_256),
-                rsaConfig = RsaConfig(rcaKeySize = 2048)
-            ),
-            dPoPSigner = if (existingDpopKeyAlias != null) {
-                // Re-issuance: reuse existing DPoP key bound to the access token
-                val resolvedConfig = when (val cfg = dpopConfig) {
-                    DPopConfig.Disabled -> null
-                    DPopConfig.Default -> DPopConfig.Default.make(context)
-                    is DPopConfig.Custom -> cfg
-                }
-                resolvedConfig?.let { cfg ->
-                    SecureAreaDpopSigner.fromExistingKey(cfg, existingDpopKeyAlias, logger).also {
-                        dpopKeyAlias = it.keyInfo.alias
-                    }
-                }
-            } else {
-                // Normal issuance: create new DPoP key
-                DPopSigner.makeIfSupported(
-                    context = context,
-                    config = dpopConfig,
-                    authorizationServerMetadata = authorizationServerMetadata,
-                    logger = logger
-                )
-                    .onSuccess { signer ->
-                        // Track DPoP key alias for re-issuance metadata
-                        dpopKeyAlias = (signer as SecureAreaDpopSigner).keyInfo.alias
-                    }
-                    .getOrElse {
-                        logger?.log(
-                            Logger.Record(
-                                level = Logger.Companion.LEVEL_DEBUG,
-                                message = "DPoP not supported: ${it.message}",
-                                sourceClassName = "eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator",
-                                sourceMethod = "toOpenId4VCIConfig"
-                            )
-                        )
-                        null
-                    }
-            },
+            encryptionSupportConfig = responseEncryptionConfig,
+            supportedCredentialReusePolicies = supportedCredentialReusePolicies,
+            dPoPUsage = dPoPUsage,
             parUsage = when (parUsage) {
-                OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported
-                OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required
+                OpenId4VciManager.Config.ParUsage.IF_SUPPORTED -> ParUsage.IfSupported()
+                OpenId4VciManager.Config.ParUsage.REQUIRED -> ParUsage.Required()
                 OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
-                else -> ParUsage.IfSupported
-            }
+                else -> ParUsage.IfSupported()
+            },
+            proofs = proofTypes.toProofsConfig(),
         )
     }
 }
+
+private fun OpenId4VciManager.SupportedProofTypes.toProofsConfig(): ProofsConfig {
+    return ProofsConfig(
+        isNoProofSupported = isNoProofSupported,
+        jwtProof = jwtProofAlgorithms?.let { algs ->
+            ProofsConfig.SupportedJwtProof(algs.mapToJWSAlgorithms())
+        },
+        attestationProof = attestationProofAlgorithms?.let { algs ->
+            ProofsConfig.SupportedAttestationProof(algs.mapToJWSAlgorithms())
+        },
+    )
+}
+
+private fun Set<Algorithm>.mapToJWSAlgorithms(): Set<JWSAlgorithm> =
+    mapNotNull { it.joseAlgorithmIdentifier }
+        .map { JWSAlgorithm.parse(it) }
+        .toSet()

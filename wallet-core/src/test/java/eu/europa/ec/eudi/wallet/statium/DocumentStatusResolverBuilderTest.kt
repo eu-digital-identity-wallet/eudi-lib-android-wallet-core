@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.statium
 
+import eu.europa.ec.eudi.statium.VerifyStatusListTokenCwtSignature
 import eu.europa.ec.eudi.statium.VerifyStatusListTokenJwtSignature
 import io.ktor.client.HttpClient
 import io.mockk.mockk
@@ -31,6 +32,7 @@ import kotlin.time.Duration.Companion.minutes
 class DocumentStatusResolverBuilderTest {
 
     private lateinit var mockVerifySignature: VerifyStatusListTokenJwtSignature
+    private lateinit var mockVerifyCwtSignature: VerifyStatusListTokenCwtSignature
     private lateinit var mockHttpClient: HttpClient
     private lateinit var mockHttpClientFactory: () -> HttpClient
     private lateinit var mockExtractor: StatusReferenceExtractor
@@ -38,6 +40,7 @@ class DocumentStatusResolverBuilderTest {
     @Before
     fun setup() {
         mockVerifySignature = mockk()
+        mockVerifyCwtSignature = mockk()
         mockHttpClient = mockk()
         mockHttpClientFactory = { mockHttpClient }
         mockExtractor = mockk()
@@ -48,7 +51,8 @@ class DocumentStatusResolverBuilderTest {
         val builder = DocumentStatusResolver.Builder()
 
         // Assert default values
-        assertEquals(VerifyStatusListTokenJwtSignature.x5c::class, builder.verifySignature::class)
+        assertEquals(VerifyStatusListTokenJwtSignature.x5c::class, builder.verifyJwtSignature::class)
+        assertEquals(VerifyStatusListTokenCwtSignature.x5c::class, builder.verifyCwtSignature::class)
         assertEquals(Duration.ZERO, builder.allowedClockSkew)
         assertEquals(DefaultStatusReferenceExtractor, builder.extractor)
     }
@@ -58,13 +62,15 @@ class DocumentStatusResolverBuilderTest {
         val builder = DocumentStatusResolver.Builder()
 
         // Apply custom values using individual setters
-        builder.verifySignature = mockVerifySignature
+        builder.verifyJwtSignature = mockVerifySignature
+        builder.verifyCwtSignature = mockVerifyCwtSignature
         builder.ktorHttpClientFactory = mockHttpClientFactory
         builder.allowedClockSkew = 5.minutes
         builder.extractor = mockExtractor
 
         // Assert custom values
-        assertSame(mockVerifySignature, builder.verifySignature)
+        assertSame(mockVerifySignature, builder.verifyJwtSignature)
+        assertSame(mockVerifyCwtSignature, builder.verifyCwtSignature)
         assertSame(mockHttpClientFactory, builder.ktorHttpClientFactory)
         assertEquals(5.minutes, builder.allowedClockSkew)
         assertSame(mockExtractor, builder.extractor)
@@ -73,13 +79,15 @@ class DocumentStatusResolverBuilderTest {
     @Test
     fun `builder should apply custom values using fluent API`() {
         val builder = DocumentStatusResolver.Builder()
-            .withVerifySignature(mockVerifySignature)
+            .withVerifyJwtSignature(mockVerifySignature)
+            .withVerifyCwtSignature(mockVerifyCwtSignature)
             .withKtorHttpClientFactory(mockHttpClientFactory)
             .withAllowedClockSkew(10.minutes)
             .withExtractor(mockExtractor)
 
         // Assert custom values
-        assertSame(mockVerifySignature, builder.verifySignature)
+        assertSame(mockVerifySignature, builder.verifyJwtSignature)
+        assertSame(mockVerifyCwtSignature, builder.verifyCwtSignature)
         assertSame(mockHttpClientFactory, builder.ktorHttpClientFactory)
         assertEquals(10.minutes, builder.allowedClockSkew)
         assertSame(mockExtractor, builder.extractor)
@@ -88,7 +96,8 @@ class DocumentStatusResolverBuilderTest {
     @Test
     fun `build should create DocumentStatusResolverImpl with correct parameters`() {
         val resolver = DocumentStatusResolver.Builder()
-            .withVerifySignature(mockVerifySignature)
+            .withVerifyJwtSignature(mockVerifySignature)
+            .withVerifyCwtSignature(mockVerifyCwtSignature)
             .withKtorHttpClientFactory(mockHttpClientFactory)
             .withAllowedClockSkew(15.minutes)
             .withExtractor(mockExtractor)
@@ -98,7 +107,8 @@ class DocumentStatusResolverBuilderTest {
         assertIs<DocumentStatusResolverImpl>(resolver)
 
         // Verify that the fields were set correctly
-        assertSame(mockVerifySignature, resolver.verifySignature)
+        assertSame(mockVerifySignature, resolver.verifyJwtSignature)
+        assertSame(mockVerifyCwtSignature, resolver.verifyCwtSignature)
         assertSame(mockHttpClientFactory, resolver.ktorHttpClientFactory)
         assertEquals(15.minutes, resolver.allowedClockSkew)
         assertSame(mockExtractor, resolver.extractor)
@@ -107,7 +117,8 @@ class DocumentStatusResolverBuilderTest {
     @Test
     fun `invoke with lambda should create properly configured resolver`() = runTest {
         val resolver = DocumentStatusResolver {
-            verifySignature = mockVerifySignature
+            verifyJwtSignature = mockVerifySignature
+            verifyCwtSignature = mockVerifyCwtSignature
             ktorHttpClientFactory = mockHttpClientFactory
             allowedClockSkew = 5.minutes
             extractor = mockExtractor
@@ -117,7 +128,8 @@ class DocumentStatusResolverBuilderTest {
         assertIs<DocumentStatusResolverImpl>(resolver)
 
         // Verify that the fields were set correctly
-        assertSame(mockVerifySignature, resolver.verifySignature)
+        assertSame(mockVerifySignature, resolver.verifyJwtSignature)
+        assertSame(mockVerifyCwtSignature, resolver.verifyCwtSignature)
         assertSame(mockHttpClientFactory, resolver.ktorHttpClientFactory)
         assertEquals(5.minutes, resolver.allowedClockSkew)
         assertSame(mockExtractor, resolver.extractor)
@@ -143,7 +155,7 @@ class DocumentStatusResolverBuilderTest {
         assertIs<DocumentStatusResolverImpl>(resolver)
 
         // Verify that the fields were set correctly
-        assertSame(mockVerifySignature, resolver.verifySignature)
+        assertSame(mockVerifySignature, resolver.verifyJwtSignature)
         assertSame(mockHttpClientFactory, resolver.ktorHttpClientFactory)
         assertEquals(3.minutes, resolver.allowedClockSkew)
         assertSame(DefaultStatusReferenceExtractor, resolver.extractor)

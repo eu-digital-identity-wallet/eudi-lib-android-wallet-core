@@ -16,11 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.presentation
 
-import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuth
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
@@ -44,12 +41,19 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.javaX509Certificates
+import org.multipaz.request.Requester
+import org.multipaz.trustmanagement.TrustMetadata
 import java.security.cert.X509Certificate
 import java.time.Instant
 
@@ -64,6 +68,12 @@ class TransactionLogBuilderTest {
             listOf("Metadata 1", "Metadata 2")
         }
         builder = TransactionLogBuilder(metadataResolver)
+        mockkStatic("org.multipaz.crypto.X509CertChainJvmKt")
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test
@@ -176,6 +186,11 @@ class TransactionLogBuilderTest {
         assertEquals(nonPresentationLog, result)
     }
 
+    /**
+     * Trust-verified verifier (i.e. cert chain validated against the configured trust store)
+     * carries a non-null [TrustMetadata]. The builder must surface its display name, mark the
+     * relying party as verified, and Base64-encode each certificate in the chain.
+     */
     @Test
     fun `withRelyingParty with valid processed request updates log correctly`() {
         val initialLog = builder.createEmptyPresentationLog()
@@ -183,21 +198,13 @@ class TransactionLogBuilderTest {
         val x509Certificate = mockk<X509Certificate> {
             every { encoded } returns "cert-data".toByteArray()
         }
-
-        val readerAuth = mockk<ReaderAuth> {
-            every { readerCommonName } returns "Test Relying Party"
-            every { readerCertificateChain } returns listOf(x509Certificate)
-            every { isVerified } returns true
-            every { this@mockk.readerAuth } returns "reader-auth-data".toByteArray()
-        }
-
-        val requestedDocument = mockk<RequestedDocument> {
-            every { this@mockk.readerAuth } returns readerAuth
-        }
+        val certChain = mockk<X509CertChain>()
+        every { certChain.javaX509Certificates } returns listOf(x509Certificate)
 
         val processedRequest = mockk<RequestProcessor.ProcessedRequest> {
-            every { getOrNull() } returns mockk<RequestProcessor.ProcessedRequest.Success>() {
-                every { requestedDocuments } returns RequestedDocuments(listOf(requestedDocument))
+            every { getOrNull() } returns mockk<RequestProcessor.ProcessedRequest.Success>(relaxed = true) {
+                every { trustMetadata } returns TrustMetadata(displayName = "Test Relying Party")
+                every { requester } returns Requester(certChain = certChain)
             }
         }
 
@@ -207,10 +214,15 @@ class TransactionLogBuilderTest {
         assertEquals("Test Relying Party", updatedLog.relyingParty?.name)
         assertEquals(true, updatedLog.relyingParty?.isVerified)
         assertEquals(1, updatedLog.relyingParty?.certificateChain?.size)
-        assertNotNull(updatedLog.relyingParty?.readerAuth)
         assertTrue(updatedLog.timestamp >= initialLog.timestamp)
     }
 
+    /**
+     * Unverified verifier (`trustMetadata == null`) — the cert chain may have been presented but
+     * it didn't validate. The builder must still Base64-encode the chain (the UI can show "not
+     * trusted" with the certificate details), but `isVerified = false` and the name falls back
+     * to the default.
+     */
     @Test
     fun `withRelyingParty with unverified relying party sets correct values`() {
         val initialLog = builder.createEmptyPresentationLog()
@@ -218,21 +230,12 @@ class TransactionLogBuilderTest {
         val x509Certificate = mockk<X509Certificate> {
             every { encoded } returns "cert-data".toByteArray()
         }
+        val certChain = mockk<X509CertChain>()
+        every { certChain.javaX509Certificates } returns listOf(x509Certificate)
 
-        val readerAuth = mockk<ReaderAuth> {
-            every { readerCommonName } returns "Test Relying Party"
-            every { readerCertificateChain } returns listOf(x509Certificate)
-            every { isVerified } returns false
-            every { this@mockk.readerAuth } returns "reader-auth-data".toByteArray()
-        }
-
-        val requestedDocument = mockk<RequestedDocument> {
-            every { this@mockk.readerAuth } returns readerAuth
-        }
-        val requestedDocuments = RequestedDocuments(listOf(requestedDocument))
-
-        val processedRequestSuccess = mockk<RequestProcessor.ProcessedRequest.Success> {
-            every { this@mockk.requestedDocuments } returns requestedDocuments
+        val processedRequestSuccess = mockk<RequestProcessor.ProcessedRequest.Success>(relaxed = true) {
+            every { trustMetadata } returns null
+            every { requester } returns Requester(certChain = certChain)
         }
         val processedRequest = mockk<RequestProcessor.ProcessedRequest> {
             every { getOrNull() } returns processedRequestSuccess
@@ -242,19 +245,22 @@ class TransactionLogBuilderTest {
 
         assertNotNull(updatedLog.relyingParty)
         assertEquals(false, updatedLog.relyingParty?.isVerified)
+        assertEquals("Unidentified Relying Party", updatedLog.relyingParty?.name)
     }
 
+    /**
+     * Verifier presented no reader auth at all (no cert chain, no trust metadata) — e.g. an
+     * OpenID4VP `redirect_uri` scheme or a proximity request without reader auth. The builder
+     * must still produce a [TransactionLog.RelyingParty] entry with the default fallback name
+     * and an empty certificate chain.
+     */
     @Test
-    fun `withRelyingParty with null readerAuth returns log with default relyingParty`() {
+    fun `withRelyingParty with no reader auth returns log with default relyingParty`() {
         val initialLog = builder.createEmptyPresentationLog()
 
-        val requestedDocument = mockk<RequestedDocument> {
-            every { readerAuth } returns null
-        }
-        val requestedDocuments = RequestedDocuments(listOf(requestedDocument))
-
-        val processedRequestSuccess = mockk<RequestProcessor.ProcessedRequest.Success> {
-            every { this@mockk.requestedDocuments } returns requestedDocuments
+        val processedRequestSuccess = mockk<RequestProcessor.ProcessedRequest.Success>(relaxed = true) {
+            every { trustMetadata } returns null
+            every { requester } returns Requester(certChain = null)
         }
         val processedRequest = mockk<RequestProcessor.ProcessedRequest> {
             every { getOrNull() } returns processedRequestSuccess
@@ -262,7 +268,10 @@ class TransactionLogBuilderTest {
 
         val updatedLog = builder.withRelyingParty(initialLog, processedRequest)
 
+        assertNotNull(updatedLog.relyingParty)
         assertEquals("Unidentified Relying Party", updatedLog.relyingParty?.name)
+        assertEquals(false, updatedLog.relyingParty?.isVerified)
+        assertTrue(updatedLog.relyingParty?.certificateChain?.isEmpty() == true)
     }
 
     @Test

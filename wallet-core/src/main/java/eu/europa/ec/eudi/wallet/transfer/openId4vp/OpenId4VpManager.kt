@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
 import android.net.Uri
 import com.nimbusds.jose.util.Base64URL
-import org.jetbrains.annotations.VisibleForTesting
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
@@ -90,7 +89,7 @@ class OpenId4VpManager(
      * Uses the configuration and trust anchor from the request processor.
      */
     private val openId4Vp by lazy {
-        OpenId4Vp(
+        OpenId4Vp.overRedirects(
             openId4VPConfig = makeOpenId4VPConfig(
                 config,
                 requestProcessor.openid4VpX509CertificateTrust
@@ -189,6 +188,13 @@ class OpenId4VpManager(
                         val resolvedRequest = resolution.requestObject
                         activeRequestObject = resolvedRequest
                         logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
+                        try {
+                            config.encryptionPolicy.enforce(resolvedRequest.responseMode)
+                        } catch (e: IllegalArgumentException) {
+                            logger?.e(TAG, "EncryptionPolicy rejected request", e)
+                            transferEventListeners.onTransferEvent(TransferEvent.Error(e))
+                            return@launch
+                        }
                         val request = OpenId4VpRequest(resolvedRequest)
                         val processedRequest = requestProcessor.process(request)
                         transferEventListeners.onTransferEvent(

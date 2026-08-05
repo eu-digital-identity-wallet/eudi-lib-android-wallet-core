@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 European Commission
+ * Copyright (c) 2024-2025 European Commission
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
-import eu.europa.ec.eudi.openid4vci.DPoP
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -32,7 +31,6 @@ class OpenId4VciManagerBuilderTest {
     private val documentManager = mockk<DocumentManager>(relaxed = true)
     private val walletKeyManager = mockk<WalletKeyManager>(relaxed = true)
     private val config = OpenId4VciManager.Config(
-        issuerUrl = "https://issuer.example.com",
         clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.None("testClientId"),
         authFlowRedirectionURI = "app://redirect",
         dpopConfig = DPopConfig.Disabled,
@@ -65,27 +63,6 @@ class OpenId4VciManagerBuilderTest {
     fun `Builder throws exception when documentManager is not set`() {
         val builder = OpenId4VciManager.Builder(context)
             .config(config)
-
-        assertThrows(IllegalStateException::class.java) {
-            builder.build()
-        }
-    }
-
-    @Test
-    fun `Builder throws exception when walletAttestationsProvider is not set for AttestationBased authentication`() {
-        val configWithAttestationBased = OpenId4VciManager.Config(
-            issuerUrl = "https://issuer.example.com",
-            clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased,
-            authFlowRedirectionURI = "app://redirect",
-            dpopConfig = DPopConfig.Default,
-            parUsage = OpenId4VciManager.Config.ParUsage.IF_SUPPORTED,
-        )
-
-        val builder = OpenId4VciManager.Builder(context)
-            .config(configWithAttestationBased)
-            .documentManager(documentManager)
-            .walletKeyManager(walletKeyManager)
-        // Intentionally not setting walletAttestationsProvider
 
         assertThrows(IllegalStateException::class.java) {
             builder.build()

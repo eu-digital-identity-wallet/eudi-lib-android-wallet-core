@@ -22,13 +22,13 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
-import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
-import eu.europa.ec.eudi.wallet.dcapi.DCAPIRegistration
-import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequestProcessor
-import eu.europa.ec.eudi.wallet.dcapi.DocumentManagerWithDCAPI
-import eu.europa.ec.eudi.wallet.dcapi.getDefaultPrivilegedUserAgents
+import eu.europa.ec.eudi.wallet.dcapi.registration.DCAPIRegistration
+import eu.europa.ec.eudi.wallet.dcapi.process.isomdoc.IsoMdocDCAPIRequestProcessor
+import eu.europa.ec.eudi.wallet.dcapi.process.openid4vp.OpenId4VpDCAPIRequestProcessor
+import eu.europa.ec.eudi.wallet.dcapi.registration.DocumentManagerWithDCAPI
+import eu.europa.ec.eudi.wallet.dcapi.internal.getDefaultPrivilegedUserAgents
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMetadataCleanup
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -43,6 +43,11 @@ import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
+import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore
+import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
+import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
+import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
@@ -187,7 +192,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
      * @property transactionLogger the transaction logger to use if you want to provide a custom implementation
      * @property documentStatusResolver the document status resolver to use if you want to provide a custom implementation
      * @property dcapiRegistration the DCAPI registration to use if you want to provide a custom implementation, by default
-     * it will be [DCAPIIsoMdocRegistration] when the DCAPI is enabled in the configuration
+     * it will be [DefaultDCAPIRegistration] when the DCAPI is enabled in the configuration
      */
     class Builder(
         context: Context,
@@ -313,7 +318,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         /**
          * Configure with the given [DCAPIRegistration] to use for registering credentials
          * with the Digital Credential API (DCAPI).
-         * If not set, the default [DCAPIIsoMdocRegistration] will be used when the DCAPI is enabled
+         * If not set, the default [DefaultDCAPIRegistration] will be used when the DCAPI is enabled
          * in the configuration.
          *
          * @param dcapiRegistration the DCAPI registration
@@ -361,6 +366,30 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             ensureStrongBoxIsSupported(loggerToUse)
             ensureUserAuthIsSupported(loggerToUse)
 
+            // Build ETSI trust provider if configured
+            val etsiTrustProvider = config.etsiTrustConfig?.let {
+                EtsiTrustProvider(
+                    config = it,
+                    context = context,
+                    logger = loggerToUse,
+                    ktorHttpClientFactory = ktorHttpClientFactory,
+                )
+            }
+            val etsiSource = etsiTrustProvider?.isChainTrusted
+            val etsiClassifications = config.etsiTrustConfig?.classifications
+
+            // Resolve deferred issuer trust config
+            config.issuerTrustConfig = config.issuerTrustBlock?.let { block ->
+                IssuerTrustConfigBuilder().apply(block).build(etsiSource, etsiClassifications, loggerToUse)
+            }
+
+            // Resolve deferred status resolver config
+            config.statusResolverBlock?.let { block ->
+                val builder = DocumentStatusResolverConfigBuilder().apply(block)
+                config.documentStatusResolverClockSkew = builder.clockSkew
+                config.statusListTrustConfig = builder.buildTrustConfig(etsiSource, etsiClassifications)
+            }
+
             // Create shared issuance metadata storage (used by both the wrapper and OpenId4VciManager)
             val issuanceMetadataStorage = config.openId4VciConfig?.issuanceMetadataStorage ?: run {
                 val storagePath = File(
@@ -380,16 +409,33 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         )
                     }
                     .let { manager ->
-                        if (config.dcapiConfig?.enabled == true) {
+                        val dcapiCfg = config.dcapiConfig
+                        if (dcapiCfg?.enabled == true) {
                             DocumentManagerWithDCAPI(
                                 delegate = manager,
                                 dcapiRegistration = dcapiRegistration,
+                                supportedProtocols = dcapiCfg.supportedProtocols.toList(),
                                 logger = loggerToUse
                             )
                         } else manager
                     }
 
-            val readerTrustStoreToUse = readerTrustStore ?: defaultReaderTrustStore
+            val readerTrustStoreToUse = (readerTrustStore
+                ?: config.readerTrustStore
+                ?: when {
+                    config.useEtsiReaderTrust && etsiSource != null ->
+                        etsiSource.asReaderTrustStore()
+
+                    else -> config.readerTrustedCertificates?.let { certificates ->
+                        ReaderTrustStoreImpl(
+                            certificates,
+                            profileValidation = { _, _ -> true },
+                            revocationPolicy = config.revocationPolicy,
+                        )
+                    }
+                })?.also {
+                if (it is EtsiReaderTrustStore) it.logger = loggerToUse
+            }
 
             val transferManager = getTransferManager(documentManagerToUse, readerTrustStoreToUse)
 
@@ -400,7 +446,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 loggerObj = loggerToUse
             ).wrapWithTrasactionLogger(documentManagerToUse, loggerToUse)
 
-            val documentStatusResolverToUse = getDocumentStatusResolver()
+            val documentStatusResolverToUse = getDocumentStatusResolver(loggerToUse)
 
             return EudiWalletImpl(
                 context = context,
@@ -436,8 +482,9 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 OpenId4VpManager(
                     config = openId4VpConfig,
                     requestProcessor = DcqlRequestProcessor(
-                        documentManager,
-                        readerTrustStore
+                        documentManager = documentManager,
+                        readerTrustStore = readerTrustStore,
+                        logger = loggerObj
                     ),
                     logger = loggerObj,
                     ktorHttpClientFactory = ktorHttpClientFactory
@@ -446,15 +493,35 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             val dcapiManager = config.dcapiConfig?.takeIf { it.enabled }?.let { dcapiConfig ->
                 val privilegedAllowlist =
                     dcapiConfig.privilegedAllowlist ?: context.getDefaultPrivilegedUserAgents()
+
+                val supportedProtocols = dcapiConfig.supportedProtocols.toList()
+                val openId4VpSupported = supportedProtocols.filter { it.isOpenId4Vp }
+
+                // OpenID4VP-over-DC-API processor, only when at least one OpenID4VP protocol is enabled.
+                val openId4VpDcApiProcessor = config.openId4VpConfig
+                    ?.takeIf { openId4VpSupported.isNotEmpty() }
+                    ?.let { openId4VpConfig ->
+                        OpenId4VpDCAPIRequestProcessor(
+                            openId4VpConfig = openId4VpConfig,
+                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore),
+                            privilegedAllowlist = privilegedAllowlist,
+                            supportedProtocols = openId4VpSupported,
+                            ktorHttpClientFactory = ktorHttpClientFactory,
+                            logger = loggerObj,
+                        )
+                    }
                 DCAPIManager(
-                    DCAPIRequestProcessor(
+                    isoMdocRequestProcessor = IsoMdocDCAPIRequestProcessor(
                         documentManager = documentManager,
                         readerTrustStore = readerTrustStore,
                         readerAuthPolicy = config.readerAuthPolicy,
                         privilegedAllowlist = privilegedAllowlist,
                         zkSystemRepository = config.zkSystemRepository,
+                        zkResponsePolicy = config.zkResponsePolicy,
                         logger = loggerObj
                     ),
+                    supportedProtocols = supportedProtocols,
+                    openId4VpRequestProcessor = openId4VpDcApiProcessor,
                     logger = loggerObj
                 )
             }
@@ -472,16 +539,6 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 context.noBackupFilesDir.path,
                 "${config.documentManagerIdentifier}.db"
             ).absolutePath
-
-        /**
-         * Get the default [ReaderTrustStore] instance based on the certificates provided in the configuration
-         * @return the default [ReaderTrustStore] instance
-         */
-        @get:JvmSynthetic
-        internal val defaultReaderTrustStore: ReaderTrustStore?
-            get() = config.readerTrustedCertificates?.let { certificates ->
-                ReaderTrustStoreImpl(certificates, profileValidation = { _, _ -> true })
-            }
 
         /**
          * Get the default [Storage] instance based on the configuration
@@ -554,7 +611,8 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     clearBleCache = config.clearBleCache
                 )
             ),
-            zkSystemRepository = config.zkSystemRepository
+            zkSystemRepository = config.zkSystemRepository,
+            zkResponsePolicy = config.zkResponsePolicy
         )
 
         /**
@@ -563,13 +621,13 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          * @return the [DocumentStatusResolver] instance
          */
         @JvmSynthetic
-        internal fun getDocumentStatusResolver(): DocumentStatusResolver {
-            return documentStatusResolver ?: ktorHttpClientFactory?.let {
-                DocumentStatusResolver(
-                    ktorHttpClientFactory = it,
-                    allowedClockSkew = config.documentStatusResolverClockSkew
-                )
-            } ?: DocumentStatusResolver(allowedClockSkew = config.documentStatusResolverClockSkew)
+        internal fun getDocumentStatusResolver(logger: Logger): DocumentStatusResolver {
+            return documentStatusResolver ?: DocumentStatusResolver {
+                ktorHttpClientFactory?.let { withKtorHttpClientFactory(it) }
+                withAllowedClockSkew(config.documentStatusResolverClockSkew)
+                config.statusListTrustConfig?.let { withStatusListTrustConfig(it) }
+                withLogger(logger)
+            }
         }
 
         /**
