@@ -129,12 +129,11 @@ data class RegisteredCredential(
  * A claim the relying party is registered to request, identified by its path.
  * Corresponds to an entry of the WRPRC `claim` array.
  *
- * @property path the path pointer to the claim, following the OpenID4VP DCQL claims path syntax; a
- *   null element is the array wildcard
+ * @property path the path to the claim, following the OpenID4VP DCQL claims path syntax
  * @property values the expected values of the claim, when registered
  */
 data class RegisteredClaim(
-    val path: List<String?>,
+    val path: List<ClaimPathElement>,
     val values: List<String>? = null
 )
 
@@ -161,6 +160,19 @@ data class CredentialMeta(
     val vctValues: List<String>? = null,
     val doctypeValue: String? = null
 )
+
+/**
+ * The [CredentialMeta] for the given properties, or null when neither identifies an attestation type.
+ */
+internal fun credentialMetaOrNull(
+    doctypeValue: String? = null,
+    vctValues: List<String>? = null,
+): CredentialMeta? =
+    if (doctypeValue == null && vctValues.isNullOrEmpty()) {
+        null
+    } else {
+        CredentialMeta(vctValues = vctValues, doctypeValue = doctypeValue)
+    }
 
 /**
  * An intermediary presenting a request on behalf of the relying party. Corresponds to the WRPRC

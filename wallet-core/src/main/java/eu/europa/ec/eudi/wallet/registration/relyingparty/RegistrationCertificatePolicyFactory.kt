@@ -50,7 +50,7 @@ internal fun wrpRegistrationCertificatePolicy(
 ): RegistrationCertificatePolicy =
     RegistrationCertificatePolicy { accessCertificate, registrationCertificate, dcql ->
         val serialized = decodeSerializedRegistrationCertificate(registrationCertificate)
-        val requestedAttestations = dcql.toRequestedAttestationInfos()
+        val requestedAttestations = dcql.toRequestedAttestations()
         val result = if (serialized == null) {
             RegistrationCertificateResult.Failed(RegistrationFailureReason.MALFORMED)
         } else when (val authentication = authenticator.authenticate(serialized)) {

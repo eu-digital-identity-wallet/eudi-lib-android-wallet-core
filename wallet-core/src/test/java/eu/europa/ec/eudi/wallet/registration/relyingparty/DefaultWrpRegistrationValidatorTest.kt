@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
@@ -38,7 +37,7 @@ class DefaultWrpRegistrationValidatorTest {
         val result = validator.validate(
             registrationCertificate = null,
             readerAccessChain = emptyList(),
-            requestedAttestations = emptyList(),
+            requestedDocuments = emptyList()
         )
 
         assertEquals(
@@ -56,11 +55,11 @@ class DefaultWrpRegistrationValidatorTest {
         coEvery { authenticator.authenticate(any()) } returns WrprcAuthentication.Authentic(registration)
         coEvery { evaluator.evaluate(registration, any(), any()) } returns evaluation
 
-        val requested = listOf(RequestedAttestationInfo(format = "mso_mdoc"))
-        val result = validator.validate(
+        val requested = listOf(RequestedAttestation(format = "mso_mdoc"))
+        val result = validator.validateAttestations(
             registrationCertificate = byteArrayOf(1, 2, 3),
             readerAccessChain = emptyList(),
-            requestedAttestations = requested,
+            requested = requested
         )
 
         assertSame(evaluation, result)
@@ -75,7 +74,7 @@ class DefaultWrpRegistrationValidatorTest {
         val result = validator.validate(
             registrationCertificate = byteArrayOf(9),
             readerAccessChain = emptyList(),
-            requestedAttestations = emptyList(),
+            requestedDocuments = emptyList()
         )
 
         assertEquals(

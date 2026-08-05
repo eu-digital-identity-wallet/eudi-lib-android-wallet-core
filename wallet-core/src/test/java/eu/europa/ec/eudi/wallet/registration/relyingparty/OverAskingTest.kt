@@ -16,6 +16,7 @@
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
 import eu.europa.ec.eudi.wallet.registration.CredentialMeta
+import eu.europa.ec.eudi.wallet.registration.claimPath
 import eu.europa.ec.eudi.wallet.registration.OverAskedClaim
 import eu.europa.ec.eudi.wallet.registration.RegisteredClaim
 import eu.europa.ec.eudi.wallet.registration.RegisteredCredential
@@ -71,6 +72,42 @@ class OverAskingTest {
         assertEquals(listOf(overAsked("family_name"), overAsked("given_name")), result)
     }
 
+    /**
+     * A credential query must state the attestation type for both supported formats, `doctype_value`
+     * for mdoc and `vct_values` for SD-JWT VC (OpenID4VP clauses B.2.3 and B.3.5). A query that omits
+     * it cannot be scoped to a registered type, so its claims are reported.
+     */
+    @Test
+    fun `a request naming no attestation type is outside a registration that names one`() {
+        val registration = RegistrationCertificate(
+            requestedCredentials = listOf(registeredMdl("family_name")),
+        )
+
+        val result = registration.findOverAskedClaims(untypedRequest("family_name"))
+
+        assertEquals(1, result.size)
+        assertEquals(claimPath(MDL_NAMESPACE, "family_name"), result.single().path)
+    }
+
+    /**
+     * The attestation type is mandatory in a registered credential: `meta` has multiplicity [1..1] in
+     * ETSI TS 119 475 clause B.2.9, the standard the registration certificate is required to comply
+     * with. An entry without it identifies no attestation, so it covers nothing rather than every
+     * attestation of its format.
+     */
+    @Test
+    fun `a registration naming no attestation type covers nothing`() {
+        val registration = RegistrationCertificate(
+            requestedCredentials = listOf(
+                RegisteredCredential(format = "mso_mdoc", claims = emptyList()),
+            ),
+        )
+
+        val result = registration.findOverAskedClaims(mdlRequest("family_name"))
+
+        assertEquals(listOf(overAsked("family_name")), result)
+    }
+
     @Test
     fun `no registered credentials and no requested claims reports nothing`() {
         val registration = RegistrationCertificate(requestedCredentials = emptyList())
@@ -80,21 +117,28 @@ class OverAskingTest {
         assertTrue(result.isEmpty())
     }
 
+    /**
+     * The array wildcard applies to arrays only: a path element of `null` selects all elements of the
+     * currently selected array, and OpenID4VP clause 7.1.1 makes it an error against anything else. An
+     * mdoc path is exactly two strings (clause 7.2), so a namespace is never covered by a wildcard —
+     * "every claim of this attestation" is expressed by registering no claims at all, which the test
+     * above covers.
+     */
     @Test
-    fun `a registered null wildcard path covers any requested element at that position`() {
+    fun `a registered wildcard does not cover an mdoc namespace`() {
         val registration = RegistrationCertificate(
             requestedCredentials = listOf(
                 RegisteredCredential(
                     format = "mso_mdoc",
                     meta = CredentialMeta(doctypeValue = MDL_DOCTYPE),
-                    claims = listOf(RegisteredClaim(path = listOf(MDL_NAMESPACE, null))),
+                    claims = listOf(RegisteredClaim(path = claimPath(MDL_NAMESPACE, null))),
                 ),
             ),
         )
 
-        val result = registration.findOverAskedClaims(mdlRequest("family_name", "portrait"))
+        val result = registration.findOverAskedClaims(mdlRequest("family_name"))
 
-        assertTrue(result.isEmpty())
+        assertEquals(listOf(overAsked("family_name")), result)
     }
 
     @Test
@@ -104,7 +148,7 @@ class OverAskingTest {
                 RegisteredCredential(
                     format = "mso_mdoc",
                     meta = CredentialMeta(doctypeValue = MDL_DOCTYPE),
-                    claims = listOf(RegisteredClaim(path = listOf("other.namespace", null))),
+                    claims = listOf(RegisteredClaim(path = claimPath("other.namespace", null))),
                 ),
             ),
         )
@@ -115,12 +159,22 @@ class OverAskingTest {
     }
 }
 
+/** A request whose credential query carries an empty `meta`, so it names no attestation type. */
+private fun untypedRequest(vararg elements: String): List<RequestedAttestation> =
+    listOf(
+        RequestedAttestation(
+            format = "mso_mdoc",
+            meta = null,
+            claimPaths = elements.map { claimPath(MDL_NAMESPACE, it) },
+        ),
+    )
+
 private fun mdlRequest(vararg elements: String): List<RequestedAttestation> =
     listOf(
         RequestedAttestation(
             format = "mso_mdoc",
             meta = CredentialMeta(doctypeValue = MDL_DOCTYPE),
-            claimPaths = elements.map { listOf(MDL_NAMESPACE, it) },
+            claimPaths = elements.map { claimPath(MDL_NAMESPACE, it) },
         ),
     )
 
@@ -128,12 +182,12 @@ private fun registeredMdl(vararg elements: String): RegisteredCredential =
     RegisteredCredential(
         format = "mso_mdoc",
         meta = CredentialMeta(doctypeValue = MDL_DOCTYPE),
-        claims = elements.map { RegisteredClaim(path = listOf(MDL_NAMESPACE, it)) },
+        claims = elements.map { RegisteredClaim(path = claimPath(MDL_NAMESPACE, it)) },
     )
 
 private fun overAsked(element: String): OverAskedClaim =
     OverAskedClaim(
         format = "mso_mdoc",
         meta = CredentialMeta(doctypeValue = MDL_DOCTYPE),
-        path = listOf(MDL_NAMESPACE, element),
+        path = claimPath(MDL_NAMESPACE, element),
     )
