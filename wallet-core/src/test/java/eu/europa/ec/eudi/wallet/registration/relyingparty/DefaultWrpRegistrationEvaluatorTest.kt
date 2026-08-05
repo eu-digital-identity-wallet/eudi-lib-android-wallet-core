@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.wallet.registration.relyingparty
 
 import eu.europa.ec.eudi.wallet.registration.CertificateTrust
 import eu.europa.ec.eudi.wallet.registration.CredentialMeta
+import eu.europa.ec.eudi.wallet.registration.claimPath
 import eu.europa.ec.eudi.wallet.registration.Intermediary
 import eu.europa.ec.eudi.wallet.registration.OverAskedClaim
 import eu.europa.ec.eudi.wallet.registration.RegisteredClaim
@@ -26,7 +27,6 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 import eu.europa.ec.eudi.wallet.registration.RegistrationIdentifier
 import eu.europa.ec.eudi.wallet.registration.RevocationOutcome
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.statium.StatusIndex
 import eu.europa.ec.eudi.statium.StatusReference
 import io.mockk.mockk
@@ -226,7 +226,7 @@ class DefaultWrpRegistrationEvaluatorTest {
                         format = "mso_mdoc",
                         meta = CredentialMeta(doctypeValue = "org.iso.18013.5.1.mDL"),
                         claims = listOf(
-                            RegisteredClaim(path = listOf("org.iso.18013.5.1", "family_name")),
+                            RegisteredClaim(path = claimPath("org.iso.18013.5.1", "family_name")),
                         ),
                     ),
                 ),
@@ -236,12 +236,12 @@ class DefaultWrpRegistrationEvaluatorTest {
                 registration = registration,
                 accessCertificate = certificateWithOrgId("ORG-123"),
                 requestedAttestations = listOf(
-                    RequestedAttestationInfo(
+                    RequestedAttestation(
                         format = "mso_mdoc",
-                        docType = "org.iso.18013.5.1.mDL",
+                        meta = CredentialMeta(doctypeValue = "org.iso.18013.5.1.mDL"),
                         claimPaths = listOf(
-                            listOf("org.iso.18013.5.1", "family_name"),
-                            listOf("org.iso.18013.5.1", "portrait"),
+                            claimPath("org.iso.18013.5.1", "family_name"),
+                            claimPath("org.iso.18013.5.1", "portrait"),
                         ),
                     ),
                 ),
@@ -253,7 +253,7 @@ class DefaultWrpRegistrationEvaluatorTest {
                     OverAskedClaim(
                         format = "mso_mdoc",
                         meta = CredentialMeta(doctypeValue = "org.iso.18013.5.1.mDL"),
-                        path = listOf("org.iso.18013.5.1", "portrait"),
+                        path = claimPath("org.iso.18013.5.1", "portrait"),
                     ),
                 ),
                 verified.overAskedClaims,

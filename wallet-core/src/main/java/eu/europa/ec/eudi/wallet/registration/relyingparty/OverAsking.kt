@@ -15,23 +15,25 @@
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
+import eu.europa.ec.eudi.wallet.registration.ClaimPathElement
 import eu.europa.ec.eudi.wallet.registration.CredentialMeta
 import eu.europa.ec.eudi.wallet.registration.OverAskedClaim
 import eu.europa.ec.eudi.wallet.registration.RegisteredCredential
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.covers
 
 /**
  * An attestation together with the claims a relying party requests from it in a presentation
- * request. Used to check the request against the registered scope.
+ * request, checked against the registered scope by a [WrpRegistrationEvaluator].
  *
  * @property format the requested attestation format, for example `dc+sd-jwt` or `mso_mdoc`
  * @property meta the properties that identify the requested attestation type
- * @property claimPaths the path pointers of the requested claims
+ * @property claimPaths the paths of the requested claims, one list of [ClaimPathElement] per claim
  */
-internal data class RequestedAttestation(
+data class RequestedAttestation(
     val format: String,
     val meta: CredentialMeta? = null,
-    val claimPaths: List<List<String>> = emptyList(),
+    val claimPaths: List<List<ClaimPathElement>> = emptyList(),
 )
 
 /**
@@ -40,7 +42,9 @@ internal data class RequestedAttestation(
  *
  * A requested claim is reported when no registered credential of the same attestation permits it; a
  * registered credential with no declared claims permits every claim of that attestation. When the
- * registration declares no requestable credentials, every requested claim is reported.
+ * registration declares no requestable credentials, every requested claim is reported. A registered
+ * credential or a request that does not identify its attestation type is matched by neither, since the
+ * type is mandatory in both.
  */
 internal fun RegistrationCertificate.findOverAskedClaims(
     requested: List<RequestedAttestation>,
@@ -54,8 +58,8 @@ internal fun RegistrationCertificate.findOverAskedClaims(
 
 private fun RegisteredCredential.matches(requested: RequestedAttestation): Boolean {
     if (format != requested.format) return false
-    val registeredMeta = meta ?: return true
-    val requestedMeta = requested.meta ?: return true
+    val registeredMeta = meta ?: return false
+    val requestedMeta = requested.meta ?: return false
     val docTypeMatch = registeredMeta.doctypeValue != null &&
         registeredMeta.doctypeValue == requestedMeta.doctypeValue
     val vctMatch = !registeredMeta.vctValues.isNullOrEmpty() &&
@@ -64,12 +68,5 @@ private fun RegisteredCredential.matches(requested: RequestedAttestation): Boole
     return docTypeMatch || vctMatch
 }
 
-private fun RegisteredCredential.allows(path: List<String>): Boolean =
+private fun RegisteredCredential.allows(path: List<ClaimPathElement>): Boolean =
     claims.isEmpty() || claims.any { it.path.covers(path) }
-
-/**
- * Whether this registered claims path covers a requested one: equal length and, at each position, an
- * equal element or a null wildcard (the DCQL "all array elements" pointer).
- */
-private fun List<String?>.covers(requested: List<String>): Boolean =
-    size == requested.size && indices.all { this[it] == null || this[it] == requested[it] }

@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import java.security.cert.X509Certificate
 
 /**
@@ -46,8 +45,8 @@ internal class ResolvedWrpRegistration {
     fun publish(
         certificate: ByteArray,
         accessCertificate: X509Certificate?,
-        requestedAttestations: List<RequestedAttestationInfo>,
-        result: RegistrationCertificateResult,
+        requestedAttestations: List<RequestedAttestation>,
+        result: RegistrationCertificateResult
     ) {
         evaluation = Evaluation(certificate, accessCertificate, requestedAttestations, result)
     }
@@ -61,7 +60,7 @@ internal class ResolvedWrpRegistration {
     fun take(
         certificate: ByteArray?,
         accessCertificate: X509Certificate?,
-        requestedAttestations: List<RequestedAttestationInfo>,
+        requestedAttestations: List<RequestedAttestation>
     ): RegistrationCertificateResult? {
         val published = evaluation ?: return null
         evaluation = null
@@ -76,7 +75,7 @@ internal class ResolvedWrpRegistration {
     private class Evaluation(
         val certificate: ByteArray,
         val accessCertificate: X509Certificate?,
-        val requestedAttestations: List<RequestedAttestationInfo>,
-        val result: RegistrationCertificateResult,
+        val requestedAttestations: List<RequestedAttestation>,
+        val result: RegistrationCertificateResult
     )
 }

@@ -80,7 +80,7 @@ val RegistrationCertificateResult.requiresExplicitApproval: Boolean
 data class OverAskedClaim(
     val format: String,
     val meta: CredentialMeta? = null,
-    val path: List<String>
+    val path: List<ClaimPathElement>
 )
 
 /**
@@ -93,5 +93,5 @@ data class OverAskedClaim(
  */
 data class OverProvidedAttestation(
     val format: String,
-    val meta: CredentialMeta? = null,
+    val meta: CredentialMeta? = null
 )

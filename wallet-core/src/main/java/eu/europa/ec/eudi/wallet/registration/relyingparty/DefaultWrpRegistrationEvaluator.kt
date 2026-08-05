@@ -23,7 +23,6 @@ import eu.europa.ec.eudi.wallet.registration.RevocationOutcome
 import eu.europa.ec.eudi.wallet.registration.checkStatusListRevocation
 import eu.europa.ec.eudi.wallet.registration.validateCertificate
 
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.statium.GetStatus
 import eu.europa.ec.eudi.statium.GetStatusListToken
 import eu.europa.ec.eudi.statium.Status
@@ -65,7 +64,7 @@ internal class DefaultWrpRegistrationEvaluator(
     override suspend fun evaluate(
         registration: RegistrationCertificate,
         accessCertificate: X509Certificate?,
-        requestedAttestations: List<RequestedAttestationInfo>,
+        requestedAttestations: List<RequestedAttestation>,
     ): RegistrationCertificateResult {
 
         registration.validateCertificate(accessCertificate, checkRevocation)?.let { failure ->
@@ -75,7 +74,7 @@ internal class DefaultWrpRegistrationEvaluator(
 
         // over-asking
         val overAskedClaims = registration.findOverAskedClaims(
-            requestedAttestations.map { it.toRequestedAttestation() },
+            requestedAttestations
         )
         logger?.d(
             TAG,

@@ -15,7 +15,6 @@
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import java.security.cert.X509Certificate
@@ -45,6 +44,6 @@ fun interface WrpRegistrationEvaluator {
     suspend fun evaluate(
         registration: RegistrationCertificate,
         accessCertificate: X509Certificate?,
-        requestedAttestations: List<RequestedAttestationInfo>,
+        requestedAttestations: List<RequestedAttestation>
     ): RegistrationCertificateResult
 }
