@@ -20,7 +20,6 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.openid4vp.Format
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
@@ -42,7 +41,8 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.relyingparty.extractRegistrationCertificate
-import eu.europa.ec.eudi.wallet.registration.relyingparty.toRequestedAttestationInfos
+import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrpRegistrationValidator
+import eu.europa.ec.eudi.wallet.registration.relyingparty.toRequestedAttestations
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
@@ -102,7 +102,7 @@ class DcqlRequestProcessor(
      * Validator for the relying party registration certificate. Set internally when the registration
      * policy is enforced; when null, the registration certificate is neither validated nor surfaced.
      */
-    internal var wrpRegistrationValidator: WrpRegistrationValidator? = null
+    internal var wrpRegistrationValidator: DefaultWrpRegistrationValidator? = null
 
     /**
      * Receives the registration certificate evaluation the OpenID4VP library policy produced while
@@ -196,14 +196,14 @@ class DcqlRequestProcessor(
     ): RegistrationCertificateResult? {
         val validator = wrpRegistrationValidator ?: return null
         val certificate = resolvedRequestObject.verifierInfo.extractRegistrationCertificate()
-        val requestedAttestations = dcql.toRequestedAttestationInfos()
+        val requestedAttestations = dcql.toRequestedAttestations()
         resolvedRegistration
             ?.take(certificate, accessChain.firstOrNull(), requestedAttestations)
             ?.let { return it }
-        return validator.validate(
+        return validator.validateAttestations(
             registrationCertificate = certificate,
             readerAccessChain = accessChain,
-            requestedAttestations = requestedAttestations,
+            requested = requestedAttestations,
         ) as? RegistrationCertificateResult
     }
 

@@ -21,12 +21,11 @@ import eu.europa.ec.eudi.iso18013.transfer.internal.getValidIssuedMsoMdocDocumen
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.EU_WRPRC_REQUEST_INFO_KEY
-import eu.europa.ec.eudi.iso18013.transfer.response.MSO_MDOC_FORMAT
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
+import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -138,7 +137,7 @@ class DeviceRequestProcessor(
                 validator.validate(
                     registrationCertificate = certificates.firstOrNull(),
                     readerAccessChain = readerCertChain,
-                    requestedAttestations = parsedRequest.docRequests.map { it.toRequestedAttestationInfo() },
+                    requestedDocuments = parsedRequest.docRequests.map { it.toRequestedDocument() },
                 )
             }
 
@@ -162,17 +161,13 @@ class DeviceRequestProcessor(
 }
 
 /**
- * Projects a single ISO 18013-5 [DocRequest] onto the [RequestedAttestationInfo] used to check the
- * request against the relying party's registered scope. The mdoc claim paths take the
- * `[namespace, element]` form.
+ * Projects a single ISO 18013-5 [DocRequest] onto the [RequestedDocument] used to check the request
+ * against the relying party's registered scope.
  */
-internal fun DocRequest.toRequestedAttestationInfo(): RequestedAttestationInfo =
-    RequestedAttestationInfo(
-        format = MSO_MDOC_FORMAT,
+internal fun DocRequest.toRequestedDocument(): RequestedDocument =
+    RequestedDocument(
         docType = docType,
-        claimPaths = nameSpaces.flatMap { (namespace, elements) ->
-            elements.keys.map { element -> listOf(namespace, element) }
-        }
+        nameSpaces = nameSpaces.mapValues { (_, elements) -> elements.keys }
     )
 
 /**

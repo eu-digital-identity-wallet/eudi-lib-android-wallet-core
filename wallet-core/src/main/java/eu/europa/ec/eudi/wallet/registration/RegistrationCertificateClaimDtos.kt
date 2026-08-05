@@ -17,6 +17,7 @@ package eu.europa.ec.eudi.wallet.registration
 
 import android.annotation.SuppressLint
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -69,17 +70,28 @@ internal fun CredentialDto.toProvidedAttestation(): ProvidedAttestation =
 
 private fun ClaimDto.toRegisteredClaim(): RegisteredClaim =
     RegisteredClaim(
-        path = path.map { it.contentOrNull },
+        path = path.map { it.toClaimPathElement() },
         values = values?.map { it.content },
     )
 
+/**
+ * Reads one element of a registered claim path: `null` is the array wildcard, a non-negative integer
+ * is an array index, and anything else is a claim name.
+ */
+private fun JsonPrimitive.toClaimPathElement(): ClaimPathElement = when {
+    this is JsonNull -> ClaimPathElement.AllArrayElements
+    !isString -> content.toIntOrNull()
+        ?.takeIf { it >= 0 }
+        ?.let { ClaimPathElement.ArrayElement(it) }
+        ?: ClaimPathElement.Claim(content)
+
+    else -> ClaimPathElement.Claim(content)
+}
+
 private fun JsonObject?.toCredentialMeta(): CredentialMeta? {
     if (this == null) return null
-    val vctValues = this["vct_values"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }
-    val doctypeValue = this["doctype_value"]?.jsonPrimitive?.contentOrNull
-    return if (vctValues.isNullOrEmpty() && doctypeValue == null) {
-        null
-    } else {
-        CredentialMeta(vctValues = vctValues, doctypeValue = doctypeValue)
-    }
+    return credentialMetaOrNull(
+        doctypeValue = this["doctype_value"]?.jsonPrimitive?.contentOrNull,
+        vctValues = this["vct_values"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull },
+    )
 }

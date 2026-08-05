@@ -16,12 +16,11 @@
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
-import eu.europa.ec.eudi.wallet.registration.CredentialMeta
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationInfo
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
+import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import java.security.cert.X509Certificate
 
 /**
@@ -40,7 +39,21 @@ internal class DefaultWrpRegistrationValidator(
     override suspend fun validate(
         registrationCertificate: ByteArray?,
         readerAccessChain: List<X509Certificate>,
-        requestedAttestations: List<RequestedAttestationInfo>,
+        requestedDocuments: List<RequestedDocument>
+    ): WrpRegistrationInfo = validateAttestations(
+        registrationCertificate = registrationCertificate,
+        readerAccessChain = readerAccessChain,
+        requested = requestedDocuments.map { it.toRequestedAttestation() },
+    )
+
+    /**
+     * Validates against requested attestations whose claim paths are already resolved, as the remote
+     * path produces them from the DCQL query.
+     */
+    internal suspend fun validateAttestations(
+        registrationCertificate: ByteArray?,
+        readerAccessChain: List<X509Certificate>,
+        requested: List<RequestedAttestation>
     ): WrpRegistrationInfo {
         val certificate = registrationCertificate
             ?: return RegistrationCertificateResult.Failed(RegistrationFailureReason.CERTIFICATE_ABSENT)
@@ -50,20 +63,11 @@ internal class DefaultWrpRegistrationValidator(
                 evaluator.evaluate(
                     registration = authentication.registration,
                     accessCertificate = readerAccessChain.firstOrNull(),
-                    requestedAttestations = requestedAttestations,
+                    requestedAttestations = requested
                 )
 
             is WrprcAuthentication.Invalid ->
                 RegistrationCertificateResult.Failed(authentication.reason)
         }
     }
-}
-
-internal fun RequestedAttestationInfo.toRequestedAttestation(): RequestedAttestation {
-    val meta = if (docType != null || !vctValues.isNullOrEmpty()) {
-        CredentialMeta(vctValues = vctValues, doctypeValue = docType)
-    } else {
-        null
-    }
-    return RequestedAttestation(format = format, meta = meta, claimPaths = claimPaths)
 }

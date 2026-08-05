@@ -24,19 +24,15 @@ import java.security.cert.X509Certificate
 interface WrpRegistrationInfo
 
 /**
- * An attestation requested in a presentation request, used by the validator to determine whether the
- * request asks for more than the relying party registered.
+ * A document requested in a device request, used by the validator to determine whether the request
+ * asks for more than the relying party registered.
  *
- * @property format the requested attestation format, for example `mso_mdoc`
- * @property docType the ISO/IEC-mdoc document type, when the attestation is an mdoc
- * @property vctValues the SD-JWT VC type values, when the attestation is an SD-JWT VC
- * @property claimPaths the path pointers of the requested claims
+ * @property docType the requested document type
+ * @property nameSpaces the requested data element identifiers, per namespace
  */
-data class RequestedAttestationInfo(
-    val format: String,
-    val docType: String? = null,
-    val vctValues: List<String>? = null,
-    val claimPaths: List<List<String>> = emptyList()
+data class RequestedDocument(
+    val docType: String,
+    val nameSpaces: Map<String, Set<String>> = emptyMap()
 )
 
 /**
@@ -48,7 +44,7 @@ fun interface WrpRegistrationValidator {
     suspend fun validate(
         registrationCertificate: ByteArray?,
         readerAccessChain: List<X509Certificate>,
-        requestedAttestations: List<RequestedAttestationInfo>
+        requestedDocuments: List<RequestedDocument>
     ): WrpRegistrationInfo
 }
 

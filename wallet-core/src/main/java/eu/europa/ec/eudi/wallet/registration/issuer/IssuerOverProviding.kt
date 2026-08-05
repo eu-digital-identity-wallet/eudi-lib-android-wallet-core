@@ -24,9 +24,9 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
  * `provides_attestations` scope.
  *
  * An offered attestation is reported when no registered provided attestation of the same format and
- * type covers it; a provided attestation with no declared type covers every attestation of that
- * format. When the registration declares no provided attestations, every offered attestation is
- * reported.
+ * type covers it. An attestation that does not identify its type is not matched on either side, since
+ * the type is mandatory. When the registration declares no provided attestations, every offered
+ * attestation is reported.
  */
 internal fun RegistrationCertificate.findOverProvidedAttestations(
     offered: List<OfferedAttestation>,
@@ -35,8 +35,8 @@ internal fun RegistrationCertificate.findOverProvidedAttestations(
 
 private fun ProvidedAttestation.covers(offered: OfferedAttestation): Boolean {
     if (format != offered.format) return false
-    val registeredMeta = meta ?: return true
-    val offeredMeta = offered.meta ?: return true
+    val registeredMeta = meta ?: return false
+    val offeredMeta = offered.meta ?: return false
     val docTypeMatch = registeredMeta.doctypeValue != null &&
         registeredMeta.doctypeValue == offeredMeta.doctypeValue
     val vctMatch = !registeredMeta.vctValues.isNullOrEmpty() &&

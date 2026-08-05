@@ -470,7 +470,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             // authentication, a reader trust store configured directly is therefore also used to
             // validate the registration certificate signer chain. Revocation status is checked only
             // against the ETSI Trusted Lists (registration certificate status context).
-            val wrpRegistrationValidator: WrpRegistrationValidator?
+            val wrpRegistrationValidator: DefaultWrpRegistrationValidator?
             val registrationCertificatePolicy: RegistrationCertificatePolicy?
             val resolvedRegistration: ResolvedWrpRegistration?
             if (config.wrpRegistrationPolicy == WrpRegistrationPolicy.Disabled) {
@@ -565,7 +565,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             transferManager: TransferManager,
             readerTrustStore: ReaderTrustStore?,
             loggerObj: Logger,
-            registrationValidator: WrpRegistrationValidator? = null,
+            registrationValidator: DefaultWrpRegistrationValidator? = null,
             registrationCertificatePolicy: RegistrationCertificatePolicy? = null,
             resolvedRegistration: ResolvedWrpRegistration? = null,
         ): PresentationManagerImpl {

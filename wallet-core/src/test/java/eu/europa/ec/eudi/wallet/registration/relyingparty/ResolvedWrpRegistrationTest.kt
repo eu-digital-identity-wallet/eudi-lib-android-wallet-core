@@ -15,8 +15,8 @@
  */
 package eu.europa.ec.eudi.wallet.registration.relyingparty
 
-import eu.europa.ec.eudi.iso18013.transfer.response.RequestedAttestationInfo
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.CredentialMeta
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 import org.junit.Assert.assertEquals
@@ -27,7 +27,7 @@ import java.security.cert.X509Certificate
 import java.util.Date
 
 private val CERTIFICATE = byteArrayOf(1, 2, 3)
-private val ATTESTATIONS = listOf(RequestedAttestationInfo(format = "mso_mdoc", docType = "org.iso.18013.5.1.mDL"))
+private val ATTESTATIONS = listOf(RequestedAttestation(format = "mso_mdoc", meta = CredentialMeta(doctypeValue = "org.iso.18013.5.1.mDL")))
 private val RESULT = RegistrationCertificateResult.Verified(RegistrationCertificate(name = "Relying Party"))
 
 class ResolvedWrpRegistrationTest {
@@ -77,7 +77,7 @@ class ResolvedWrpRegistrationTest {
     fun `an evaluation is not taken by a request asking for different attestations`() {
         resolvedRegistration.publish(CERTIFICATE, accessCertificate, ATTESTATIONS, RESULT)
 
-        val other = listOf(RequestedAttestationInfo(format = "mso_mdoc", docType = "eu.europa.ec.eudi.pid.1"))
+        val other = listOf(RequestedAttestation(format = "mso_mdoc", meta = CredentialMeta(doctypeValue = "eu.europa.ec.eudi.pid.1")))
         assertNull(resolvedRegistration.take(CERTIFICATE, accessCertificate, other))
     }
 
