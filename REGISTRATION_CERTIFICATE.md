@@ -23,7 +23,7 @@ compared against, and how the outcome is read.
 | Registered scope | `credentials` — what it may request | `provides_attestations` — what it may issue |
 | Out-of-scope finding | Over-**asking** (claim level) | Over-**providing** (attestation level) |
 | Policy | `WrpRegistrationPolicy` | `IssuerRegistrationPolicy` |
-| Outcome read from | `ProcessedRequest.Success.wrpRegistration` | `Offer.issuerRegistration`, `IssueEvent.IssuerRegistrationChecked` |
+| Outcome read from | `ProcessedRequest.Success.wrpRegistration` | `Offer.issuerRegistration`, `OpenId4VciManager.resolveIssuerRegistration(…)` |
 
 > **Note:** Registration-certificate handling is **enabled by default** on both paths.
 
@@ -289,9 +289,7 @@ issuer metadata; otherwise it is silently skipped and logged.
 **An absent certificate is not a failure to the wallet.** Metadata that carries no registration
 certificate yields `null` rather than `Failed(CERTIFICATE_ABSENT)`, so the application can tell "the
 issuer offered none" apart from "one was offered and did not validate". Metadata that carries more than
-one is reported as `Failed(MALFORMED)`. Neither is treated as a failure here — but note that the
-OpenID4VCI library does reject the issuance itself in these cases, as described under
-[Validation does not block](#validation-does-not-block).
+one is reported as `Failed(MALFORMED)`.
 
 ### Enabling and disabling
 
@@ -372,20 +370,32 @@ openId4VciManager.resolveDocumentOffer(offerUri) { result ->
 }
 ```
 
-**During issuance** — `IssueEvent.IssuerRegistrationChecked`, delivered before `IssueEvent.Started`
-whichever method started the issuance. Use it when the issuance does not begin from a resolved offer;
-it arrives only when there is an outcome:
+**Before issuance, on demand** — `OpenId4VciManager.resolveIssuerRegistration(…)`, for flows that do
+not begin from a resolved offer: issuing by configuration identifier, or before a re-issuance. It
+resolves the issuer metadata and returns the verdict up front, so the application can decide whether to
+proceed before any credential is requested:
 
 ```kotlin
-openId4VciManager.issueDocumentByConfigurationIdentifiers(issuerUrl, ids) { event ->
-    when (event) {
-        is IssueEvent.IssuerRegistrationChecked ->
-            if (event.result.requiresExplicitApproval) {
-                // warn the user before the issuance proceeds
-            }
-        // … the remaining issuance events
-        else -> Unit
+// wallet-initiated issuance, by issuer URL and offered configuration identifiers:
+val outcome = openId4VciManager.resolveIssuerRegistration(issuerUrl, credentialConfigurationIds)
+// or, before re-issuing an existing document:
+val outcome = openId4VciManager.resolveIssuerRegistration(documentId)
+
+when (val registration = outcome.getOrNull()) {
+    is RegistrationCertificateResult.Failed -> {
+        // the issuer could not be verified — registration.reason says why
+        // (UNTRUSTED_PROVIDER, EXPIRED, REVOKED, MALFORMED, …); inform the user and refuse if you choose to
+        val reason = registration.reason
     }
+    is RegistrationCertificateResult.Verified ->
+        if (registration.overProvidedAttestations.isEmpty()) {
+            // verified AND within the registered scope — nothing to warn about
+        } else {
+            // verified, but the issuer offers attestations beyond its registered scope (over-providing)
+            // registration.overProvidedAttestations — the attestation types outside the registered scope
+        }
+    // null: no verdict to act on — proceed as for an unregulated issuer
+    null -> Unit
 }
 ```
 
