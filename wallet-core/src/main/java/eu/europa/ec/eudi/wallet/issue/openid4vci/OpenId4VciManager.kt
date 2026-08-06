@@ -31,6 +31,7 @@ import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
@@ -58,6 +59,37 @@ interface OpenId4VciManager {
      * @param issuerUrl the issuer URL to resolve metadata from
      */
     suspend fun getIssuerMetadata(issuerUrl: String): Result<CredentialIssuerMetadata>
+
+    /**
+     * Resolves the credential issuer's registration certificate (ETSI TS 119 472-3 `issuer_info`)
+     * for the given issuer and credential configurations, without starting an issuance. Use it to
+     * obtain the outcome up front — to present it to the user or to decide whether to proceed — for
+     * flows that do not carry a resolved [Offer], such as direct configuration-identifier issuance.
+     *
+     * @param issuerUrl the issuer URL to resolve metadata from
+     * @param credentialConfigurationIds the offered credential configuration identifiers
+     * @return success with the validation verdict when a validation ran; a failure when no validation
+     *   applied (the wallet does not require signed issuer metadata, or the issuer published no
+     *   registration certificate); or a failure carrying the underlying error when the check could not
+     *   be performed
+     */
+    suspend fun resolveIssuerRegistration(
+        issuerUrl: String,
+        credentialConfigurationIds: List<String>
+    ): Result<RegistrationCertificateResult>
+
+    /**
+     * Resolves the credential issuer's registration certificate for the issuer and credential
+     * configuration of a previously issued [documentId], without starting a re-issuance. Use it to
+     * obtain the outcome before re-issuing, so a decision to refuse lands before the existing
+     * document is replaced.
+     *
+     * @param documentId the identifier of the document that would be re-issued
+     * @return success with the validation verdict when a validation ran; a failure when no validation
+     *   applied; or a failure carrying the underlying error when the check could not be performed,
+     *   including when no issuance metadata is stored for [documentId]
+     */
+    suspend fun resolveIssuerRegistration(documentId: DocumentId): Result<RegistrationCertificateResult>
 
 
     /**
