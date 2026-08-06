@@ -47,6 +47,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import io.ktor.client.HttpClient
@@ -328,20 +329,71 @@ internal class DefaultOpenId4VciManager(
      * disabled, signed issuer metadata is not configured, or no trust is available for the
      * certificate's signer chain.
      */
-    private suspend fun Offer.withIssuerRegistration(): Offer {
-        if (issuerMetadataPolicy !is IssuerMetadataPolicy.RequireSigned) return this
-        // Qualified: within this Offer receiver, issuerRegistration is the offer's own outcome.
-        val resolver = this@DefaultOpenId4VciManager.issuerRegistration ?: return this
-        val result = runCatching {
-            resolver.resolve(
+    private suspend fun Offer.withIssuerRegistration(): Offer =
+        copy(
+            issuerRegistration = evaluateIssuerRegistration(
                 metadata = issuerMetadata,
-                offeredConfigurationIds = credentialOffer.credentialConfigurationIdentifiers,
-            )
-        }.getOrElse {
-            logger?.e(TAG, "issuer registration resolution failed", it)
-            null
+                configurationIds = credentialOffer.credentialConfigurationIdentifiers,
+            ).getOrNull()
+        )
+
+    /**
+     * Authenticates and evaluates the credential issuer's registration certificate for the given
+     * metadata and offered configurations. A success carries the validation verdict; a failure means
+     * no validation applied — signed issuer metadata is not required, no resolver is available, or the
+     * issuer published no registration certificate — or carries the underlying error when the
+     * resolution itself failed.
+     */
+    private suspend fun evaluateIssuerRegistration(
+        metadata: CredentialIssuerMetadata,
+        configurationIds: List<CredentialConfigurationIdentifier>,
+    ): Result<RegistrationCertificateResult> {
+        if (issuerMetadataPolicy !is IssuerMetadataPolicy.RequireSigned) {
+            return Result.failure(IllegalStateException("issuer registration validation not applicable: signed issuer metadata is not required"))
         }
-        return copy(issuerRegistration = result)
+        val resolver = issuerRegistration
+            ?: return Result.failure(IllegalStateException("issuer registration validation not applicable: no registration resolver configured"))
+        return runCatching {
+            resolver.resolve(metadata = metadata, offeredConfigurationIds = configurationIds)
+        }.fold(
+            onSuccess = { result ->
+                if (result == null) {
+                    Result.failure(IllegalStateException("issuer registration validation not applicable: issuer published no registration certificate"))
+                } else {
+                    Result.success(result)
+                }
+            },
+            onFailure = { error ->
+                logger?.e(TAG, "issuer registration resolution failed", error)
+                Result.failure(error)
+            },
+        )
+    }
+
+    override suspend fun resolveIssuerRegistration(
+        issuerUrl: String,
+        credentialConfigurationIds: List<String>
+    ): Result<RegistrationCertificateResult> =
+        getIssuerMetadata(issuerUrl).fold(
+            onSuccess = { metadata ->
+                evaluateIssuerRegistration(
+                    metadata = metadata,
+                    configurationIds = credentialConfigurationIds.map { CredentialConfigurationIdentifier(it) },
+                )
+            },
+            onFailure = { error ->
+                logger?.e(TAG, "issuer metadata resolution failed", error)
+                Result.failure(error)
+            },
+        )
+
+    override suspend fun resolveIssuerRegistration(documentId: DocumentId): Result<RegistrationCertificateResult> {
+        val issuanceMetadata = loadIssuanceMetadata(documentId)
+            ?: return Result.failure(IllegalStateException("No issuance metadata stored for document $documentId"))
+        return resolveIssuerRegistration(
+            issuerUrl = issuanceMetadata.credentialIssuerId,
+            credentialConfigurationIds = listOf(issuanceMetadata.credentialConfigurationIdentifier),
+        )
     }
 
     override fun resumeWithAuthorization(uri: Uri) = issuerAuthorization.resumeFromUri(uri)
@@ -414,8 +466,6 @@ internal class DefaultOpenId4VciManager(
                 )
                 val requestMap = documentCreator.createDocuments(offer)
 
-                (offer.issuerRegistration ?: offer.withIssuerRegistration().issuerRegistration)
-                    ?.let { listener(IssueEvent.IssuerRegistrationChecked(it)) }
                 listener(IssueEvent.Started(requestMap.size))
 
                 //  Submit the issuance request using stored AuthorizedRequest
@@ -530,8 +580,6 @@ internal class DefaultOpenId4VciManager(
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
-        (offer.issuerRegistration ?: offer.withIssuerRegistration().issuerRegistration)
-            ?.let { listener(IssueEvent.IssuerRegistrationChecked(it)) }
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         listener(IssueEvent.Started(offer.offeredDocuments.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
