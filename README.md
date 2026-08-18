@@ -792,6 +792,16 @@ val config = EudiWalletConfig {
 > **HTTP Client:** `HttpClient()` with no explicit engine auto-discovers `ktor-client-android` at
 > runtime (already included as a `runtimeOnly` dependency by wallet-core).
 
+#### Advanced: Static Certificate or Keystore Trust Source
+
+For deployments that ship trust anchors with the app (offline, air-gapped, or pinned
+trust), a trust source can be built from **local certificate files** or a **Java
+KeyStore** with no HTTP client and no LoTE URL involved. The per-area builders accept the
+same ETSI types regardless of where the anchors come from.
+
+Read [STATIC_CERTIFICATE_TRUST_CONFIGURATION.md](STATIC_CERTIFICATE_TRUST_CONFIGURATION.md)
+for a step-by-step guide covering all trust areas
+
 #### Issuer Trust Verification
 
 Trust verification runs after the credential is received from the issuer and before it is stored.
