@@ -78,7 +78,8 @@ class ProcessedIsoMdocDCAPIRequest(
 ) : RequestProcessor.ProcessedRequest.Success(
     presentmentData = presentmentData,
     requester = requester,
-    trustMetadata = trustMetadata
+    trustMetadata = trustMetadata,
+    wrpRegistration = processedDeviceRequest.wrpRegistration
 ) {
 
     @OptIn(ExperimentalDigitalCredentialApi::class)

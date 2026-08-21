@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.iso18013.transfer.internal.stopPresentation
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
@@ -336,6 +337,7 @@ class TransferManagerImpl @JvmOverloads constructor(
         var retrievalMethods: List<DeviceRetrievalMethod>? = null
         var zkSystemRepository: ZkSystemRepository? = null
         var zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict
+        var wrpRegistrationValidator: WrpRegistrationValidator? = null
 
         /**
          * Document manager instance that will be used to retrieve the requested documents
@@ -387,6 +389,14 @@ class TransferManagerImpl @JvmOverloads constructor(
         }
 
         /**
+         * Validator for the relying party registration certificate carried in device requests.
+         * @param wrpRegistrationValidator
+         */
+        fun wrpRegistrationValidator(wrpRegistrationValidator: WrpRegistrationValidator?) = apply {
+            this.wrpRegistrationValidator = wrpRegistrationValidator
+        }
+
+        /**
          * Build a [eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl] instance
          * with [DeviceRequestProcessor] instance
          * @return [eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl]
@@ -401,6 +411,7 @@ class TransferManagerImpl @JvmOverloads constructor(
                     readerAuthPolicy = readerAuthPolicy,
                     zkSystemRepository = zkSystemRepository,
                     zkResponsePolicy = zkResponsePolicy,
+                    wrpRegistrationValidator = wrpRegistrationValidator
                 ),
                 retrievalMethods = retrievalMethods ?: emptyList()
             )

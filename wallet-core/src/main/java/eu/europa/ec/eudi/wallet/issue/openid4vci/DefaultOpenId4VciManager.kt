@@ -47,6 +47,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -81,6 +83,8 @@ internal class DefaultOpenId4VciManager(
     var logger: Logger? = null,
     var ktorHttpClientFactory: (() -> HttpClient)? = null,
     val issuerTrustConfig: IssuerTrustConfig? = null,
+    val issuerRegistrationEnabled: Boolean = false,
+    val issuerRegistration: IssuerRegistrationResolver? = null
 ) : OpenId4VciManager {
 
     internal val httpClientFactory
@@ -95,7 +99,7 @@ internal class DefaultOpenId4VciManager(
         OfferResolver(config, httpClientFactory, issuerMetadataPolicy)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(context, config, httpClientFactory, walletProvider, walletAttestationKeyManager, logger, issuerMetadataPolicy)
+        IssuerCreator(context, config, httpClientFactory, walletProvider, walletAttestationKeyManager, logger, issuerMetadataPolicy, issuerRegistrationEnabled, issuerRegistration)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         val handler = config.authorizationHandler ?: BrowserAuthorizationHandler(context, logger)
@@ -151,11 +155,12 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                val issuer = issuerCreator.createIssuer(
+                val (issuer, issuerRegistration) = issuerCreator.createIssuer(
                     issuerUrl,
                     credentialConfigurationIds.map{ id -> CredentialConfigurationIdentifier(id) }
                 )
-                doIssue(issuer, Offer(issuer.credentialOffer), txCode, listener)
+                val offer = Offer(issuer.credentialOffer, issuerRegistration)
+                doIssue(issuer, offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
@@ -172,8 +177,8 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                val issuer = issuerCreator.createIssuer(issuerUrl, format)
-                val offer = Offer(issuer.credentialOffer)
+                val (issuer, issuerRegistration) = issuerCreator.createIssuer(issuerUrl, format)
+                val offer = Offer(issuer.credentialOffer, issuerRegistration)
                 doIssue(issuer, offer, txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
@@ -209,8 +214,8 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                val issuer = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer, txCode, listener)
+                val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
+                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -228,8 +233,8 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
-                val issuer = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer, txCode, listener)
+                val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
+                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -308,6 +313,7 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onResolvedOffer) { coroutineScope, callback ->
             try {
                 val offer = offerResolver.resolve(offerUri, useCache = false).getOrThrow()
+                    .withIssuerRegistration()
                 callback(OfferResult.Success(offer))
                 coroutineScope.cancel("resolveDocumentOffer succeeded")
             } catch (e: Throwable) {
@@ -315,6 +321,79 @@ internal class DefaultOpenId4VciManager(
                 coroutineScope.cancel("resolveDocumentOffer failed", e)
             }
         }
+    }
+
+    /**
+     * Evaluates the credential issuer's registration certificate for this offer and returns a copy
+     * carrying the outcome. Returns the offer unchanged when issuer registration validation is
+     * disabled, signed issuer metadata is not configured, or no trust is available for the
+     * certificate's signer chain.
+     */
+    private suspend fun Offer.withIssuerRegistration(): Offer =
+        copy(
+            issuerRegistration = evaluateIssuerRegistration(
+                metadata = issuerMetadata,
+                configurationIds = credentialOffer.credentialConfigurationIdentifiers,
+            ).getOrNull()
+        )
+
+    /**
+     * Authenticates and evaluates the credential issuer's registration certificate for the given
+     * metadata and offered configurations. A success carries the validation verdict; a failure means
+     * no validation applied — signed issuer metadata is not required, no resolver is available, or the
+     * issuer published no registration certificate — or carries the underlying error when the
+     * resolution itself failed.
+     */
+    private suspend fun evaluateIssuerRegistration(
+        metadata: CredentialIssuerMetadata,
+        configurationIds: List<CredentialConfigurationIdentifier>,
+    ): Result<RegistrationCertificateResult> {
+        if (issuerMetadataPolicy !is IssuerMetadataPolicy.RequireSigned) {
+            return Result.failure(IllegalStateException("issuer registration validation not applicable: signed issuer metadata is not required"))
+        }
+        val resolver = issuerRegistration
+            ?: return Result.failure(IllegalStateException("issuer registration validation not applicable: no registration resolver configured"))
+        return runCatching {
+            resolver.resolve(metadata = metadata, offeredConfigurationIds = configurationIds)
+        }.fold(
+            onSuccess = { result ->
+                if (result == null) {
+                    Result.failure(IllegalStateException("issuer registration validation not applicable: issuer published no registration certificate"))
+                } else {
+                    Result.success(result)
+                }
+            },
+            onFailure = { error ->
+                logger?.e(TAG, "issuer registration resolution failed", error)
+                Result.failure(error)
+            },
+        )
+    }
+
+    override suspend fun resolveIssuerRegistration(
+        issuerUrl: String,
+        credentialConfigurationIds: List<String>
+    ): Result<RegistrationCertificateResult> =
+        getIssuerMetadata(issuerUrl).fold(
+            onSuccess = { metadata ->
+                evaluateIssuerRegistration(
+                    metadata = metadata,
+                    configurationIds = credentialConfigurationIds.map { CredentialConfigurationIdentifier(it) },
+                )
+            },
+            onFailure = { error ->
+                logger?.e(TAG, "issuer metadata resolution failed", error)
+                Result.failure(error)
+            },
+        )
+
+    override suspend fun resolveIssuerRegistration(documentId: DocumentId): Result<RegistrationCertificateResult> {
+        val issuanceMetadata = loadIssuanceMetadata(documentId)
+            ?: return Result.failure(IllegalStateException("No issuance metadata stored for document $documentId"))
+        return resolveIssuerRegistration(
+            issuerUrl = issuanceMetadata.credentialIssuerId,
+            credentialConfigurationIds = listOf(issuanceMetadata.credentialConfigurationIdentifier),
+        )
     }
 
     override fun resumeWithAuthorization(uri: Uri) = issuerAuthorization.resumeFromUri(uri)
@@ -343,7 +422,7 @@ internal class DefaultOpenId4VciManager(
                 //  Create Issuer using IssuerCreator (resolves issuer metadata)
                 //  Pass existing DPoP key alias so the same key is reused
                 //  (access token is bound to original key's thumbprint)
-                val issuer = issuerCreator.createIssuer(
+                val (issuer, issuerRegistration) = issuerCreator.createIssuer(
                     issuanceMetadata.credentialIssuerId,
                     listOf(CredentialConfigurationIdentifier(issuanceMetadata.credentialConfigurationIdentifier)),
                     existingDpopKeyAlias = issuanceMetadata.dPoPKeyAlias
@@ -373,7 +452,7 @@ internal class DefaultOpenId4VciManager(
                     issuerAuthorization.authorize(issuer, null)
                 }
 
-                val offer = Offer(issuer.credentialOffer)
+                val offer = Offer(issuer.credentialOffer, issuerRegistration)
 
                 //  Create a new UnsignedDocument (fresh keys) via DocumentCreator
                 //    This fires IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy

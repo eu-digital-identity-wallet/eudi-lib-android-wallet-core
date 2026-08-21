@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForMsoMdoc
 import eu.europa.ec.eudi.wallet.internal.verifiablePresentationForSdJwtVc
 import eu.europa.ec.eudi.wallet.internal.requireIssuedDocument
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
@@ -57,6 +58,9 @@ import org.multipaz.trustmanagement.TrustMetadata
  *   [presentmentSelections]: when `multiple = false`, each candidate credential becomes
  *   its own option; when `multiple = true`, all candidates of the query are grouped into
  *   one option.
+ * @param wrpRegistration the relying party's registration information resolved for
+ *   this request, or null when none was available. Exposed uniformly through
+ *   [RequestProcessor.ProcessedRequest.Success.wrpRegistration].
  */
 class ProcessedDcqlRequest(
     val resolvedRequestObject: ResolvedRequestObject,
@@ -65,11 +69,13 @@ class ProcessedDcqlRequest(
     requester: Requester,
     trustMetadata: TrustMetadata?,
     val msoMdocNonce: String,
-    private val multipleByQueryId: Map<QueryId, Boolean> = emptyMap()
+    private val multipleByQueryId: Map<QueryId, Boolean> = emptyMap(),
+    wrpRegistration: RegistrationCertificateResult? = null
 ) : RequestProcessor.ProcessedRequest.Success(
     presentmentData = presentmentData,
     requester = requester,
-    trustMetadata = trustMetadata
+    trustMetadata = trustMetadata,
+    wrpRegistration = wrpRegistration
 ) {
 
     /**
@@ -203,9 +209,10 @@ class ProcessedDcqlRequest(
 
     /**
      * Returns a copy of this request with its presentment tree replaced by [presentmentData],
-     * preserving the resolved request, document manager, requester, trust metadata, nonce and
-     * per-query `multiple` flags (so the `multiple`-aware [presentmentSelections] logic is kept).
-     * Useful for narrowing the offered credentials to a previously made selection.
+     * preserving the resolved request, document manager, requester, trust metadata, nonce,
+     * per-query `multiple` flags (so the `multiple`-aware [presentmentSelections] logic is kept) and
+     * the resolved relying party registration. Useful for narrowing the offered credentials to a
+     * previously made selection.
      */
     fun withPresentmentData(presentmentData: CredentialPresentmentData): ProcessedDcqlRequest =
         ProcessedDcqlRequest(
@@ -216,5 +223,6 @@ class ProcessedDcqlRequest(
             trustMetadata = trustMetadata,
             msoMdocNonce = msoMdocNonce,
             multipleByQueryId = multipleByQueryId,
+            wrpRegistration = wrpRegistration as? RegistrationCertificateResult
         )
 }

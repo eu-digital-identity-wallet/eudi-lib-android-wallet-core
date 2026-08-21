@@ -219,7 +219,7 @@ class EudiWalletBuilderTest {
 
         // Verify
         assertIs<EudiWalletImpl>(wallet)
-        verify(exactly = 1) { builder.getTransferManager(any(), customReaderTrustStore) }
+        verify(exactly = 1) { builder.getTransferManager(any(), customReaderTrustStore, any()) }
     }
 
     @Test

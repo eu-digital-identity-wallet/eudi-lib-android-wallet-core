@@ -31,6 +31,10 @@ import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocu
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationEvaluator
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
+import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationEvaluator
+import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfig
@@ -570,6 +574,111 @@ class EudiWalletConfig {
     var revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
         private set
 
+    /**
+     * The policy for handling the relying party's registration certificate during presentation
+     * requests.
+     *
+     * - [WrpRegistrationPolicy.Disabled]: the registration certificate is not validated or surfaced.
+     * - [WrpRegistrationPolicy.Enabled] (default): the registration certificate is validated and the user
+     *   is informed of the outcome — warned when it could not be validated and when requested
+     *   attributes fall outside the registered scope — without blocking the presentation.
+     *
+     * Validating a registration certificate against the ETSI Trusted Lists requires the Wallet-Relying
+     * Party registration certificate provider list to be configured; supply its location via the
+     * `wrprcProviders` entry of the ETSI trust configuration ([configureEtsiTrust]). When the ETSI
+     * trust source is not configured, the certificates set through [configureReaderTrustStore] are
+     * used as a testing fallback; without either, a registration certificate cannot be trusted and
+     * validation fails.
+     *
+     * @see WrpRegistrationPolicy
+     */
+    var wrpRegistrationPolicy: WrpRegistrationPolicy = WrpRegistrationPolicy.Enabled
+        private set
+
+    /**
+     * Configure the relying party registration policy.
+     *
+     * @param wrpRegistrationPolicy the relying party registration policy
+     * @return the [EudiWalletConfig] instance
+     * @see WrpRegistrationPolicy
+     */
+    fun configureWrpRegistrationPolicy(wrpRegistrationPolicy: WrpRegistrationPolicy) = apply {
+        this.wrpRegistrationPolicy = wrpRegistrationPolicy
+    }
+
+    /**
+     * A custom evaluator for the relying party's registration, applied once the registration
+     * certificate has been authenticated. It receives the described registration, the requester's
+     * access certificate and the requested attestations, and returns a
+     * [eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult].
+     *
+     * This is the recommended extension point for customizing the registration checks: the same
+     * evaluator governs every transport, since the wallet applies it after authenticating the
+     * certificate on the proximity and DC-API paths and supplies it to the OpenID4VP library on the
+     * remote path. When null, the built-in evaluator is used (validity, binding, revocation and
+     * over-asking).
+     *
+     * @see WrpRegistrationEvaluator
+     */
+    var wrpRegistrationEvaluator: WrpRegistrationEvaluator? = null
+        private set
+
+    /**
+     * Configure a custom relying party registration evaluator.
+     *
+     * @param evaluator the custom evaluator applied across all presentation channels
+     * @return the [EudiWalletConfig] instance
+     * @see WrpRegistrationEvaluator
+     */
+    fun configureWrpRegistrationEvaluator(evaluator: WrpRegistrationEvaluator) = apply {
+        this.wrpRegistrationEvaluator = evaluator
+    }
+
+    /**
+     * The issuer registration certificate policy applied during OpenID4VCI issuance;
+     * [IssuerRegistrationPolicy.Enabled] by default.
+     *
+     * @see IssuerRegistrationPolicy
+     */
+    var issuerRegistrationPolicy: IssuerRegistrationPolicy = IssuerRegistrationPolicy.Enabled
+        private set
+
+    /**
+     * Configure whether the wallet validates a credential issuer's registration certificate during
+     * issuance. Enabled by default; call with [IssuerRegistrationPolicy.Disabled] to opt out.
+     *
+     * The registration certificate is carried in the signed issuer metadata, so validation only runs
+     * when signed metadata is configured (via [configureIssuerTrust] `{ requireSignedMetadata() }`);
+     * otherwise it is silently skipped.
+     *
+     * @param policy the issuer registration policy
+     * @return the [EudiWalletConfig] instance
+     * @see IssuerRegistrationPolicy
+     */
+    fun configureIssuerRegistrationPolicy(policy: IssuerRegistrationPolicy) = apply {
+        this.issuerRegistrationPolicy = policy
+    }
+
+    /**
+     * A custom evaluator applied to an authenticated issuer registration certificate during issuance.
+     * When null, the built-in evaluator is used (validity, binding, revocation and over-providing).
+     *
+     * @see IssuerRegistrationEvaluator
+     */
+    var issuerRegistrationEvaluator: IssuerRegistrationEvaluator? = null
+        private set
+
+    /**
+     * Configure a custom issuer registration evaluator.
+     *
+     * @param evaluator the custom evaluator applied during issuance
+     * @return the [EudiWalletConfig] instance
+     * @see IssuerRegistrationEvaluator
+     */
+    fun configureIssuerRegistrationEvaluator(evaluator: IssuerRegistrationEvaluator) = apply {
+        this.issuerRegistrationEvaluator = evaluator
+    }
+
     var userAuthenticationRequired: Boolean = true
         internal set // internal for setting the default value from the builder
     var userAuthenticationTimeout: Duration = 0.milliseconds
@@ -774,6 +883,7 @@ class EudiWalletConfig {
      *     loteLocations(SupportedLists(
      *         pidProviders = Uri("https://trustedlist.../PIDProviders.jwt"),
      *         wrpacProviders = Uri("https://trustedlist.../WRPACProviders.jwt"),
+     *         wrprcProviders = Uri("https://trustedlist.../WRPRCProviders.jwt"),
      *     ))
      *     classifications(AttestationClassifications(
      *         pids = AttestationIdentifierPredicate.any(setOf(

@@ -44,6 +44,7 @@ import eu.europa.ec.eudi.openid4vp.VPConfiguration
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpFormatsSupported
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
@@ -232,6 +233,7 @@ internal fun generateJarmNonce(): String {
 internal fun makeOpenId4VPConfig(
     config: OpenId4VpConfig,
     trust: OpenId4VpReaderTrust,
+    registrationCertificatePolicy: RegistrationCertificatePolicy? = null,
 ): OpenId4VPConfig {
     val supportedClientIdPrefixes = config.clientIdSchemes.map { clientIdScheme ->
         when (clientIdScheme) {
@@ -258,10 +260,9 @@ internal fun makeOpenId4VPConfig(
             supportedAlgorithms = config.encryptionAlgorithms.map { it.nimbus },
             supportedMethods = config.encryptionMethods.map { it.nimbus }
         ),
-        vpConfiguration = VPConfiguration(
-            vpFormatsSupported = config.formats.toVpFormats()
-        ),
-        supportedClientIdPrefixes = supportedClientIdPrefixes
+        vpFormatsSupported = config.formats.toVpFormats(),
+        supportedClientIdPrefixes = supportedClientIdPrefixes,
+        registrationCertificatePolicy = registrationCertificatePolicy
     )
 }
 

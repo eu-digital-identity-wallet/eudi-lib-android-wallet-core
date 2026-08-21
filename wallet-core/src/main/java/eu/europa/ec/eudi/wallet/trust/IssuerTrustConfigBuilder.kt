@@ -21,7 +21,6 @@ import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForAttestation
 import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
-import eu.europa.ec.eudi.openid4vci.IssuerTrust
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
@@ -239,9 +238,7 @@ class IssuerTrustConfigBuilder {
                         "Signed metadata verification requires an IsChainTrustedForEUDIW trust source. " +
                             "Call ignoreSignedMetadata() to opt out."
                     )
-                val issuerTrust = IssuerTrust.ByCertificateChain(
-                    EtsiCertificateChainTrust(source, logger)
-                )
+                val issuerTrust = EtsiCertificateChainTrust(source, logger)
                 if (metadataPolicyMode == MetadataPolicyMode.REQUIRE) {
                     IssuerMetadataPolicy.RequireSigned(issuerTrust)
                 } else {

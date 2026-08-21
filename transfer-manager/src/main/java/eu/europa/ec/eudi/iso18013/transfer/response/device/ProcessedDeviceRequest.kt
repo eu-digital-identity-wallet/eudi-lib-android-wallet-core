@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.iso18013.transfer.internal.assertAgeOverRequestLimitFor
 import eu.europa.ec.eudi.iso18013.transfer.internal.flattenToSingleSelection
 import eu.europa.ec.eudi.iso18013.transfer.internal.requireIssuedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationInfo
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.iso18013.transfer.zkp.MatchedZkSystem
@@ -65,6 +66,8 @@ import org.multipaz.util.Constants
  *   carrying a `zkRequest` on its [docRequest][CredentialMatchSourceIso18013.docRequest].
  * @property zkResponsePolicy what to do if ZK proof generation fails after a compatible
  *   system was matched — strict failure vs. fallback to a regular full-disclosure document.
+ * @param wrpRegistration the resolved relying party registration information; null when no
+ *   registration validator is configured. Exposed through [Success.wrpRegistration].
  */
 class ProcessedDeviceRequest(
     private val documentManager: DocumentManager,
@@ -74,11 +77,13 @@ class ProcessedDeviceRequest(
     trustMetadata: TrustMetadata?,
     private val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
     private val zkSystemRepository: ZkSystemRepository? = null,
-    private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict
+    private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
+    wrpRegistration: WrpRegistrationInfo? = null
 ) : RequestProcessor.ProcessedRequest.Success(
     presentmentData = presentmentData,
     requester = requester,
-    trustMetadata = trustMetadata
+    trustMetadata = trustMetadata,
+    wrpRegistration = wrpRegistration
 ) {
 
     /**

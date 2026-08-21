@@ -31,6 +31,7 @@ import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.IF_SUPPORTED
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.NEVER
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Config.ParUsage.Companion.REQUIRED
@@ -41,6 +42,7 @@ import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import org.multipaz.crypto.Algorithm
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import io.ktor.client.HttpClient
 import java.util.concurrent.Executor
@@ -57,6 +59,37 @@ interface OpenId4VciManager {
      * @param issuerUrl the issuer URL to resolve metadata from
      */
     suspend fun getIssuerMetadata(issuerUrl: String): Result<CredentialIssuerMetadata>
+
+    /**
+     * Resolves the credential issuer's registration certificate (ETSI TS 119 472-3 `issuer_info`)
+     * for the given issuer and credential configurations, without starting an issuance. Use it to
+     * obtain the outcome up front — to present it to the user or to decide whether to proceed — for
+     * flows that do not carry a resolved [Offer], such as direct configuration-identifier issuance.
+     *
+     * @param issuerUrl the issuer URL to resolve metadata from
+     * @param credentialConfigurationIds the offered credential configuration identifiers
+     * @return success with the validation verdict when a validation ran; a failure when no validation
+     *   applied (the wallet does not require signed issuer metadata, or the issuer published no
+     *   registration certificate); or a failure carrying the underlying error when the check could not
+     *   be performed
+     */
+    suspend fun resolveIssuerRegistration(
+        issuerUrl: String,
+        credentialConfigurationIds: List<String>
+    ): Result<RegistrationCertificateResult>
+
+    /**
+     * Resolves the credential issuer's registration certificate for the issuer and credential
+     * configuration of a previously issued [documentId], without starting a re-issuance. Use it to
+     * obtain the outcome before re-issuing, so a decision to refuse lands before the existing
+     * document is replaced.
+     *
+     * @param documentId the identifier of the document that would be re-issued
+     * @return success with the validation verdict when a validation ran; a failure when no validation
+     *   applied; or a failure carrying the underlying error when the check could not be performed,
+     *   including when no issuance metadata is stored for [documentId]
+     */
+    suspend fun resolveIssuerRegistration(documentId: DocumentId): Result<RegistrationCertificateResult>
 
 
     /**
@@ -330,6 +363,8 @@ interface OpenId4VciManager {
         var walletKeyManager: WalletKeyManager? = null
         var walletAttestationsProvider: WalletAttestationsProvider? = null
         internal var issuerTrustConfig: IssuerTrustConfig? = null
+        internal var issuerRegistrationEnabled: Boolean = false
+        internal var issuerRegistration: IssuerRegistrationResolver? = null
 
         /**
          * Set the [Config] to use
@@ -394,6 +429,23 @@ interface OpenId4VciManager {
         }
 
         /**
+         * Enable or disable validation of the credential issuer's registration certificate.
+         * @return this builder
+         */
+        internal fun issuerRegistrationEnabled(enabled: Boolean) = apply {
+            this.issuerRegistrationEnabled = enabled
+        }
+
+        /**
+         * Set the resolver that authenticates and evaluates the credential issuer's registration
+         * certificate. When null the certificate is not validated.
+         * @return this builder
+         */
+        internal fun issuerRegistration(resolver: IssuerRegistrationResolver?) = apply {
+            this.issuerRegistration = resolver
+        }
+
+        /**
          * Build the [OpenId4VciManager]
          * @return the [OpenId4VciManager]
          * @throws [IllegalStateException] if config or documentManager is not set
@@ -416,7 +468,9 @@ interface OpenId4VciManager {
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 walletProvider = walletAttestationsProvider,
                 walletAttestationKeyManager = walletKeyManager,
-                issuerTrustConfig = issuerTrustConfig
+                issuerTrustConfig = issuerTrustConfig,
+                issuerRegistrationEnabled = issuerRegistrationEnabled,
+                issuerRegistration = issuerRegistration,
             )
         }
     }

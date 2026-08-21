@@ -180,7 +180,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.29.0"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.30.1"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -663,7 +663,7 @@ declare it explicitly:
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.29.0"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.30.1"
     // Required explicitly — Uri type is not transitive from wallet-core
     implementation "eu.europa.ec.eudi:eudi-lib-kmp-etsi-119602-consultation:${VERSION}"
 }
@@ -791,6 +791,16 @@ val config = EudiWalletConfig {
 >
 > **HTTP Client:** `HttpClient()` with no explicit engine auto-discovers `ktor-client-android` at
 > runtime (already included as a `runtimeOnly` dependency by wallet-core).
+
+#### Advanced: Static Certificate or Keystore Trust Source
+
+For deployments that ship trust anchors with the app (offline, air-gapped, or pinned
+trust), a trust source can be built from **local certificate files** or a **Java
+KeyStore** with no HTTP client and no LoTE URL involved. The per-area builders accept the
+same ETSI types regardless of where the anchors come from.
+
+Read [STATIC_CERTIFICATE_TRUST_CONFIGURATION.md](STATIC_CERTIFICATE_TRUST_CONFIGURATION.md)
+for a step-by-step guide covering all trust areas
 
 #### Issuer Trust Verification
 

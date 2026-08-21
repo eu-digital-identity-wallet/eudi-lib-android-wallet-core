@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
@@ -108,7 +109,8 @@ interface TransferManager : TransferEvent.Listenable {
             readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
             retrievalMethods: List<DeviceRetrievalMethod>? = null,
             zkSystemRepository: ZkSystemRepository? = null,
-            zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict
+            zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
+            wrpRegistrationValidator: WrpRegistrationValidator? = null
         ): TransferManager = TransferManagerImpl(context) {
             documentManager(documentManager)
             readerTrustStore?.let { readerTrustStore(it) }
@@ -116,6 +118,7 @@ interface TransferManager : TransferEvent.Listenable {
             retrievalMethods?.let { retrievalMethods(it) }
             zkSystemRepository?.let { zkSystemRepository(it) }
             zkResponsePolicy(zkResponsePolicy)
+            wrpRegistrationValidator(wrpRegistrationValidator)
         }
     }
 }

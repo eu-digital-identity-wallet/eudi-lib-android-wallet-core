@@ -28,6 +28,8 @@ import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.EncryptionParameters
 import eu.europa.ec.eudi.openid4vp.ErrorDispatchDetails
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
+import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
+import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.asException
@@ -72,7 +74,8 @@ class OpenId4VpManager(
     val requestProcessor: DcqlRequestProcessor,
     var logger: Logger? = null,
     var listenersExecutor: Executor? = null,
-    val ktorHttpClientFactory: (() -> HttpClient)? = null
+    val ktorHttpClientFactory: (() -> HttpClient)? = null,
+    private val registrationCertificatePolicy: RegistrationCertificatePolicy? = null
 ) : TransferEvent.Listenable, ReaderTrustStoreAware {
 
     /**
@@ -92,7 +95,8 @@ class OpenId4VpManager(
         OpenId4Vp.overRedirects(
             openId4VPConfig = makeOpenId4VPConfig(
                 config,
-                requestProcessor.openid4VpX509CertificateTrust
+                requestProcessor.openid4VpX509CertificateTrust,
+                registrationCertificatePolicy
             ),
             httpClient = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
                 .wrappedWithLogging(logger)
@@ -149,6 +153,12 @@ class OpenId4VpManager(
      * Uses IO dispatcher, supervisor job, and the exception handler above.
      */
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
+    /**
+     * Holds the registration certificate evaluation the OpenID4VP library policy produces while a
+     * request is resolved, for the request processor to reuse.
+     */
+    internal var resolvedRegistration: ResolvedWrpRegistration? = null
+
     private var resolveRequestUriJob: Job? = null
     private var sendResponseJob: Job? = null
 
@@ -161,6 +171,7 @@ class OpenId4VpManager(
      */
     fun resolveRequestUri(uri: String) {
         activeRequestObject = null
+        resolvedRegistration?.clear()
         resolveRequestUriJob?.cancel()
         resolveRequestUriJob = scope.launch {
             try {
@@ -185,6 +196,14 @@ class OpenId4VpManager(
 
                     is Resolution.Success -> {
                         logger?.d(TAG, "Resolution.Success")
+                        resolution.policyViolationWarnings
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { warnings ->
+                                logger?.d(
+                                    TAG,
+                                    "WRPRC policy warnings: ${warnings.joinToString { it.violation }}",
+                                )
+                            }
                         val resolvedRequest = resolution.requestObject
                         activeRequestObject = resolvedRequest
                         logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
