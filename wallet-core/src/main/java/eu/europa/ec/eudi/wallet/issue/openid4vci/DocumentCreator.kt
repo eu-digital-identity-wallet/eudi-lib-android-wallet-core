@@ -36,6 +36,9 @@ internal class DocumentCreator(
     suspend fun createDocuments(offer: Offer): Map<UnsignedDocument, Offer.OfferedDocument> =
         offer.offeredDocuments.associateBy { createDocument(it) }
 
+    suspend fun createDocuments(items: List<IssuanceItem>): Map<UnsignedDocument, IssuanceItem> =
+        items.associateBy { createDocument(it.offeredDocument) }
+
     suspend fun createDocument(offeredDocument: Offer.OfferedDocument): UnsignedDocument {
         val resolvedPolicy = resolveReusePolicy(
             offeredDocument.credentialReusePolicy,

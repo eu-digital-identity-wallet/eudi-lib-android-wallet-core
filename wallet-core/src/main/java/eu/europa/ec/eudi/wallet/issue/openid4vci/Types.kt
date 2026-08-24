@@ -16,4 +16,29 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
+
 typealias KeyAlias = String
+
+/**
+ * Represents an item to be issued, pairing an [Offer.OfferedDocument] with the
+ * payload type required for the credential request.
+ *
+ * Mirrors the distinction in [eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload]:
+ * - [ConfigurationBased]: no credential identifiers were returned by the Authorization Server
+ *   the request uses only the credential configuration identifier.
+ * - [IdentifierBased]: the Authorization Server returned credential identifiers in the token
+ *   response; each identifier represents a distinct credential dataset and requires its own request.
+ */
+internal sealed interface IssuanceItem {
+    val offeredDocument: Offer.OfferedDocument
+
+    data class ConfigurationBased(
+        override val offeredDocument: Offer.OfferedDocument,
+    ) : IssuanceItem
+
+    data class IdentifierBased(
+        override val offeredDocument: Offer.OfferedDocument,
+        val credentialIdentifier: CredentialIdentifier,
+    ) : IssuanceItem
+}

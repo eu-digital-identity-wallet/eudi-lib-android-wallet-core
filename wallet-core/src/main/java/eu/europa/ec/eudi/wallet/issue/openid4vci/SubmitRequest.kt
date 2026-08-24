@@ -37,10 +37,10 @@ internal class SubmitRequest(
     var authorizedRequest: AuthorizedRequest = authorizedRequest
         private set
 
-    suspend fun request(offeredDocuments: Map<UnsignedDocument, Offer.OfferedDocument>): Response {
-        return Response(offeredDocuments.mapValues { (unsignedDocument, offeredDocument) ->
+    suspend fun request(issuanceItems: Map<UnsignedDocument, IssuanceItem>): Response {
+        return Response(issuanceItems.mapValues { (unsignedDocument, issuanceItem) ->
             try {
-                val (keyAliases, outcome) = submitRequest(unsignedDocument, offeredDocument)
+                val (keyAliases, outcome) = submitRequest(unsignedDocument, issuanceItem)
                 ResponseResult(
                     keyAliases = keyAliases,
                     outcome = Result.success(outcome)
@@ -53,13 +53,19 @@ internal class SubmitRequest(
 
     private suspend fun submitRequest(
         unsignedDocument: UnsignedDocument,
-        offeredDocument: Offer.OfferedDocument,
+        issuanceItem: IssuanceItem,
         keyUnlockData: Map<KeyAlias, KeyUnlockData?>? = null,
     ): ResponseResult<SubmissionOutcome> {
-        val payload =
-            IssuanceRequestPayload.ConfigurationBased(offeredDocument.configurationIdentifier)
+        val configId = issuanceItem.offeredDocument.configurationIdentifier
+        val payload = when (issuanceItem) {
+            is IssuanceItem.ConfigurationBased ->
+                IssuanceRequestPayload.ConfigurationBased(configId)
+            is IssuanceItem.IdentifierBased ->
+                IssuanceRequestPayload.IdentifierBased(configId, issuanceItem.credentialIdentifier)
+        }
+
         val signers = unsignedDocument.getPoPSigners()
-        val proofTypesSupported = offeredDocument.configuration.proofTypesSupported
+        val proofTypesSupported = issuanceItem.offeredDocument.configuration.proofTypesSupported
 
         val (updatedAuthorizedRequest, outcome) = when {
             // Issuer requires no proof
@@ -77,7 +83,7 @@ internal class SubmitRequest(
                 authorizedRequest.requestWithJwtProofWithKeyAttestation(
                     payload, signers, keyUnlockData,
                     unlockResume = { updatedKeyUnlockData ->
-                        submitRequest(unsignedDocument, offeredDocument, updatedKeyUnlockData)
+                        submitRequest(unsignedDocument, issuanceItem, updatedKeyUnlockData)
                     }
                 )
             }
