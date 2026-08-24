@@ -18,13 +18,14 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class ExpandToIssuanceItemsTest {
+class ResolveIssuanceRequestPayloadsTest {
 
     private val configIdA = CredentialConfigurationIdentifier("config-a")
     private val configIdB = CredentialConfigurationIdentifier("config-b")
@@ -47,13 +48,13 @@ class ExpandToIssuanceItemsTest {
         val docB = createOfferedDocument(configIdB)
         val offer = createOffer(docA, docB)
 
-        val result = expandToIssuanceItems(offer, credentialIdentifiers = null)
+        val result = resolveIssuanceRequestPayloads(offer, credentialIdentifiers = null)
 
         assertEquals(2, result.size)
-        assertIs<IssuanceItem.ConfigurationBased>(result[0])
-        assertEquals(docA, result[0].offeredDocument)
-        assertIs<IssuanceItem.ConfigurationBased>(result[1])
-        assertEquals(docB, result[1].offeredDocument)
+        assertEquals(docA, result[0].first)
+        assertIs<IssuanceRequestPayload.ConfigurationBased>(result[0].second)
+        assertEquals(docB, result[1].first)
+        assertIs<IssuanceRequestPayload.ConfigurationBased>(result[1].second)
     }
 
     @Test
@@ -61,11 +62,11 @@ class ExpandToIssuanceItemsTest {
         val docA = createOfferedDocument(configIdA)
         val offer = createOffer(docA)
 
-        val result = expandToIssuanceItems(offer, credentialIdentifiers = emptyMap())
+        val result = resolveIssuanceRequestPayloads(offer, credentialIdentifiers = emptyMap())
 
         assertEquals(1, result.size)
-        assertIs<IssuanceItem.ConfigurationBased>(result[0])
-        assertEquals(docA, result[0].offeredDocument)
+        assertEquals(docA, result[0].first)
+        assertIs<IssuanceRequestPayload.ConfigurationBased>(result[0].second)
     }
 
     @Test
@@ -73,13 +74,13 @@ class ExpandToIssuanceItemsTest {
         val docA = createOfferedDocument(configIdA)
         val offer = createOffer(docA)
 
-        val result = expandToIssuanceItems(
+        val result = resolveIssuanceRequestPayloads(
             offer,
             credentialIdentifiers = mapOf(configIdA to emptyList()),
         )
 
         assertEquals(1, result.size)
-        assertIs<IssuanceItem.ConfigurationBased>(result[0])
+        assertIs<IssuanceRequestPayload.ConfigurationBased>(result[0].second)
     }
 
     @Test
@@ -88,15 +89,16 @@ class ExpandToIssuanceItemsTest {
         val offer = createOffer(docA)
         val credId = CredentialIdentifier("degree-1")
 
-        val result = expandToIssuanceItems(
+        val result = resolveIssuanceRequestPayloads(
             offer,
             credentialIdentifiers = mapOf(configIdA to listOf(credId)),
         )
 
         assertEquals(1, result.size)
-        val item = assertIs<IssuanceItem.IdentifierBased>(result[0])
-        assertEquals(docA, item.offeredDocument)
-        assertEquals(credId, item.credentialIdentifier)
+        assertEquals(docA, result[0].first)
+        val payload = assertIs<IssuanceRequestPayload.IdentifierBased>(result[0].second)
+        assertEquals(credId, payload.credentialIdentifier)
+        assertEquals(configIdA, payload.credentialConfigurationIdentifier)
     }
 
     @Test
@@ -107,19 +109,19 @@ class ExpandToIssuanceItemsTest {
         val credId2 = CredentialIdentifier("degree-electrical")
         val credId3 = CredentialIdentifier("degree-mechanical")
 
-        val result = expandToIssuanceItems(
+        val result = resolveIssuanceRequestPayloads(
             offer,
             credentialIdentifiers = mapOf(configIdA to listOf(credId1, credId2, credId3)),
         )
 
         assertEquals(3, result.size)
-        result.forEachIndexed { index, item ->
-            val identifierBased = assertIs<IssuanceItem.IdentifierBased>(item)
-            assertEquals(docA, identifierBased.offeredDocument)
+        result.forEach { (offeredDoc, payload) ->
+            assertEquals(docA, offeredDoc)
+            assertIs<IssuanceRequestPayload.IdentifierBased>(payload)
         }
-        assertEquals(credId1, (result[0] as IssuanceItem.IdentifierBased).credentialIdentifier)
-        assertEquals(credId2, (result[1] as IssuanceItem.IdentifierBased).credentialIdentifier)
-        assertEquals(credId3, (result[2] as IssuanceItem.IdentifierBased).credentialIdentifier)
+        assertEquals(credId1, (result[0].second as IssuanceRequestPayload.IdentifierBased).credentialIdentifier)
+        assertEquals(credId2, (result[1].second as IssuanceRequestPayload.IdentifierBased).credentialIdentifier)
+        assertEquals(credId3, (result[2].second as IssuanceRequestPayload.IdentifierBased).credentialIdentifier)
     }
 
     @Test
@@ -130,23 +132,25 @@ class ExpandToIssuanceItemsTest {
         val credId1 = CredentialIdentifier("id-1")
         val credId2 = CredentialIdentifier("id-2")
 
-        val result = expandToIssuanceItems(
+        val result = resolveIssuanceRequestPayloads(
             offer,
             credentialIdentifiers = mapOf(
                 configIdA to listOf(credId1, credId2),
-                // configIdB not present in map → falls back to ConfigurationBased
+                // configIdB not present in map -> falls back to ConfigurationBased
             ),
         )
 
         assertEquals(3, result.size)
-        // config-a expanded to 2 IdentifierBased items
-        assertIs<IssuanceItem.IdentifierBased>(result[0])
-        assertEquals(credId1, (result[0] as IssuanceItem.IdentifierBased).credentialIdentifier)
-        assertIs<IssuanceItem.IdentifierBased>(result[1])
-        assertEquals(credId2, (result[1] as IssuanceItem.IdentifierBased).credentialIdentifier)
+        // config-a expanded to 2 IdentifierBased entries
+        assertEquals(docA, result[0].first)
+        assertIs<IssuanceRequestPayload.IdentifierBased>(result[0].second)
+        assertEquals(credId1, (result[0].second as IssuanceRequestPayload.IdentifierBased).credentialIdentifier)
+        assertEquals(docA, result[1].first)
+        assertIs<IssuanceRequestPayload.IdentifierBased>(result[1].second)
+        assertEquals(credId2, (result[1].second as IssuanceRequestPayload.IdentifierBased).credentialIdentifier)
         // config-b falls back to ConfigurationBased
-        assertIs<IssuanceItem.ConfigurationBased>(result[2])
-        assertEquals(docB, result[2].offeredDocument)
+        assertEquals(docB, result[2].first)
+        assertIs<IssuanceRequestPayload.ConfigurationBased>(result[2].second)
     }
 
     @Test
@@ -155,7 +159,7 @@ class ExpandToIssuanceItemsTest {
         val offer = createOffer(docA)
         val unknownConfigId = CredentialConfigurationIdentifier("unknown-config")
 
-        val result = expandToIssuanceItems(
+        val result = resolveIssuanceRequestPayloads(
             offer,
             credentialIdentifiers = mapOf(
                 unknownConfigId to listOf(CredentialIdentifier("id-1")),
@@ -163,7 +167,7 @@ class ExpandToIssuanceItemsTest {
         )
 
         assertEquals(1, result.size)
-        assertIs<IssuanceItem.ConfigurationBased>(result[0])
-        assertEquals(docA, result[0].offeredDocument)
+        assertEquals(docA, result[0].first)
+        assertIs<IssuanceRequestPayload.ConfigurationBased>(result[0].second)
     }
 }
