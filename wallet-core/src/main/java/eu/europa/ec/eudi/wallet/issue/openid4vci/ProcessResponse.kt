@@ -51,7 +51,7 @@ internal class ProcessResponse(
     val logger: Logger? = null,
     val authorizedRequest: AuthorizedRequest,
     val issuer: Issuer,
-    val documentToConfigurationMap: Map<UnsignedDocument, Offer.OfferedDocument>,
+    val documentToConfigurationMap: Map<UnsignedDocument, IssuanceItem>,
     val dpopKeyAlias: String?,
     val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
@@ -164,7 +164,7 @@ internal class ProcessResponse(
                     dpopKeyAlias
                 ).copy(
                     replacesDocumentId = replacesDocumentId,
-                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value,
+                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.offeredDocument?.configurationIdentifier?.value,
                     credentialEndpoint = issuer.credentialOffer.credentialIssuerMetadata.credentialEndpoint.toString(),
                 )
 
@@ -203,7 +203,7 @@ internal class ProcessResponse(
 
         runCatching {
             val credentialConfigurationId = requireNotNull(
-                documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value
+                documentToConfigurationMap[unsignedDocument]?.offeredDocument?.configurationIdentifier?.value
             ) { "Credential configuration identifier not found for document" }
 
             // Get metadata from credential offer
