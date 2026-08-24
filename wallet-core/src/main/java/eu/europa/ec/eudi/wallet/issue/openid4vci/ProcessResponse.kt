@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DocumentId
@@ -51,7 +52,7 @@ internal class ProcessResponse(
     val logger: Logger? = null,
     val authorizedRequest: AuthorizedRequest,
     val issuer: Issuer,
-    val documentToConfigurationMap: Map<UnsignedDocument, IssuanceItem>,
+    val documentToConfigurationMap: Map<UnsignedDocument, Pair<Offer.OfferedDocument, IssuanceRequestPayload>>,
     val dpopKeyAlias: String?,
     val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
@@ -164,7 +165,7 @@ internal class ProcessResponse(
                     dpopKeyAlias
                 ).copy(
                     replacesDocumentId = replacesDocumentId,
-                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.offeredDocument?.configurationIdentifier?.value,
+                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.first?.configurationIdentifier?.value,
                     credentialEndpoint = issuer.credentialOffer.credentialIssuerMetadata.credentialEndpoint.toString(),
                 )
 
@@ -203,7 +204,7 @@ internal class ProcessResponse(
 
         runCatching {
             val credentialConfigurationId = requireNotNull(
-                documentToConfigurationMap[unsignedDocument]?.offeredDocument?.configurationIdentifier?.value
+                documentToConfigurationMap[unsignedDocument]?.first?.configurationIdentifier?.value
             ) { "Credential configuration identifier not found for document" }
 
             // Get metadata from credential offer

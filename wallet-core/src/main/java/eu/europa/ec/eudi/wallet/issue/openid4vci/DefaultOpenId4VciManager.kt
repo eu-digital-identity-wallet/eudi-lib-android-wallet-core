@@ -22,6 +22,7 @@ import androidx.core.net.toUri
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuanceError
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
@@ -455,10 +456,10 @@ internal class DefaultOpenId4VciManager(
 
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
 
-                //  Expand offered documents into IssuanceItems based on credential identifiers
-                //  from the token response (one item per credential identifier, or one
-                //  ConfigurationBased item when no identifiers are present).
-                val issuanceItems = expandToIssuanceItems(offer, updatedAuthorizedRequest.credentialIdentifiers)
+                //  Resolve issuance request payloads based on credential identifiers
+                //  from the token response (one IdentifierBased payload per credential
+                //  identifier, or one ConfigurationBased payload when none are present).
+                val issuancePayloads = resolveIssuanceRequestPayloads(offer, updatedAuthorizedRequest.credentialIdentifiers)
 
                 //  Create a new UnsignedDocument (fresh keys) via DocumentCreator
                 //    This fires IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy
@@ -470,7 +471,7 @@ internal class DefaultOpenId4VciManager(
                     supportedPolicies = config.supportedCredentialReusePolicies,
                     logger = logger
                 )
-                val requestMap = documentCreator.createDocuments(issuanceItems)
+                val requestMap = documentCreator.createDocuments(issuancePayloads)
 
                 listener(IssueEvent.Started(requestMap.size))
 
@@ -587,8 +588,8 @@ internal class DefaultOpenId4VciManager(
         listener: OpenId4VciManager.OnResult<IssueEvent>,
     ) {
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
-        val issuanceItems = expandToIssuanceItems(offer, authorizedRequest.credentialIdentifiers)
-        listener(IssueEvent.Started(issuanceItems.size))
+        val issuancePayloads = resolveIssuanceRequestPayloads(offer, authorizedRequest.credentialIdentifiers)
+        listener(IssueEvent.Started(issuancePayloads.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
         val deferredDocumentIds = mutableListOf<DocumentId>()
         val documentCreator = DocumentCreator(
@@ -597,7 +598,7 @@ internal class DefaultOpenId4VciManager(
             supportedPolicies = config.supportedCredentialReusePolicies,
             logger = logger
         )
-        val requestMap = documentCreator.createDocuments(issuanceItems)
+        val requestMap = documentCreator.createDocuments(issuancePayloads)
 
         val submit = SubmitRequest(walletProvider, issuer, authorizedRequest)
         val response = submit.request(requestMap).also {
@@ -660,25 +661,27 @@ internal class DefaultOpenId4VciManager(
 }
 
 /**
- * Expands the offer's documents into [IssuanceItem]s based on the credential identifiers
- * returned in the token response.
+ * Resolves the [IssuanceRequestPayload] for each offered document based on the credential
+ * identifiers returned in the token response.
  *
  * When the Authorization Server returns `credential_identifiers` for a configuration,
  * each identifier represents a distinct credential dataset that requires its own request.
- * This function creates one [IssuanceItem.IdentifierBased] per identifier. When no
- * identifiers are present for a configuration, a single [IssuanceItem.ConfigurationBased]
- * is produced (preserving backward compatibility).
+ * This function creates one [IssuanceRequestPayload.IdentifierBased] entry per identifier.
+ * When no identifiers are present for a configuration, a single
+ * [IssuanceRequestPayload.ConfigurationBased] entry is produced (preserving backward
+ * compatibility).
  */
-internal fun expandToIssuanceItems(
+internal fun resolveIssuanceRequestPayloads(
     offer: Offer,
     credentialIdentifiers: Map<CredentialConfigurationIdentifier, List<CredentialIdentifier>>?,
-): List<IssuanceItem> = offer.offeredDocuments.flatMap { offeredDocument ->
-    val identifiers = credentialIdentifiers?.get(offeredDocument.configurationIdentifier)
+): List<Pair<Offer.OfferedDocument, IssuanceRequestPayload>> = offer.offeredDocuments.flatMap { offeredDocument ->
+    val configId = offeredDocument.configurationIdentifier
+    val identifiers = credentialIdentifiers?.get(configId)
     if (!identifiers.isNullOrEmpty()) {
         identifiers.map { credentialIdentifier ->
-            IssuanceItem.IdentifierBased(offeredDocument, credentialIdentifier)
+            offeredDocument to IssuanceRequestPayload.IdentifierBased(configId, credentialIdentifier)
         }
     } else {
-        listOf(IssuanceItem.ConfigurationBased(offeredDocument))
+        listOf(offeredDocument to IssuanceRequestPayload.ConfigurationBased(configId))
     }
 }

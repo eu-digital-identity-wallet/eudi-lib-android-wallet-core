@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.CredentialReusePolicies
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
@@ -36,8 +37,10 @@ internal class DocumentCreator(
     suspend fun createDocuments(offer: Offer): Map<UnsignedDocument, Offer.OfferedDocument> =
         offer.offeredDocuments.associateBy { createDocument(it) }
 
-    suspend fun createDocuments(items: List<IssuanceItem>): Map<UnsignedDocument, IssuanceItem> =
-        items.associateBy { createDocument(it.offeredDocument) }
+    suspend fun createDocuments(
+        items: List<Pair<Offer.OfferedDocument, IssuanceRequestPayload>>,
+    ): Map<UnsignedDocument, Pair<Offer.OfferedDocument, IssuanceRequestPayload>> =
+        items.associateBy { createDocument(it.first) }
 
     suspend fun createDocument(offeredDocument: Offer.OfferedDocument): UnsignedDocument {
         val resolvedPolicy = resolveReusePolicy(
