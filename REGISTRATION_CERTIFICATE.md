@@ -68,8 +68,12 @@ Each check derives from:
 | Status reference present | `STATUS_MISSING` | ETSI TS 119 475 §6.2.6.2, REV-6.2.6.2-03 (status list mandatory) |
 | Revocation | `REVOKED` / `REVOCATION_STATUS_UNKNOWN` | ETSI TS 119 475 §6.2.6.2 |
 
-The scope check that follows is path-specific: over-asking on the presentation path, over-providing
-on the issuance path.
+The checks that follow are path-specific. On the issuance path the issuer's **entitlement** is checked
+next, and then over-providing; on the presentation path, over-asking.
+
+| Check | Failure reason | Source |
+|---|---|---|
+| Entitlement (issuance only) | `ENTITLEMENT_MISSING` | ARF ISSU_24a (the PID Provider is registered as a PID Provider), ISSU_34a (the Attestation Provider is registered as a QEAA, PuB-EAA or EAA Provider); the entitlement URIs are those of ETSI TS 119 475, listed in TS5 |
 
 ### The outcome
 
@@ -98,6 +102,7 @@ Both paths produce a `RegistrationCertificateResult`:
 | `STATUS_MISSING` | The certificate carries no status-list reference (mandatory) | Evaluation |
 | `REVOKED` | The status list reports the certificate as revoked | Evaluation |
 | `REVOCATION_STATUS_UNKNOWN` | The revocation status could not be determined | Evaluation |
+| `ENTITLEMENT_MISSING` | The issuer is not registered for the provider role that issuing the offered attestations requires (issuance path only) | Evaluation |
 
 ---
 
@@ -320,9 +325,13 @@ nothing to validate the certificate against, so validation is skipped and logged
 
 The default evaluator (`DefaultIssuerRegistrationEvaluator`) runs the same validity checks as the
 presentation path — binding, expiry, status reference and revocation, with binding taken against the
-certificate that signed the issuer metadata — and then compares the offered credential configurations
-against the registered `provides_attestations` scope, reporting anything outside it as
-`overProvidedAttestations`.
+certificate that signed the issuer metadata. It then checks the issuer's `entitlements` against what it
+offers to issue, failing with `ENTITLEMENT_MISSING` when the provider role is not confirmed, and
+finally compares the offered credential configurations against the registered `provides_attestations`
+scope, reporting anything outside it as `overProvidedAttestations`.
+
+Replacing the evaluator replaces the entitlement check too. A custom evaluator that does not implement
+it does not satisfy ISSU_24a / ISSU_34a.
 
 You can replace the evaluation stage via `configureIssuerRegistrationEvaluator`:
 
@@ -404,3 +413,31 @@ when (val registration = outcome.getOrNull()) {
 The same two-axis reading as on the presentation path applies, with `overProvidedAttestations` in
 place of `overAskedClaims`: a `Verified` issuer registration can still be over-providing, and
 `requiresExplicitApproval` folds both axes into one gate.
+
+### The entitlement check
+
+Before the scope check, the issuer's `entitlements` are checked against what it offers to issue. Each
+offered attestation requires the provider role that issuing it calls for:
+
+| Offered attestation | Required entitlement |
+|---|---|
+| A PID | `PID_Provider` |
+| Anything else | any one of `QEAA_Provider`, `PUB_EAA_Provider`, `Non_Q_EAA_Provider` |
+
+The non-PID case is a disjunction because ARF ISSU_34a requires only that the provider be registered
+as a QEAA, PuB-EAA **or** EAA Provider. The entitlement is what the registrar asserted, whereas the
+wallet's own classification of an attestation is local configuration — so requiring the two to agree
+would refuse providers legitimately registered under a different one of the three.
+
+Which offered attestations are PIDs is decided by the `pids` classification already configured for
+trust-area routing (`configureEtsiTrust { classifications(...) }`), so this check and the trust
+evaluation cannot disagree. An attestation identifying no type, and every attestation when no `pids`
+classification is configured, counts as non-PID.
+
+A shortfall is a **hard failure**, `Failed(ENTITLEMENT_MISSING, registration)` — not a finding on a
+verified result. Per ISSU_24a / ISSU_34a the wallet must not request issuance, so this is deliberately
+the one scope-shaped check that does not produce a warning the application may choose to accept. The
+parsed `registration` is still carried, so the provider can be named on the blocking screen.
+
+An absent or empty `entitlements` claim satisfies nothing: a certificate that does not confirm the
+role cannot be treated as confirming it.
