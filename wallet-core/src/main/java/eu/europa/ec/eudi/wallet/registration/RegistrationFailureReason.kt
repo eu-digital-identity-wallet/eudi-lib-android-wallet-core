@@ -45,5 +45,12 @@ enum class RegistrationFailureReason {
     REVOCATION_STATUS_UNKNOWN,
 
     /** The certificate is not bound to the relying party that signed the request. */
-    NOT_BOUND_TO_REQUESTER
+    NOT_BOUND_TO_REQUESTER,
+
+    /**
+     * The certificate does not confirm that the provider is registered for the operation at hand: on
+     * the issuance path, its `entitlements` do not cover issuing the offered attestations (ARF
+     * ISSU_24a for a PID, ISSU_34a for any other attestation).
+     */
+    ENTITLEMENT_MISSING
 }
