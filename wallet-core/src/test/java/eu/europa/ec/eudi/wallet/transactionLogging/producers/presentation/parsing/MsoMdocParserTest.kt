@@ -14,25 +14,22 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
+package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing
 
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import org.junit.Test
 import kotlin.test.assertEquals
 
 class MsoMdocParserTest {
 
     @Test
-    fun `test parceCbor`() {
+    fun `parses mdoc response into a single ClaimInfo with docType + namespace-element paths`() {
         val data = getResourceAsByteArrayFromBase64Url("mso_mdoc_response.txt")
         val sessionTranscript = byteArrayOf(0)
-        val metadata = listOf<String>()
-        val result = parseMsoMdoc(data, sessionTranscript, metadata)
+        val result = parseMsoMdoc(data, sessionTranscript)
+
         assertEquals(1, result.size)
-        val presentedDocument = result.first()
-
-        assertEquals(MsoMdocFormat(docType = "org.iso.18013.5.1.mDL"), presentedDocument.format)
-        assertEquals(13, presentedDocument.claims.size)
-
+        val claimInfo = result.first()
+        assertEquals("org.iso.18013.5.1.mDL", claimInfo.credentialIdentifier)
+        assertEquals(13, claimInfo.claims.size)
     }
 }

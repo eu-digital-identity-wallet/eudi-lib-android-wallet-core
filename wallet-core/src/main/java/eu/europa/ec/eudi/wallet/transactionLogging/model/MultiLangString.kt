@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transactionLogging
+package eu.europa.ec.eudi.wallet.transactionLogging.model
 
-import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
+import android.annotation.SuppressLint
+import kotlinx.serialization.Serializable
 
 /**
- * Storage interface for transaction logs. The app implements this to save a
- * [TransactionEntry] e.g. as database, file, etc.
+ * A piece of text in one language (TS05 §2.4.5). Use a list of these for multi-language text.
+ *
+ * @property lang the language code.
+ * @property content the text.
  */
-fun interface TransactionLogger {
-    /** Saves one transaction-log entry. */
-    fun log(transaction: TransactionEntry)
-}
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class MultiLangString(
+    val lang: String,
+    val content: String,
+)
