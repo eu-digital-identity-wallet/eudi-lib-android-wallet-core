@@ -2364,9 +2364,10 @@ implementations.
 
 ### Transaction Logging
 
-The library supports logging transactions for auditing and analytics purposes. Currently, only
-presentation transactions (both proximity and remote) are supported by the library. Issuing
-transactions will be added in a future release.
+The library can log transactions for auditing and analytics purposes. It records presentations
+(both proximity and remote), credential issuance and re-issuance, and credential deletions. Other
+transaction types (e.g. signing/sealing) can also be added through the same funnel. Each entry
+follows the EUDI Wallet Technical Specification 10 (TS10) data model.
 
 #### Configuring Transaction Logger
 
@@ -2376,9 +2377,9 @@ it when initializing the `EudiWallet` instance:
 ```kotlin
 // Implement the TransactionLogger interface
 class MyTransactionLogger : TransactionLogger {
-    override fun log(transaction: TransactionLog) {
-        // Implement logging logic here
-        // For example, save transaction to a local database
+    override fun log(transaction: TransactionEntry) {
+        // Store the entry in your own storage; here, serialized to JSON.
+        save(transaction.toJson())
     }
 }
 
@@ -2391,54 +2392,69 @@ val wallet = EudiWallet(context, config) {
 
 #### Working with Transaction Logs
 
-Transaction logs contain information about the presentation transaction, such as:
+Each entry is a `TransactionEntry` — a sealed type with one subtype per kind of transaction
+(`Presentation`, `CredentialIssuance`, `CredentialReissuance`, `CredentialDeletion`,
+`SigningSealing`, and more). Common information includes:
 
-- Timestamp of the transaction
-- Transaction status (Completed, Error, Incomplete)
-- Type of transaction (currently only Presentation is supported)
-- Relying party information
-- Raw request and response data
-- Format of the data (CBOR, JSON)
+- The transaction identifier and timestamp
+- The result (`Completed`, or `NotCompleted` with a reason)
+- The interacting party (name, identifier), when available
+- For presentations: which claims were requested and presented, as identifiers and paths — never
+  their values
 
-Here's an example of how to retrieve and parse a presentation transaction log:
+Serialize an entry for storage with `toJson()`, read it back with `toTransactionEntryOrNull()`, and
+branch on its type:
 
 ```kotlin
-// Assuming you have a TransactionLog object from your storage
-val transactionLog: TransactionLog = retrieveTransactionLog()
+// Store
+database.save(entry.toJson())
 
-// Check if it's a presentation transaction
-if (transactionLog.type == TransactionLog.Type.Presentation) {
-    // Parse the presentation transaction log
-    val presentationLogResult = PresentationTransactionLog.fromTransactionLog(transactionLog)
+// Read back (returns null if the stored value cannot be decoded)
+val entry: TransactionEntry? = storedJson.toTransactionEntryOrNull()
 
-    presentationLogResult.onSuccess { presentationLog ->
-        // Access the parsed information
-        val timestamp = presentationLog.timestamp
-        val status = presentationLog.status
-        val relyingParty = presentationLog.relyingParty
-
-        // Access the presented documents and claims
-        for (document in presentationLog.documents) {
-            val format = document.format
-            val metadata = document.metadata
-
-            // Access individual claims
-            for (claim in document.claims) {
-                val path = claim.path
-                val value = claim.value
-                // Process the claim...
-            }
-        }
+when (entry) {
+    is TransactionEntry.Presentation -> {
+        val time = entry.time
+        val result = entry.transactionResult            // Completed / NotCompleted(reason)
+        val party = entry.interactingPartyName?.content
+        // ClaimInfo: the credential id and claim paths involved — no values
+        val presented = entry.listOfClaimsPresented
     }
-
-    presentationLogResult.onFailure { error ->
-        // Handle parsing error
-    }
+    is TransactionEntry.CredentialIssuance -> { /* entry.details */ }
+    is TransactionEntry.CredentialDeletion -> { /* entry.credentialIdentifier */ }
+    null -> { /* the stored value could not be decoded */ }
+    else -> { /* other transaction kinds */ }
 }
 ```
 
-This parsed information can be used to display transaction history to the user, perform audits, or
-for any other analytical purposes.
+You can also record your own entry e.g. an `OtherTransaction` as following:
+
+```kotlin
+wallet.transactionLogManager?.log(
+    TransactionEntry.OtherTransaction(
+        transactionIdentifier = UUID.randomUUID().toString(),
+        time = Instant.now(),
+        transactionResult = TransactionResult.Completed,
+        description = listOf("Backup exported"),
+    )
+)
+```
+
+To export the log, use `TransactionLogExport`, which produces a JSON document in the TS10 §4.1
+format:
+
+```kotlin
+val json: String = TransactionLogExport().encode(entries)
+```
+
+> **Note — current limitations:**
+>
+> - **Some fields are not yet available.** Fields whose values come from the *Provider information
+>   specification* or from *Relying Party Registration* — such as a party's legal-entity identifier,
+>   contact details, or registration data — are left empty until those integrations are added.
+> - **The export is not the full spec object.** TS10 defines the *Transaction Log Object* as "an
+>   exportable object in JSON Web Encryption format"; this library currently produces only its
+>   plain-JSON content, without the JWE encryption.
 
 ## How to contribute
 

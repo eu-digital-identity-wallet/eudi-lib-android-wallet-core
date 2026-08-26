@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transactionLogging.presentation.parsing
+package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing
 
 import java.io.File
 import java.util.Base64

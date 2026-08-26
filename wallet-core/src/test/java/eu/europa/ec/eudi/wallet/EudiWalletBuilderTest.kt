@@ -361,7 +361,7 @@ class EudiWalletBuilderTest {
             // Mock the wrapWithTrasactionLogger function to verify it's called
             every {
                 with(this) {
-                    defaultPresentationManager.wrapWithTrasactionLogger(any(), any())
+                    defaultPresentationManager.wrapWithTrasactionLogger(any(), any(), any())
                 }
             } returns mockk(relaxed = true)
         }
@@ -371,7 +371,7 @@ class EudiWalletBuilderTest {
 
         // Verify
         verify(exactly = 1) {
-            with(builder) { defaultPresentationManager.wrapWithTrasactionLogger(any(), any()) }
+            with(builder) { defaultPresentationManager.wrapWithTrasactionLogger(any(), any(), any()) }
         }
 
 

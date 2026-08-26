@@ -32,8 +32,9 @@ import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialIssuanceLogger
 import eu.europa.ec.eudi.wallet.trust.pidClassification
-import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import io.ktor.client.HttpClient
 import org.multipaz.storage.Storage
 import java.security.cert.X509Certificate
@@ -46,7 +47,7 @@ import java.security.cert.X509Certificate
  * @property presentationManager the presentation manager
  * @property transferManager the transfer manager
  * @property documentStatusResolver the document status resolver
- * @property transactionLogger the transaction logger
+ * @property transactionLogManager the transaction-log funnel
  * @property ktorHttpClientFactory the ktor http client factory for use in the OpenId4VciManager and OpenId4VpManager
  * @property logger the logger
  */
@@ -60,7 +61,7 @@ class EudiWalletImpl internal constructor(
     override val documentStatusResolver: DocumentStatusResolver,
     override val walletProvider: WalletAttestationsProvider?,
     override val walletKeyManager: WalletKeyManager,
-    val transactionLogger: TransactionLogger?,
+    override val transactionLogManager: TransactionLogManager?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
     val issuanceMetadataStorage: Storage?,
     internal val issuerRegistrationTrust: CertificateTrust? = null,
@@ -129,7 +130,7 @@ class EudiWalletImpl internal constructor(
                 IssuerRegistrationResolver(certificateTrust, evaluator, logger)
             }
 
-        return OpenId4VciManager(context) {
+        val openId4VciManager = OpenId4VciManager(context) {
             documentManager(this@EudiWalletImpl)
             walletKeyManager(this@EudiWalletImpl.walletKeyManager)
             this@EudiWalletImpl.walletProvider?.let { walletAttestationsProvider(it) }
@@ -142,5 +143,17 @@ class EudiWalletImpl internal constructor(
             issuerRegistrationEnabled(registrationEnabled)
             issuerRegistration(issuerRegistration)
         }
+
+        // Wrap with issuance transaction logging when a transaction logger is configured.
+        return transactionLogManager?.let { manager ->
+            CredentialIssuanceLogger(
+                delegate = openId4VciManager,
+                transactionLogManager = manager,
+                logger = this@EudiWalletImpl.logger,
+                documentResolver = { id ->
+                    runCatching { this@EudiWalletImpl.getDocumentById(id) }.getOrNull()
+                },
+            )
+        } ?: openId4VciManager
     }
 }
