@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
+import eu.europa.ec.eudi.wallet.trust.pidClassification
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import io.ktor.client.HttpClient
 import org.multipaz.storage.Storage
@@ -119,6 +120,8 @@ class EudiWalletImpl internal constructor(
             ?.let { certificateTrust ->
                 val evaluator = this@EudiWalletImpl.config.issuerRegistrationEvaluator
                     ?: DefaultIssuerRegistrationEvaluator(
+                        isPid = this@EudiWalletImpl.config.etsiTrustConfig
+                            ?.classifications.pidClassification,
                         statusTrust = issuerRegistrationStatusTrust,
                         logger = logger,
                         httpClientFactory = httpClientFactory,
