@@ -291,6 +291,7 @@ internal class DefaultOpenId4VciManager(
                                     credentialConfigurationIdentifier = deferredContext.credentialConfigurationIdentifier,
                                     credentialEndpoint = deferredContext.credentialEndpoint,
                                     replacesDocumentId = deferredContext.replacesDocumentId,
+                                    interactingParty = deferredContext.interactingParty,
                                 )
                             } ?: deferredContext,
                             logger = logger,
@@ -518,6 +519,7 @@ internal class DefaultOpenId4VciManager(
                     clientAuthentication = issuerCreator.clientAuthentication,
                     replacesDocumentId = documentId,
                     issuerTrustConfig = issuerTrustConfig,
+                    interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
                 ).process(response)
 
                 //  If new document(s) issued successfully, delete the old document.
@@ -619,6 +621,7 @@ internal class DefaultOpenId4VciManager(
             dpopKeyAlias = issuerCreator.dpopKeyAlias,
             issuanceMetadataStorage = issuanceMetadataStorage,
             clientAuthentication = issuerCreator.clientAuthentication,
+            interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
         ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
     }
