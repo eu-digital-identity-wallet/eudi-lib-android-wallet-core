@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
+import eu.europa.ec.eudi.openid4vci.CredentialIssuanceEvent
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DocumentId
@@ -141,9 +142,16 @@ internal class ProcessResponse(
                         (outcome as? SubmissionOutcome.Success)?.selectedCredentialReusePolicy,
                     )
                 }
+
+                outcome.notificationId?.let { notifId ->
+                    notifyIssuerAsync(CredentialIssuanceEvent.Accepted(id = notifId, description = null))
+                }
             }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)
                 listener(IssueEvent.DocumentFailed(unsignedDocument, error))
+                outcome.notificationId?.let { notifId ->
+                    notifyIssuerAsync(CredentialIssuanceEvent.Failed(id = notifId, description = error.message))
+                }
             }
 
             is SubmissionOutcome.Failed -> {
@@ -178,6 +186,16 @@ internal class ProcessResponse(
             }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)
                 listener(IssueEvent.DocumentFailed(unsignedDocument, error))
+            }
+        }
+    }
+
+    private fun notifyIssuerAsync(event: CredentialIssuanceEvent) {
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                with(issuer) { authorizedRequest.notify(event) }
+            }.onFailure { error ->
+                logger?.d(TAG, "Failed to notify issuer for notification ${event.id.value}: ${error.message}")
             }
         }
     }
