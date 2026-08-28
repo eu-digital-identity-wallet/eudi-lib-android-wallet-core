@@ -41,7 +41,8 @@ import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfig
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
-import eu.europa.ec.eudi.wallet.trust.ReaderTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustConfigBuilder.EnforcementKind
 import eu.europa.ec.eudi.wallet.trust.StatusListTrustConfig
 import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
 import java.security.cert.TrustAnchor
@@ -80,11 +81,7 @@ import kotlin.time.Duration.Companion.minutes
  *         // set the reader trusted certificates for the reader trust store
  *         listOf(readerCertificate)
  *     )
- *     .configureReaderAuthPolicy(
- *         // set the reader authentication enforcement policy
- *         // default is EnforceIfPresent
- *         ReaderAuthPolicy.EnforceIfPresent
- *     )
+ *     .configureReaderAuthEnforceIfPresent()
  *     .configureOpenId4Vci {
  *         withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
  *         withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
@@ -139,7 +136,6 @@ import kotlin.time.Duration.Companion.minutes
  * @property logLevel the log level
  * @property logSizeLimit the log size limit
  * @property readerTrustedCertificates the reader trusted certificates
- * @property readerAuthPolicy the reader authentication enforcement policy for proximity and DCAPI presentations
  * @property userAuthenticationRequired whether user authentication is required
  * @property userAuthenticationTimeout the user authentication timeout
  * @property useStrongBoxForKeys whether to use the strong box for keys
@@ -471,6 +467,9 @@ class EudiWalletConfig {
     internal var useEtsiReaderTrust: Boolean = false
         private set
 
+    internal var etsiEnforcementKind: EnforcementKind = EnforcementKind.EnforceIfPresent
+        private set
+
     /**
      * Configure the [ReaderTrustStore] using the ETSI trust source from [configureEtsiTrust].
      *
@@ -478,7 +477,7 @@ class EudiWalletConfig {
      * reader certificate chain validation to the centrally configured ETSI trust source.
      * Requires [configureEtsiTrust] to be called.
      *
-     * Example with default policy ([ReaderAuthPolicy.EnforceIfPresent]):
+     * Example with default enforcement (enforce if present):
      * ```
      * configureReaderTrustStore { }
      * ```
@@ -486,58 +485,57 @@ class EudiWalletConfig {
      * Example requiring reader authentication for all presentations:
      * ```
      * configureReaderTrustStore {
-     *     readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+     *     alwaysRequire()
      * }
      * ```
      *
-     * @param block configuration block applied to the [ReaderTrustConfigBuilder]
+     * @param block configuration block applied to the [EtsiReaderTrustConfigBuilder]
      * @return the [EudiWalletConfig] instance
      * @see configureEtsiTrust
-     * @see ReaderTrustConfigBuilder
+     * @see EtsiReaderTrustConfigBuilder
      * @see ReaderAuthPolicy
      */
     fun configureReaderTrustStore(
-        block: ReaderTrustConfigBuilder.() -> Unit,
+        block: EtsiReaderTrustConfigBuilder.() -> Unit,
     ) = apply {
         this.useEtsiReaderTrust = true
-        val builder = ReaderTrustConfigBuilder().apply(block)
-        builder.readerAuthPolicy?.let { this.readerAuthPolicy = it }
+        val builder = EtsiReaderTrustConfigBuilder().apply(block)
+        this.etsiEnforcementKind = builder.enforcementKind
     }
 
     /**
-     * The reader authentication enforcement policy for proximity and DCAPI presentations.
-     * This determines how the wallet handles reader authentication results when generating
-     * device responses.
+     * An explicitly constructed reader authentication policy override.
+     * When set, this takes priority over any certificate- or ETSI-based policy resolution
+     * in the builder. The trust store embedded in the policy is used as-is for both
+     * proximity and remote transports.
      *
-     * The available policies are:
-     * - [ReaderAuthPolicy.DoNotEnforce]: Reader authentication is evaluated but never blocks
-     *   document disclosure. This was the default behavior before version 0.27.0.
-     * - [ReaderAuthPolicy.EnforceIfPresent]: Documents are excluded from the response when
-     *   reader authentication is present but fails verification (default).
-     * - [ReaderAuthPolicy.AlwaysRequire]: Documents are excluded unless reader authentication
-     *   is present and verified.
-     *
-     * The default is [ReaderAuthPolicy.EnforceIfPresent].
-     *
-     * @see ReaderAuthPolicy
-     * @see configureReaderTrustStore
+     * @see configureReaderAuthPolicy
      */
-    var readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent
+    internal var readerAuthPolicy: ReaderAuthPolicy? = null
         private set
 
     /**
-     * Configure the reader authentication enforcement policy.
-     * This policy controls how reader authentication results affect document disclosure
-     * during proximity and DCAPI presentations.
+     * The enforcement intent for reader authentication when the trust store is resolved
+     * at build time (certificate-based or ETSI paths). Combined with the resolved trust
+     * store by the builder to produce per-transport [ReaderAuthPolicy] instances.
      *
-     * When a verifier's DeviceRequest includes reader authentication and the verifier's
-     * certificate is not in the configured [ReaderTrustStore], the policy determines whether
-     * the document is included in the response or excluded.
+     * The default is [EnforcementKind.EnforceIfPresent].
      *
-     * Per ISO 18013-5, when all documents are excluded due to reader authentication failure,
-     * the wallet returns a DeviceResponse with status 10 (General Error).
+     * @see configureReaderAuthDoNotEnforce
+     * @see configureReaderAuthEnforceIfPresent
+     * @see configureReaderAuthAlwaysRequire
+     */
+    internal var enforcementKind: EnforcementKind = EnforcementKind.EnforceIfPresent
+        private set
+
+    /**
+     * Configure a fully-constructed [ReaderAuthPolicy] for all presentation transports.
      *
-     * @param readerAuthPolicy the reader authentication enforcement policy
+     * Use this when you have a custom [ReaderTrustStore] and want to set both the trust
+     * store and the enforcement kind in one call. The provided policy is used as-is for
+     * both proximity and remote transports.
+     *
+     * @param readerAuthPolicy the fully-constructed reader authentication policy
      * @return the [EudiWalletConfig] instance
      *
      * @see ReaderAuthPolicy
@@ -545,6 +543,48 @@ class EudiWalletConfig {
      */
     fun configureReaderAuthPolicy(readerAuthPolicy: ReaderAuthPolicy) = apply {
         this.readerAuthPolicy = readerAuthPolicy
+    }
+
+    /**
+     * Configure reader authentication to not enforce trust verification.
+     *
+     * Trust evaluation still occurs (for displaying trust status on the consent UI),
+     * but an untrusted or missing certificate chain does not prevent document disclosure.
+     *
+     * @return the [EudiWalletConfig] instance
+     * @see configureReaderTrustStore
+     */
+    fun configureReaderAuthDoNotEnforce() = apply {
+        this.enforcementKind = EnforcementKind.DoNotEnforce
+    }
+
+    /**
+     * Configure reader authentication to enforce trust verification when present.
+     *
+     * Documents are excluded from the response when reader authentication is present
+     * but fails trust verification. Requests with no certificate chain (e.g. unsigned
+     * OpenID4VP requests) are still allowed through.
+     *
+     * This is the default enforcement policy.
+     *
+     * @return the [EudiWalletConfig] instance
+     * @see configureReaderTrustStore
+     */
+    fun configureReaderAuthEnforceIfPresent() = apply {
+        this.enforcementKind = EnforcementKind.EnforceIfPresent
+    }
+
+    /**
+     * Configure reader authentication to always require trust verification.
+     *
+     * Documents are excluded unless reader authentication is present and successfully
+     * verified against the trust store.
+     *
+     * @return the [EudiWalletConfig] instance
+     * @see configureReaderTrustStore
+     */
+    fun configureReaderAuthAlwaysRequire() = apply {
+        this.enforcementKind = EnforcementKind.AlwaysRequire
     }
 
     /**

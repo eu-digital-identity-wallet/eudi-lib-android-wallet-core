@@ -21,7 +21,6 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SEND_SESSION_TERMINATION_MESSAGE
@@ -39,14 +38,11 @@ import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SE
  * the wallet can generate the response with [eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor.ProcessedRequest.Success.generateResponse]
  * and send it back to the verifier by calling [sendResponse] method.
  *
- * It also extends [ReaderTrustStoreAware] that allows to set the [ReaderTrustStore] that is used
- * to verify the authenticity of the reader.
- *
  * It provides also functionality to start the NFC engagement by calling [enableNFCEngagement]
  * method and stop it by calling [disableNFCEngagement] method.
  *
  */
-interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware {
+interface PresentationManager : TransferEvent.Listenable {
 
     val nfcEngagementServiceClass: Class<out NfcEngagementService>?
 

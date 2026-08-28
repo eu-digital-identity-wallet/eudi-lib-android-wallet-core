@@ -22,6 +22,8 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.profile.ProfileValidation
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
 import eu.europa.ec.eudi.wallet.dcapi.registration.DCAPIRegistration
@@ -57,6 +59,7 @@ import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustConfigBuilder.EnforcementKind
 import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
@@ -443,21 +446,103 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         } else manager
                     }
 
-            val readerTrustStoreToUse = (readerTrustStore
-                ?: config.readerTrustStore
-                ?: when {
-                    config.useEtsiReaderTrust && etsiSource != null ->
-                        etsiSource.asReaderTrustStore()
+            // --- Per-transport ReaderAuthPolicy construction ---
+            //
+            // Two separate policies are built — one for proximity (ISO 18013-5) and one
+            // for remote (OpenID4VP / DC API OpenID4VP) — because the certificate profile
+            // requirements differ between the two transports:
+            //
+            //  - Proximity: ISO 18013-5 reader certificates must conform to the Annex B
+            //    certificate profile. ProfileValidation.DEFAULT enforces this profile
+            //    (EKU, key usage, signature algorithm, validity period, etc.).
+            //
+            //  - Remote: OpenID4VP verifier certificates do not conform to the ISO
+            //    18013-5 certificate profile. A permissive profile ({ _, _ -> true })
+            //    is used so that chain-of-trust validation still occurs but the ISO
+            //    18013-5 profile checks are skipped.
+            //
+            // This per-transport splitting ONLY applies when raw X.509 certificates are
+            // provided via configureReaderTrustStore(certs). When a custom ReaderTrustStore
+            // or ETSI trust store is provided, the consumer's implementation handles
+            // profile validation internally, so the same store is used for both transports.
+            //
+            // Resolution order:
+            //  1. config.readerAuthPolicy  — fully-constructed policy (configureReaderAuthPolicy)
+            //  2. baseTrustStore != null    — custom or ETSI store + enforcement kind
+            //  3. baseTrustStore == null    — raw certificates (or nothing configured at all)
+            //
+            // In case (3), buildReaderAuthPolicy handles the null trust store:
+            //  - EnforceIfPresent + null store → logs a warning, falls back to DoNotEnforce
+            //  - AlwaysRequire + null store   → throws IllegalStateException (misconfiguration)
+            //  - DoNotEnforce + null store    → DoNotEnforce(null), no trust evaluation at all
+            val proximityReaderAuthPolicy: ReaderAuthPolicy
+            val remoteReaderAuthPolicy: ReaderAuthPolicy
 
-                    else -> config.readerTrustedCertificates?.let { certificates ->
-                        ReaderTrustStoreImpl(
-                            certificates,
-                            profileValidation = { _, _ -> true },
-                            revocationPolicy = config.revocationPolicy,
-                        )
+            if (config.readerAuthPolicy != null) {
+                // Case 1: The consumer called configureReaderAuthPolicy(policy) with a
+                // fully-constructed ReaderAuthPolicy that already embeds a ReaderTrustStore.
+                // The consumer owns the profile validation logic, so use as-is for both
+                // transports without any per-transport splitting.
+                val policy = config.readerAuthPolicy!!
+                proximityReaderAuthPolicy = policy
+                remoteReaderAuthPolicy = policy
+            } else {
+                // Cases 2 & 3: Resolve the trust store from the configuration precedence
+                // chain. This covers three sources, checked in order:
+                //  a) Builder.withReaderTrustStore(store) — programmatic override
+                //  b) configureReaderTrustStore(customStore) or
+                //     configureReaderTrustStore(isChainTrusted) — custom/ETSI store via config
+                //  c) configureReaderTrustStore { } — ETSI DSL, store built from etsiSource
+                // If none of the above produced a store, baseTrustStore is null and we fall
+                // through to case 3 (raw certificates or no trust configured).
+                val baseTrustStore: ReaderTrustStore? = (readerTrustStore
+                    ?: config.readerTrustStore
+                    ?: if (config.useEtsiReaderTrust && etsiSource != null)
+                        etsiSource.asReaderTrustStore()
+                    else null
+                    )?.also {
+                    if (it is EtsiReaderTrustStore) it.logger = loggerToUse
+                }
+
+                // Pick the enforcement kind from the right config slot. The ETSI DSL
+                // stores its enforcement kind in etsiEnforcementKind (set by the DSL's
+                // enforceIfPresent()/alwaysRequire()/doNotEnforce() methods). The
+                // standalone configureReaderAuthXxx() methods store in enforcementKind.
+                val enforcementKind = when {
+                    config.useEtsiReaderTrust -> config.etsiEnforcementKind
+                    else -> config.enforcementKind
+                }
+
+                if (baseTrustStore != null) {
+                    // Case 2: A custom or ETSI trust store was resolved. The store handles
+                    // profile validation internally, so the same store + same enforcement
+                    // kind produces the same policy for both transports.
+                    proximityReaderAuthPolicy = buildReaderAuthPolicy(baseTrustStore, enforcementKind, loggerToUse)
+                    remoteReaderAuthPolicy = buildReaderAuthPolicy(baseTrustStore, enforcementKind, loggerToUse)
+                } else {
+                    // Case 3: No custom or ETSI store — check if raw certificates were
+                    // provided via configureReaderTrustStore(context, R.raw.cert1, ...) or
+                    // configureReaderTrustStore(listOf(cert1, cert2)). If certificates
+                    // exist, build TWO ReaderTrustStoreImpl instances from the same certs
+                    // but with different ProfileValidation:
+                    //  - proximityStore: ProfileValidation.DEFAULT (checks ISO mdoc EKU OID)
+                    //  - remoteStore: permissive (skips EKU, only validates chain trust)
+                    //
+                    // If no certificates were configured either (certs is null), both stores
+                    // are null and buildReaderAuthPolicy handles it:
+                    //  - EnforceIfPresent → logs warning, falls back to DoNotEnforce(null)
+                    //  - AlwaysRequire   → throws (misconfiguration — no trust material)
+                    //  - DoNotEnforce    → DoNotEnforce(null) — no trust evaluation
+                    val certs = config.readerTrustedCertificates
+                    val proximityStore = certs?.let {
+                        ReaderTrustStoreImpl(it, ProfileValidation.DEFAULT, revocationPolicy = config.revocationPolicy)
                     }
-                })?.also {
-                if (it is EtsiReaderTrustStore) it.logger = loggerToUse
+                    val remoteStore = certs?.let {
+                        ReaderTrustStoreImpl(it, { _, _ -> true }, revocationPolicy = config.revocationPolicy)
+                    }
+                    proximityReaderAuthPolicy = buildReaderAuthPolicy(proximityStore, enforcementKind, loggerToUse)
+                    remoteReaderAuthPolicy = buildReaderAuthPolicy(remoteStore, enforcementKind, loggerToUse)
+                }
             }
 
             // Registration certificate handling shared by every transport: the wallet authenticates
@@ -518,14 +603,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             val transferManager = getTransferManager(
                 documentManager = documentManagerToUse,
-                readerTrustStore = readerTrustStoreToUse,
+                readerAuthPolicy = proximityReaderAuthPolicy,
                 wrpRegistrationValidator = wrpRegistrationValidator
             )
 
             val presentationManagerToUse = presentationManager ?: getDefaultPresentationManager(
                 documentManager = documentManagerToUse,
                 transferManager = transferManager,
-                readerTrustStore = readerTrustStoreToUse,
+                remoteReaderAuthPolicy = remoteReaderAuthPolicy,
+                proximityReaderAuthPolicy = proximityReaderAuthPolicy,
                 registrationValidator = wrpRegistrationValidator,
                 registrationCertificatePolicy = registrationCertificatePolicy,
                 resolvedRegistration = resolvedRegistration,
@@ -556,14 +642,16 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          * Get the default [PresentationManagerImpl] instance based on the [DocumentManager] and [TransferManager] implementations
          * @param documentManager the document manager
          * @param transferManager the transfer manager
-         * @param readerTrustStore the reader trust store
+         * @param remoteReaderAuthPolicy the reader auth policy for the remote (OpenID4VP) path
+         * @param proximityReaderAuthPolicy the reader auth policy for the proximity (ISO mdoc) path
          * @return the default [PresentationManagerImpl] instance
          */
         @JvmSynthetic
         internal fun getDefaultPresentationManager(
             documentManager: DocumentManager,
             transferManager: TransferManager,
-            readerTrustStore: ReaderTrustStore?,
+            remoteReaderAuthPolicy: ReaderAuthPolicy,
+            proximityReaderAuthPolicy: ReaderAuthPolicy,
             loggerObj: Logger,
             registrationValidator: DefaultWrpRegistrationValidator? = null,
             registrationCertificatePolicy: RegistrationCertificatePolicy? = null,
@@ -574,7 +662,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     config = openId4VpConfig,
                     requestProcessor = DcqlRequestProcessor(
                         documentManager = documentManager,
-                        readerTrustStore = readerTrustStore,
+                        readerAuthPolicy = remoteReaderAuthPolicy,
                         logger = loggerObj
                     ).apply {
                         wrpRegistrationValidator = registrationValidator
@@ -598,7 +686,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     ?.let { openId4VpConfig ->
                         OpenId4VpDCAPIRequestProcessor(
                             openId4VpConfig = openId4VpConfig,
-                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore)
+                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, remoteReaderAuthPolicy)
                                 .apply {
                                     wrpRegistrationValidator = registrationValidator
                                     this.resolvedRegistration = resolvedRegistration
@@ -612,8 +700,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 DCAPIManager(
                     isoMdocRequestProcessor = IsoMdocDCAPIRequestProcessor(
                         documentManager = documentManager,
-                        readerTrustStore = readerTrustStore,
-                        readerAuthPolicy = config.readerAuthPolicy,
+                        readerAuthPolicy = proximityReaderAuthPolicy,
                         privilegedAllowlist = privilegedAllowlist,
                         zkSystemRepository = config.zkSystemRepository,
                         zkResponsePolicy = config.zkResponsePolicy,
@@ -690,21 +777,20 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         }
 
         /**
-         * Get the default [TransferManager] instance based on the [DocumentManager] and [ReaderTrustStore]
+         * Get the default [TransferManager] instance based on the [DocumentManager] and [ReaderAuthPolicy]
          * @param documentManager the document manager
-         * @param readerTrustStore the reader trust store
+         * @param readerAuthPolicy the reader authentication policy for the proximity path
          * @return the default [TransferManager] instance
          */
         @JvmSynthetic
         internal fun getTransferManager(
             documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore? = null,
+            readerAuthPolicy: ReaderAuthPolicy,
             wrpRegistrationValidator: WrpRegistrationValidator? = null
         ) = TransferManager.getDefault(
             context = context,
             documentManager = documentManager,
-            readerTrustStore = readerTrustStore,
-            readerAuthPolicy = config.readerAuthPolicy,
+            readerAuthPolicy = readerAuthPolicy,
             retrievalMethods = listOf(
                 BleRetrievalMethod(
                     peripheralServerMode = config.enableBlePeripheralMode,
@@ -768,6 +854,41 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     | Setting EudiWalletConfig.useStrongBoxForKeys to false.""".trimMargin()
                 )
                 config.useStrongBoxForKeys = false
+            }
+        }
+
+        /**
+         * Builds a [ReaderAuthPolicy] from a trust store and an enforcement kind.
+         * When enforcement requires a trust store that is null, downgrades or throws
+         * depending on the kind.
+         */
+        @JvmSynthetic
+        internal fun buildReaderAuthPolicy(
+            trustStore: ReaderTrustStore?,
+            kind: EnforcementKind,
+            loggerObj: Logger,
+        ): ReaderAuthPolicy = when (kind) {
+            EnforcementKind.DoNotEnforce ->
+                ReaderAuthPolicy.DoNotEnforce(trustStore)
+
+            EnforcementKind.EnforceIfPresent ->
+                if (trustStore != null) {
+                    ReaderAuthPolicy.EnforceIfPresent(trustStore)
+                } else {
+                    loggerObj.i(
+                        TAG,
+                        "EnforceIfPresent requested but no ReaderTrustStore configured. " +
+                            "Falling back to DoNotEnforce."
+                    )
+                    ReaderAuthPolicy.DoNotEnforce()
+                }
+
+            EnforcementKind.AlwaysRequire -> {
+                requireNotNull(trustStore) {
+                    "AlwaysRequire requires a ReaderTrustStore. " +
+                        "Call configureReaderTrustStore() or configureEtsiTrust()."
+                }
+                ReaderAuthPolicy.AlwaysRequire(trustStore)
             }
         }
 

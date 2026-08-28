@@ -23,6 +23,11 @@ package eu.europa.ec.eudi.iso18013.transfer.readerauth
  * @see [ReaderTrustStore]
  * @property readerTrustStore the reader trust store
  */
+@Deprecated(
+    message = "Use ReaderAuthPolicy directly. The trust store is now embedded in the " +
+            "ReaderAuthPolicy variants that require it (EnforceIfPresent, AlwaysRequire).",
+    level = DeprecationLevel.WARNING
+)
 interface ReaderTrustStoreAware {
     var readerTrustStore: ReaderTrustStore?
 }

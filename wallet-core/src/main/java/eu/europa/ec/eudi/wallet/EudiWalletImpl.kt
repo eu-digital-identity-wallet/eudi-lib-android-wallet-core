@@ -19,7 +19,6 @@ package eu.europa.ec.eudi.wallet
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
@@ -68,16 +67,31 @@ class EudiWalletImpl internal constructor(
 ) : EudiWallet, DocumentManager by documentManager, PresentationManager by presentationManager,
     DocumentStatusResolver by documentStatusResolver {
 
+    @Deprecated(
+        "Reader trust stores are now embedded in ReaderAuthPolicy at build time. " +
+            "Use EudiWalletConfig.configureReaderTrustStore() and configureReaderAuthPolicy() instead.",
+        level = DeprecationLevel.WARNING
+    )
     override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-        (this as PresentationManager).readerTrustStore = readerTrustStore
-        if (transferManager is ReaderTrustStoreAware) {
-            transferManager.readerTrustStore = readerTrustStore
-        }
+        // Trust stores are now embedded in ReaderAuthPolicy at build time.
+        // Runtime mutation is no longer supported.
     }
 
+    @Deprecated(
+        "Reader trust stores are now embedded in ReaderAuthPolicy at build time. " +
+            "Use EudiWalletConfig.configureReaderTrustStore() and configureReaderAuthPolicy() instead.",
+        level = DeprecationLevel.WARNING
+    )
+    @Suppress("DEPRECATION")
     override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) =
         setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates, config.revocationPolicy))
 
+    @Deprecated(
+        "Reader trust stores are now embedded in ReaderAuthPolicy at build time. " +
+            "Use EudiWalletConfig.configureReaderTrustStore() and configureReaderAuthPolicy() instead.",
+        level = DeprecationLevel.WARNING
+    )
+    @Suppress("DEPRECATION")
     override fun setTrustedReaderCertificates(vararg rawRes: Int) =
         setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }, config.revocationPolicy))
 

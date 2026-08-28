@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
@@ -252,7 +253,7 @@ class DcqlRequestProcessorHolderBindingTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce())
     }
 
     private fun buildOpenId4VpRequest(dcql: DCQL): OpenId4VpRequest {

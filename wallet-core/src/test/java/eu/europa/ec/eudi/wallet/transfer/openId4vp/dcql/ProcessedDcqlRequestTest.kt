@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.mockk.mockk
@@ -37,6 +38,7 @@ class ProcessedDcqlRequestTest {
             trustMetadata = null,
             msoMdocNonce = "nonce",
             wrpRegistration = registration,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce()
         )
 
         val copy = request.withPresentmentData(mockk<CredentialPresentmentData>(relaxed = true))

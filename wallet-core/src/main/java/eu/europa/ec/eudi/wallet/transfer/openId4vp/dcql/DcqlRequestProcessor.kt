@@ -16,8 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.Format
@@ -80,21 +79,15 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
  *
  * @property documentManager Provides access to documents stored in the wallet.
  * @property openid4VpX509CertificateTrust Verifies trust in the reader's certificate.
+ * @property readerAuthPolicy The reader authentication enforcement policy, forwarded to
+ *   [ProcessedDcqlRequest] for enforcement during response generation.
  */
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
     var openid4VpX509CertificateTrust: OpenId4VpReaderTrust,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private var logger: Logger? = null
-) : RequestProcessor, ReaderTrustStoreAware {
-
-    /**
-     * The trust store used for verifying reader certificates.
-     */
-    override var readerTrustStore: ReaderTrustStore?
-        get() = openid4VpX509CertificateTrust.readerTrustStore
-        set(value) {
-            openid4VpX509CertificateTrust.readerTrustStore = value
-        }
+) : RequestProcessor {
 
     private val credentialSetsMatcher = CredentialSetsMatcher()
 
@@ -136,6 +129,22 @@ class DcqlRequestProcessor(
                 ReaderTrustResult.Pending -> Requester(certChain = null) to null
             }
 
+            // Early reject for AlwaysRequire: when the wallet demands verified reader
+            // authentication for every request, there is no point building a match set
+            // and showing the consent UI — the user can never act on it. Reject before
+            // credential matching to avoid leaking which documents the wallet holds.
+            // EnforceIfPresent is NOT rejected here: the user should see the request
+            // and trust status on the consent UI; enforcement happens later in
+            // ProcessedDcqlRequest.generateResponse().
+            if (readerAuthPolicy is ReaderAuthPolicy.AlwaysRequire && trustMetadata == null) {
+                return RequestProcessor.ProcessedRequest.Failure(
+                    SecurityException(
+                        "Reader authentication policy AlwaysRequire rejected the request " +
+                            "before credential matching: reader trust was not verified."
+                    )
+                )
+            }
+
             // Resolve the relying party's registration information for this request.
             val accessChain = (trustResult as? ReaderTrustResult.Processed)?.chain.orEmpty()
             val wrpRegistration = resolveWrpRegistration(
@@ -164,6 +173,7 @@ class DcqlRequestProcessor(
             ProcessedDcqlRequest(
                 resolvedRequestObject = request.resolvedRequestObject,
                 documentManager = documentManager,
+                readerAuthPolicy = readerAuthPolicy,
                 presentmentData = CredentialPresentmentData(sets),
                 requester = requester,
                 trustMetadata = trustMetadata,
@@ -462,15 +472,16 @@ class DcqlRequestProcessor(
 
         operator fun invoke(
             documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore?,
+            readerAuthPolicy: ReaderAuthPolicy,
             logger: Logger? = null
         ): DcqlRequestProcessor {
             val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
-                readerTrustStore = readerTrustStore
+                readerTrustStore = readerAuthPolicy.readerTrustStore
             )
             return DcqlRequestProcessor(
                 documentManager = documentManager,
                 openid4VpX509CertificateTrust = openId4VpReaderTrust,
+                readerAuthPolicy = readerAuthPolicy,
                 logger = logger
             )
         }

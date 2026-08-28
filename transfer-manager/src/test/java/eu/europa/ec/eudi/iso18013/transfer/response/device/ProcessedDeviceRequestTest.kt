@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.response.device
 
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -65,7 +66,7 @@ import kotlin.test.assertIs
  */
 class ProcessedDeviceRequestTest {
 
-    // ── ReaderAuthPolicy.AlwaysRequire ─────────────────────────────────────────
+    // ── ReaderAuthPolicy.AlwaysRequire(MOCK_TRUST_STORE) ─────────────────────────────────────────
 
     @Test
     fun `AlwaysRequire returns STATUS_GENERAL_ERROR when trustMetadata is null`() = runBlocking {
@@ -73,7 +74,7 @@ class ProcessedDeviceRequestTest {
         // This is the regression test for the missing-return skipAllByPolicy bug.
         val processed = buildProcessedRequest(
             trustMetadata = null,
-            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire,
+            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire(MOCK_TRUST_STORE),
         )
 
         val response = processed.generateEmptyResponse()
@@ -86,7 +87,7 @@ class ProcessedDeviceRequestTest {
     fun `AlwaysRequire produces STATUS_OK response when trustMetadata is set`() = runBlocking {
         val processed = buildProcessedRequest(
             trustMetadata = TrustMetadata(displayName = "Trusted Verifier"),
-            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire,
+            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire(MOCK_TRUST_STORE),
         )
 
         val response = processed.generateEmptyResponse()
@@ -95,7 +96,7 @@ class ProcessedDeviceRequestTest {
         assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, parseStatus(response))
     }
 
-    // ── ReaderAuthPolicy.EnforceIfPresent ──────────────────────────────────────
+    // ── ReaderAuthPolicy.EnforceIfPresent(MOCK_TRUST_STORE) ──────────────────────────────────────
 
     @Test
     fun `EnforceIfPresent returns STATUS_GENERAL_ERROR when readerAuth is present but not trust-verified`() = runBlocking {
@@ -104,7 +105,7 @@ class ProcessedDeviceRequestTest {
         val processed = buildProcessedRequest(
             trustMetadata = null,
             requester = Requester(certChain = mockk<X509CertChain>()),
-            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(MOCK_TRUST_STORE),
         )
 
         val response = processed.generateEmptyResponse()
@@ -119,7 +120,7 @@ class ProcessedDeviceRequestTest {
         val processed = buildProcessedRequest(
             trustMetadata = null,
             requester = Requester(certChain = null),
-            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(MOCK_TRUST_STORE),
         )
 
         val response = processed.generateEmptyResponse()
@@ -133,7 +134,7 @@ class ProcessedDeviceRequestTest {
         val processed = buildProcessedRequest(
             trustMetadata = TrustMetadata(displayName = "Trusted"),
             requester = Requester(certChain = mockk<X509CertChain>()),
-            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(MOCK_TRUST_STORE),
         )
 
         val response = processed.generateEmptyResponse()
@@ -150,7 +151,7 @@ class ProcessedDeviceRequestTest {
         val processed = buildProcessedRequest(
             trustMetadata = null,
             requester = Requester(certChain = mockk<X509CertChain>()),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         val response = processed.generateEmptyResponse()
@@ -171,7 +172,7 @@ class ProcessedDeviceRequestTest {
         }
         val processed = buildProcessedRequest(
             trustMetadata = TrustMetadata(displayName = "Trusted"),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         val result = processed.generateResponse(
@@ -210,7 +211,7 @@ class ProcessedDeviceRequestTest {
             requester = Requester(certChain = null),
             // Trusted + DoNotEnforce so the policy gate doesn't short-circuit before the loop.
             trustMetadata = TrustMetadata(displayName = "Trusted"),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         val thrown = assertFailsWith<CancellationException> {
@@ -370,7 +371,7 @@ class ProcessedDeviceRequestTest {
     private fun buildProcessedRequest(
         trustMetadata: TrustMetadata?,
         requester: Requester = Requester(certChain = null),
-        readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+        readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(MOCK_TRUST_STORE),
         presentmentData: CredentialPresentmentData = CredentialPresentmentData(emptyList()),
     ): ProcessedDeviceRequest = ProcessedDeviceRequest(
         documentManager = mockk<DocumentManager>(relaxed = true),
@@ -422,5 +423,8 @@ class ProcessedDeviceRequestTest {
          * any signing routine.
          */
         val SESSION_TRANSCRIPT: ByteArray = byteArrayOf(0)
+
+        /** Mock trust store used to construct [ReaderAuthPolicy] variants that require one. */
+        val MOCK_TRUST_STORE: ReaderTrustStore = mockk()
     }
 }

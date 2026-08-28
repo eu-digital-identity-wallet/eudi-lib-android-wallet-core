@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.iso18013.transfer
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -93,8 +92,9 @@ interface TransferManager : TransferEvent.Listenable {
          *
          * @param context
          * @param documentManager
-         * @param readerTrustStore
-         * @param readerAuthPolicy
+         * @param readerAuthPolicy the reader authentication policy, which embeds the
+         *   [ReaderTrustStore][eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore]
+         *   used to validate the reader's certificate chain
          * @param retrievalMethods
          * @param zkSystemRepository
          * @param zkResponsePolicy the ZK response policy to use when ZK proof generation fails.
@@ -105,15 +105,13 @@ interface TransferManager : TransferEvent.Listenable {
         fun getDefault(
             context: Context,
             documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore? = null,
-            readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            readerAuthPolicy: ReaderAuthPolicy,
             retrievalMethods: List<DeviceRetrievalMethod>? = null,
             zkSystemRepository: ZkSystemRepository? = null,
             zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
             wrpRegistrationValidator: WrpRegistrationValidator? = null
         ): TransferManager = TransferManagerImpl(context) {
             documentManager(documentManager)
-            readerTrustStore?.let { readerTrustStore(it) }
             readerAuthPolicy(readerAuthPolicy)
             retrievalMethods?.let { retrievalMethods(it) }
             zkSystemRepository?.let { zkSystemRepository(it) }

@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.openid4vp.Consensus
@@ -58,6 +59,10 @@ import org.multipaz.trustmanagement.TrustMetadata
  *   [presentmentSelections]: when `multiple = false`, each candidate credential becomes
  *   its own option; when `multiple = true`, all candidates of the query are grouped into
  *   one option.
+ * @property readerAuthPolicy the reader authentication enforcement policy. Evaluated
+ *   in [generateResponse] to gate disclosure when the verifier's trust status does not
+ *   satisfy the configured threshold — mirroring the proximity path's enforcement in
+ *   [eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest].
  * @param wrpRegistration the relying party's registration information resolved for
  *   this request, or null when none was available. Exposed uniformly through
  *   [RequestProcessor.ProcessedRequest.Success.wrpRegistration].
@@ -65,6 +70,7 @@ import org.multipaz.trustmanagement.TrustMetadata
 class ProcessedDcqlRequest(
     val resolvedRequestObject: ResolvedRequestObject,
     private val documentManager: DocumentManager,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     presentmentData: CredentialPresentmentData,
     requester: Requester,
     trustMetadata: TrustMetadata?,
@@ -125,6 +131,25 @@ class ProcessedDcqlRequest(
         sessionTranscriptProvider: (ResolvedRequestObject) -> ByteArray,
         sdJwtAudience: String?
     ): ResponseResult {
+        // Enforce the wallet's reader authentication policy — this mirrors the
+        // proximity path's enforcement in ProcessedDeviceRequest.generateResponse().
+        val isReaderTrustVerified = trustMetadata != null
+        val readerAuthPresent = requester.certChain != null
+        val rejectByPolicy = when (readerAuthPolicy) {
+            is ReaderAuthPolicy.DoNotEnforce -> false
+            is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
+            is ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
+        }
+        if (rejectByPolicy) {
+            return ResponseResult.Failure(
+                SecurityException(
+                    "Reader authentication policy rejected the request: " +
+                        "policy=${readerAuthPolicy::class.simpleName}, " +
+                        "readerAuthPresent=$readerAuthPresent, trusted=$isReaderTrustVerified"
+                )
+            )
+        }
+
         // Confirm the user's consent-UI changes did not break the original DCQL
         // request — e.g. a deselected credential leaves a required query uncovered,
         // or a deselected claim breaks the source query's `claims` / `claim_sets`
@@ -218,6 +243,7 @@ class ProcessedDcqlRequest(
         ProcessedDcqlRequest(
             resolvedRequestObject = resolvedRequestObject,
             documentManager = documentManager,
+            readerAuthPolicy = readerAuthPolicy,
             presentmentData = presentmentData,
             requester = requester,
             trustMetadata = trustMetadata,

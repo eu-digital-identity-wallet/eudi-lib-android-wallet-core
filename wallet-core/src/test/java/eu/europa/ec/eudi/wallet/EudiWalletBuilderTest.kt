@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMetadataCleanup
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -61,7 +62,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
@@ -76,7 +77,7 @@ class EudiWalletBuilderTest {
         // Verify
         assertIs<EudiWalletImpl>(wallet)
         verify(exactly = 1) { builder.getDefaultDocumentManager(null, null) }
-        verify(exactly = 1) { builder.getTransferManager(any(), null) }
+        verify(exactly = 1) { builder.getTransferManager(any(), readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce()) }
         verify(exactly = 1) { builder.getDocumentStatusResolver(any()) }
     }
 
@@ -93,7 +94,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customSecureArea: SecureArea = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -129,7 +130,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customStorageEngine: Storage = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -164,7 +165,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customDocumentManager: DocumentManager = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -181,7 +182,7 @@ class EudiWalletBuilderTest {
         // documentManager is wrapped with DocumentManagerWithMetadataCleanup for metadata cleanup
         assertIs<DocumentManagerWithMetadataCleanup>(wallet.documentManager)
         verify(exactly = 0) { builder.getDefaultDocumentManager(any(), any()) }
-        verify(exactly = 1) { builder.getTransferManager(any(), null) }
+        verify(exactly = 1) { builder.getTransferManager(any(), readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce()) }
     }
 
     @Test
@@ -197,7 +198,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customReaderTrustStore: ReaderTrustStore = mockk()
         val documentManager: DocumentManager = mockk(relaxed = true)
         val transferManager: TransferManager = mockk(relaxed = true)
@@ -205,9 +206,9 @@ class EudiWalletBuilderTest {
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns documentManager
             every { getTransferManager(any(), any()) } answers {
-                // Verify reader trust store is passed to transfer manager
-                val readerTrustStore = secondArg<ReaderTrustStore?>()
-                assertEquals(customReaderTrustStore, readerTrustStore)
+                // Verify reader trust store is embedded in the policy
+                val policy = secondArg<ReaderAuthPolicy>()
+                assertIs<ReaderAuthPolicy.EnforceIfPresent>(policy)
                 transferManager
             }
             every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
@@ -219,7 +220,7 @@ class EudiWalletBuilderTest {
 
         // Verify
         assertIs<EudiWalletImpl>(wallet)
-        verify(exactly = 1) { builder.getTransferManager(any(), customReaderTrustStore, any()) }
+        verify(exactly = 1) { builder.getTransferManager(any(),any(), any()) }
     }
 
     @Test
@@ -235,7 +236,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customPresentationManager: PresentationManager = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -243,6 +244,7 @@ class EudiWalletBuilderTest {
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every {
                 getDefaultPresentationManager(
+                    any(),
                     any(),
                     any(),
                     any(),
@@ -259,7 +261,7 @@ class EudiWalletBuilderTest {
         // Verify
         assertIs<EudiWalletImpl>(wallet)
         assertEquals(customPresentationManager, wallet.presentationManager)
-        verify(exactly = 0) { builder.getDefaultPresentationManager(any(), any(), any(), any()) }
+        verify(exactly = 0) { builder.getDefaultPresentationManager(any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -275,8 +277,8 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
-        val customLogger: Logger = mockk()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
+        val customLogger: Logger = mockk(relaxed = true)
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
@@ -306,7 +308,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customHttpClientFactory: () -> HttpClient = { mockk() }
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -340,7 +342,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customTransactionLogger: TransactionLogger = mockk()
         val documentManager: DocumentManager = mockk(relaxed = true)
         val defaultPresentationManager: PresentationManagerImpl = mockk(relaxed = true)
@@ -350,6 +352,7 @@ class EudiWalletBuilderTest {
             every { getTransferManager(any(), any()) } returns mockk(relaxed = true)
             every {
                 getDefaultPresentationManager(
+                    any(),
                     any(),
                     any(),
                     any(),
@@ -390,7 +393,7 @@ class EudiWalletBuilderTest {
             every { strongBoxSupported } returns true
         }
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
         val customDocumentStatusResolver: DocumentStatusResolver = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -429,7 +432,7 @@ class EudiWalletBuilderTest {
             .withFormats(Format.MsoMdoc.ES256)
             .build()
 
-        val config = EudiWalletConfig()
+        val config = EudiWalletConfig().configureLogging(Logger.OFF)
             .configureOpenId4Vp(openId4VpConfig)
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {

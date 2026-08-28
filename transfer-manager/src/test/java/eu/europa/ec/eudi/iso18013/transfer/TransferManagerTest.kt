@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.iso18013.transfer
 import android.util.Log
 import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequestProcessor
 import io.mockk.mockk
 import org.mockito.MockedStatic
@@ -45,8 +46,11 @@ class TransferManagerTest {
 
     @Test
     fun `makeMsoMdocTransferManager method should return a MsoMdocTransferManager instance`() {
-        val transferManager =
-            TransferManager.getDefault(Context, createDocumentManager(null))
+        val transferManager = TransferManager.getDefault(
+            context = Context,
+            documentManager = createDocumentManager(null),
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce()
+        )
 
         assertIs<eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl>(transferManager)
         assertIs<DeviceRequestProcessor>(transferManager.requestProcessor)
@@ -58,6 +62,7 @@ class TransferManagerTest {
         val transferManager = TransferManager.getDefault(
             context = Context,
             documentManager = createDocumentManager(null),
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
             retrievalMethods = deviceRetrievalMethods
         )
 
@@ -67,16 +72,16 @@ class TransferManagerTest {
     }
 
     @Test
-    fun `makeMsoMdocTransferManager with readerTrustStore method should return a MsoMdocTransferManager instance`() {
+    fun `makeMsoMdocTransferManager with readerAuthPolicy should return a MsoMdocTransferManager instance`() {
         val readerTrustStore: ReaderTrustStore = mockk()
+        val readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(readerTrustStore)
         val transferManager = TransferManager.getDefault(
             context = Context,
             documentManager = createDocumentManager(null),
-            readerTrustStore = readerTrustStore
+            readerAuthPolicy = readerAuthPolicy
         )
 
         assertIs<eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl>(transferManager)
         assertIs<DeviceRequestProcessor>(transferManager.requestProcessor)
-        assertEquals(readerTrustStore, transferManager.requestProcessor.readerTrustStore)
     }
 }

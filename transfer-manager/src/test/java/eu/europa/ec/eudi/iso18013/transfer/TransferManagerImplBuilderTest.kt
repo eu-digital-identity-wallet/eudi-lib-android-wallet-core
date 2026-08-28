@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.iso18013.transfer
 import android.util.Log
 import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import io.mockk.mockk
@@ -49,6 +50,7 @@ class TransferManagerImplBuilderTest {
     fun buildTransferManagerWithDefaults() {
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
+            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
             .build()
 
         assertNotNull(transferManager)
@@ -65,10 +67,22 @@ class TransferManagerImplBuilderTest {
     }
 
     @Test
+    fun buildTransferManagerWithoutReaderAuthPolicyThrowsException() {
+        val throwable = assertFailsWith<IllegalArgumentException> {
+            TransferManagerImpl.Builder(Context)
+                .documentManager(createDocumentManager(null))
+                .build()
+        }
+
+        assertEquals("Reader auth policy must be provided", throwable.message)
+    }
+
+    @Test
     fun buildTransferManagerWithRetrievalMethods() {
         val retrievalMethods: List<DeviceRetrievalMethod> = listOf(mockk(), mockk())
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
+            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
             .retrievalMethods(retrievalMethods)
             .build()
 
@@ -81,6 +95,7 @@ class TransferManagerImplBuilderTest {
     fun buildTransferManagerWithDefaultZkResponsePolicy() {
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
+            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
             .build()
 
         assertNotNull(transferManager)
@@ -92,15 +107,15 @@ class TransferManagerImplBuilderTest {
     }
 
     @Test
-    fun buildTransferManagerWithReaderTrustStore() {
+    fun buildTransferManagerWithReaderAuthPolicy() {
         val readerTrustStore = mockk<ReaderTrustStore>()
+        val readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(readerTrustStore)
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
-            .readerTrustStore(readerTrustStore)
+            .readerAuthPolicy(readerAuthPolicy)
             .build()
 
         assertNotNull(transferManager)
         assertIs<DeviceRequestProcessor>(transferManager.requestProcessor)
-        assertEquals(readerTrustStore, transferManager.requestProcessor.readerTrustStore)
     }
 }

@@ -18,8 +18,6 @@ package eu.europa.ec.eudi.iso18013.transfer.response.device
 
 import eu.europa.ec.eudi.iso18013.transfer.internal.cn
 import eu.europa.ec.eudi.iso18013.transfer.internal.getValidIssuedMsoMdocDocuments
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.EU_WRPRC_REQUEST_INFO_KEY
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
@@ -67,8 +65,9 @@ import org.multipaz.mdoc.request.DeviceRequest as MultipazDeviceRequest
  * confirmed by the user, in line with ISO 18013-5 partial-response semantics.
  *
  * @property documentManager the document manager to retrieve the requested documents
- * @property readerTrustStore the reader trust store to perform reader authentication
- * @property readerAuthPolicy the policy for enforcing reader authentication during response generation
+ * @property readerAuthPolicy the policy for enforcing reader authentication during response generation;
+ *   the [ReaderAuthPolicy.readerTrustStore] embedded in the policy is used to validate the reader's
+ *   certificate chain
  * @property zkSystemRepository the ZKP system repository
  * @property zkResponsePolicy the ZK response policy to use when ZK proof generation fails
  * @property wrpRegistrationValidator validates the relying party registration certificate carried in
@@ -76,12 +75,13 @@ import org.multipaz.mdoc.request.DeviceRequest as MultipazDeviceRequest
  */
 class DeviceRequestProcessor(
     private val documentManager: DocumentManager,
-    override var readerTrustStore: ReaderTrustStore? = null,
-    private val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private var zkSystemRepository: ZkSystemRepository? = null,
     internal val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
     private val wrpRegistrationValidator: WrpRegistrationValidator? = null,
-) : RequestProcessor, ReaderTrustStoreAware {
+) : RequestProcessor {
+
+    private val readerTrustStore get() = readerAuthPolicy.readerTrustStore
 
     /**
      * Process the [DeviceRequest] and return [ProcessedDeviceRequest] (success) or

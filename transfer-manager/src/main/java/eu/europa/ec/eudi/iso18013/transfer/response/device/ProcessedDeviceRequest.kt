@@ -75,7 +75,7 @@ class ProcessedDeviceRequest(
     presentmentData: CredentialPresentmentData,
     requester: Requester,
     trustMetadata: TrustMetadata?,
-    private val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private val zkSystemRepository: ZkSystemRepository? = null,
     private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
     wrpRegistration: WrpRegistrationInfo? = null
@@ -128,9 +128,9 @@ class ProcessedDeviceRequest(
             val isReaderTrustVerified = trustMetadata != null
             val readerAuthPresent = requester.certChain != null
             val skipAllByPolicy = when (readerAuthPolicy) {
-                ReaderAuthPolicy.DoNotEnforce -> false
-                ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
-                ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
+                is ReaderAuthPolicy.DoNotEnforce -> false
+                is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
+                is ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
             }
 
             if (skipAllByPolicy) {

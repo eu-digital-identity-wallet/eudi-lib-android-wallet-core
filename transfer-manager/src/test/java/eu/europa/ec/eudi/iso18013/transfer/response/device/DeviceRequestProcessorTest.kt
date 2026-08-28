@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.iso18013.transfer.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.KeyLockPassphrase
 import eu.europa.ec.eudi.iso18013.transfer.createDocumentManager
 import eu.europa.ec.eudi.iso18013.transfer.mockAndroidLog
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
@@ -64,7 +65,7 @@ class DeviceRequestProcessorTest {
     fun `process returns ProcessedDeviceRequest with matched mDL credential and the expected requested claims`() =
         runBlocking {
             val documentManager = createDocumentManager(keyLockPassphrase = null)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce())
 
             val processed = processor.process(DeviceRequest)
 
@@ -94,7 +95,7 @@ class DeviceRequestProcessorTest {
     @Test
     fun `process returns Failure when the request is not a DeviceRequest`(): Unit = runBlocking {
         val documentManager = createDocumentManager(keyLockPassphrase = null)
-        val processor = DeviceRequestProcessor(documentManager)
+        val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce())
         val unknownRequest = mockk<Request>()
 
         val processed = processor.process(unknownRequest)
@@ -106,7 +107,7 @@ class DeviceRequestProcessorTest {
     fun `process plus generateResponse produces a valid signed DeviceResponse end-to-end`() =
         runBlocking {
             val documentManager = createDocumentManager(keyLockPassphrase = null)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce())
             val processed = assertIs<ProcessedDeviceRequest>(processor.process(DeviceRequest))
             val match = processed.firstMatch()
 
@@ -140,7 +141,7 @@ class DeviceRequestProcessorTest {
             // constructor + filtering behaviour: building a selection with a narrower
             // `match.claims` map and verifying it reaches the issuer-signed output.
             val documentManager = createDocumentManager(keyLockPassphrase = null)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce())
             val processed = assertIs<ProcessedDeviceRequest>(processor.process(DeviceRequest))
             val fullMatch = processed.firstMatch()
 
@@ -170,7 +171,7 @@ class DeviceRequestProcessorTest {
     fun `generateResponse with a PIN-locked credential succeeds when matching KeyUnlockData is provided`() =
         runBlocking {
             val documentManager = createDocumentManager(keyLockPassphrase = KeyLockPassphrase)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce())
             val processed = assertIs<ProcessedDeviceRequest>(processor.process(DeviceRequest))
             val match = processed.firstMatch()
 
@@ -209,7 +210,7 @@ class DeviceRequestProcessorTest {
             val documentManager = mockk<DocumentManager> {
                 coEvery { getDocuments(any()) } throws CancellationException("scope cancelled")
             }
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce())
 
             val thrown = assertFailsWith<CancellationException> {
                 processor.process(DeviceRequest)
