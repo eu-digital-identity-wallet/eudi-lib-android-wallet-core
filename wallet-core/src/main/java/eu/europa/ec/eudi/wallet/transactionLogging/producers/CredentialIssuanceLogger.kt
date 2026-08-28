@@ -27,7 +27,13 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.DeferredIssueResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.storedIssuerRegistration
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.QualifiedIdentifier
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerEntitlements
+import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.model.MultiLangString
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
@@ -148,7 +154,10 @@ class CredentialIssuanceLogger(
         deferredDocument: DeferredDocument,
         executor: Executor?,
         onIssueResult: OpenId4VciManager.OnDeferredIssueResult,
-    ) = delegate.issueDeferredDocument(deferredDocument, executor, wrapDeferred(onIssueResult))
+    ) = delegate.issueDeferredDocument(
+        deferredDocument, executor,
+        wrapDeferred(onIssueResult, registration = deferredDocument.storedIssuerRegistration())
+    )
 
     /**
      * Wraps an issuance callback so each issuance is logged. An entry is written once issuance begins
@@ -179,11 +188,12 @@ class CredentialIssuanceLogger(
      */
     private fun wrapDeferred(
         downstream: OpenId4VciManager.OnDeferredIssueResult,
+        registration: RegistrationCertificate? = null
     ): OpenId4VciManager.OnDeferredIssueResult = OpenId4VciManager.OnDeferredIssueResult { result ->
         runCatching {
             val entry = when (result) {
                 is DeferredIssueResult.DocumentIssued ->
-                    deferredResolutionEntry(result.document, result.documentId, TransactionResult.Completed)
+                    deferredResolutionEntry(result.document, result.documentId, TransactionResult.Completed, registration)
 
                 is DeferredIssueResult.DocumentFailed ->
                     deferredResolutionEntry(
@@ -191,14 +201,16 @@ class CredentialIssuanceLogger(
                         result.documentId,
                         TransactionResult.NotCompleted(
                             result.cause.toNoncompletionReason(REASON_ISSUANCE_FAILED)
-                        )
+                        ),
+                        registration
                     )
 
                 is DeferredIssueResult.DocumentExpired ->
                     deferredResolutionEntry(
                         result.document,
                         result.documentId,
-                        TransactionResult.NotCompleted("Deferred credential expired")
+                        TransactionResult.NotCompleted("Deferred credential expired"),
+                        registration
                     )
 
                 is DeferredIssueResult.DocumentNotReady -> null // still pending, not a terminal state
@@ -212,8 +224,10 @@ class CredentialIssuanceLogger(
         document: Document,
         documentId: DocumentId,
         result: TransactionResult,
+        registration: RegistrationCertificate?,
     ): TransactionEntry.CredentialIssuance {
         val completed = result is TransactionResult.Completed
+        val party = registration.toInteractingParty(fallbackName = document.issuerMetadata?.issuerName())
         return TransactionEntry.CredentialIssuance(
             // Keyed by the DocumentId so this updates the earlier "awaiting" row instead of duplicating it.
             transactionIdentifier = deferredTxId(documentId),
@@ -223,10 +237,11 @@ class CredentialIssuanceLogger(
                 credentialNumberRequested = 1,
                 credentialNumberIssued = if (completed) 1 else 0,
                 credentialIdentifier = if (completed) listOf(document.credentialIdentifier()) else emptyList(),
-                // The original trigger is not known at deferred-resolution time, so leave it null (TS10 §3.5).
                 isUserTriggered = null,
-                interactingPartyName = document.issuerMetadata?.issuerName(),
-                interactingPartyIdentifier = null
+                interactingPartyName = party.name,
+                interactingPartyIdentifier = party.identifier,
+                interactingPartyType = party.type,
+                interactingPartyContact = party.contact
             ),
         )
     }
@@ -260,6 +275,7 @@ class CredentialIssuanceLogger(
         private var requested = seed.requested
         private val issuedIdentifiers = mutableListOf<String>()
         private var issuerName: MultiLangString? = seed.issuerName
+        private var issuerRegistration: RegistrationCertificate? = null
         private val deferredDocIds = mutableListOf<DocumentId>()
         private var failureReason: String? = null
         private var wroteAhead = false
@@ -293,6 +309,15 @@ class CredentialIssuanceLogger(
 
                 is IssueEvent.DocumentFailed -> {
                     failureReason = event.cause.toNoncompletionReason(REASON_ISSUANCE_FAILED)
+                    emptyList()
+                }
+
+                is IssueEvent.DocumentRequiresCreateSettings -> {
+                    // The issuer registration rides on the offer this event carries; grab it once for
+                    // the entry's interacting-party fields (TS10 §3.5).
+                    if (issuerRegistration == null) {
+                        issuerRegistration = event.offeredDocument.offer.issuerRegistration.registrationOrNull()
+                    }
                     emptyList()
                 }
 
@@ -338,15 +363,16 @@ class CredentialIssuanceLogger(
             result: TransactionResult,
             requestedCount: Int = requested,
         ): TransactionEntry {
+            val party = issuerRegistration.toInteractingParty(fallbackName = issuerName)
             val details = TransactionEntry.CredentialIssuanceDetails(
                 credentialNumberRequested = requestedCount,
                 credentialNumberIssued = issuedIdentifiers.size,
                 credentialIdentifier = issuedIdentifiers.toList(),
-                // true = user started it, false = issuer offer or background re-issuance (TS10 §3.5).
                 isUserTriggered = userTriggered,
-                interactingPartyName = issuerName,
-                // Only the issuer URL is available, not the legal-entity identifier (TS10 §3.5), so this stays null.
-                interactingPartyIdentifier = null,
+                interactingPartyName = party.name,
+                interactingPartyIdentifier = party.identifier,
+                interactingPartyType = party.type,
+                interactingPartyContact = party.contact
             )
             return if (reissuance) {
                 TransactionEntry.CredentialReissuance(id, time, result, details)
@@ -361,8 +387,9 @@ class CredentialIssuanceLogger(
          * [TransactionEntry.CredentialIssuance], since the resolution callback cannot tell it was a
          * re-issuance.
          */
-        private fun deferredAwaitingEntry(documentId: DocumentId): TransactionEntry =
-            TransactionEntry.CredentialIssuance(
+        private fun deferredAwaitingEntry(documentId: DocumentId): TransactionEntry {
+            val party = issuerRegistration.toInteractingParty(fallbackName = issuerName)
+            return TransactionEntry.CredentialIssuance(
                 transactionIdentifier = deferredTxId(documentId),
                 time = time,
                 transactionResult = TransactionResult.NotCompleted(REASON_ISSUANCE_DEFERRED),
@@ -370,12 +397,14 @@ class CredentialIssuanceLogger(
                     credentialNumberRequested = 1,
                     credentialNumberIssued = 0,
                     credentialIdentifier = emptyList(),
-                    // Known here; resolution later overwrites it to null (trigger unknown at that point).
                     isUserTriggered = userTriggered,
-                    interactingPartyName = issuerName,
-                    interactingPartyIdentifier = null,
-                ),
+                    interactingPartyName = party.name,
+                    interactingPartyIdentifier = party.identifier,
+                    interactingPartyType = party.type,
+                    interactingPartyContact = party.contact
+                )
             )
+        }
     }
 
     /**
@@ -425,5 +454,48 @@ class CredentialIssuanceLogger(
             issuerDisplay?.firstOrNull()?.let {
                 MultiLangString(lang = it.locale?.toLanguageTag() ?: DEFAULT_LANG, content = it.name)
             }
+
+        private const val TYPE_PID = "PIDProvider"
+        private const val TYPE_QEAA = "QEAAProvider"
+        private const val TYPE_PUB_EAA = "PubEEAProvider"
+        private const val TYPE_NON_Q_EAA = "NonQEAAProvider"
+
+        private fun RegistrationCertificateResult?.registrationOrNull(): RegistrationCertificate? =
+            when (this) {
+                is RegistrationCertificateResult.Verified -> registration
+                is RegistrationCertificateResult.Failed -> registration
+                null -> null
+            }
+
+        private fun RegistrationCertificate?.toInteractingParty(
+            fallbackName: MultiLangString?
+        ): IssuerInteractingParty {
+            if (this == null) return IssuerInteractingParty(fallbackName, null, null, null)
+            val name = (name ?: legalName
+                ?: listOfNotNull(givenName, familyName).joinToString(" ").ifBlank { null })
+                ?.let { MultiLangString(lang = DEFAULT_LANG, content = it) }
+                ?: fallbackName
+            return IssuerInteractingParty(
+                name = name,
+                identifier = structuredIdentifier(),
+                type = interactingPartyType(),
+                contact = listOfNotNull(country, infoUri).ifEmpty { null },
+            )
+        }
+
+        private fun RegistrationCertificate.interactingPartyType(): String? = when {
+            IssuerEntitlements.PID in entitlements -> TYPE_PID
+            IssuerEntitlements.QEAA in entitlements -> TYPE_QEAA
+            IssuerEntitlements.PUB_EAA in entitlements -> TYPE_PUB_EAA
+            IssuerEntitlements.NON_Q_EAA in entitlements -> TYPE_NON_Q_EAA
+            else -> null
+        }
     }
 }
+
+private class IssuerInteractingParty(
+    val name: MultiLangString?,
+    val identifier: QualifiedIdentifier?,
+    val type: String?,
+    val contact: List<String>?
+)

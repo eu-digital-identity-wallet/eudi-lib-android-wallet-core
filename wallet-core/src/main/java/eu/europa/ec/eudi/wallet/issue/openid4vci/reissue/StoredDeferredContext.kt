@@ -35,5 +35,27 @@ internal data class StoredDeferredContext(
     val credentialEndpoint: String? = null,
 
     // Re-issuance linkage: if this deferred credential replaces an existing document
-    val replacesDocumentId: String? = null
+    val replacesDocumentId: String? = null,
+
+    // Interacting party (TS10 §3.5): the credential issuer's registration identity, captured at
+    // deferral so the transaction log can name it at resolution, when the certificate is gone.
+    val interactingParty: StoredIssuerRegistration? = null,
+)
+
+/**
+ * The log-relevant subset of a credential issuer's registration certificate, persisted with a deferred
+ * document so its interacting-party fields (TS10 §3.5) survive until the credential resolves. The raw
+ * fields are stored rather than the mapped log values, so one mapping serves both the synchronous and
+ * the deferred issuance paths.
+ */
+@Serializable
+internal data class StoredIssuerRegistration(
+    val name: String? = null,
+    val legalName: String? = null,
+    val givenName: String? = null,
+    val familyName: String? = null,
+    val identifiers: List<String> = emptyList(),
+    val entitlements: List<String> = emptyList(),
+    val country: String? = null,
+    val infoUri: String? = null,
 )

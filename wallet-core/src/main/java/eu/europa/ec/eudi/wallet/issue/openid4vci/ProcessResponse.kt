@@ -29,6 +29,7 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistration
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +58,8 @@ internal class ProcessResponse(
     val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
     val replacesDocumentId: DocumentId? = null,
-    val issuerTrustConfig: IssuerTrustConfig? = null
+    val issuerTrustConfig: IssuerTrustConfig? = null,
+    val interactingParty: StoredIssuerRegistration? = null,
 ) {
 
     suspend fun process(response: SubmitRequest.Response) {
@@ -167,6 +169,7 @@ internal class ProcessResponse(
                     replacesDocumentId = replacesDocumentId,
                     credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.first?.configurationIdentifier?.value,
                     credentialEndpoint = issuer.credentialOffer.credentialIssuerMetadata.credentialEndpoint.toString(),
+                    interactingParty = interactingParty,
                 )
 
                 documentManager.storeDeferredDocument(
