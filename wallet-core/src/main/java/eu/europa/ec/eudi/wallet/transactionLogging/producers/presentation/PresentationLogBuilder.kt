@@ -24,11 +24,15 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIRequest
 import eu.europa.ec.eudi.wallet.dcapi.IsoMdocDCAPIResponse
 import eu.europa.ec.eudi.wallet.dcapi.OpenId4VpDCAPIResponse
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
+import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.transactionLogging.model.ClaimInfo
 import eu.europa.ec.eudi.wallet.transactionLogging.model.ClaimPath
 import eu.europa.ec.eudi.wallet.transactionLogging.model.MultiLangString
+import eu.europa.ec.eudi.wallet.transactionLogging.model.Policy
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
+import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.toNoncompletionReason
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing.parseMsoMdoc
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing.parseVp
@@ -112,19 +116,62 @@ class PresentationLogBuilder {
     }
 
     /**
-     * Adds the relying party name from the processed request's trust metadata (best-effort). The
-     * wallet's own trust result is not logged, since TS10 has no field for it.
+     * Adds the relying party's identity. When the request carries a registration certificate, its
+     * registered details — identifier, name, contact, purpose, privacy policy, registrar, supervisory
+     * authority and intermediary — are recorded. Otherwise only the name is recorded, from the
+     * request's trust metadata.
      */
     fun withRelyingParty(
         log: TransactionEntry.Presentation,
         processedRequest: RequestProcessor.ProcessedRequest,
     ): TransactionEntry.Presentation {
         val success = processedRequest.getOrNull() ?: return log
-        val name = success.trustMetadata?.displayName ?: "Unidentified Relying Party"
-        return log.copy(
+        val registration =
+            when (val result = success.wrpRegistration as? RegistrationCertificateResult) {
+                is RegistrationCertificateResult.Verified -> result.registration
+                is RegistrationCertificateResult.Failed -> result.registration
+                null -> null
+            }
+        return if (registration != null) {
+            log.withRegistrationCertificate(
+                rc = registration,
+                fallbackName = success.trustMetadata?.displayName
+            )
+        } else {
+            val name = success.trustMetadata?.displayName ?: "Unidentified Relying Party"
+            log.copy(interactingPartyName = MultiLangString(lang = DEFAULT_LANG, content = name))
+        }
+    }
+
+    /**
+     * Copies the relying party's registered details onto the entry. Fields with no value are left
+     * empty; the name falls back to [fallbackName] when the certificate carries none.
+     */
+    private fun TransactionEntry.Presentation.withRegistrationCertificate(
+        rc: RegistrationCertificate,
+        fallbackName: String?,
+    ): TransactionEntry.Presentation {
+        val name = rc.name ?: rc.legalName ?: fallbackName ?: "Unidentified Relying Party"
+        val dpa = rc.supervisoryAuthority
+        return copy(
             interactingPartyName = MultiLangString(lang = DEFAULT_LANG, content = name),
+            interactingPartyIdentifier = rc.structuredIdentifier(),
+            interactingPartyContact = listOfNotNull(rc.supportUri, rc.infoUri).ifEmpty { null },
+            isIntermediary = rc.intermediary != null,
+            intermediaryName = rc.intermediary?.name
+                ?.let { MultiLangString(lang = DEFAULT_LANG, content = it) },
+            registrarURL = rc.registryUri,
+            purpose = rc.purpose
+                .map { MultiLangString(lang = it.language, content = it.value) }
+                .ifEmpty { null },
+            privacyPolicy = listOfNotNull(
+                rc.privacyPolicyUri?.let { Policy(type = Policy.PRIVACY_POLICY, policyURI = it) },
+            ).ifEmpty { null },
+            dpaName = dpa?.name?.let { MultiLangString(lang = DEFAULT_LANG, content = it) },
+            dpaContact = dpa?.let { listOfNotNull(it.email, it.phone, it.uri) }?.ifEmpty { null },
         )
     }
+
 
     /**
      * Adds the presented claims from a [Response] (paths only, no values) and sets the

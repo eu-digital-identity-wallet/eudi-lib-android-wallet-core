@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.transactionLogging.model
 
 import android.annotation.SuppressLint
+import eu.europa.ec.eudi.wallet.registration.QualifiedIdentifier
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -69,13 +70,12 @@ sealed interface TransactionEntry {
         override val transactionResult: TransactionResult,
         val listOfClaimsRequested: List<ClaimInfo>,
         val listOfClaimsPresented: List<ClaimInfo>,
-        /** Always `ServiceProvider` here (TS10 §3.2). */
         val interactingPartyType: String = INTERACTING_PARTY_TYPE,
         val interactingPartyName: MultiLangString? = null,
-        val interactingPartyIdentifier: Identifier? = null,
+        val interactingPartyIdentifier: QualifiedIdentifier? = null,
         val interactingPartyContact: List<String>? = null,
         val isIntermediary: Boolean? = null,
-        val intermediaryIdentifier: Identifier? = null,
+        val intermediaryIdentifier: QualifiedIdentifier? = null,
         val intermediaryName: MultiLangString? = null,
         val intermediaryContact: List<String>? = null,
         val registrarURL: String? = null,
@@ -101,12 +101,10 @@ sealed interface TransactionEntry {
     data class CredentialIssuanceDetails(
         val credentialNumberRequested: Int,
         val credentialNumberIssued: Int,
-        /** IDs of the issued credentials; each is the `vct` or `docType` value. */
         val credentialIdentifier: List<String>,
         val isUserTriggered: Boolean? = null,
         val interactingPartyName: MultiLangString? = null,
-        val interactingPartyIdentifier: Identifier? = null,
-        /** One of `QEAAProvider`, `NonQEAAProvider`, `PubEEAProvider`, `PIDProvider` (TS10 §3.5). */
+        val interactingPartyIdentifier: QualifiedIdentifier? = null,
         val interactingPartyType: String? = null,
         val interactingPartyContact: List<String>? = null,
     )
@@ -146,9 +144,8 @@ sealed interface TransactionEntry {
         override val transactionIdentifier: String,
         @Serializable(with = InstantIso8601Serializer::class) override val time: Instant,
         override val transactionResult: TransactionResult,
-        /** ID of the deleted credential; the `vct` or `docType` value. */
         val credentialIdentifier: String,
-        val credentialIssuerIdentifier: Identifier? = null,
+        val credentialIssuerIdentifier: QualifiedIdentifier? = null,
         val credentialIssuerName: MultiLangString? = null,
     ) : TransactionEntry {
         override val transactionType: TransactionType get() = TransactionType.CredentialDeletion
@@ -161,18 +158,15 @@ sealed interface TransactionEntry {
         override val transactionIdentifier: String,
         @Serializable(with = InstantIso8601Serializer::class) override val time: Instant,
         override val transactionResult: TransactionResult,
-        /** Always `ESigESealCreationProvider` here (TS10 §3.12). */
         val interactingPartyType: String = INTERACTING_PARTY_TYPE,
         val signingTransactionIdentifier: String? = null,
-        /** ID of the certificate used; the X.509 `serialNumber` (RFC 5280). */
         val certificateIdentifier: String? = null,
-        /** Data-to-be-signed representation. */
         val dtbsr: String? = null,
         val fileIdentifier: String? = null,
         val fileName: String? = null,
         val fileSize: String? = null,
         val interactingPartyName: MultiLangString? = null,
-        val interactingPartyIdentifier: Identifier? = null,
+        val interactingPartyIdentifier: QualifiedIdentifier? = null,
         val interactingPartyContact: List<String>? = null,
     ) : TransactionEntry {
         override val transactionType: TransactionType get() = TransactionType.SigningSealing
@@ -190,7 +184,7 @@ sealed interface TransactionEntry {
         @Serializable(with = InstantIso8601Serializer::class) override val time: Instant,
         override val transactionResult: TransactionResult,
         val listOfClaims: List<ClaimInfo>,
-        val interactingPartyIdentifier: Identifier? = null,
+        val interactingPartyIdentifier: QualifiedIdentifier? = null,
         val interactingPartyName: MultiLangString? = null,
     ) : TransactionEntry {
         override val transactionType: TransactionType get() = TransactionType.DataDeletionRequest
@@ -218,12 +212,10 @@ sealed interface TransactionEntry {
         override val transactionIdentifier: String,
         @Serializable(with = InstantIso8601Serializer::class) override val time: Instant,
         override val transactionResult: TransactionResult,
-        /** One of `QCertForESealProvider`, `QCertForESigProvider` (TS10 §3.10). */
         val interactingPartyType: String? = null,
-        /** ID of the issued certificate; the X.509 `serialNumber` (RFC 5280). */
         val certificateIdentifier: String? = null,
         val interactingPartyName: MultiLangString? = null,
-        val interactingPartyIdentifier: Identifier? = null,
+        val interactingPartyIdentifier: QualifiedIdentifier? = null,
         val interactingPartyContact: List<String>? = null,
     ) : TransactionEntry {
         override val transactionType: TransactionType get() = TransactionType.CertificateIssuance
@@ -236,9 +228,8 @@ sealed interface TransactionEntry {
         override val transactionIdentifier: String,
         @Serializable(with = InstantIso8601Serializer::class) override val time: Instant,
         override val transactionResult: TransactionResult,
-        /** ID of the deleted certificate; the X.509 `serialNumber` (RFC 5280). */
         val certificateIdentifier: String,
-        val certificateIssuerIdentifier: Identifier? = null,
+        val certificateIssuerIdentifier: QualifiedIdentifier? = null,
         val certificateIssuerName: MultiLangString? = null,
     ) : TransactionEntry {
         override val transactionType: TransactionType get() = TransactionType.CertificateDeletion
@@ -302,7 +293,7 @@ sealed interface TransactionEntry {
         @Serializable(with = InstantIso8601Serializer::class) override val time: Instant,
         override val transactionResult: TransactionResult,
         val pseudonym: Pseudonym,
-        val interactingPartyIdentifier: Identifier? = null,
+        val interactingPartyIdentifier: QualifiedIdentifier? = null,
         val interactingPartyType: String? = null,
         val interactingPartyName: MultiLangString? = null,
     ) : TransactionEntry {
