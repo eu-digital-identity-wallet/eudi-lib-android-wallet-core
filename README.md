@@ -2390,6 +2390,12 @@ val wallet = EudiWallet(context, config) {
 }
 ```
 
+> **Important — entries are updated, not only appended.** `log()` is called more than once for the
+> same transaction: once when it begins, and again when it finishes or fails. A credential the issuer
+> defers is logged when it is requested and updated when it finally arrives. Every one of those calls
+> carries the same `transactionIdentifier`, so your storage has to **upsert on that identifier**.
+> Appending each call instead leaves duplicate rows, and transactions stuck in their initial state.
+
 #### Working with Transaction Logs
 
 Each entry is a `TransactionEntry` — a sealed type with one subtype per kind of transaction
@@ -2447,13 +2453,9 @@ format:
 val json: String = TransactionLogExport().encode(entries)
 ```
 
-> **Note — current limitations:**
->
-> - **Some fields are not yet available.** Fields whose values come from the *Provider information
->   specification* or from *Relying Party Registration* — such as a party's legal-entity identifier,
->   contact details, or registration data — are left empty until those integrations are added.
-> - **The export is not the full spec object.** TS10 defines the *Transaction Log Object* as "an
->   exportable object in JSON Web Encryption format"; this library currently produces only its
+> **Note:** 
+>   The export is not the full spec object. TS10 defines the *Transaction Log Object* as "an
+>   exportable object in JSON Web Encryption format" this library currently produces only its
 >   plain-JSON content, without the JWE encryption.
 
 ## How to contribute

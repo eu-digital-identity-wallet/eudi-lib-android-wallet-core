@@ -25,12 +25,25 @@ import eu.europa.ec.eudi.wallet.document.ProofOfDeletion
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.QualifiedIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.model.MultiLangString
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
 import java.time.Instant
 import java.util.UUID
+
+/**
+ * What the wallet kept about a credential's issuer when it was issued, so a deletion can still name
+ * it (TS10 §3.6). The registration certificate itself is gone by then.
+ *
+ * @property identifier the issuer's registered identifier.
+ * @property name the issuer's registered name.
+ */
+data class RegisteredIssuer(
+    val identifier: QualifiedIdentifier? = null,
+    val name: String? = null,
+)
 
 /**
  * Wraps a [DocumentManager] and logs a [TransactionEntry.CredentialDeletion] entry each time a
@@ -43,17 +56,20 @@ import java.util.UUID
  * @property delegate the wrapped [DocumentManager].
  * @property transactionLogManager records the deletion entry.
  * @property logger optional logger for internal errors.
+ * @property registeredIssuerResolver reads what was kept about a document's issuer at issuance.
+ *   Defaults to a no-op; a failing resolver never disrupts the deletion.
  */
 class CredentialDeletionLogger(
     private val delegate: DocumentManager,
     private val transactionLogManager: TransactionLogManager,
     private val logger: Logger? = null,
+    private val registeredIssuerResolver: (DocumentId) -> RegisteredIssuer? = { null },
 ) : DocumentManager by delegate {
 
     override fun deleteDocumentById(documentId: DocumentId): Outcome<ProofOfDeletion?> {
 
         val snapshot = runCatching {
-            (delegate.getDocumentById(documentId) as? IssuedDocument)?.toSnapshot()
+            (delegate.getDocumentById(documentId) as? IssuedDocument)?.toSnapshot(documentId)
         }
             .onFailure { logError(it, "deleteDocumentById: capture") }
             .getOrNull()
@@ -68,12 +84,16 @@ class CredentialDeletionLogger(
         return outcome
     }
 
-    private fun Document.toSnapshot(): DeletionSnapshot = DeletionSnapshot(
+    private fun Document.toSnapshot(documentId: DocumentId): DeletionSnapshot = DeletionSnapshot(
         credentialIdentifier = when (val documentFormat = format) {
             is MsoMdocFormat -> documentFormat.docType
             is SdJwtVcFormat -> documentFormat.vct
         },
-        credentialIssuerName = issuerMetadata?.issuerDisplay?.firstOrNull()?.let {
+        // Read before the deletion, since it is removed along with the document.
+        registeredIssuer = runCatching { registeredIssuerResolver(documentId) }
+            .onFailure { logError(it, "deleteDocumentById: registered issuer") }
+            .getOrNull(),
+        displayName = issuerMetadata?.issuerDisplay?.firstOrNull()?.let {
             MultiLangString(lang = it.locale?.toLanguageTag() ?: DEFAULT_LANG, content = it.name)
         },
     )
@@ -92,9 +112,10 @@ class CredentialDeletionLogger(
             )
         },
         credentialIdentifier = credentialIdentifier,
-        // Only the issuer URL is available, not the legal-entity identifier (TS10 §3.6), so this stays null.
-        credentialIssuerIdentifier = null,
-        credentialIssuerName = credentialIssuerName,
+        credentialIssuerIdentifier = registeredIssuer?.identifier,
+        credentialIssuerName = registeredIssuer?.name
+            ?.let { MultiLangString(lang = DEFAULT_LANG, content = it) }
+            ?: displayName
     )
 
     private fun logError(e: Throwable, source: String) {
@@ -111,7 +132,8 @@ class CredentialDeletionLogger(
 
     private data class DeletionSnapshot(
         val credentialIdentifier: String,
-        val credentialIssuerName: MultiLangString?
+        val registeredIssuer: RegisteredIssuer?,
+        val displayName: MultiLangString?
     )
 
     companion object {

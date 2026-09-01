@@ -62,9 +62,11 @@ import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialDeletionLogger
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.RegisteredIssuer
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.PresentationLogger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import org.multipaz.context.initializeApplication
@@ -554,7 +556,8 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 config = config,
                 documentManager = documentManagerToUse.wrapWithDeletionLogger(
                     transactionLogManagerToUse,
-                    loggerToUse
+                    loggerToUse,
+                    issuanceMetadataStorage
                 ),
                 presentationManager = presentationManagerToUse,
                 transferManager = transferManager,
@@ -818,17 +821,28 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          *
          * @param transactionLogManager the transaction-log funnel, or null if logging is disabled
          * @param loggerObj the logger for internal diagnostics
+         * @param issuanceMetadataStorage where the issuer's registered details were kept at issuance,
+         *   so the deletion entry can name the issuer (TS10 §3.6)
          * @return [DocumentManager] wrapped with a deletion logger
          */
         internal fun DocumentManager.wrapWithDeletionLogger(
             transactionLogManager: TransactionLogManager?,
             loggerObj: Logger,
+            issuanceMetadataStorage: Storage,
         ): DocumentManager {
             return transactionLogManager?.let { manager ->
                 CredentialDeletionLogger(
                     delegate = this,
                     transactionLogManager = manager,
                     logger = loggerObj,
+                    registeredIssuerResolver = { documentId ->
+                        runBlocking {
+                            issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+                                .get(documentId)
+                                ?.let { IssuanceMetadata.fromByteArray(it.toByteArray()) }
+                                ?.let { RegisteredIssuer(it.issuerIdentifier, it.issuerName) }
+                        }
+                    },
                 )
             } ?: this
         }

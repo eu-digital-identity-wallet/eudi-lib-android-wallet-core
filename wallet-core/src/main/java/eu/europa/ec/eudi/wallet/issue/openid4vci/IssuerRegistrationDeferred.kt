@@ -25,9 +25,8 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationIdentifier
 import kotlinx.serialization.json.Json
 
 /**
- * The log-relevant subset of the credential issuer's registration, or null when this outcome carries no
- * parsed certificate. Both a verified and a failed-but-parsed result contribute their registration, so a
- * deferred credential is named after whatever registration was seen at issuance.
+ * The subset of the credential issuer's registration the transaction log needs, or null when this
+ * outcome carries no parsed certificate. A failed-but-parsed result still contributes its registration.
  */
 internal fun RegistrationCertificateResult?.toStoredIssuerRegistration(): StoredIssuerRegistration? {
     val registration = when (this) {
@@ -44,13 +43,13 @@ internal fun RegistrationCertificateResult?.toStoredIssuerRegistration(): Stored
         entitlements = registration.entitlements,
         country = registration.country,
         infoUri = registration.infoUri,
+        supportUri = registration.supportUri,
     )
 }
 
 /**
- * The stored subset as a [RegistrationCertificate] holding only the interacting-party fields, so the
- * transaction log maps a resolved deferred credential the same way as a synchronous one. The fields not
- * captured at deferral keep their defaults.
+ * The stored subset as a [RegistrationCertificate], so a resolved deferred credential is mapped the
+ * same way as a synchronous one. Fields that were not captured keep their defaults.
  */
 internal fun StoredIssuerRegistration.toRegistrationCertificate(): RegistrationCertificate =
     RegistrationCertificate(
@@ -62,17 +61,26 @@ internal fun StoredIssuerRegistration.toRegistrationCertificate(): RegistrationC
         country = country,
         entitlements = entitlements,
         infoUri = infoUri,
+        supportUri = supportUri,
     )
 
 /**
  * The credential issuer's registration captured with this deferred document at issuance, or null when
- * none was captured or the stored data cannot be read. The certificate itself is gone by the time the
- * credential resolves, so this is how the transaction log names the issuer of a resolved deferred
- * credential (TS10 §3.5). Reading never throws, since it only feeds logging.
+ * none was captured. The certificate itself is gone by the time the credential resolves (TS10 §3.5).
  */
 internal fun DeferredDocument.storedIssuerRegistration(): RegistrationCertificate? =
-    runCatching {
-        Json.decodeFromString<StoredDeferredContext>(String(relatedData, Charsets.UTF_8))
-            .interactingParty
-            ?.toRegistrationCertificate()
-    }.getOrNull()
+    storedContext()?.interactingParty?.toRegistrationCertificate()
+
+/**
+ * Whether the User started the issuance this deferred credential came from (TS10 §3.5
+ * `isUserTriggered`), or null when it was not captured.
+ */
+internal fun DeferredDocument.storedIsUserTriggered(): Boolean? = storedContext()?.isUserTriggered
+
+/**
+ * The issuance context stored with this deferred document, or null when it cannot be read. Reading
+ * never throws, since it only feeds logging.
+ */
+private fun DeferredDocument.storedContext(): StoredDeferredContext? = runCatching {
+    Json.decodeFromString<StoredDeferredContext>(String(relatedData, Charsets.UTF_8))
+}.getOrNull()

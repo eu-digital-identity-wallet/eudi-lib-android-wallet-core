@@ -65,7 +65,10 @@ class PresentationLogBuilderRelyingPartyTest {
                 phone = "+302101000000",
                 uri = "https://dpa.gr",
             ),
-            intermediary = Intermediary(identifier = "int-1", name = "Intermediary Ltd"),
+            intermediary = Intermediary(
+                identifier = "LEIXG-987600ABCDEF12345678",
+                name = "Intermediary Ltd",
+            ),
         )
 
         val log = builder.withRelyingParty(
@@ -73,10 +76,17 @@ class PresentationLogBuilderRelyingPartyTest {
             success(registration = RegistrationCertificateResult.Verified(rc)),
         )
 
-        assertEquals(MultiLangString(lang = "en", content = "ACME Verifier"), log.interactingPartyName)
+        assertEquals(MultiLangString(lang = "en", content = "ACME Corp AE"), log.interactingPartyName)
         assertEquals(QualifiedIdentifier(type = QualifiedIdentifier.LEI, value = "529900T8BM49AURSDO55"), log.interactingPartyIdentifier)
-        assertEquals(listOf("https://acme.example/support", "https://acme.example/info"), log.interactingPartyContact)
+        assertEquals(
+            listOf("GR", "https://acme.example/support", "https://acme.example/info"),
+            log.interactingPartyContact,
+        )
         assertEquals(true, log.isIntermediary)
+        assertEquals(
+            QualifiedIdentifier(type = QualifiedIdentifier.LEI, value = "987600ABCDEF12345678"),
+            log.intermediaryIdentifier,
+        )
         assertEquals(MultiLangString(lang = "en", content = "Intermediary Ltd"), log.intermediaryName)
         assertEquals("https://registrar.example/wrp/123", log.registrarURL)
         assertEquals(
@@ -87,7 +97,7 @@ class PresentationLogBuilderRelyingPartyTest {
             log.purpose,
         )
         assertEquals(
-            listOf(Policy(type = Policy.PRIVACY_POLICY, policyURI = "https://acme.example/privacy")),
+            listOf(Policy(type = Policy.PRIVACY_STATEMENT, policyURI = "https://acme.example/privacy")),
             log.privacyPolicy,
         )
         assertEquals(MultiLangString(lang = "en", content = "HDPA"), log.dpaName)
@@ -95,15 +105,31 @@ class PresentationLogBuilderRelyingPartyTest {
     }
 
     @Test
-    fun `name falls back to legalName when the certificate has no friendly name`() {
-        val rc = RegistrationCertificate(name = null, legalName = "ACME Corp AE")
+    fun `a natural person is named by given and family name`() {
+        val rc = RegistrationCertificate(
+            name = "ACME Verifier",
+            givenName = "Maria",
+            familyName = "Papadopoulou",
+        )
 
         val log = builder.withRelyingParty(
             builder.createEmptyPresentationLog(),
             success(registration = RegistrationCertificateResult.Verified(rc)),
         )
 
-        assertEquals(MultiLangString(lang = "en", content = "ACME Corp AE"), log.interactingPartyName)
+        assertEquals(MultiLangString(lang = "en", content = "Maria Papadopoulou"), log.interactingPartyName)
+    }
+
+    @Test
+    fun `the trade name is used only when the certificate carries no registered name`() {
+        val rc = RegistrationCertificate(name = "ACME Verifier")
+
+        val log = builder.withRelyingParty(
+            builder.createEmptyPresentationLog(),
+            success(registration = RegistrationCertificateResult.Verified(rc)),
+        )
+
+        assertEquals(MultiLangString(lang = "en", content = "ACME Verifier"), log.interactingPartyName)
     }
 
     @Test
@@ -137,6 +163,39 @@ class PresentationLogBuilderRelyingPartyTest {
         assertEquals(QualifiedIdentifier(type = QualifiedIdentifier.LEI, value = "529900T8BM49AURSDO55"), identifierOf("LEIXG-529900T8BM49AURSDO55"))
         assertEquals(QualifiedIdentifier(type = QualifiedIdentifier.VATIN, value = "123456789"), identifierOf("VATDE-123456789"))
         assertEquals(QualifiedIdentifier(type = QualifiedIdentifier.EUID, value = "HRB12345"), identifierOf("NTRDE-HRB12345"))
+        // A recognised prefix is not enough: without an identifier after it there is nothing to record.
+        assertNull(identifierOf("LEI529900T8BM49AURSDO55"))
+        assertNull(identifierOf("LEIXG-"))
+    }
+
+    @Test
+    fun `the contact list starts with the country and keeps whatever URIs the certificate carries`() {
+        fun contactOf(rc: RegistrationCertificate) = builder.withRelyingParty(
+            builder.createEmptyPresentationLog(),
+            success(registration = RegistrationCertificateResult.Verified(rc)),
+        ).interactingPartyContact
+
+        assertEquals(listOf("GR"), contactOf(RegistrationCertificate(country = "GR")))
+        assertEquals(
+            listOf("GR", "https://acme.example/info"),
+            contactOf(RegistrationCertificate(country = "GR", infoUri = "https://acme.example/info")),
+        )
+        assertNull(contactOf(RegistrationCertificate(name = "ACME Verifier")))
+    }
+
+    @Test
+    fun `an intermediary is recorded even when its identifier has no recognised scheme`() {
+        val rc = RegistrationCertificate(
+            intermediary = Intermediary(identifier = "int-1", name = "Intermediary Ltd"),
+        )
+
+        val log = builder.withRelyingParty(
+            builder.createEmptyPresentationLog(),
+            success(registration = RegistrationCertificateResult.Verified(rc)),
+        )
+
+        assertEquals(true, log.isIntermediary)
+        assertNull(log.intermediaryIdentifier)
     }
 
     @Test

@@ -52,9 +52,17 @@ fun RegistrationCertificate.structuredIdentifier(): QualifiedIdentifier? =
     identifiers.firstNotNullOfOrNull { it.value.toQualifiedIdentifierOrNull() }
 
 /**
+ * The intermediary's identifier in structured form. Its `sub` follows the same scheme-prefix
+ * convention as the relying party's own, so it is decoded the same way; null if the scheme is not
+ * recognized.
+ */
+fun Intermediary.structuredIdentifier(): QualifiedIdentifier? =
+    identifier.toQualifiedIdentifierOrNull()
+
+/**
  * Decodes an ETSI EN 319 412-1 semantic identifier: its first three characters map to a scheme URI
- * per ETSI TS 119 475 Table 2 (`VAT` maps to [QualifiedIdentifier.VATIN]). An unrecognized prefix
- * returns null.
+ * per ETSI TS 119 475 Table 2 (`VAT` maps to [QualifiedIdentifier.VATIN]). An unrecognized prefix,
+ * or a value that is not in the `<prefix>-<identifier>` form, returns null.
  */
 private fun String.toQualifiedIdentifierOrNull(): QualifiedIdentifier? {
     val type = when (take(3).uppercase()) {
@@ -65,6 +73,7 @@ private fun String.toQualifiedIdentifierOrNull(): QualifiedIdentifier? {
         "EXC" -> QualifiedIdentifier.EXCISE
         else -> return null
     }
-    // The bare identifier is the part after the scheme prefix, e.g. `LEIXG-529900…` -> `529900…`.
-    return QualifiedIdentifier(type = type, value = substringAfter('-', this))
+
+    val value = substringAfter('-', missingDelimiterValue = "").ifEmpty { return null }
+    return QualifiedIdentifier(type = type, value = value)
 }

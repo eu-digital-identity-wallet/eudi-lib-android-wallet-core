@@ -35,9 +35,6 @@ import java.time.Instant
  * To save and load entries, use [toJson] and [toTransactionEntryOrNull]. To produce the read-only
  * TS10 §4.1 export format, use [TransactionLogExport].
  *
- * Many fields are nullable and are left `null` when the wallet can't fill them in yet — usually
- * because the value comes from a registry or trust source that isn't integrated. Whatever the
- * current wallet flows can provide is always filled in.
  */
 @OptIn(ExperimentalSerializationApi::class)
 @SuppressLint("UnsafeOptInUsageError")

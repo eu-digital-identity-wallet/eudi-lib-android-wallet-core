@@ -33,6 +33,8 @@ import eu.europa.ec.eudi.wallet.transactionLogging.model.Policy
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyContact
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.toNoncompletionReason
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing.parseMsoMdoc
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing.parseVp
@@ -151,13 +153,14 @@ class PresentationLogBuilder {
         rc: RegistrationCertificate,
         fallbackName: String?,
     ): TransactionEntry.Presentation {
-        val name = rc.name ?: rc.legalName ?: fallbackName ?: "Unidentified Relying Party"
+        val name = rc.interactingPartyName() ?: fallbackName ?: "Unidentified Relying Party"
         val dpa = rc.supervisoryAuthority
         return copy(
             interactingPartyName = MultiLangString(lang = DEFAULT_LANG, content = name),
             interactingPartyIdentifier = rc.structuredIdentifier(),
-            interactingPartyContact = listOfNotNull(rc.supportUri, rc.infoUri).ifEmpty { null },
+            interactingPartyContact = rc.interactingPartyContact(),
             isIntermediary = rc.intermediary != null,
+            intermediaryIdentifier = rc.intermediary?.structuredIdentifier(),
             intermediaryName = rc.intermediary?.name
                 ?.let { MultiLangString(lang = DEFAULT_LANG, content = it) },
             registrarURL = rc.registryUri,
@@ -165,7 +168,7 @@ class PresentationLogBuilder {
                 .map { MultiLangString(lang = it.language, content = it.value) }
                 .ifEmpty { null },
             privacyPolicy = listOfNotNull(
-                rc.privacyPolicyUri?.let { Policy(type = Policy.PRIVACY_POLICY, policyURI = it) },
+                rc.privacyPolicyUri?.let { Policy(type = Policy.PRIVACY_STATEMENT, policyURI = it) },
             ).ifEmpty { null },
             dpaName = dpa?.name?.let { MultiLangString(lang = DEFAULT_LANG, content = it) },
             dpaContact = dpa?.let { listOfNotNull(it.email, it.phone, it.uri) }?.ifEmpty { null },
