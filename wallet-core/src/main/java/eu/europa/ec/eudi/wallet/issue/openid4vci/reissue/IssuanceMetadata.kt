@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci.reissue
 
+import eu.europa.ec.eudi.wallet.registration.QualifiedIdentifier
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.multipaz.storage.StorageTableSpec
@@ -84,6 +85,11 @@ data class IssuanceMetadata(
 
     // Credential reuse policy (ETSI TS 119 472-3)
     val selectedReusePolicyType: String? = null,
+
+    // The issuer's registered identifier and name, kept so the transaction log can name the issuer
+    // when the credential is deleted and its registration is no longer around (TS10 §3.6).
+    val issuerIdentifier: QualifiedIdentifier? = null,
+    val issuerName: String? = null,
 ) {
     companion object {
         /**

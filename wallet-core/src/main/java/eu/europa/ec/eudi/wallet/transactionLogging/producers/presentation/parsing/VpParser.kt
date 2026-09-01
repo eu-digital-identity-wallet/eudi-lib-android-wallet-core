@@ -19,15 +19,19 @@ package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsi
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
-import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
 import eu.europa.ec.eudi.sdjwt.JwtAndClaims
+import eu.europa.ec.eudi.sdjwt.RFC7519
+import eu.europa.ec.eudi.sdjwt.RFC7800
+import eu.europa.ec.eudi.sdjwt.RFC9901
 import eu.europa.ec.eudi.sdjwt.SdJwt
+import eu.europa.ec.eudi.sdjwt.SdJwtVcSpec
+import eu.europa.ec.eudi.sdjwt.TokenStatusListSpec
 import eu.europa.ec.eudi.sdjwt.vc.SelectPath.Default.query
 import eu.europa.ec.eudi.wallet.transactionLogging.model.ClaimInfo
 import eu.europa.ec.eudi.wallet.transactionLogging.model.ClaimPath
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.VPTokenConsensusJson
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 import java.util.Base64
 
 /**
@@ -92,21 +96,45 @@ val SdJwt<JwtAndClaims>.claims: Map<List<String>, JsonElement?>
     }
 
 /**
+ * The claims that hold the credential together rather than say anything about the User. They are in
+ * every SD-JWT payload whether or not anything was disclosed, so they were not presented (TS10 §3.2).
+ */
+private val STRUCTURAL_CLAIMS: Set<String> = setOf(
+    RFC7519.ISSUER,
+    RFC7519.SUBJECT,
+    RFC7519.AUDIENCE,
+    RFC7519.EXPIRATION_TIME,
+    RFC7519.NOT_BEFORE,
+    RFC7519.ISSUED_AT,
+    RFC7519.JWT_ID,
+    RFC7800.CNF,
+    RFC9901.CLAIM_SD,
+    RFC9901.CLAIM_SD_ALG,
+    SdJwtVcSpec.VCT,
+    SdJwtVcSpec.VCT_INTEGRITY,
+    TokenStatusListSpec.STATUS,
+)
+
+/**
  * Builds one [ClaimInfo] from an SD-JWT claim map: the credential identifier is the `vct`, and the
  * claims are the leaf paths (parents dropped when a child is present).
+ *
+ * The recreated payload holds every claim of the credential, so the structural ones are dropped.
  */
 private fun claimInfoFromSdJwt(claims: Map<List<String>, JsonElement?>): ClaimInfo {
+    val vct = claims.entries
+        .firstOrNull { (path, _) -> path == listOf(SdJwtVcSpec.VCT) }
+        ?.let { (_, value) -> (value as? JsonPrimitive)?.content }
+
     val leafPaths = mutableListOf<List<String>>()
-    var vct: String? = null
-    // Longest paths first, so a parent is skipped when a child is present.
-    claims.toList().sortedByDescending { it.first.size }.forEach { (path, value) ->
-        if (leafPaths.none { it.take(path.size) == path }) {
-            leafPaths.add(path)
+    claims.keys
+        .filter { it.firstOrNull() !in STRUCTURAL_CLAIMS }
+        .sortedByDescending { it.size }
+        .forEach { path ->
+            if (leafPaths.none { it.take(path.size) == path }) {
+                leafPaths.add(path)
+            }
         }
-        if (vct == null && path.firstOrNull() == "vct") {
-            vct = value?.jsonPrimitive?.content
-        }
-    }
     return ClaimInfo(
         credentialIdentifier = vct.orEmpty(),
         claims = leafPaths.map { p -> ClaimPath(p.map(ClaimPath.Segment::Key)) },

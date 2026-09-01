@@ -109,7 +109,8 @@ internal data class DeferredContext(
     val credentialConfigurationIdentifier: String? = null,
     val credentialEndpoint: String? = null,
     val replacesDocumentId: String? = null,
-    val interactingParty: StoredIssuerRegistration? = null
+    val interactingParty: StoredIssuerRegistration? = null,
+    val isUserTriggered: Boolean? = null
 ) {
     companion object
 }
@@ -215,7 +216,8 @@ internal fun DeferredContext.Companion.fromBytes(
         credentialConfigurationIdentifier = dto.credentialConfigurationIdentifier,
         credentialEndpoint = dto.credentialEndpoint,
         replacesDocumentId = dto.replacesDocumentId,
-        interactingParty = dto.interactingParty
+        interactingParty = dto.interactingParty,
+        isUserTriggered = dto.isUserTriggered
     )
 }
 
@@ -244,7 +246,8 @@ internal fun DeferredContext.toBytes(): ByteArray {
         credentialConfigurationIdentifier = credentialConfigurationIdentifier,
         credentialEndpoint = credentialEndpoint,
         replacesDocumentId = replacesDocumentId,
-        interactingParty = interactingParty
+        interactingParty = interactingParty,
+        isUserTriggered = isUserTriggered
     )
 
     return Json.encodeToString(dto).toByteArray(Charsets.UTF_8)

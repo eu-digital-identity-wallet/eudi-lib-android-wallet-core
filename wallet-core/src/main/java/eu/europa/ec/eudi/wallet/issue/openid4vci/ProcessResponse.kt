@@ -31,10 +31,11 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistration
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 import kotlinx.coroutines.runBlocking
@@ -60,6 +61,7 @@ internal class ProcessResponse(
     val replacesDocumentId: DocumentId? = null,
     val issuerTrustConfig: IssuerTrustConfig? = null,
     val interactingParty: StoredIssuerRegistration? = null,
+    val isUserTriggered: Boolean? = null,
 ) {
 
     suspend fun process(response: SubmitRequest.Response) {
@@ -170,6 +172,7 @@ internal class ProcessResponse(
                     credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.first?.configurationIdentifier?.value,
                     credentialEndpoint = issuer.credentialOffer.credentialIssuerMetadata.credentialEndpoint.toString(),
                     interactingParty = interactingParty,
+                    isUserTriggered = isUserTriggered
                 )
 
                 documentManager.storeDeferredDocument(
@@ -250,6 +253,8 @@ internal class ProcessResponse(
                 selectedReusePolicyType = selectedReusePolicy?.let {
                     it::class.simpleName
                 },
+                issuerIdentifier = interactingParty?.toRegistrationCertificate()?.structuredIdentifier(),
+                issuerName = interactingParty?.toRegistrationCertificate()?.interactingPartyName()
             )
 
             val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)

@@ -27,7 +27,6 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationIdentifier
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,7 +45,6 @@ class IssuerRegistrationDeferredTest {
         country = "GR",
         entitlements = listOf("https://uri.etsi.org/19475/Entitlement/PID_Provider"),
         infoUri = "https://acme.example/info",
-        // supportUri is not part of the issuer interacting-party contact, so it is not captured.
         supportUri = "https://acme.example/support",
     )
 
@@ -64,6 +62,7 @@ class IssuerRegistrationDeferredTest {
                 entitlements = listOf("https://uri.etsi.org/19475/Entitlement/PID_Provider"),
                 country = "GR",
                 infoUri = "https://acme.example/info",
+                supportUri = "https://acme.example/support"
             ),
             stored,
         )
@@ -94,6 +93,7 @@ class IssuerRegistrationDeferredTest {
         assertEquals("ACME Corp AE", reconstructed.legalName)
         assertEquals("GR", reconstructed.country)
         assertEquals("https://acme.example/info", reconstructed.infoUri)
+        assertEquals("https://acme.example/support", reconstructed.supportUri)
         assertEquals(listOf("https://uri.etsi.org/19475/Entitlement/PID_Provider"), reconstructed.entitlements)
         // structuredIdentifier() works on the reconstructed certificate, exactly as on the original.
         assertEquals(leiIdentifier, reconstructed.structuredIdentifier())
@@ -123,7 +123,21 @@ class IssuerRegistrationDeferredTest {
         assertNull(document.storedIssuerRegistration())
     }
 
-    private fun deferredDocumentWith(interactingParty: StoredIssuerRegistration?): DeferredDocument {
+    @Test
+    fun `the accessor reads whether the User started the issuance`() {
+        assertEquals(true, deferredDocumentWith(isUserTriggered = true).storedIsUserTriggered())
+        assertEquals(false, deferredDocumentWith(isUserTriggered = false).storedIsUserTriggered())
+        assertNull(deferredDocumentWith().storedIsUserTriggered())
+        assertNull(
+            mockk<DeferredDocument> { every { relatedData } returns byteArrayOf(1, 2, 3) }
+                .storedIsUserTriggered(),
+        )
+    }
+
+    private fun deferredDocumentWith(
+        interactingParty: StoredIssuerRegistration? = null,
+        isUserTriggered: Boolean? = null,
+    ): DeferredDocument {
         val bytes = Json.encodeToString(
             StoredDeferredContext(
                 credentialIssuerId = "https://issuer.example.com",
@@ -135,6 +149,7 @@ class IssuerRegistrationDeferredTest {
                 transactionId = "tx-123",
                 accessToken = "access-token",
                 interactingParty = interactingParty,
+                isUserTriggered = isUserTriggered,
             ),
         ).toByteArray(Charsets.UTF_8)
         return mockk { every { relatedData } returns bytes }

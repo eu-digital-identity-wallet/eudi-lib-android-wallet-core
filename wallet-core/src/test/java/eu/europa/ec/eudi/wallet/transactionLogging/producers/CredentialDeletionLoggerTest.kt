@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
+import eu.europa.ec.eudi.wallet.registration.QualifiedIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
@@ -73,9 +74,61 @@ class CredentialDeletionLoggerTest {
         val entry = assertIs<TransactionEntry.CredentialDeletion>(recorder.entries.first())
         assertEquals("org.iso.18013.5.1.mDL", entry.credentialIdentifier)
         assertEquals("Test Issuer", entry.credentialIssuerName?.content)
-        // Legal-entity identifier isn't available without TS02, so it stays null.
+        // No identifier was kept for this document, so it stays null.
         assertNull(entry.credentialIssuerIdentifier)
         assertEquals(TransactionResult.Completed, entry.transactionResult)
+    }
+
+    @Test
+    fun `the issuer identifier kept at issuance is read before the document is deleted`() {
+        val document = mockk<IssuedDocument> {
+            every { format } returns MsoMdocFormat("org.iso.18013.5.1.mDL")
+            every { issuerMetadata } returns issuerMetadata()
+        }
+        val delegate = mockk<DocumentManager>(relaxed = true) {
+            every { getDocumentById("doc-1") } returns document
+            every { deleteDocumentById("doc-1") } returns Outcome.success<ByteArray?>(null)
+        }
+        val recorder = RecordingLogManager()
+        val identifier = QualifiedIdentifier(QualifiedIdentifier.LEI, "529900T8BM49AURSDO55")
+
+        CredentialDeletionLogger(
+            delegate = delegate,
+            transactionLogManager = recorder,
+            registeredIssuerResolver = { documentId ->
+                RegisteredIssuer(identifier, "ACME Corp AE").takeIf { documentId == "doc-1" }
+            },
+        ).deleteDocumentById("doc-1")
+
+        val entry = assertIs<TransactionEntry.CredentialDeletion>(recorder.entries.first())
+        assertEquals(identifier, entry.credentialIssuerIdentifier)
+        // TS10 §3.6 asks for the registered name, not the issuer's display name.
+        assertEquals("ACME Corp AE", entry.credentialIssuerName?.content)
+    }
+
+    @Test
+    fun `a failing issuer identifier resolver does not disrupt the deletion`() {
+        val document = mockk<IssuedDocument> {
+            every { format } returns MsoMdocFormat("org.iso.18013.5.1.mDL")
+            every { issuerMetadata } returns issuerMetadata()
+        }
+        val delegate = mockk<DocumentManager>(relaxed = true) {
+            every { getDocumentById("doc-1") } returns document
+            every { deleteDocumentById("doc-1") } returns Outcome.success<ByteArray?>(null)
+        }
+        val recorder = RecordingLogManager()
+
+        val outcome = CredentialDeletionLogger(
+            delegate = delegate,
+            transactionLogManager = recorder,
+            registeredIssuerResolver = { error("storage unavailable") },
+        ).deleteDocumentById("doc-1")
+
+        assertTrue(outcome.isSuccess)
+        val entry = assertIs<TransactionEntry.CredentialDeletion>(recorder.entries.first())
+        assertNull(entry.credentialIssuerIdentifier)
+        // Nothing registered is available, so the display name is the only name left.
+        assertEquals("Test Issuer", entry.credentialIssuerName?.content)
     }
 
     @Test
