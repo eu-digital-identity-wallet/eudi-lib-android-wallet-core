@@ -354,8 +354,8 @@ class OpenId4VpManager(
                     encryptionParameters = response.encryptionParameters,
                 )) {
                     is DispatchOutcome.RedirectURI -> {
-                        logger?.d(TAG, "Verifier respond with RedirectURI: ${outcome.value}")
-                        transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
+                        logger?.d(TAG, "Redirecting to: ${outcome.value}")
+                        transferEventListeners.onTransferEvent(TransferEvent.Redirect(outcome.value))
                     }
 
                     is DispatchOutcome.VerifierResponse.Accepted -> {
