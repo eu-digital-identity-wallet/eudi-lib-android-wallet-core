@@ -42,6 +42,8 @@ import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
+import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
@@ -59,9 +61,12 @@ import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
-import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialDeletionLogger
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.RegisteredIssuer
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.PresentationLogger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import org.multipaz.context.initializeApplication
@@ -100,6 +105,13 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
     val walletProvider: WalletAttestationsProvider?
     val walletKeyManager: WalletKeyManager
+
+    /**
+     * The transaction-log funnel, if a [TransactionLogger] was configured via the builder.
+     * Host-app-triggered transactions (e.g. signing, data-protection actions) should be recorded
+     * through this manager so they share the same write path as core-produced entries.
+     */
+    val transactionLogManager: TransactionLogManager?
 
     /**
      * Sets the reader trust store with the given [ReaderTrustStore]. This method is useful when
@@ -522,6 +534,11 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 wrpRegistrationValidator = wrpRegistrationValidator
             )
 
+            // Single funnel for all transaction-log entries, created from the configured storage SPI.
+            val transactionLogManagerToUse = transactionLogger?.let {
+                DefaultTransactionLogManager(storage = it)
+            }
+
             val presentationManagerToUse = presentationManager ?: getDefaultPresentationManager(
                 documentManager = documentManagerToUse,
                 transferManager = transferManager,
@@ -530,21 +547,25 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 registrationCertificatePolicy = registrationCertificatePolicy,
                 resolvedRegistration = resolvedRegistration,
                 loggerObj = loggerToUse
-            ).wrapWithTrasactionLogger(documentManagerToUse, loggerToUse)
+            ).wrapWithTrasactionLogger(documentManagerToUse, transactionLogManagerToUse, loggerToUse)
 
             val documentStatusResolverToUse = getDocumentStatusResolver(loggerToUse)
 
             return EudiWalletImpl(
                 context = context,
                 config = config,
-                documentManager = documentManagerToUse,
+                documentManager = documentManagerToUse.wrapWithDeletionLogger(
+                    transactionLogManagerToUse,
+                    loggerToUse,
+                    issuanceMetadataStorage
+                ),
                 presentationManager = presentationManagerToUse,
                 transferManager = transferManager,
                 walletProvider = walletProvider,
                 walletKeyManager = walletKeyManager ?: WalletKeyManager.getDefault(context),
                 logger = loggerToUse,
                 documentStatusResolver = documentStatusResolverToUse,
-                transactionLogger = transactionLogger,
+                transactionLogManager = transactionLogManagerToUse,
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 issuanceMetadataStorage = issuanceMetadataStorage,
                 issuerRegistrationTrust = issuerRegistrationTrust,
@@ -776,18 +797,52 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          *
          * @receiver [PresentationManager]
          * @param documentManager the document manager
+         * @param transactionLogManager the transaction-log funnel, or null if logging is disabled
          * @return [PresentationManager] wrapped with a transaction logger
          */
         internal fun PresentationManager.wrapWithTrasactionLogger(
             documentManager: DocumentManager,
+            transactionLogManager: TransactionLogManager?,
             loggerObj: Logger,
         ): PresentationManager {
-            return transactionLogger?.let { tl ->
-                TransactionsDecorator(
+            return transactionLogManager?.let { manager ->
+                PresentationLogger(
                     delegate = this,
-                    documentManager = documentManager,
-                    transactionLogger = tl,
+                    transactionLogManager = manager,
                     logger = loggerObj,
+                )
+            } ?: this
+        }
+
+        /**
+         * Wraps the [DocumentManager] with a decorator that logs credential-deletion transactions
+         * (TS10 §3.6). Returns the receiver unchanged when [transactionLogManager] is null
+         * (logging disabled).
+         *
+         * @param transactionLogManager the transaction-log funnel, or null if logging is disabled
+         * @param loggerObj the logger for internal diagnostics
+         * @param issuanceMetadataStorage where the issuer's registered details were kept at issuance,
+         *   so the deletion entry can name the issuer (TS10 §3.6)
+         * @return [DocumentManager] wrapped with a deletion logger
+         */
+        internal fun DocumentManager.wrapWithDeletionLogger(
+            transactionLogManager: TransactionLogManager?,
+            loggerObj: Logger,
+            issuanceMetadataStorage: Storage,
+        ): DocumentManager {
+            return transactionLogManager?.let { manager ->
+                CredentialDeletionLogger(
+                    delegate = this,
+                    transactionLogManager = manager,
+                    logger = loggerObj,
+                    registeredIssuerResolver = { documentId ->
+                        runBlocking {
+                            issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+                                .get(documentId)
+                                ?.let { IssuanceMetadata.fromByteArray(it.toByteArray()) }
+                                ?.let { RegisteredIssuer(it.issuerIdentifier, it.issuerName) }
+                        }
+                    },
                 )
             } ?: this
         }
