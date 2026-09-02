@@ -6,7 +6,7 @@ requirement. Trust anchors can be provided from **static certificate files**, a
 **keystore**, or any other source, with no `HttpClient` and no LoTE URL involved.
 
 This document shows how to configure all trust areas using the ETSI consultation
-library's composable API with locally-provided certificates
+library's composable API with locally-provided certificates.
 
 ## How it works
 
@@ -29,11 +29,10 @@ Each trust area uses specific `VerificationContext` values. Your trust source mu
 the contexts needed by the areas you want to enable:
 
 | Trust area | Config entry point | Verification contexts |
-  |---|---|---|
+|---|---|---|
 | Credential issuance | `configureIssuerTrust { trustSource(...) }` | `PID`, `PubEAA`, `QEAA`, `EAA(useCase)` |
-| Status list tokens | `configureDocumentStatusResolver { configureTrust { trustSource(...) } }` | `PIDStatus`, `PubEAAStatus`, `QEAAStatus`,
-  `EAAStatus(useCase)` |
-| Reader/verifier auth | `configureReaderTrustStore(trust)` | `WalletRelyingPartyAccessCertificate` |
+| Status list tokens | `configureDocumentStatusResolver { configureTrust { trustSource(...) } }` | `PIDStatus`, `PubEAAStatus`, `QEAAStatus`, `EAAStatus(useCase)` |
+| Reader/verifier auth | `configureReaderAuthentication { trustSource(...) }` | `WalletRelyingPartyAccessCertificate` |
 | Signed issuer metadata | Via `configureIssuerTrust { requireSignedMetadata() }` | `WalletRelyingPartyAccessCertificate` |
 
 ## Example: static certificates
@@ -124,7 +123,11 @@ config = EudiWalletConfig {
         }
     }
 
-    configureReaderTrustStore(composedTrust)
+    configureReaderAuthentication {
+        trustSource(composedTrust)
+        enforceIfPresent()
+        revocationPolicy(RevocationPolicy.HardFail)
+    }
 }
 ```
 
