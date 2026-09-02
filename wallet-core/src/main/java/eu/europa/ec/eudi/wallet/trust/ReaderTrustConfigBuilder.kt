@@ -29,6 +29,10 @@ import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
  * }
  * ```
  */
+@Deprecated(
+    message = "Use configureReaderAuthentication { ... } instead.",
+    replaceWith = ReplaceWith("ReaderAuthenticationConfigBuilder"),
+)
 class ReaderTrustConfigBuilder {
 
     internal var readerAuthPolicy: ReaderAuthPolicy? = null

@@ -15,6 +15,7 @@
  */
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.mockk.mockk
@@ -36,6 +37,7 @@ class ProcessedDcqlRequestTest {
             requester = mockk(relaxed = true),
             trustMetadata = null,
             msoMdocNonce = "nonce",
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
             wrpRegistration = registration,
         )
 

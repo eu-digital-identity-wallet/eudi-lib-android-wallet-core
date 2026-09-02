@@ -21,7 +21,7 @@ import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
 import eu.europa.ec.eudi.wallet.dcapi.registration.DCAPIRegistration
@@ -57,7 +57,7 @@ import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
-import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
+import eu.europa.ec.eudi.wallet.trust.ReaderAuthenticationConfigBuilder
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
@@ -102,32 +102,45 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
     val walletKeyManager: WalletKeyManager
 
     /**
-     * Sets the reader trust store with the given [ReaderTrustStore]. This method is useful when
-     * the reader trust store is not set in the configuration object, or when the reader trust store
-     * needs to be updated at runtime.
+     * Sets the reader trust store with the given [ReaderTrustStore].
+     *
      * @param readerTrustStore the reader trust store
      * @return this [EudiWallet] instance
      */
+    @Deprecated(
+        "Reader trust is now configured at build time via " +
+            "EudiWalletConfig.configureReaderAuthentication { }. This method is a no-op.",
+        replaceWith = ReplaceWith("this"),
+        level = DeprecationLevel.WARNING,
+    )
     fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWallet
 
     /**
-     * Sets the reader trust store with the given list of [X509Certificate]. This method is useful
-     * when the reader trust store is not set in the configuration object, or when the reader trust
-     * store needs to be updated at runtime.
+     * Sets the reader trust store with the given list of [X509Certificate].
      *
-     * @param readerCertificates the list of reader certificates
+     * @param trustedReaderCertificates the list of reader certificates
      * @return this [EudiWallet] instance
      */
+    @Deprecated(
+        "Reader trust is now configured at build time via " +
+            "EudiWalletConfig.configureReaderAuthentication { }. This method is a no-op.",
+        replaceWith = ReplaceWith("this"),
+        level = DeprecationLevel.WARNING,
+    )
     fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>): EudiWallet
 
     /**
-     * Sets the reader trust store with the given list of raw resource IDs. This method is useful
-     * when the reader trust store is not set in the configuration object, or when the reader trust
-     * store needs to be updated at runtime.
+     * Sets the reader trust store with the given list of raw resource IDs.
      *
      * @param rawRes the list of raw resource IDs
      * @return this [EudiWallet] instance
      */
+    @Deprecated(
+        "Reader trust is now configured at build time via " +
+            "EudiWalletConfig.configureReaderAuthentication { }. This method is a no-op.",
+        replaceWith = ReplaceWith("this"),
+        level = DeprecationLevel.WARNING,
+    )
     fun setTrustedReaderCertificates(@RawRes vararg rawRes: Int): EudiWallet
 
     /**
@@ -214,7 +227,6 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         var storage: Storage? = null
         var secureAreas: List<SecureArea>? = null
         var documentManager: DocumentManager? = null
-        var readerTrustStore: ReaderTrustStore? = null
         var presentationManager: PresentationManager? = null
         var logger: Logger? = null
         var ktorHttpClientFactory: (() -> HttpClient)? = null
@@ -259,14 +271,19 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
         /**
          * Configure with the given [ReaderTrustStore] to use for performing reader authentication.
-         * If not set, the default reader trust store will be used which is initialized with the certificates
-         * provided in the [EudiWalletConfig.configureReaderTrustStore] methods.
          *
          * @param readerTrustStore the reader trust store
          * @return this [Builder] instance
          */
+        @Deprecated(
+            "Reader trust is now configured via " +
+                "EudiWalletConfig.configureReaderAuthentication { trustSource(...) }. " +
+                "This method is a no-op.",
+            replaceWith = ReplaceWith("this"),
+            level = DeprecationLevel.WARNING,
+        )
         fun withReaderTrustStore(readerTrustStore: ReaderTrustStore) =
-            apply { this.readerTrustStore = readerTrustStore }
+            apply { /* no-op: trust store is configured via configureReaderAuthentication */ }
 
         /**
          * Configure with the given [PresentationManager] to use for both proximity and remote presentation.
@@ -443,20 +460,13 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         } else manager
                     }
 
-            val readerTrustStoreToUse = (readerTrustStore
-                ?: config.readerTrustStore
-                ?: when {
-                    config.useEtsiReaderTrust && etsiSource != null ->
-                        etsiSource.asReaderTrustStore()
+            // --- Build ReaderAuthPolicy (single policy for both transports) ---
+            val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthenticationConfigBuilder()
+                .apply(config.readerAuthBlock ?: {})
+                .build(etsiSource = etsiSource, logger = loggerToUse)
 
-                    else -> config.readerTrustedCertificates?.let { certificates ->
-                        ReaderTrustStoreImpl(
-                            certificates,
-                            profileValidation = { _, _ -> true },
-                            revocationPolicy = config.revocationPolicy,
-                        )
-                    }
-                })?.also {
+            // Derive trust store for components not yet migrated to ReaderAuthPolicy
+            val readerTrustStoreToUse = readerAuthPolicy.readerTrustStore?.also {
                 if (it is EtsiReaderTrustStore) it.logger = loggerToUse
             }
 
@@ -478,24 +488,8 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 registrationCertificatePolicy = null
                 resolvedRegistration = null
             } else {
-                val certificateTrust: CertificateTrust? = (readerTrustStore ?: config.readerTrustStore)
-                    ?.asCertificateTrust()
-                    ?: if (config.useEtsiReaderTrust && etsiSource != null) {
-                        etsiSource.asCertificateTrust(
-                            VerificationContext.WalletRelyingPartyRegistrationCertificate,
-                            logger = loggerToUse,
-                        )
-                    } else {
-                        config.readerTrustedCertificates
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.let {
-                                ReaderTrustStoreImpl(
-                                    it,
-                                    profileValidation = { _, _ -> true },
-                                    revocationPolicy = config.revocationPolicy,
-                                ).asCertificateTrust()
-                            }
-                    }
+                val certificateTrust: CertificateTrust? =
+                    readerTrustStoreToUse?.asCertificateTrust()
                 val evaluator = config.wrpRegistrationEvaluator ?: DefaultWrpRegistrationEvaluator(
                     statusTrust = if (config.useEtsiReaderTrust && etsiSource != null) {
                         etsiSource.asCertificateTrust(
@@ -518,13 +512,14 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             val transferManager = getTransferManager(
                 documentManager = documentManagerToUse,
-                readerTrustStore = readerTrustStoreToUse,
+                readerAuthPolicy = readerAuthPolicy,
                 wrpRegistrationValidator = wrpRegistrationValidator
             )
 
             val presentationManagerToUse = presentationManager ?: getDefaultPresentationManager(
                 documentManager = documentManagerToUse,
                 transferManager = transferManager,
+                readerAuthPolicy = readerAuthPolicy,
                 readerTrustStore = readerTrustStoreToUse,
                 registrationValidator = wrpRegistrationValidator,
                 registrationCertificatePolicy = registrationCertificatePolicy,
@@ -556,13 +551,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          * Get the default [PresentationManagerImpl] instance based on the [DocumentManager] and [TransferManager] implementations
          * @param documentManager the document manager
          * @param transferManager the transfer manager
-         * @param readerTrustStore the reader trust store
+         * @param readerAuthPolicy the reader authentication policy (embeds the trust store)
+         * @param readerTrustStore the reader trust store (derived from policy, for components not yet migrated)
          * @return the default [PresentationManagerImpl] instance
          */
         @JvmSynthetic
         internal fun getDefaultPresentationManager(
             documentManager: DocumentManager,
             transferManager: TransferManager,
+            readerAuthPolicy: ReaderAuthPolicy,
             readerTrustStore: ReaderTrustStore?,
             loggerObj: Logger,
             registrationValidator: DefaultWrpRegistrationValidator? = null,
@@ -575,6 +572,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     requestProcessor = DcqlRequestProcessor(
                         documentManager = documentManager,
                         readerTrustStore = readerTrustStore,
+                        readerAuthPolicy = readerAuthPolicy,
                         logger = loggerObj
                     ).apply {
                         wrpRegistrationValidator = registrationValidator
@@ -598,7 +596,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     ?.let { openId4VpConfig ->
                         OpenId4VpDCAPIRequestProcessor(
                             openId4VpConfig = openId4VpConfig,
-                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore)
+                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore, readerAuthPolicy)
                                 .apply {
                                     wrpRegistrationValidator = registrationValidator
                                     this.resolvedRegistration = resolvedRegistration
@@ -612,8 +610,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 DCAPIManager(
                     isoMdocRequestProcessor = IsoMdocDCAPIRequestProcessor(
                         documentManager = documentManager,
-                        readerTrustStore = readerTrustStore,
-                        readerAuthPolicy = config.readerAuthPolicy,
+                        readerAuthPolicy = readerAuthPolicy,
                         privilegedAllowlist = privilegedAllowlist,
                         zkSystemRepository = config.zkSystemRepository,
                         zkResponsePolicy = config.zkResponsePolicy,
@@ -690,21 +687,20 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         }
 
         /**
-         * Get the default [TransferManager] instance based on the [DocumentManager] and [ReaderTrustStore]
+         * Get the default [TransferManager] instance based on the [DocumentManager] and [ReaderAuthPolicy]
          * @param documentManager the document manager
-         * @param readerTrustStore the reader trust store
+         * @param readerAuthPolicy the reader authentication policy (embeds the trust store)
          * @return the default [TransferManager] instance
          */
         @JvmSynthetic
         internal fun getTransferManager(
             documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore? = null,
+            readerAuthPolicy: ReaderAuthPolicy,
             wrpRegistrationValidator: WrpRegistrationValidator? = null
         ) = TransferManager.getDefault(
             context = context,
             documentManager = documentManager,
-            readerTrustStore = readerTrustStore,
-            readerAuthPolicy = config.readerAuthPolicy,
+            readerAuthPolicy = readerAuthPolicy,
             retrievalMethods = listOf(
                 BleRetrievalMethod(
                     peripheralServerMode = config.enableBlePeripheralMode,
