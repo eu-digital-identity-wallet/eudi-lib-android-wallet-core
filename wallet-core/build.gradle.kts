@@ -5,14 +5,6 @@ plugins {
     id("kotlin-parcelize")
 }
 
-android {
-    // base opt-ins already in the convention plugin; this module only needs its
-    // unique test resource location
-    sourceSets.getByName("test").apply {
-        res.setSrcDirs(files("resources"))
-    }
-}
-
 dependencies {
     api(project(":document-manager"))
     api(project(":transfer-manager"))

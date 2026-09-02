@@ -231,13 +231,13 @@ val config = EudiWalletConfig()
         // to store the keys
         useStrongBoxForKeys = true
     )
-    .configureReaderTrustStore(
-        // set the reader trusted certificates for the reader trust store
-        listOf(readerCertificate)
-    )
-    // configure the reader authentication enforcement policy
-    // default is EnforceIfPresent
-    .configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    .configureReaderAuthentication {
+        // set the reader trusted certificates
+        trustedCertificates(readerCertificate)
+        // configure the reader authentication enforcement policy
+        // default is EnforceIfPresent
+        enforceIfPresent()
+    }
     // configure the OpenId4Vci service
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.com")
@@ -297,7 +297,7 @@ val customWallet = EudiWallet(context, config) {
     withStorage(myStorage)
     // a list of SecureArea implementations to be used
     withSecureAreas(listOf(deviceSecureArea, cloudSecureArea))
-    // ReaderTrustStore to be used for reader authentication
+    // custom ReaderTrustStore (prefer configureReaderAuthentication in config instead)
     withReaderTrustStore(myReaderTrustStore)
     // custom logger to be used
     withLogger(myLogger)
@@ -318,52 +318,63 @@ wallet-core library with custom SecureArea implementations.
 #### Reader Authentication Policy
 
 The reader authentication policy controls how reader authentication results affect document
-disclosure during proximity (BLE/NFC) and DCAPI presentations. This works in conjunction with the
-`ReaderTrustStore` configured via `configureReaderTrustStore`.
-
-When a verifier's DeviceRequest includes reader authentication, the wallet verifies the reader's
-certificate chain against the configured `ReaderTrustStore`. The `ReaderAuthPolicy` determines what
-happens based on the verification result:
-
-| Policy | Behavior |
-|---|---|
-| `ReaderAuthPolicy.DoNotEnforce` | Reader authentication is evaluated but never blocks document disclosure. Documents are always included in the response. |
-| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
-| `ReaderAuthPolicy.AlwaysRequire` | Documents are excluded unless reader authentication is present and verified successfully. |
-
-Per ISO 18013-5, when all documents are excluded due to reader authentication failure, the wallet
-returns a DeviceResponse with status 10 (General Error) instead of an empty success response.
-
-The reader auth policy can be set in two ways, for flexibility:
-
-**Inside the ETSI reader trust DSL** (when using `configureEtsiTrust`):
+disclosure during proximity (BLE/NFC), remote (OpenID4VP), and DCAPI presentations. Trust sources
+and enforcement intent are configured together via `configureReaderAuthentication`:
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureEtsiTrust { /* ... */ }
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        trustedCertificates(cert1, cert2)
+        enforceIfPresent() // default — can be omitted
     }
 }
 ```
 
-**As a standalone call** (when using certificate-based or custom `ReaderTrustStore`):
+When a verifier's request includes reader authentication, the wallet verifies the reader's
+certificate chain against the configured trust sources. The enforcement policy determines what
+happens based on the verification result:
+
+| Policy | Behavior |
+|---|---|
+| `doNotEnforce()` | Reader authentication is evaluated but never blocks document disclosure. Documents are always included in the response. |
+| `enforceIfPresent()` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
+| `alwaysRequire()` | Documents are excluded unless reader authentication is present and verified successfully. |
+
+Per ISO 18013-5, when all documents are excluded due to reader authentication failure, the wallet
+returns a DeviceResponse with status 10 (General Error) instead of an empty success response.
+
+**With ETSI trust** (trust source inherited from `configureEtsiTrust`):
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(listOf(trustedReaderCertificate))
-    configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    configureEtsiTrust { /* ... */ }
+    configureReaderAuthentication {
+        alwaysRequire()
+        // trust source resolved from configureEtsiTrust at build time
+    }
 }
 ```
 
-The standalone `configureReaderAuthPolicy()` method remains available for users who use the
-certificate-based `configureReaderTrustStore(certificates)` overloads or a custom `ReaderTrustStore`,
-since those paths don't have a DSL block.
+**With static certificates**:
+
+```kotlin
+val config = EudiWalletConfig {
+    configureReaderAuthentication {
+        trustedCertificates(trustedCert1, trustedCert2)
+        revocationPolicy(RevocationPolicy.SoftFail)
+        enforceIfPresent()
+    }
+}
+```
+
+> **Note:** `enforceIfPresent()` and `alwaysRequire()` require trust sources. If no trust
+> source is configured (and no central ETSI trust source is available), an
+> `IllegalArgumentException` is thrown at build time. Call `doNotEnforce()` to explicitly opt out.
 
 > **Note:** If a verifier includes reader authentication in its request but its certificate is not in
-> the configured `ReaderTrustStore`, the document will be excluded from the response when using
-> `EnforceIfPresent` or `AlwaysRequire` policies. To allow presentations to verifiers whose
-> certificates are not in the trust store, use `ReaderAuthPolicy.DoNotEnforce`.
+> the configured trust store, the document will be excluded from the response when using
+> `enforceIfPresent()` or `alwaysRequire()`. To allow presentations to verifiers whose
+> certificates are not in the trust store, use `doNotEnforce()`.
 
 #### WalletKeyManager Configuration
 This interface is responsible for managing Attestation Keys used during Attestation Based Client Authentication with OpenId4Vci.
@@ -638,7 +649,7 @@ The recommended approach is to use `configureEtsiTrust` to centralize the LoTE t
 infrastructure in the core. This builds the entire trust pipeline internally — HTTP client,
 file cache, JWT signature verification, trust anchor provisioning, and caching — from a
 small set of high-level configuration knobs. Each trust area (`configureIssuerTrust`,
-`configureDocumentStatusResolver`, `configureReaderTrustStore`) inherits the shared trust
+`configureDocumentStatusResolver`, `configureReaderAuthentication`) inherits the shared trust
 source automatically and only needs area-specific settings (policies, clock skew, etc.).
 
 Each trust verification feature is independently configurable and opt-in. When not configured,
@@ -714,8 +725,8 @@ val config = EudiWalletConfig {
     configureDocumentStatusResolver {
         clockSkew(5)
     }
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        alwaysRequire()
     }
 }
 ```
@@ -778,7 +789,10 @@ val config = EudiWalletConfig {
             classifications(myClassifications)
         }
     }
-    configureReaderTrustStore(isChainTrusted)
+    configureReaderAuthentication {
+        trustSource(isChainTrusted)
+        enforceIfPresent()
+    }
 }
 
 // On shutdown:
@@ -1018,45 +1032,47 @@ signature verification without ETSI trust chain validation.
 
 #### Reader Authentication with Trusted Lists
 
-`EtsiReaderTrustStore` is a drop-in replacement for `ReaderTrustStoreImpl` that delegates
-reader certificate chain validation to the ETSI library's `IsChainTrustedForEUDIW`. It
-uses the `WalletRelyingPartyAccessCertificate` (WRPAC) verification context by default.
+Reader certificate chain validation can be delegated to the ETSI library's
+`IsChainTrustedForEUDIW` using the `WalletRelyingPartyAccessCertificate` (WRPAC)
+verification context. All trust sources and enforcement are configured through the unified
+`configureReaderAuthentication` DSL.
 
-**Using centralized ETSI trust** (recommended): The DSL block inherits the trust source from
-`configureEtsiTrust` and allows setting the reader authentication policy in the same place:
+**Using centralized ETSI trust** (recommended): The trust source is inherited from
+`configureEtsiTrust` — only the enforcement policy needs to be set:
 
 ```kotlin
 val config = EudiWalletConfig {
     configureEtsiTrust { /* ... */ }
 
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        alwaysRequire()
+        // trust source resolved from configureEtsiTrust at build time
     }
 }
 ```
 
-**Using a manually built trust source**: Pass `IsChainTrustedForEUDIW` directly. The reader
-auth policy is set separately via `configureReaderAuthPolicy()`:
+**Using a manually built trust source**: Pass `IsChainTrustedForEUDIW` directly via
+`trustSource()`:
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(isChainTrusted)
-    configureReaderAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        trustSource(isChainTrusted)
+        alwaysRequire()
+    }
 }
 ```
 
-**Using static certificates**: The overloads that accept `X509Certificate` lists remain
-available. The reader auth policy is set separately, and the certificate revocation checking
-policy can be configured via the `revocationPolicy` parameter (defaults to
-`RevocationPolicy.HardFail`):
+**Using static certificates**: Pass certificates directly and configure the revocation
+checking policy (defaults to `RevocationPolicy.HardFail`):
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(
-        listOf(trustedCert1, trustedCert2),
-        revocationPolicy = RevocationPolicy.SoftFail
-    )
-    configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    configureReaderAuthentication {
+        trustedCertificates(trustedCert1, trustedCert2)
+        revocationPolicy(RevocationPolicy.SoftFail)
+        enforceIfPresent()
+    }
 }
 ```
 
@@ -1068,12 +1084,13 @@ The available revocation policies are:
 | `RevocationPolicy.SoftFail` | Validation fails if a certificate is revoked, but tolerates CRL/OCSP unavailability. |
 | `RevocationPolicy.NoCheck` | No revocation checking is performed. |
 
-> **Note:** `RevocationPolicy` only applies to the static certificate-based `configureReaderTrustStore`
-> overloads. When using ETSI/LoTE-based trust (via `configureEtsiTrust`), revocation checking is
-> controlled by `relaxPkixRevocation()` inside the `configureEtsiTrust` block instead.
+> **Note:** `RevocationPolicy` only applies to the static certificate-based
+> `trustedCertificates()` overloads. When using ETSI/LoTE-based trust (via
+> `configureEtsiTrust`), revocation checking is controlled by `relaxPkixRevocation()` inside
+> the `configureEtsiTrust` block instead.
 
 For advanced use cases requiring a specific verification context, create an
-`EtsiReaderTrustStore` explicitly:
+`EtsiReaderTrustStore` explicitly and pass it as a custom trust source:
 
 ```kotlin
 val readerTrustStore = EtsiReaderTrustStore(
@@ -1082,14 +1099,11 @@ val readerTrustStore = EtsiReaderTrustStore(
 )
 
 val config = EudiWalletConfig {
-    configureReaderTrustStore(readerTrustStore)
+    configureReaderAuthentication {
+        trustSource(readerTrustStore)
+        alwaysRequire()
+    }
 }
-```
-
-You can also update the reader trust store at runtime:
-
-```kotlin
-wallet.setReaderTrustStore(EtsiReaderTrustStore(isChainTrusted))
 ```
 
 > **Note:** For best performance during presentations, pre-warm the ETSI cache on app startup.
@@ -1151,9 +1165,9 @@ val config = EudiWalletConfig {
         clockSkew(5)
     }
 
-    // Reader authentication — trust source inherited, policy set inline
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    // Reader authentication — trust source inherited, enforcement set inline
+    configureReaderAuthentication {
+        enforceIfPresent()
     }
 }
 ```

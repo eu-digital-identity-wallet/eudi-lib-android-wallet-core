@@ -22,8 +22,6 @@ import android.content.Intent
 import androidx.credentials.exceptions.GetCredentialCustomException
 import androidx.credentials.provider.PendingIntentHandler
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
@@ -58,15 +56,7 @@ class DCAPIManager(
     private val supportedProtocols: List<DCAPIProtocol>,
     var logger: Logger? = null,
     var listenersExecutor: Executor? = null,
-) : TransferEvent.Listenable, ReaderTrustStoreAware {
-
-    override var readerTrustStore: ReaderTrustStore?
-        get() = (isoMdocRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore
-            ?: (openId4VpRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore
-        set(value) {
-            (isoMdocRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore = value
-            (openId4VpRequestProcessor as? ReaderTrustStoreAware)?.readerTrustStore = value
-        }
+) : TransferEvent.Listenable {
 
     private val transferEventListeners: MutableList<TransferEvent.Listener> = mutableListOf()
 

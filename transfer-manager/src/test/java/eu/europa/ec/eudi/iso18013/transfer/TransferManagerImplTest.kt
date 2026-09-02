@@ -21,8 +21,6 @@ import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.internal.QrEngagement
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
@@ -358,26 +356,4 @@ class TransferManagerImplTest {
         verify { listener.onTransferEvent(any<TransferEvent.Error>()) }
     }
 
-    @Test
-    fun `setting and getting readerTrustStore delegates to requestProcessor if the latter is ReaderTrustStoreAware`() {
-
-        val processor: RequestProcessor = object : RequestProcessor, ReaderTrustStoreAware {
-            override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
-                return mockk()
-            }
-
-            override var readerTrustStore: ReaderTrustStore? = null
-        }
-
-        val manager = TransferManagerImpl(
-            context = Context,
-            requestProcessor = processor
-        )
-
-        val readerTrustStore: ReaderTrustStore = mockk()
-
-        manager.readerTrustStore = readerTrustStore
-
-        assertSame(readerTrustStore, manager.readerTrustStore)
-    }
 }

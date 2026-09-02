@@ -17,7 +17,7 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.Format
@@ -84,17 +84,9 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
     var openid4VpX509CertificateTrust: OpenId4VpReaderTrust,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private var logger: Logger? = null
-) : RequestProcessor, ReaderTrustStoreAware {
-
-    /**
-     * The trust store used for verifying reader certificates.
-     */
-    override var readerTrustStore: ReaderTrustStore?
-        get() = openid4VpX509CertificateTrust.readerTrustStore
-        set(value) {
-            openid4VpX509CertificateTrust.readerTrustStore = value
-        }
+) : RequestProcessor {
 
     private val credentialSetsMatcher = CredentialSetsMatcher()
 
@@ -168,6 +160,7 @@ class DcqlRequestProcessor(
                 requester = requester,
                 trustMetadata = trustMetadata,
                 msoMdocNonce = generateJarmNonce(),
+                readerAuthPolicy = readerAuthPolicy,
                 multipleByQueryId = multipleByQueryId,
                 wrpRegistration = wrpRegistration
             )
@@ -463,6 +456,7 @@ class DcqlRequestProcessor(
         operator fun invoke(
             documentManager: DocumentManager,
             readerTrustStore: ReaderTrustStore?,
+            readerAuthPolicy: ReaderAuthPolicy,
             logger: Logger? = null
         ): DcqlRequestProcessor {
             val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
@@ -471,6 +465,7 @@ class DcqlRequestProcessor(
             return DcqlRequestProcessor(
                 documentManager = documentManager,
                 openid4VpX509CertificateTrust = openId4VpReaderTrust,
+                readerAuthPolicy = readerAuthPolicy,
                 logger = logger
             )
         }

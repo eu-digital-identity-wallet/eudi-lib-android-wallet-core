@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.openid4vp.Consensus
@@ -69,6 +70,7 @@ class ProcessedDcqlRequest(
     requester: Requester,
     trustMetadata: TrustMetadata?,
     val msoMdocNonce: String,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private val multipleByQueryId: Map<QueryId, Boolean> = emptyMap(),
     wrpRegistration: RegistrationCertificateResult? = null
 ) : RequestProcessor.ProcessedRequest.Success(
@@ -133,6 +135,20 @@ class ProcessedDcqlRequest(
         validateSelection(selection, resolvedRequestObject.query)?.let { error ->
             return ResponseResult.Failure(
                 IllegalStateException("Selection does not satisfy verifier request: $error"),
+            )
+        }
+
+        // Reader authentication policy enforcement
+        val isReaderTrustVerified = trustMetadata != null
+        val readerAuthPresent = requester.certChain != null
+        val rejectByPolicy = when (readerAuthPolicy) {
+            ReaderAuthPolicy.DoNotEnforce -> false
+            is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
+            is ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
+        }
+        if (rejectByPolicy) {
+            return ResponseResult.Failure(
+                SecurityException("Reader authentication policy rejected the request")
             )
         }
 
@@ -222,6 +238,7 @@ class ProcessedDcqlRequest(
             requester = requester,
             trustMetadata = trustMetadata,
             msoMdocNonce = msoMdocNonce,
+            readerAuthPolicy = readerAuthPolicy,
             multipleByQueryId = multipleByQueryId,
             wrpRegistration = wrpRegistration as? RegistrationCertificateResult
         )

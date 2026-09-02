@@ -30,6 +30,7 @@ import eu.europa.ec.eudi.openid4vp.dcql.DCQLMetaMsoMdocExtensions
 import eu.europa.ec.eudi.openid4vp.dcql.DCQLMetaSdJwtVcExtensions
 import eu.europa.ec.eudi.openid4vp.dcql.MsoMdocDocType
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
@@ -860,7 +861,7 @@ class DcqlRequestProcessorTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
     }
 
     /**
@@ -946,7 +947,7 @@ class DcqlRequestProcessorTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
     }
 
     /**
@@ -976,7 +977,7 @@ class DcqlRequestProcessorTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
     }
 
     /**

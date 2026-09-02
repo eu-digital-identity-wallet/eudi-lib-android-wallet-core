@@ -19,8 +19,6 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp
 import android.net.Uri
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.openid4vp.AuthorizationRequestError
 import eu.europa.ec.eudi.openid4vp.Consensus
@@ -76,16 +74,7 @@ class OpenId4VpManager(
     var listenersExecutor: Executor? = null,
     val ktorHttpClientFactory: (() -> HttpClient)? = null,
     private val registrationCertificatePolicy: RegistrationCertificatePolicy? = null
-) : TransferEvent.Listenable, ReaderTrustStoreAware {
-
-    /**
-     * The trust store used for verifying reader certificates. Delegates to the request processor.
-     */
-    override var readerTrustStore: ReaderTrustStore?
-        get() = requestProcessor.readerTrustStore
-        set(value) {
-            requestProcessor.readerTrustStore = value
-        }
+) : TransferEvent.Listenable {
 
     /**
      * Lazy initialization of the OpenID4VP protocol handler with logging and content negotiation.
