@@ -41,6 +41,7 @@ import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfig
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
+import eu.europa.ec.eudi.wallet.trust.ReaderAuthenticationConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.ReaderTrustConfigBuilder
 import eu.europa.ec.eudi.wallet.trust.StatusListTrustConfig
 import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
@@ -363,6 +364,10 @@ class EudiWalletConfig {
      * @return the [EudiWalletConfig] instance
      * @see RevocationPolicy
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { trustedCertificates(...) } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { trustedCertificates(readerTrustedCertificates) }"),
+    )
     @JvmOverloads
     fun configureReaderTrustStore(
         readerTrustedCertificates: List<X509Certificate>,
@@ -392,6 +397,10 @@ class EudiWalletConfig {
      * @return the [EudiWalletConfig] instance
      * @see RevocationPolicy
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { trustedCertificates(...) } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { trustedCertificates(*readerTrustedCertificates) }"),
+    )
     fun configureReaderTrustStore(
         vararg readerTrustedCertificates: X509Certificate,
         revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
@@ -422,6 +431,10 @@ class EudiWalletConfig {
      * @return the [EudiWalletConfig] instance
      * @see RevocationPolicy
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { trustedCertificates(context, ...) } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { trustedCertificates(context, *certificateRes) }"),
+    )
     fun configureReaderTrustStore(
         context: Context,
         @RawRes vararg certificateRes: Int,
@@ -441,6 +454,10 @@ class EudiWalletConfig {
      * @param readerTrustStore the custom reader trust store implementation
      * @return the [EudiWalletConfig] instance
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { trustStore(readerTrustStore) } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { trustStore(readerTrustStore) }"),
+    )
     fun configureReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
         this.readerTrustStore = readerTrustStore
     }
@@ -462,6 +479,10 @@ class EudiWalletConfig {
      * @param isChainTrusted the ETSI chain trust validator
      * @return the [EudiWalletConfig] instance
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { trustStore(isChainTrusted) } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { trustStore(isChainTrusted) }"),
+    )
     fun configureReaderTrustStore(
         isChainTrusted: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>,
     ) = apply {
@@ -496,6 +517,10 @@ class EudiWalletConfig {
      * @see ReaderTrustConfigBuilder
      * @see ReaderAuthPolicy
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { ... } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { alwaysRequire() }"),
+    )
     fun configureReaderTrustStore(
         block: ReaderTrustConfigBuilder.() -> Unit,
     ) = apply {
@@ -520,9 +545,13 @@ class EudiWalletConfig {
      * The default is [ReaderAuthPolicy.EnforceIfPresent].
      *
      * @see ReaderAuthPolicy
-     * @see configureReaderTrustStore
+     * @see configureReaderAuthentication
      */
-    var readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent
+    @Deprecated(
+        message = "Use configureReaderAuthentication { ... } instead. " +
+            "The policy is now determined by the DSL builder.",
+    )
+    var readerAuthPolicy: ReaderAuthPolicy? = null
         private set
 
     /**
@@ -541,10 +570,74 @@ class EudiWalletConfig {
      * @return the [EudiWalletConfig] instance
      *
      * @see ReaderAuthPolicy
-     * @see configureReaderTrustStore
+     * @see configureReaderAuthentication
      */
+    @Deprecated(
+        message = "Use configureReaderAuthentication { ... } instead.",
+        replaceWith = ReplaceWith("configureReaderAuthentication { /* set enforcement via doNotEnforce(), enforceIfPresent(), or alwaysRequire() */ }"),
+    )
     fun configureReaderAuthPolicy(readerAuthPolicy: ReaderAuthPolicy) = apply {
         this.readerAuthPolicy = readerAuthPolicy
+    }
+
+    /**
+     * The stored reader authentication DSL block. When non-null, it is executed at
+     * [EudiWallet.Builder.build()][eu.europa.ec.eudi.wallet.EudiWallet] time to produce
+     * the [ReaderAuthPolicy] with embedded trust material.
+     */
+    internal var readerAuthBlock: (ReaderAuthenticationConfigBuilder.() -> Unit)? = null
+        private set
+
+    /**
+     * Configure reader authentication using the unified DSL.
+     *
+     * This replaces the scattered `configureReaderTrustStore` overloads and
+     * `configureReaderAuthPolicy` with a single entry point that bundles trust
+     * material and enforcement intent together.
+     *
+     * The block is stored at configuration time and executed at
+     * [EudiWallet.Builder.build()][eu.europa.ec.eudi.wallet.EudiWallet] time so that
+     * deferred trust sources (e.g. from [configureEtsiTrust]) are available.
+     *
+     * The default enforcement is `enforceIfPresent()`. When enforcement is set to
+     * `enforceIfPresent()` or `alwaysRequire()` but no trust material is configured
+     * (and no central ETSI trust source is available), an [IllegalArgumentException]
+     * is thrown at build time. Call `doNotEnforce()` to explicitly opt out.
+     *
+     * Example with static certificates:
+     * ```
+     * configureReaderAuthentication {
+     *     trustedCertificates(cert1, cert2)
+     *     revocationPolicy(RevocationPolicy.SoftFail)
+     *     enforceIfPresent()
+     * }
+     * ```
+     *
+     * Example with ETSI trust (from [configureEtsiTrust]):
+     * ```
+     * configureEtsiTrust { ... }
+     * configureReaderAuthentication {
+     *     alwaysRequire()
+     * }
+     * ```
+     *
+     * Example opting out of enforcement:
+     * ```
+     * configureReaderAuthentication {
+     *     trustedCertificates(cert1)
+     *     doNotEnforce()
+     * }
+     * ```
+     *
+     * @param block configuration block applied to [ReaderAuthenticationConfigBuilder]
+     * @return the [EudiWalletConfig] instance
+     * @see ReaderAuthenticationConfigBuilder
+     * @see ReaderAuthPolicy
+     */
+    fun configureReaderAuthentication(
+        block: ReaderAuthenticationConfigBuilder.() -> Unit,
+    ) = apply {
+        this.readerAuthBlock = block
     }
 
     /**

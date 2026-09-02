@@ -19,9 +19,7 @@ package eu.europa.ec.eudi.wallet
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.registration.CertificateTrust
 import eu.europa.ec.eudi.wallet.registration.issuer.DefaultIssuerRegistrationEvaluator
@@ -68,18 +66,20 @@ class EudiWalletImpl internal constructor(
 ) : EudiWallet, DocumentManager by documentManager, PresentationManager by presentationManager,
     DocumentStatusResolver by documentStatusResolver {
 
+    @Deprecated("Reader trust is now configured at build time via configureReaderAuthentication { }")
     override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-        (this as PresentationManager).readerTrustStore = readerTrustStore
-        if (transferManager is ReaderTrustStoreAware) {
-            transferManager.readerTrustStore = readerTrustStore
-        }
+        // no-op: trust store is embedded in ReaderAuthPolicy at build time
     }
 
-    override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates, config.revocationPolicy))
+    @Deprecated("Reader trust is now configured at build time via configureReaderAuthentication { }")
+    override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) = apply {
+        // no-op: trust store is embedded in ReaderAuthPolicy at build time
+    }
 
-    override fun setTrustedReaderCertificates(vararg rawRes: Int) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }, config.revocationPolicy))
+    @Deprecated("Reader trust is now configured at build time via configureReaderAuthentication { }")
+    override fun setTrustedReaderCertificates(vararg rawRes: Int) = apply {
+        // no-op: trust store is embedded in ReaderAuthPolicy at build time
+    }
 
     /**
      * Creates an instance of [OpenId4VciManager] for interacting with the OpenID for Verifiable Credential Issuance protocol.

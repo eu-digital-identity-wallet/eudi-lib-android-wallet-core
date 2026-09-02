@@ -16,33 +16,48 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.response
 
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+
 /**
  * Policy for how reader authentication results are enforced during response generation.
  *
- * Controls whether [ProcessedDeviceRequest.generateResponse] includes documents in the
- * device response based on the [ReaderAuth] result of the corresponding [RequestedDocument].
+ * Each enforcing variant carries its own [ReaderTrustStore] so that enforcement intent and
+ * enforcement means are always bundled together. This prevents misconfiguration where
+ * a policy is set without a trust store, or vice versa.
  */
 sealed interface ReaderAuthPolicy {
 
     /**
+     * The trust store used to validate verifier certificate chains.
+     * Null only for [DoNotEnforce], which performs no trust evaluation.
+     */
+    val readerTrustStore: ReaderTrustStore?
+        get() = null
+
+    /**
      * Do not enforce reader authentication results.
-     * Documents are always included in the response regardless of [ReaderAuth] status.
+     * Documents are always included in the response regardless of trust status.
+     * No trust evaluation is performed.
      */
     data object DoNotEnforce : ReaderAuthPolicy
 
     /**
      * Enforce reader authentication when present.
-     * Documents are skipped when [ReaderAuth] is present but [ReaderAuth.isVerified] is `false`.
-     * Documents with no reader authentication (null [ReaderAuth]) are still included.
-     *
-     * This is the default policy.
+     * Documents are skipped when a verifier certificate chain is present but
+     * fails trust validation against the [readerTrustStore].
+     * Requests with no certificate chain (e.g. unsigned OpenID4VP requests)
+     * are still allowed through.
      */
-    data object EnforceIfPresent : ReaderAuthPolicy
+    data class EnforceIfPresent(
+        override val readerTrustStore: ReaderTrustStore
+    ) : ReaderAuthPolicy
 
     /**
      * Always require verified reader authentication.
-     * Documents are skipped when [ReaderAuth] is null or [ReaderAuth.isVerified] is `false`.
-     * Only documents with verified reader authentication are included in the response.
+     * Documents are skipped unless the verifier's certificate chain is present
+     * and successfully validated against the [readerTrustStore].
      */
-    data object AlwaysRequire : ReaderAuthPolicy
+    data class AlwaysRequire(
+        override val readerTrustStore: ReaderTrustStore
+    ) : ReaderAuthPolicy
 }

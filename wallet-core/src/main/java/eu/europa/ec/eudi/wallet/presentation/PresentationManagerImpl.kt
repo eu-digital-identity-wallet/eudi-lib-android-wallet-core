@@ -24,7 +24,6 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
@@ -40,7 +39,6 @@ import org.jetbrains.annotations.VisibleForTesting
  * Implementation of the [PresentationManager] interface based on the [TransferManager],
  * [OpenId4VpManager], [DCAPIManager] implementations.
  * @property nfcEngagementServiceClass the NFC engagement service class
- * @property readerTrustStore the reader trust store
  */
 class PresentationManagerImpl @JvmOverloads constructor(
     @VisibleForTesting internal val transferManager: TransferManager,
@@ -49,17 +47,14 @@ class PresentationManagerImpl @JvmOverloads constructor(
     override val nfcEngagementServiceClass: Class<out NfcEngagementService>? = null,
 ) : PresentationManager {
 
-    private var _readerTrustStore: ReaderTrustStore? = null
+    @Deprecated(
+        "Reader trust is now configured at build time via ReaderAuthPolicy. " +
+            "This setter is a no-op.",
+        level = DeprecationLevel.WARNING,
+    )
     override var readerTrustStore: ReaderTrustStore?
-        get() = _readerTrustStore
-        set(value) {
-            _readerTrustStore = value
-            if (transferManager is ReaderTrustStoreAware) {
-                transferManager.readerTrustStore = value
-            }
-            openId4vpManager?.readerTrustStore = value
-            dcapiManager?.readerTrustStore = value
-        }
+        get() = null
+        set(_) { /* no-op: trust store is embedded in ReaderAuthPolicy at build time */ }
 
     override fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.addTransferEventListener(listener)

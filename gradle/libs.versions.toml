@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.1"
+agp = "9.3.2"
 androidx-credentials = "1.6.0"
 androidx-credentials-registry = "1.0.0-alpha04"
 appcompat = "1.7.1"
