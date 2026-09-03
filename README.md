@@ -297,8 +297,6 @@ val customWallet = EudiWallet(context, config) {
     withStorage(myStorage)
     // a list of SecureArea implementations to be used
     withSecureAreas(listOf(deviceSecureArea, cloudSecureArea))
-    // custom ReaderTrustStore (prefer configureReaderAuthentication in config instead)
-    withReaderTrustStore(myReaderTrustStore)
     // custom logger to be used
     withLogger(myLogger)
     // custom HTTP client for network operations

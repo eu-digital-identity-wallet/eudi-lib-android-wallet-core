@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
-import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
@@ -71,7 +70,6 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
 import java.io.File
-import java.security.cert.X509Certificate
 import org.multipaz.util.Logger as IdentityLogger
 
 /**
@@ -100,48 +98,6 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
     val walletProvider: WalletAttestationsProvider?
     val walletKeyManager: WalletKeyManager
-
-    /**
-     * Sets the reader trust store with the given [ReaderTrustStore].
-     *
-     * @param readerTrustStore the reader trust store
-     * @return this [EudiWallet] instance
-     */
-    @Deprecated(
-        "Reader trust is now configured at build time via " +
-            "EudiWalletConfig.configureReaderAuthentication { }. This method is a no-op.",
-        replaceWith = ReplaceWith("this"),
-        level = DeprecationLevel.WARNING,
-    )
-    fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWallet
-
-    /**
-     * Sets the reader trust store with the given list of [X509Certificate].
-     *
-     * @param trustedReaderCertificates the list of reader certificates
-     * @return this [EudiWallet] instance
-     */
-    @Deprecated(
-        "Reader trust is now configured at build time via " +
-            "EudiWalletConfig.configureReaderAuthentication { }. This method is a no-op.",
-        replaceWith = ReplaceWith("this"),
-        level = DeprecationLevel.WARNING,
-    )
-    fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>): EudiWallet
-
-    /**
-     * Sets the reader trust store with the given list of raw resource IDs.
-     *
-     * @param rawRes the list of raw resource IDs
-     * @return this [EudiWallet] instance
-     */
-    @Deprecated(
-        "Reader trust is now configured at build time via " +
-            "EudiWalletConfig.configureReaderAuthentication { }. This method is a no-op.",
-        replaceWith = ReplaceWith("this"),
-        level = DeprecationLevel.WARNING,
-    )
-    fun setTrustedReaderCertificates(@RawRes vararg rawRes: Int): EudiWallet
 
     /**
      * Creates an instance of [OpenId4VciManager] for the wallet to interact with the OpenID for Verifiable Credential Issuance service.
@@ -268,22 +224,6 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          */
         fun withDocumentManager(documentManager: DocumentManager) =
             apply { this.documentManager = documentManager }
-
-        /**
-         * Configure with the given [ReaderTrustStore] to use for performing reader authentication.
-         *
-         * @param readerTrustStore the reader trust store
-         * @return this [Builder] instance
-         */
-        @Deprecated(
-            "Reader trust is now configured via " +
-                "EudiWalletConfig.configureReaderAuthentication { trustSource(...) }. " +
-                "This method is a no-op.",
-            replaceWith = ReplaceWith("this"),
-            level = DeprecationLevel.WARNING,
-        )
-        fun withReaderTrustStore(readerTrustStore: ReaderTrustStore) =
-            apply { /* no-op: trust store is configured via configureReaderAuthentication */ }
 
         /**
          * Configure with the given [PresentationManager] to use for both proximity and remote presentation.
@@ -462,7 +402,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             // --- Build ReaderAuthPolicy (single policy for both transports) ---
             val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthenticationConfigBuilder()
-                .apply(config.readerAuthBlock ?: {})
+                .apply(config.readerAuthenticationBlock ?: {})
                 .build(etsiSource = etsiSource, logger = loggerToUse)
 
             // Derive trust store for components not yet migrated to ReaderAuthPolicy

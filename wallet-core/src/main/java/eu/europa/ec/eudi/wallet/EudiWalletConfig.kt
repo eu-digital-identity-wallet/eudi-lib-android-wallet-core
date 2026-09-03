@@ -585,7 +585,7 @@ class EudiWalletConfig {
      * [EudiWallet.Builder.build()][eu.europa.ec.eudi.wallet.EudiWallet] time to produce
      * the [ReaderAuthPolicy] with embedded trust material.
      */
-    internal var readerAuthBlock: (ReaderAuthenticationConfigBuilder.() -> Unit)? = null
+    internal var readerAuthenticationBlock: (ReaderAuthenticationConfigBuilder.() -> Unit)? = null
         private set
 
     /**
@@ -637,7 +637,7 @@ class EudiWalletConfig {
     fun configureReaderAuthentication(
         block: ReaderAuthenticationConfigBuilder.() -> Unit,
     ) = apply {
-        this.readerAuthBlock = block
+        this.readerAuthenticationBlock = block
     }
 
     /**
