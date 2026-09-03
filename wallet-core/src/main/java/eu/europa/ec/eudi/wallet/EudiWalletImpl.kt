@@ -18,7 +18,6 @@ package eu.europa.ec.eudi.wallet
 
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.registration.CertificateTrust
@@ -34,7 +33,6 @@ import eu.europa.ec.eudi.wallet.trust.pidClassification
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import io.ktor.client.HttpClient
 import org.multipaz.storage.Storage
-import java.security.cert.X509Certificate
 
 /**
  * Implementation of [EudiWallet]
@@ -65,21 +63,6 @@ class EudiWalletImpl internal constructor(
     internal val issuerRegistrationStatusTrust: CertificateTrust? = null,
 ) : EudiWallet, DocumentManager by documentManager, PresentationManager by presentationManager,
     DocumentStatusResolver by documentStatusResolver {
-
-    @Deprecated("Reader trust is now configured at build time via configureReaderAuthentication { }")
-    override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-        // no-op: trust store is embedded in ReaderAuthPolicy at build time
-    }
-
-    @Deprecated("Reader trust is now configured at build time via configureReaderAuthentication { }")
-    override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) = apply {
-        // no-op: trust store is embedded in ReaderAuthPolicy at build time
-    }
-
-    @Deprecated("Reader trust is now configured at build time via configureReaderAuthentication { }")
-    override fun setTrustedReaderCertificates(vararg rawRes: Int) = apply {
-        // no-op: trust store is embedded in ReaderAuthPolicy at build time
-    }
 
     /**
      * Creates an instance of [OpenId4VciManager] for interacting with the OpenID for Verifiable Credential Issuance protocol.
