@@ -75,7 +75,7 @@ class ProcessedDeviceRequest(
     presentmentData: CredentialPresentmentData,
     requester: Requester,
     trustMetadata: TrustMetadata?,
-    private val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private val zkSystemRepository: ZkSystemRepository? = null,
     private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
     wrpRegistration: WrpRegistrationInfo? = null
