@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transactionLogging
+package eu.europa.ec.eudi.wallet.transactionLogging.model
 
-import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
+import android.annotation.SuppressLint
+import kotlinx.serialization.Serializable
 
 /**
- * Storage interface for transaction logs. The app implements this to save a
- * [TransactionEntry] e.g. as database, file, etc.
+ * A pseudonym (TS10 §3.19.3). Used by pseudonym transaction types.
+ *
+ * @property value the pseudonym value.
+ * @property alias an optional friendly name.
  */
-fun interface TransactionLogger {
-    /** Saves one transaction-log entry. */
-    fun log(transaction: TransactionEntry)
-}
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class Pseudonym(
+    val value: String,
+    val alias: String? = null,
+)

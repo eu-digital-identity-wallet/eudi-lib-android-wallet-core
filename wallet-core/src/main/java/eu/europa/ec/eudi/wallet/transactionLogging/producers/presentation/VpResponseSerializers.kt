@@ -15,17 +15,10 @@
  */
 
 /**
- * Custom serializers for transaction logging presentation layer components.
- *
- * This file contains Kotlinx Serialization custom serializers for OpenID4VP-related data structures
- * used in transaction logging. The serializers handle complex nested structures and provide
- * JSON serialization/deserialization capabilities for:
- * - VP Token consensus data
- * - Verifiable presentations collections
- *
- * - Individual verifiable presentation objects
+ * JSON serializers for the OpenID4VP VP token types used in transaction logging: the consensus, the
+ * collection of verifiable presentations, and a single presentation.
  */
-package eu.europa.ec.eudi.wallet.transactionLogging.presentation
+package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation
 
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
@@ -62,31 +55,17 @@ val VPTokenConsensusJson = Json {
 }
 
 /**
- * Custom serializer for [Consensus.PositiveConsensus] objects.
- *
- * This serializer handles the serialization and deserialization of VP Token consensus data,
- * which contains verifiable presentations that have been agreed upon during the consensus process.
- * The serializer delegates the actual presentations serialization to [VerifiablePresentationsSerializer].
- *
- * @see Consensus.PositiveConsensus
- * @see VerifiablePresentationsSerializer
+ * Serializer for [Consensus.PositiveConsensus]. Delegates the presentations to
+ * [VerifiablePresentationsSerializer].
  */
 object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus> {
 
-    /**
-     * Serial descriptor for the VPTokenConsensus structure.
-     * Defines a single element "verifiablePresentations" of type String.
-     */
+    /** One element: "verifiablePresentations". */
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("VPTokenConsensus") {
         element<String>("verifiablePresentations")
     }
 
-    /**
-     * Serializes a [Consensus.PositiveConsensus] object to the encoder.
-     *
-     * @param encoder The encoder to write the serialized data to
-     * @param value The PositiveConsensus object to serialize
-     */
+    /** Writes the consensus's verifiable presentations. */
     override fun serialize(encoder: Encoder, value: Consensus.PositiveConsensus) {
         encoder.encodeStructure(descriptor) {
             encodeSerializableElement(
@@ -99,11 +78,9 @@ object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus> {
     }
 
     /**
-     * Deserializes a [Consensus.PositiveConsensus] object from the decoder.
+     * Reads a [Consensus.PositiveConsensus].
      *
-     * @param decoder The decoder to read the serialized data from
-     * @return The deserialized PositiveConsensus object
-     * @throws SerializationException if the required verifiablePresentations field is missing
+     * @throws SerializationException if verifiablePresentations is missing.
      */
     override fun deserialize(decoder: Decoder): Consensus.PositiveConsensus {
         return decoder.decodeStructure(descriptor) {
@@ -128,45 +105,26 @@ object VPTokenConsensusSerializer : KSerializer<Consensus.PositiveConsensus> {
 }
 
 /**
- * Custom serializer for [VerifiablePresentations] collections.
- *
- * This serializer handles the complex structure of verifiable presentations, which are organized
- * as a map of query IDs to lists of presentation objects. The serializer converts the internal
- * map structure to a JSON-serializable format and vice versa.
- *
- * **Important**: This serializer only works with JSON encoding/decoding and will throw a
- * [SerializationException] if used with other formats.
- *
- * @see VerifiablePresentations
- * @see QueryId
- * @see VerifiablePresentation
+ * Serializer for [VerifiablePresentations], a map of query id to a list of presentations, to and from
+ * a JSON object. JSON only; throws [SerializationException] with any other format.
  */
 object VerifiablePresentationsSerializer : KSerializer<VerifiablePresentations> {
 
-    /**
-     * Serial descriptor for the VerifiablePresentations structure.
-     * Defines a presentations map containing query ID keys and presentation lists.
-     */
+    /** One "presentations" map: query id to a list of presentations. */
     override val descriptor: SerialDescriptor =
         buildClassSerialDescriptor("VerifiablePresentations") {
             element<Map<String, List<JsonElement>>>("presentations")
         }
 
     /**
-     * Serializes a [VerifiablePresentations] object to JSON format.
+     * Writes the presentations as a JSON object: query id keys, presentation arrays.
      *
-     * The method converts the internal map of [QueryId] to [VerifiablePresentation] lists
-     * into a JSON object where query IDs become string keys and presentations become JSON arrays.
-     *
-     * @param encoder The JSON encoder to write the serialized data to
-     * @param value The VerifiablePresentations object to serialize
-     * @throws SerializationException if the encoder is not a JsonEncoder
+     * @throws SerializationException if the encoder is not a JsonEncoder.
      */
     override fun serialize(encoder: Encoder, value: VerifiablePresentations) {
         val jsonEncoder = encoder as? JsonEncoder
             ?: throw SerializationException("This serializer can only be used with JSON")
 
-        // Convert the internal map to a serializable format
         val serializedMap = mutableMapOf<String, JsonArray>()
         value.value.forEach { (queryId, presentations) ->
             val serializedPresentations = presentations.map { presentation ->
@@ -182,14 +140,9 @@ object VerifiablePresentationsSerializer : KSerializer<VerifiablePresentations> 
     }
 
     /**
-     * Deserializes a [VerifiablePresentations] object from JSON format.
+     * Reads the presentations back from a JSON object, turning keys into [QueryId]s.
      *
-     * The method reconstructs the internal map structure from a JSON object, converting
-     * string keys back to [QueryId] objects and JSON arrays back to presentation lists.
-     *
-     * @param decoder The JSON decoder to read the serialized data from
-     * @return The deserialized VerifiablePresentations object
-     * @throws SerializationException if the decoder is not a JsonDecoder
+     * @throws SerializationException if the decoder is not a JsonDecoder.
      */
     override fun deserialize(decoder: Decoder): VerifiablePresentations {
         val jsonDecoder = decoder as? JsonDecoder
@@ -211,44 +164,19 @@ object VerifiablePresentationsSerializer : KSerializer<VerifiablePresentations> 
 }
 
 /**
- * Custom serializer for [VerifiablePresentation] objects.
- *
- * This serializer handles the polymorphic nature of verifiable presentations, which can be
- * either generic string presentations or JSON object presentations. The serializer uses a
- * type field to distinguish between the different presentation types during serialization
- * and deserialization.
- *
- * Supported presentation types:
- * - [VerifiablePresentation.Generic]: Simple string-based presentations
- * - [VerifiablePresentation.JsonObj]: JSON object-based presentations
- *
- * @see VerifiablePresentation
- * @see VerifiablePresentation.Generic
- * @see VerifiablePresentation.JsonObj
+ * Serializer for [VerifiablePresentation]. A "type" field tells the two kinds apart:
+ * [VerifiablePresentation.Generic] (a string) and [VerifiablePresentation.JsonObj] (a JSON object).
  */
 object VerifiablePresentationSerializer : KSerializer<VerifiablePresentation> {
 
-    /**
-     * Serial descriptor for the VerifiablePresentation structure.
-     * Defines two elements: "type" for the presentation type and "value" for the content.
-     */
+    /** Two elements: "type" and "value". */
     override val descriptor: SerialDescriptor =
         buildClassSerialDescriptor("VerifiablePresentation") {
             element<String>("type")
             element<String>("value")
         }
 
-    /**
-     * Serializes a [VerifiablePresentation] object based on its concrete type.
-     *
-     * The method determines the presentation type and serializes both the type identifier
-     * and the presentation content accordingly:
-     * - Generic presentations are serialized with their string value
-     * - JsonObj presentations are serialized with their JSON object converted to string
-     *
-     * @param encoder The encoder to write the serialized data to
-     * @param value The VerifiablePresentation object to serialize
-     */
+    /** Writes the type tag and the value (the JSON object is written as a string). */
     override fun serialize(
         encoder: Encoder,
         value: VerifiablePresentation,
@@ -269,15 +197,9 @@ object VerifiablePresentationSerializer : KSerializer<VerifiablePresentation> {
     }
 
     /**
-     * Deserializes a [VerifiablePresentation] object from the encoded data.
+     * Reads the type and value back into the matching presentation type.
      *
-     * The method reads the type identifier and value, then reconstructs the appropriate
-     * concrete presentation type based on the type field. For JsonObj types, the string
-     * value is parsed back into a JSON object.
-     *
-     * @param decoder The decoder to read the serialized data from
-     * @return The deserialized VerifiablePresentation object
-     * @throws SerializationException if required fields are missing or if an unknown type is encountered
+     * @throws SerializationException if a field is missing or the type is unknown.
      */
     override fun deserialize(decoder: Decoder): VerifiablePresentation {
         return decoder.decodeStructure(descriptor) {

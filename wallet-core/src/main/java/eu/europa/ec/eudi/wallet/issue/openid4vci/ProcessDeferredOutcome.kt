@@ -17,7 +17,6 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import eu.europa.ec.eudi.openid4vci.AccessToken
-import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.DeferredCredentialQueryOutcome
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -25,12 +24,13 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
-import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 
@@ -159,6 +159,12 @@ internal class ProcessDeferredOutcome(
                 } else {
                     "authorization_code"
                 },
+                issuerIdentifier = deferredContext.interactingParty
+                    ?.toRegistrationCertificate()
+                    ?.structuredIdentifier(),
+                issuerName = deferredContext.interactingParty
+                    ?.toRegistrationCertificate()
+                    ?.interactingPartyName()
             )
 
             val table = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)

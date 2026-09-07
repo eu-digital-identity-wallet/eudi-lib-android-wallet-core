@@ -19,10 +19,23 @@ package eu.europa.ec.eudi.wallet.transactionLogging
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
 
 /**
- * Storage interface for transaction logs. The app implements this to save a
- * [TransactionEntry] e.g. as database, file, etc.
+ * Single entry point for recording all transaction-log entries (presentation, issuance,
+ * deletion, and host-app actions). Hands entries to the [TransactionLogger] for storage.
  */
-fun interface TransactionLogger {
-    /** Saves one transaction-log entry. */
-    fun log(transaction: TransactionEntry)
+interface TransactionLogManager {
+    /** Records one transaction-log entry. */
+    fun log(entry: TransactionEntry)
+}
+
+/**
+ * Default [TransactionLogManager]. Saves each entry via [storage].
+ *
+ * @property storage where entries are saved.
+ */
+class DefaultTransactionLogManager(
+    private val storage: TransactionLogger,
+) : TransactionLogManager {
+    override fun log(entry: TransactionEntry) {
+        storage.log(entry)
+    }
 }

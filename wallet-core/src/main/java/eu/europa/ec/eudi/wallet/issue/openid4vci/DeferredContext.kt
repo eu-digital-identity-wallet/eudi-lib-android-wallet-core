@@ -38,6 +38,7 @@ import eu.europa.ec.eudi.openid4vci.TransactionId
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredDeferredContext
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistration
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -108,6 +109,8 @@ internal data class DeferredContext(
     val credentialConfigurationIdentifier: String? = null,
     val credentialEndpoint: String? = null,
     val replacesDocumentId: String? = null,
+    val interactingParty: StoredIssuerRegistration? = null,
+    val isUserTriggered: Boolean? = null
 ) {
     companion object
 }
@@ -213,6 +216,8 @@ internal fun DeferredContext.Companion.fromBytes(
         credentialConfigurationIdentifier = dto.credentialConfigurationIdentifier,
         credentialEndpoint = dto.credentialEndpoint,
         replacesDocumentId = dto.replacesDocumentId,
+        interactingParty = dto.interactingParty,
+        isUserTriggered = dto.isUserTriggered
     )
 }
 
@@ -241,6 +246,8 @@ internal fun DeferredContext.toBytes(): ByteArray {
         credentialConfigurationIdentifier = credentialConfigurationIdentifier,
         credentialEndpoint = credentialEndpoint,
         replacesDocumentId = replacesDocumentId,
+        interactingParty = interactingParty,
+        isUserTriggered = isUserTriggered
     )
 
     return Json.encodeToString(dto).toByteArray(Charsets.UTF_8)
