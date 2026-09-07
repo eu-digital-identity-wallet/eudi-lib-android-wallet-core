@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transactionLogging.presentation
+package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation
 
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
@@ -37,7 +37,7 @@ import kotlin.test.assertFailsWith
  * - VerifiablePresentationsSerializer
  * - VerifiablePresentationSerializer
  */
-class SerializersTest {
+class VpResponseSerializersTest {
 
     private val json = Json { ignoreUnknownKeys = true }
 

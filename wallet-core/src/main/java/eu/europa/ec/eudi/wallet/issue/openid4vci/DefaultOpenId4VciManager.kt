@@ -162,7 +162,7 @@ internal class DefaultOpenId4VciManager(
                     credentialConfigurationIds.map{ id -> CredentialConfigurationIdentifier(id) }
                 )
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
-                doIssue(issuer, offer, txCode, listener)
+                doIssue(issuer, offer, txCode, listener, userTriggered = true)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
@@ -181,7 +181,7 @@ internal class DefaultOpenId4VciManager(
             try {
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(issuerUrl, format)
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
-                doIssue(issuer, offer, txCode, listener)
+                doIssue(issuer, offer, txCode, listener, userTriggered = true)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByDocType failed", e)
@@ -217,7 +217,7 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener)
+                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -236,7 +236,7 @@ internal class DefaultOpenId4VciManager(
             try {
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener)
+                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -291,6 +291,7 @@ internal class DefaultOpenId4VciManager(
                                     credentialConfigurationIdentifier = deferredContext.credentialConfigurationIdentifier,
                                     credentialEndpoint = deferredContext.credentialEndpoint,
                                     replacesDocumentId = deferredContext.replacesDocumentId,
+                                    interactingParty = deferredContext.interactingParty,
                                 )
                             } ?: deferredContext,
                             logger = logger,
@@ -518,6 +519,10 @@ internal class DefaultOpenId4VciManager(
                     clientAuthentication = issuerCreator.clientAuthentication,
                     replacesDocumentId = documentId,
                     issuerTrustConfig = issuerTrustConfig,
+                    interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
+                    // A re-issuance the User asked for allows falling back to a full authorization;
+                    // a background one does not.
+                    isUserTriggered = allowAuthorizationFallback,
                 ).process(response)
 
                 //  If new document(s) issued successfully, delete the old document.
@@ -580,12 +585,16 @@ internal class DefaultOpenId4VciManager(
 
     /**
      * Issues the given [Offer].
+     *
+     * [userTriggered] says whether the User started this issuance, as opposed to the issuer offering
+     * the credentials. It is only kept with a deferred credential (TS10 §3.5 `isUserTriggered`).
      */
     private suspend fun doIssue(
         issuer: Issuer,
         offer: Offer,
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
+        userTriggered: Boolean,
     ) {
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         val issuancePayloads = resolveIssuanceRequestPayloads(offer, authorizedRequest.credentialIdentifiers)
@@ -619,6 +628,8 @@ internal class DefaultOpenId4VciManager(
             dpopKeyAlias = issuerCreator.dpopKeyAlias,
             issuanceMetadataStorage = issuanceMetadataStorage,
             clientAuthentication = issuerCreator.clientAuthentication,
+            interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
+            isUserTriggered = userTriggered,
         ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
     }

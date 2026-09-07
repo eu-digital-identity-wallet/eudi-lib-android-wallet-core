@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-package eu.europa.ec.eudi.wallet.transactionLogging
+package eu.europa.ec.eudi.wallet.transactionLogging.producers
 
-import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
-
-/**
- * Storage interface for transaction logs. The app implements this to save a
- * [TransactionEntry] e.g. as database, file, etc.
- */
-fun interface TransactionLogger {
-    /** Saves one transaction-log entry. */
-    fun log(transaction: TransactionEntry)
-}
+/** Turns a throwable into a short, non-blank reason string for a failed transaction. */
+internal fun Throwable.toNoncompletionReason(default: String): String =
+    message?.takeIf { it.isNotBlank() }
+        ?: cause?.message?.takeIf { it.isNotBlank() }
+        ?: this::class.simpleName
+        ?: default
