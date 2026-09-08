@@ -95,8 +95,10 @@ internal class SdJwtVcCredentialTrustVerifier(
         )
 
         verifier.verify(credentialValue)
-            .onFailure { e -> logger?.e(TAG, "SD-JWT VC credential trust verification failed", e) }
-            .getOrNull()
+            .onFailure { e ->
+                logger?.e(TAG, "SD-JWT VC credential trust verification failed", e)
+                result = CertificationChainValidation.NotTrusted(e)
+            }
         return result
     }
 
