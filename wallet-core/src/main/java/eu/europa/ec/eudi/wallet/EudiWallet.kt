@@ -470,7 +470,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 val certificateTrust: CertificateTrust? =
                     readerTrustStoreToUse?.asCertificateTrust()
                 val evaluator = config.wrpRegistrationEvaluator ?: DefaultWrpRegistrationEvaluator(
-                    statusTrust = if (config.useEtsiReaderTrust && etsiSource != null) {
+                    statusTrust = if (etsiSource != null) {
                         etsiSource.asCertificateTrust(
                             VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
                             logger = loggerToUse,

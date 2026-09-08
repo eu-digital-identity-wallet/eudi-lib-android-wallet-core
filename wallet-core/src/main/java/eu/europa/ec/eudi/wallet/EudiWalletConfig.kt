@@ -489,9 +489,6 @@ class EudiWalletConfig {
         this.readerTrustStore = isChainTrusted.asReaderTrustStore()
     }
 
-    internal var useEtsiReaderTrust: Boolean = false
-        private set
-
     /**
      * Configure the [ReaderTrustStore] using the ETSI trust source from [configureEtsiTrust].
      *
@@ -524,7 +521,6 @@ class EudiWalletConfig {
     fun configureReaderTrustStore(
         block: ReaderTrustConfigBuilder.() -> Unit,
     ) = apply {
-        this.useEtsiReaderTrust = true
         val builder = ReaderTrustConfigBuilder().apply(block)
         builder.readerAuthPolicy?.let { this.readerAuthPolicy = it }
     }
