@@ -27,6 +27,10 @@ import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForAttestation
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import org.bouncycastle.asn1.DERIA5String
+import org.bouncycastle.asn1.DERSequence
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.GeneralName
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
@@ -56,7 +60,7 @@ class SdJwtVcCredentialTrustVerifierTest {
     @Test
     fun returnsTrustedForValidSdJwt() = runTest {
         val keyPair = generateEcKeyPair()
-        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer")
+        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://example.com"))
         val sdJwt = buildSdJwt(keyPair, cert)
 
         val trustAnchor = mockk<TrustAnchor>()
@@ -115,7 +119,7 @@ class SdJwtVcCredentialTrustVerifierTest {
     @Test
     fun handlesSdJwtWithDisclosures() = runTest {
         val keyPair = generateEcKeyPair()
-        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer")
+        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://example.com"))
 
         // Build a SD-JWT with a disclosure segment
         val header = JWSHeader.Builder(JWSAlgorithm.ES256)
@@ -143,6 +147,85 @@ class SdJwtVcCredentialTrustVerifierTest {
         assertIs<CertificationChainValidation.Trusted<TrustAnchor>>(result)
     }
 
+    @Test
+    fun returnsNotTrustedWhenIssMismatchesSanUri() = runTest {
+        val keyPair = generateEcKeyPair()
+        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://other.com"))
+        val sdJwt = buildSdJwt(keyPair, cert, issuer = "https://example.com")
+
+        val trustAnchor = mockk<TrustAnchor>()
+        val trusted = CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { isChainTrusted.issuance(any(), eq(attestationIdentifier)) } returns trusted
+
+        val result = verifier.verify(sdJwt, attestationIdentifier)
+
+        assertNotNull(result)
+        assertIs<CertificationChainValidation.NotTrusted>(result)
+    }
+
+    @Test
+    fun returnsNotTrustedWhenCertHasNoSan() = runTest {
+        val keyPair = generateEcKeyPair()
+        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer") // no SAN
+        val sdJwt = buildSdJwt(keyPair, cert)
+
+        val trustAnchor = mockk<TrustAnchor>()
+        val trusted = CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { isChainTrusted.issuance(any(), eq(attestationIdentifier)) } returns trusted
+
+        val result = verifier.verify(sdJwt, attestationIdentifier)
+
+        assertNotNull(result)
+        assertIs<CertificationChainValidation.NotTrusted>(result)
+    }
+
+    @Test
+    fun returnsNotTrustedWhenIssClaimMissing() = runTest {
+        val keyPair = generateEcKeyPair()
+        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://example.com"))
+
+        // Build SD-JWT without iss claim
+        val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+            .x509CertChain(listOf(NimbusBase64.encode(cert.encoded)))
+            .build()
+        val claims = JWTClaimsSet.Builder()
+            .claim("vct", "VerifiablePortableDocumentA1")
+            .build()
+        val signedJwt = SignedJWT(header, claims)
+        signedJwt.sign(ECDSASigner(keyPair.private as ECPrivateKey))
+        val sdJwt = "${signedJwt.serialize()}~"
+
+        val trustAnchor = mockk<TrustAnchor>()
+        val trusted = CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { isChainTrusted.issuance(any(), eq(attestationIdentifier)) } returns trusted
+
+        val result = verifier.verify(sdJwt, attestationIdentifier)
+
+        assertNotNull(result)
+        assertIs<CertificationChainValidation.NotTrusted>(result)
+    }
+
+    @Test
+    fun returnsTrustedWhenMultipleSanUrisAndOneMatches() = runTest {
+        val keyPair = generateEcKeyPair()
+        val cert = createSelfSignedCert(
+            keyPair, "CN=Test Issuer",
+            sanUris = listOf("https://other.com", "https://example.com"),
+        )
+        val sdJwt = buildSdJwt(keyPair, cert)
+
+        val trustAnchor = mockk<TrustAnchor>()
+        val trusted = CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { isChainTrusted.issuance(match { certs ->
+            certs.size == 1 && certs[0].encoded.contentEquals(cert.encoded)
+        }, attestationIdentifier) } returns trusted
+
+        val result = verifier.verify(sdJwt, attestationIdentifier)
+
+        assertNotNull(result)
+        assertIs<CertificationChainValidation.Trusted<TrustAnchor>>(result)
+    }
+
     // -- helpers --
 
     private fun generateEcKeyPair() = KeyPairGenerator.getInstance("EC").apply {
@@ -152,6 +235,7 @@ class SdJwtVcCredentialTrustVerifierTest {
     private fun createSelfSignedCert(
         keyPair: java.security.KeyPair,
         cn: String,
+        sanUris: List<String>? = null,
     ): X509Certificate {
         val issuer = org.bouncycastle.asn1.x500.X500Name(cn)
         val notBefore = Date(System.currentTimeMillis() - 86400000L)
@@ -159,6 +243,12 @@ class SdJwtVcCredentialTrustVerifierTest {
         val builder = JcaX509v3CertificateBuilder(
             issuer, BigInteger.ONE, notBefore, notAfter, issuer, keyPair.public,
         )
+        if (!sanUris.isNullOrEmpty()) {
+            val generalNames = sanUris.map { uri ->
+                GeneralName(GeneralName.uniformResourceIdentifier, DERIA5String(uri))
+            }.toTypedArray()
+            builder.addExtension(Extension.subjectAlternativeName, false, DERSequence(generalNames))
+        }
         val signer = JcaContentSignerBuilder("SHA256WithECDSA").build(keyPair.private)
         return JcaX509CertificateConverter().getCertificate(builder.build(signer))
     }
@@ -166,12 +256,13 @@ class SdJwtVcCredentialTrustVerifierTest {
     private fun buildSdJwt(
         keyPair: java.security.KeyPair,
         cert: X509Certificate,
+        issuer: String = "https://example.com",
     ): String {
         val header = JWSHeader.Builder(JWSAlgorithm.ES256)
             .x509CertChain(listOf(NimbusBase64.encode(cert.encoded)))
             .build()
         val claims = JWTClaimsSet.Builder()
-            .issuer("https://example.com")
+            .issuer(issuer)
             .claim("vct", "VerifiablePortableDocumentA1")
             .build()
         val signedJwt = SignedJWT(header, claims)
