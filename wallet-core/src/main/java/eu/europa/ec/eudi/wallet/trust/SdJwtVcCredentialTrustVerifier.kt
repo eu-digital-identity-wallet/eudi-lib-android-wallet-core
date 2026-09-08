@@ -25,6 +25,8 @@ import eu.europa.ec.eudi.sdjwt.vc.X509CertificateTrust
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
@@ -50,12 +52,39 @@ internal class SdJwtVcCredentialTrustVerifier(
         var result: CertificationChainValidation<TrustAnchor>? = null
 
         // Create trust callback that captures the evaluation result
-        val trust = X509CertificateTrust<List<X509Certificate>> { chain, _ ->
+        val trust = X509CertificateTrust<List<X509Certificate>> { chain, claimSet ->
             logger?.d(TAG, "x5c chain has ${chain.size} certs, leaf=${chain.firstOrNull()?.subjectX500Principal}")
             result = isChainTrusted.issuance(chain, attestationIdentifier)
             val trusted = result is CertificationChainValidation.Trusted
             logger?.d(TAG, "issuance() trusted=$trusted")
-            trusted
+
+            if (!trusted) return@X509CertificateTrust false
+
+            // Validate iss claim against leaf certificate SAN URIs
+            val iss = (claimSet["iss"] as? JsonPrimitive)?.contentOrNull
+            if (iss == null) {
+                logger?.d(TAG, "SD-JWT has no 'iss' claim, rejecting")
+                result = CertificationChainValidation.NotTrusted(
+                    IllegalStateException("SD-JWT VC missing required 'iss' claim"),
+                )
+                return@X509CertificateTrust false
+            }
+
+            val leaf = chain.first()
+            val sanUris = leaf.sanUris()
+            if (sanUris.any { it == iss }) {
+                logger?.d(TAG, "iss='$iss' matches SAN URI in leaf certificate")
+                true
+            } else {
+                logger?.d(TAG, "iss='$iss' does not match any SAN URI in leaf cert. SANs=$sanUris")
+                result = CertificationChainValidation.NotTrusted(
+                    IllegalStateException(
+                        "SD-JWT VC 'iss' claim '$iss' does not match any SAN URI " +
+                            "in the leaf certificate (SANs=$sanUris)",
+                    ),
+                )
+                false
+            }
         }
 
         // Create verifier with UsingX5c method
