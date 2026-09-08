@@ -23,7 +23,6 @@ import androidx.credentials.provider.PendingIntentHandler
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
@@ -46,15 +45,6 @@ class PresentationManagerImpl @JvmOverloads constructor(
     @VisibleForTesting internal val dcapiManager: DCAPIManager? = null,
     override val nfcEngagementServiceClass: Class<out NfcEngagementService>? = null,
 ) : PresentationManager {
-
-    @Deprecated(
-        "Reader trust is now configured at build time via ReaderAuthPolicy. " +
-            "This setter is a no-op.",
-        level = DeprecationLevel.WARNING,
-    )
-    override var readerTrustStore: ReaderTrustStore?
-        get() = null
-        set(_) { /* no-op: trust store is embedded in ReaderAuthPolicy at build time */ }
 
     override fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.addTransferEventListener(listener)

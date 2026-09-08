@@ -21,7 +21,6 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SEND_SESSION_TERMINATION_MESSAGE
@@ -42,11 +41,10 @@ import eu.europa.ec.eudi.wallet.presentation.SessionTerminationFlag.Companion.SE
  * It provides also functionality to start the NFC engagement by calling [enableNFCEngagement]
  * method and stop it by calling [disableNFCEngagement] method.
  *
- * **Note:** [ReaderTrustStoreAware] is deprecated. Reader trust is now configured at build time
- * via [eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy] through
- * [eu.europa.ec.eudi.wallet.EudiWalletConfig.configureReaderAuthentication].
+ * Reader trust is configured at build time via [eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy]
+ * through [eu.europa.ec.eudi.wallet.EudiWalletConfig.configureReaderAuthentication].
  */
-interface PresentationManager : TransferEvent.Listenable, ReaderTrustStoreAware {
+interface PresentationManager : TransferEvent.Listenable {
 
     val nfcEngagementServiceClass: Class<out NfcEngagementService>?
 
