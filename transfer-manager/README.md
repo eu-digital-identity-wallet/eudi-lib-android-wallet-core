@@ -155,9 +155,12 @@ The available events are:
 7. `TransferEvent.IntentToSend`: This event indicates that an intent is ready to be sent. Get the
    intent with `TransferEvent.IntentToSend.intent`. This is used mainly for Digital Credential API
    implementation.
-8. `TransferEvent.Disconnected`: The devices are disconnected.
-9. `TransferEvent.Error`: An error occurred. Get the `Throwable` error with
-   `TransferEvent.Error.error`.
+8. `TransferEvent.Rejected`: The verifier rejected the wallet's response. Get the optional redirect
+   URI with `TransferEvent.Rejected.redirectUri`. When non-null, the application should redirect
+   the user to the verifier's page. This is used for the OpenId4VP protocol.
+9. `TransferEvent.Disconnected`: The devices are disconnected.
+10. `TransferEvent.Error`: An error occurred. Get the `Throwable` error with
+    `TransferEvent.Error.error`.
 
 The following example demonstrates how to attach a `TransferEvent.Listener` to the
 `TransferManager`.
@@ -210,6 +213,13 @@ transferManager.addTransferEventListener { event ->
         is TransferEvent.Redirect -> {
             // A redirect is needed. Used mainly for the OpenId4VP implementation
             val redirectUri = event.redirectUri // the redirect URI
+        }
+        is TransferEvent.Rejected -> {
+            // The verifier rejected the wallet's response (OpenId4VP)
+            val redirectUri = event.redirectUri // optional redirect URI
+            if (redirectUri != null) {
+                // redirect the user to the verifier's page
+            }
         }
         is TransferEvent.IntentToSend -> {
             // An intent is ready to be sent
