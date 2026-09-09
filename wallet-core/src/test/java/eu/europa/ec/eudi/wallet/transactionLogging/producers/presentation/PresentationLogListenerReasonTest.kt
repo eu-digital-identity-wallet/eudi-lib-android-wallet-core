@@ -146,6 +146,41 @@ class PresentationLogListenerReasonTest {
     }
 
     @Test
+    fun `a verifier rejection with null redirectUri logs NotCompleted with verifier rejected reason`() {
+        val recorder = RecordingLogManager()
+        val listener = listener(recorder).apply { hasProcessableRequest = true }
+
+        listener.onTransferEvent(TransferEvent.Rejected(redirectUri = null))
+
+        val entry = assertIs<TransactionEntry.Presentation>(recorder.entries.single())
+        val result = assertIs<TransactionResult.NotCompleted>(entry.transactionResult)
+        assertEquals(PresentationLogListener.REASON_VERIFIER_REJECTED, result.reason)
+        assertTrue(listener.finalized)
+    }
+
+    @Test
+    fun `a verifier rejection with redirectUri logs NotCompleted with verifier rejected reason`() {
+        val recorder = RecordingLogManager()
+        val listener = listener(recorder).apply { hasProcessableRequest = true }
+
+        listener.onTransferEvent(TransferEvent.Rejected(redirectUri = URI.create("https://verifier.example/error")))
+
+        val entry = assertIs<TransactionEntry.Presentation>(recorder.entries.single())
+        val result = assertIs<TransactionResult.NotCompleted>(entry.transactionResult)
+        assertEquals(PresentationLogListener.REASON_VERIFIER_REJECTED, result.reason)
+        assertTrue(listener.finalized)
+    }
+
+    @Test
+    fun `a verifier rejection with no processable request logs nothing`() {
+        val recorder = RecordingLogManager()
+
+        listener(recorder).onTransferEvent(TransferEvent.Rejected(redirectUri = null))
+
+        assertTrue(recorder.entries.isEmpty())
+    }
+
+    @Test
     fun `an already finalized transaction is not logged again when stopped`() {
         val recorder = RecordingLogManager()
         val listener = listener(recorder).apply {

@@ -156,6 +156,18 @@ class PresentationLogListener(
                 }
             }
 
+            is TransferEvent.Rejected -> {
+                try {
+                    if (!finalized && hasProcessableRequest) {
+                        log = logBuilder.withError(log, REASON_VERIFIER_REJECTED)
+                        transactionLogManager.log(log)
+                        finalized = true
+                    }
+                } catch (e: Throwable) {
+                    logError(e, "onTransferEvent: Rejected")
+                }
+            }
+
             // The response left the wallet, so the presentation completed. The presented claims were
             // already recorded at send time. The success event differs per mode: OpenID4VP/proximity
             // use ResponseSent or a success Redirect, DCAPI uses IntentToSend.
@@ -215,5 +227,8 @@ class PresentationLogListener(
 
         /** Fallback reason when recording the response throws without a message. */
         internal const val REASON_LOGGING_ERROR = "Failed to record the response"
+
+        /** Reason recorded when the verifier rejects the wallet's response. */
+        internal const val REASON_VERIFIER_REJECTED = "Verifier rejected the response"
     }
 }

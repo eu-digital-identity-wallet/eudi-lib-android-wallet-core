@@ -1998,8 +1998,11 @@ state of the transfer. The following events are emitted:
 6. `TransferEvent.Redirect`: This event prompts to redirect the user to the given Redirect URI.
    Get the Redirect URI from `event.redirectUri`. This event maybe be returned when OpenId4Vp is
    used as a transmission channel.
-7. `TransferEvent.Disconnected`: The devices are disconnected.
-8. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
+7. `TransferEvent.Rejected`: The verifier rejected the wallet's response. Get the optional redirect
+   URI from `event.redirectUri`. When non-null, the application should redirect the user to the
+   verifier's page. This event is used for the OpenId4VP protocol.
+8. `TransferEvent.Disconnected`: The devices are disconnected.
+9. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
 
 #### Attaching a TransferEvent.Listener
 
@@ -2075,6 +2078,14 @@ wallet.addTransferEventListener { event ->
             // the RP is redirecting the user to the given redirect URI
             // If this event is triggered, then the TransferEvent.ResponseSent event will not be triggered
             val redirectUri = event.redirectUri // the redirect URI
+        }
+
+        is TransferEvent.Rejected -> {
+            // The verifier rejected the wallet's response (OpenId4VP)
+            val redirectUri = event.redirectUri // optional redirect URI
+            if (redirectUri != null) {
+                // redirect the user to the verifier's page
+            }
         }
 
         TransferEvent.Disconnected -> {

@@ -358,13 +358,13 @@ class OpenId4VpManager(
                         }
                     }
 
-                    DispatchOutcome.VerifierResponse.Rejected -> {
+                    is DispatchOutcome.VerifierResponse.Rejected -> {
                         logger?.e(TAG, "Verifier rejected the response")
-                        transferEventListeners.onTransferEvent(
-                            TransferEvent.Error(
-                                IllegalStateException("Verifier rejected the response")
-                            )
-                        )
+                        val uri = outcome.redirectURI
+                        if (uri != null) {
+                            logger?.d(TAG, "Rejected with redirect to: $uri")
+                        }
+                        transferEventListeners.onTransferEvent(TransferEvent.Rejected(uri))
                     }
                 }
             } catch (e: Throwable) {
