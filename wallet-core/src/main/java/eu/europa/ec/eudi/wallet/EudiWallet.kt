@@ -452,13 +452,11 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             // Registration certificate handling shared by every transport: the wallet authenticates
             // and evaluates the certificate on the proximity and DC-API paths, and supplies the same
             // evaluation to the OpenID4VP library through a RegistrationCertificatePolicy on the remote
-            // path. The trust store for the signer chain follows the same precedence as reader
-            // authentication trust (see readerTrustStoreToUse): an explicitly supplied reader trust
-            // store, then the ETSI Trusted Lists (registration certificate context) when ETSI reader
-            // trust is enabled, then the statically configured certificates. As with reader
-            // authentication, a reader trust store configured directly is therefore also used to
-            // validate the registration certificate signer chain. Revocation status is checked only
-            // against the ETSI Trusted Lists (registration certificate status context).
+            // path. When ETSI trust is available, the signer chain is checked against the WRPRC
+            // (WalletRelyingPartyRegistrationCertificate) context — distinct from the WRPAC context
+            // used for reader authentication. For non-ETSI setups the reader trust store is used as
+            // fallback. Revocation status is checked against the ETSI registration certificate status
+            // context (WalletRelyingPartyRegistrationCertificateStatus).
             val wrpRegistrationValidator: DefaultWrpRegistrationValidator?
             val registrationCertificatePolicy: RegistrationCertificatePolicy?
             val resolvedRegistration: ResolvedWrpRegistration?
@@ -468,14 +466,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 resolvedRegistration = null
             } else {
                 val certificateTrust: CertificateTrust? =
-                    readerTrustStoreToUse?.asCertificateTrust()
+                    etsiSource?.asCertificateTrust(
+                        VerificationContext.WalletRelyingPartyRegistrationCertificate,
+                        logger = loggerToUse,
+                    ) ?: readerTrustStoreToUse?.asCertificateTrust()
                 val evaluator = config.wrpRegistrationEvaluator ?: DefaultWrpRegistrationEvaluator(
-                    statusTrust = if (etsiSource != null) {
-                        etsiSource.asCertificateTrust(
-                            VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
-                            logger = loggerToUse,
-                        )
-                    } else null,
+                    statusTrust = etsiSource?.asCertificateTrust(
+                        VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                        logger = loggerToUse,
+                    ),
                     logger = loggerToUse,
                     httpClientFactory = ktorHttpClientFactory,
                 )
