@@ -503,14 +503,77 @@ interface OpenId4VciManager {
         val isNoProofSupported: Boolean = true,
         val jwtProofAlgorithms: Set<Algorithm>? = null,
         val attestationProofAlgorithms: Set<Algorithm>? = null,
+        val jwtProofsWithoutKeyAttestationAlgorithms: Set<Algorithm>? = null,
     ) {
         companion object {
             val Default = SupportedProofTypes(
                 isNoProofSupported = true,
                 jwtProofAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
                 attestationProofAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
+                jwtProofsWithoutKeyAttestationAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
             )
         }
+    }
+
+    /**
+     * Determines the proof type negotiation strategy during credential issuance.
+     *
+     * Each variant defines a preference order for proof types. During issuance,
+     * the wallet iterates through this order and selects the first proof type that is
+     * both supported by the issuer and can be fulfilled by the wallet.
+     *
+     * @see Config.Builder.withIssuanceProofProfile
+     */
+    sealed interface IssuanceProofProfile {
+
+        /**
+         * The proof types that can be used during credential issuance.
+         */
+        enum class ProofType {
+            ATTESTATION,
+            JWT_WITH_KEY_ATTESTATION,
+            JWT_WITHOUT_KEY_ATTESTATION,
+            NO_PROOF,
+        }
+
+        /**
+         * The ordered list of proof types to attempt during negotiation, highest priority first.
+         */
+        val preferenceOrder: List<ProofType>
+
+        /**
+         * ETSI TS 119 472-3 / EUDI Wallet profile.
+         *
+         * Prefers attestation-backed proofs. Does not fall back to plain JWT proofs.
+         * Requires a [WalletAttestationsProvider] to be configured.
+         */
+        data object Etsi : IssuanceProofProfile {
+            override val preferenceOrder = listOf(
+                ProofType.ATTESTATION,
+                ProofType.JWT_WITH_KEY_ATTESTATION,
+            )
+        }
+
+        /**
+         * Standard OpenID4VCI without ETSI profiling.
+         *
+         * Accepts plain JWT proofs. Key attestation is used when available but not required.
+         */
+        data object Standard : IssuanceProofProfile {
+            override val preferenceOrder = listOf(
+                ProofType.JWT_WITHOUT_KEY_ATTESTATION,
+                ProofType.JWT_WITH_KEY_ATTESTATION,
+                ProofType.ATTESTATION,
+                ProofType.NO_PROOF,
+            )
+        }
+
+        /**
+         * Custom negotiation order defined by the integrator.
+         *
+         * @property preferenceOrder ordered list of proof types to attempt, highest priority first
+         */
+        data class Custom(override val preferenceOrder: List<ProofType>) : IssuanceProofProfile
     }
 
     /**
@@ -560,6 +623,7 @@ interface OpenId4VciManager {
         ),
         val supportedCredentialReusePolicies: CredentialReusePolicies? = null,
         val proofTypes: SupportedProofTypes = SupportedProofTypes.Default,
+        val issuanceProofProfile: IssuanceProofProfile = IssuanceProofProfile.Etsi,
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -678,6 +742,8 @@ interface OpenId4VciManager {
             var supportedCredentialReusePolicies: CredentialReusePolicies? = null
 
             var proofTypes: SupportedProofTypes = SupportedProofTypes.Default
+
+            var issuanceProofProfile: IssuanceProofProfile = IssuanceProofProfile.Etsi
 
             /**
              * Set the client authentication type
@@ -873,6 +939,18 @@ interface OpenId4VciManager {
             }
 
             /**
+             * Sets the issuance proof profile that determines how the wallet negotiates
+             * proof types with issuers.
+             *
+             * @param profile The proof negotiation profile
+             * @return This builder instance for method chaining
+             * @see IssuanceProofProfile
+             */
+            fun withIssuanceProofProfile(profile: IssuanceProofProfile) = apply {
+                this.issuanceProofProfile = profile
+            }
+
+            /**
              * Build the [Config]
              * @return the [Config]
              */
@@ -891,6 +969,7 @@ interface OpenId4VciManager {
                     responseEncryptionConfig = responseEncryptionConfig,
                     supportedCredentialReusePolicies = supportedCredentialReusePolicies,
                     proofTypes = proofTypes,
+                    issuanceProofProfile = issuanceProofProfile,
                 )
             }
         }
