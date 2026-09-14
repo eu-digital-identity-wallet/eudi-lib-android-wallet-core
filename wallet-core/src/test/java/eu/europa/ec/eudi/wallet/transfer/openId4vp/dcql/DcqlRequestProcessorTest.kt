@@ -71,7 +71,7 @@ import kotlin.test.assertTrue
  *
  * Concretely: when a `CredentialQuery` enumerates N claims and a candidate credential
  * in the wallet's store is missing any one of them, that credential must be excluded
- * from the resulting [CredentialPresentmentData] tree — not surfaced with a partial
+ * from the resulting [CredentialQueryResult] tree — not surfaced with a partial
  * set of disclosures.
  *
  * The companion positive test builds the same DCQL query against a credential that

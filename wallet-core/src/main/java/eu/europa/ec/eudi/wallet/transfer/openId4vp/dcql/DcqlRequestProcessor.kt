@@ -59,7 +59,7 @@ import org.multipaz.claim.JsonClaim
 import org.multipaz.claim.findMatchingClaim
 import org.multipaz.openid.dcql.DcqlCredentialQuery
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.Requester
@@ -75,7 +75,7 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
  *  - resolves the claims to disclose per the query's `claims` and `claim_sets` rules
  *    (DCQL §6.4.1 first-match semantics over `claim_sets`);
  *  - hands the resulting matches to [CredentialSetsMatcher] which applies
- *    `credential_sets` rules and produces the [CredentialPresentmentData] tree consumed
+ *    `credential_sets` rules and produces the [CredentialQueryResult] tree consumed
  *    by [ProcessedDcqlRequest] for the presentation step.
  *
  * @property documentManager Provides access to documents stored in the wallet.
@@ -122,10 +122,15 @@ class DcqlRequestProcessor(
             // payload. The legalName goes into TrustMetadata.displayName when the cert chain
             // validated against the configured ReaderTrustStore.
             val legalName = request.resolvedRequestObject.client.legalName()
+            val clientId = request.resolvedRequestObject.client.id.clientId
             val trustResult = openid4VpX509CertificateTrust.result
             val (requester, trustMetadata) = when (trustResult) {
-                is ReaderTrustResult.Processed -> trustResult.toRequesterAndTrust(legalName = legalName)
-                ReaderTrustResult.Pending -> Requester(certChain = null) to null
+                is ReaderTrustResult.Processed -> trustResult.toRequesterAndTrust(
+                    clientId = clientId,
+                    legalName = legalName
+                )
+
+                ReaderTrustResult.Pending -> Requester(requesterIdentities = emptyList()) to null
             }
 
             // Resolve the relying party's registration information for this request.
@@ -156,7 +161,7 @@ class DcqlRequestProcessor(
             ProcessedDcqlRequest(
                 resolvedRequestObject = request.resolvedRequestObject,
                 documentManager = documentManager,
-                presentmentData = CredentialPresentmentData(sets),
+                presentmentData = CredentialQueryResult(sets),
                 requester = requester,
                 trustMetadata = trustMetadata,
                 msoMdocNonce = generateJarmNonce(),

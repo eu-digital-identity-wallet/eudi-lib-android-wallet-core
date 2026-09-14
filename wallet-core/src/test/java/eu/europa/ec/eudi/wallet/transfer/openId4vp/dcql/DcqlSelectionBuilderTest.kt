@@ -21,7 +21,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.multipaz.openid.dcql.DcqlCredentialQuery
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
@@ -97,7 +97,7 @@ class DcqlSelectionBuilderTest {
         val pidB = matchWithQueryId(QueryId("pid"))
         val mdlA = matchWithQueryId(QueryId("mdl"))
         val mdlB = matchWithQueryId(QueryId("mdl"))
-        val data = CredentialPresentmentData(
+        val data = CredentialQueryResult(
             credentialSets = listOf(
                 singleOptionSet(optional = false, matches = listOf(pidA, pidB)),
                 singleOptionSet(optional = false, matches = listOf(mdlA, mdlB)),
@@ -138,7 +138,7 @@ class DcqlSelectionBuilderTest {
     fun `optional set with multiple=true emits both skip and bundle variants`() {
         val loyaltyA = matchWithQueryId(QueryId("loyalty"))
         val loyaltyB = matchWithQueryId(QueryId("loyalty"))
-        val data = CredentialPresentmentData(
+        val data = CredentialQueryResult(
             credentialSets = listOf(
                 singleOptionSet(optional = true, matches = listOf(loyaltyA, loyaltyB)),
             ),
@@ -167,7 +167,7 @@ class DcqlSelectionBuilderTest {
         val optionAMdlA = matchWithQueryId(QueryId("mdl"))
         val optionAMdlB = matchWithQueryId(QueryId("mdl"))
         val optionBPidA = matchWithQueryId(QueryId("pid"))
-        val data = CredentialPresentmentData(
+        val data = CredentialQueryResult(
             credentialSets = listOf(
                 CredentialPresentmentSet(
                     optional = false,
@@ -220,7 +220,7 @@ class DcqlSelectionBuilderTest {
     private fun oneSetOneOption(
         matches: List<CredentialPresentmentSetOptionMemberMatch>,
         optional: Boolean = false,
-    ): CredentialPresentmentData = CredentialPresentmentData(
+    ): CredentialQueryResult = CredentialQueryResult(
         credentialSets = listOf(singleOptionSet(optional = optional, matches = matches)),
     )
 

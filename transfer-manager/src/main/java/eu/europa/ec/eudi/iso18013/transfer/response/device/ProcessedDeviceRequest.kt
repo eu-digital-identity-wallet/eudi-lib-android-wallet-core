@@ -37,8 +37,8 @@ import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.response.MdocDocument
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.presentment.CredentialMatchSourceIso18013
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.securearea.KeyUnlockData
@@ -48,9 +48,9 @@ import org.multipaz.util.Constants
 /**
  * Implementation of [RequestProcessor.ProcessedRequest.Success] for ISO 18013-5 device requests.
  *
- * Holds the parsed request state — the [CredentialPresentmentData] tree plus the
+ * Holds the parsed request state — the [CredentialQueryResult] tree plus the
  * resolved [Requester] and optional [TrustMetadata] — and produces a signed `DeviceResponse`
- * for the user-confirmed [CredentialPresentmentSelection] via [generateResponse].
+ * for the user-confirmed [CredentialSelection] via [generateResponse].
  *
  * `trustMetadata != null` means that the requester is trusted.
  *
@@ -72,7 +72,7 @@ import org.multipaz.util.Constants
 class ProcessedDeviceRequest(
     private val documentManager: DocumentManager,
     private val sessionTranscript: ByteArray,
-    presentmentData: CredentialPresentmentData,
+    presentmentData: CredentialQueryResult,
     requester: Requester,
     trustMetadata: TrustMetadata?,
     private val readerAuthPolicy: ReaderAuthPolicy,
@@ -91,7 +91,7 @@ class ProcessedDeviceRequest(
      * UI shows them on a single screen; the user can select which credentials to share
      * before [generateResponse] is called.
      */
-    override val presentmentSelections: List<CredentialPresentmentSelection> by lazy {
+    override val presentmentSelections: List<CredentialSelection> by lazy {
         listOf(presentmentData.flattenToSingleSelection())
     }
 
@@ -112,7 +112,7 @@ class ProcessedDeviceRequest(
      *      a ZK document is added — falling back to a regular response according to
      *      [zkResponsePolicy] when proof generation fails.
      *
-     * @param selection the user-confirmed [CredentialPresentmentSelection]; each match's
+     * @param selection the user-confirmed [CredentialSelection]; each match's
      *   `claims` map is expected to already reflect the user's disclosure choice.
      * @param keyUnlockData per-credential unlock data, keyed by `match.credential.identifier`.
      *   Empty when no credential keys require unlocking.
@@ -120,13 +120,13 @@ class ProcessedDeviceRequest(
      *   [ResponseResult.Failure] if any per-match generation throws.
      */
     override suspend fun generateResponse(
-        selection: CredentialPresentmentSelection,
+        selection: CredentialSelection,
         keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
         return try {
 
             val isReaderTrustVerified = trustMetadata != null
-            val readerAuthPresent = requester.certChain != null
+            val readerAuthPresent = requester.requesterIdentities.isNotEmpty()
             val skipAllByPolicy = when (readerAuthPolicy) {
                 ReaderAuthPolicy.DoNotEnforce -> false
                 is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
