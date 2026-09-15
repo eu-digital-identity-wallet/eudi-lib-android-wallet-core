@@ -93,14 +93,14 @@ internal class SubmitRequest(
             }.getOrThrow()
         }
 
-        val negotiatedProofType = issuanceProofProfile.preferenceOrder
-            .firstOrNull { matchesIssuerCapabilities(it, proofTypesSupported) }
+        val negotiated = issuanceProofProfile.preferenceOrder
+            .firstOrNull { matchesIssuerCapabilities(it.proofType, proofTypesSupported) }
             ?: error(
                 "No compatible proof type found between wallet profile " +
-                        "($issuanceProofProfile) and issuer capabilities ($proofTypesSupported)"
+                    "($issuanceProofProfile) and issuer capabilities ($proofTypesSupported)"
             )
 
-        return when (negotiatedProofType) {
+        return when (negotiated.proofType) {
             IssuanceProofType.ATTESTATION ->
                 requestWithAttestationProof(payload, signers)
 
