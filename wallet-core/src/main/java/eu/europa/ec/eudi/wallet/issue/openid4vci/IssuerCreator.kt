@@ -39,6 +39,7 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.DocTypeFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.CredentialConfigurationFilter.Companion.VctFilter
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile.ProofType as IssuanceProofType
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
 import eu.europa.ec.eudi.wallet.internal.d
@@ -330,25 +331,23 @@ internal class IssuerCreator(
                 OpenId4VciManager.Config.ParUsage.NEVER -> ParUsage.Never
                 else -> ParUsage.IfSupported()
             },
-            proofs = proofTypes.toProofsConfig(),
+            proofs = issuanceProofProfile.toProofsConfig(),
             issuerMetadataPolicy = if (issuerRegistrationEnabled) issuerMetadataPolicy else IssuerMetadataPolicy.IgnoreSigned,
             registrationCertificatePolicy = registrationCertificatePolicy,
         )
     }
 }
 
-private fun OpenId4VciManager.SupportedProofTypes.toProofsConfig(): ProofsConfig {
+private fun OpenId4VciManager.IssuanceProofProfile.toProofsConfig(): ProofsConfig {
+    val byType = preferenceOrder.associateBy { it.proofType }
     return ProofsConfig(
-        isNoProofSupported = isNoProofSupported,
-        jwtProofWithKeyAttestation = jwtProofAlgorithms?.let { algs ->
-            ProofsConfig.SupportedJwtProof(algs.mapToJWSAlgorithms())
-        },
-        attestationProof = attestationProofAlgorithms?.let { algs ->
-            ProofsConfig.SupportedAttestationProof(algs.mapToJWSAlgorithms())
-        },
-        jwtProofsWithoutKeyAttestation = jwtProofsWithoutKeyAttestationAlgorithms?.let { algs ->
-            ProofsConfig.SupportedJwtProof(algs.mapToJWSAlgorithms())
-        }
+        isNoProofSupported = IssuanceProofType.NO_PROOF in byType,
+        jwtProofWithKeyAttestation = byType[IssuanceProofType.JWT_WITH_KEY_ATTESTATION]
+            ?.algorithms?.mapToJWSAlgorithms()?.let { ProofsConfig.SupportedJwtProof(it) },
+        attestationProof = byType[IssuanceProofType.ATTESTATION]
+            ?.algorithms?.mapToJWSAlgorithms()?.let { ProofsConfig.SupportedAttestationProof(it) },
+        jwtProofsWithoutKeyAttestation = byType[IssuanceProofType.JWT_WITHOUT_KEY_ATTESTATION]
+            ?.algorithms?.mapToJWSAlgorithms()?.let { ProofsConfig.SupportedJwtProof(it) },
     )
 }
 
