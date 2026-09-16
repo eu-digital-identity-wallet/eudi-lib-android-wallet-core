@@ -2133,12 +2133,12 @@ wallet.addTransferEventListener { event ->
             // `presentmentSelections` contains one entry per disclosable variant. The
             // application renders them to the user (typically as separate pages in a
             // pager) and forwards the confirmed one to `generateResponse`.
-            val variants: List<CredentialPresentmentSelection> = success.presentmentSelections
+            val variants: List<CredentialSelection> = success.presentmentSelections
 
             // The index the user picked in the consent UI (e.g. the active page of
             // a pager).
             val userSelectedIndex = 0
-            val selection: CredentialPresentmentSelection = variants[userSelectedIndex]
+            val selection: CredentialSelection = variants[userSelectedIndex]
             val matches = selection.matches
 
             // Per-credential unlock data, keyed by `match.credential.identifier`.
@@ -2359,18 +2359,18 @@ application consumes to render its consent UI and build the response:
 
 | Field                                                              | Purpose                                                                                                                                                                                                            |
 |--------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `presentmentData: CredentialPresentmentData`                       | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
-| `presentmentSelections: List<CredentialPresentmentSelection>`      | Ready-to-use selection variants the consent UI can render directly. Each entry is one disclosable combination — the UI typically lets the user choose which variant to share, and the confirmed one is then passed to `generateResponse`. Use this instead of walking `presentmentData` unless you need fine-grained control. |
+| `presentmentData: CredentialQueryResult`                       | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
+| `presentmentSelections: List<CredentialSelection>`      | Ready-to-use selection variants the consent UI can render directly. Each entry is one disclosable combination — the UI typically lets the user choose which variant to share, and the confirmed one is then passed to `generateResponse`. Use this instead of walking `presentmentData` unless you need fine-grained control. |
 | `requester: Requester`                                             | The verifier's transport-level identity — certificate chain when reader-auth is present, plus `appId` / `origin` if available.                                                                                     |
 | `trustMetadata: TrustMetadata?`                                    | Non-`null` only when the verifier's cert chain validated against the configured `ReaderTrustStore`. Carries `displayName` for trusted-verifier UI; `null` means the UI should render an "unknown verifier" branch. |
 
-##### The CredentialPresentmentData tree
+##### The CredentialQueryResult tree
 
-`CredentialPresentmentData` is a list of `CredentialPresentmentSet`s. Each set is a group of
+`CredentialQueryResult` is a list of `CredentialPresentmentSet`s. Each set is a group of
 alternative ways the verifier's request can be satisfied:
 
 ```
-CredentialPresentmentData
+CredentialQueryResult
 └─ List<CredentialPresentmentSet>                         ← one per credential set in the request
    ├─ optional: Boolean                                   ← required vs optional set
    └─ List<CredentialPresentmentSetOption>                ← alternative options inside the set
@@ -2382,7 +2382,7 @@ CredentialPresentmentData
 ```
 
 For each set the user accepts, the application picks exactly one option, then one match per
-member of that option, and collects them into a `CredentialPresentmentSelection`. The
+member of that option, and collects them into a `CredentialSelection`. The
 `match.claims` map already reflects the wallet's spec-compliant resolution of the verifier's
 request (DCQL `claim_sets` first-match per §6.4.1, hard-fail on missing claims) — the UI can
 display it as-is or further narrow it down if the user opts out of specific claims.
@@ -2403,7 +2403,7 @@ UI can render previews next to each claim entry (e.g. "first name: Alice").
 ##### Building the selection and generating the response
 
 After the user has confirmed which match(es) to use, the application builds a
-`CredentialPresentmentSelection`, attaches any per-credential `KeyUnlockData` keyed by
+`CredentialSelection`, attaches any per-credential `KeyUnlockData` keyed by
 `match.credential.identifier`, and calls `generateResponse`:
 
 ```kotlin
@@ -2419,12 +2419,12 @@ val transferEventListener = TransferEvent.Listener { event ->
             // `presentmentSelections` contains one entry per disclosable variant. The
             // application renders them to the user (e.g. as separate pages in a
             // pager) and forwards the confirmed one to `generateResponse`.
-            val variants: List<CredentialPresentmentSelection> = success.presentmentSelections
+            val variants: List<CredentialSelection> = success.presentmentSelections
 
             // The index the user picked in the consent UI (e.g. the active page of
             // a pager).
             val userSelectedIndex = 0
-            val selection: CredentialPresentmentSelection = variants[userSelectedIndex]
+            val selection: CredentialSelection = variants[userSelectedIndex]
             val matches = selection.matches
 
             // If any picked credential requires unlock data (e.g. PIN-locked keys),

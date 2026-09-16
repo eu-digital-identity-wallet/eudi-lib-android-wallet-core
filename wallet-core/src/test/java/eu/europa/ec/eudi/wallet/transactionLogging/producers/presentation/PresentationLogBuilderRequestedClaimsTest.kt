@@ -33,7 +33,7 @@ import org.multipaz.openid.dcql.DcqlCredentialQuery
 import org.multipaz.presentment.CredentialMatchSource
 import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
@@ -143,7 +143,7 @@ class PresentationLogBuilderRequestedClaimsTest {
         val log = builder.withRequest(
             builder.createEmptyPresentationLog(),
             request,
-            success(CredentialPresentmentData(emptyList())),
+            success(CredentialQueryResult(emptyList())),
         )
 
         val result = assertIs<TransactionResult.NotCompleted>(log.transactionResult)
@@ -158,7 +158,7 @@ class PresentationLogBuilderRequestedClaimsTest {
         val log = builder.withRequest(
             builder.createEmptyPresentationLog(),
             request,
-            success(CredentialPresentmentData(emptyList())),
+            success(CredentialQueryResult(emptyList())),
         )
 
         val result = assertIs<TransactionResult.NotCompleted>(log.transactionResult)
@@ -181,7 +181,7 @@ class PresentationLogBuilderRequestedClaimsTest {
 
     // ----- helpers ---------------------------------------------------------------------------
 
-    private fun success(data: CredentialPresentmentData): RequestProcessor.ProcessedRequest.Success {
+    private fun success(data: CredentialQueryResult): RequestProcessor.ProcessedRequest.Success {
         val processed = mockk<RequestProcessor.ProcessedRequest.Success>()
         every { processed.presentmentData } returns data
         // withRequest reads presentmentSelections; derive it from the tree, like the real getter.
@@ -201,8 +201,8 @@ class PresentationLogBuilderRequestedClaimsTest {
             transactionData = emptyList(),
         )
 
-    private fun treeOf(vararg matches: CredentialPresentmentSetOptionMemberMatch): CredentialPresentmentData =
-        CredentialPresentmentData(
+    private fun treeOf(vararg matches: CredentialPresentmentSetOptionMemberMatch): CredentialQueryResult =
+        CredentialQueryResult(
             listOf(
                 CredentialPresentmentSet(
                     optional = false,

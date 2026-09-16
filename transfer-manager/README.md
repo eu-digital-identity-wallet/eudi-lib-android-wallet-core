@@ -327,10 +327,10 @@ The event carries the processed request and the original raw request bytes.
 A successful `ProcessedDeviceRequest` exposes four pieces of state that drive consent and
 response generation:
 
-- **`presentmentData: CredentialPresentmentData`** — a tree of candidate credentials that
+- **`presentmentData: CredentialQueryResult`** — a tree of candidate credentials that
   satisfy the verifier's request. The wallet UI typically lets the user pick and confirm
   what to share.
-- **`presentmentSelections: List<CredentialPresentmentSelection>`** — ready-to-use
+- **`presentmentSelections: List<CredentialSelection>`** — ready-to-use
   selection variants the consent UI can render directly. Each entry is one disclosable
   combination. Currently, for ISO 18013-5 the list has a single entry that contains
   every match the wallet holds for the request; the consent UI typically lets the user
@@ -344,7 +344,7 @@ response generation:
 The response is produced via
 `ProcessedDeviceRequest.generateResponse(selection, keyUnlockData, signatureAlgorithm?)`:
 
-- `selection: CredentialPresentmentSelection` — the user's confirmed picks. Each entry is
+- `selection: CredentialSelection` — the user's confirmed picks. Each entry is
   a `CredentialPresentmentSetOptionMemberMatch` whose `claims` map carries the (filtered)
   data elements to disclose.
 - `keyUnlockData: Map<String, KeyUnlockData>` — per-credential unlock data, keyed by
@@ -386,7 +386,7 @@ For full disclosure (the user agrees to share everything that matched), just wra
 chosen match in a selection:
 
 ```kotlin
-val fullDisclosure = CredentialPresentmentSelection(matches = listOf(matches.first()))
+val fullDisclosure = CredentialSelection(matches = listOf(matches.first()))
 ```
 
 For **selective disclosure** (the user picks a subset of the matched claims), narrow the
@@ -399,7 +399,7 @@ val narrowedMatch = matches.first().copy(
         req is MdocRequestedClaim && req.dataElementName in userPickedElements
     }
 )
-val selectiveDisclosure = CredentialPresentmentSelection(matches = listOf(narrowedMatch))
+val selectiveDisclosure = CredentialSelection(matches = listOf(narrowedMatch))
 ```
 
 The response generator will only sign over the claims that survive this filter.
@@ -414,7 +414,7 @@ val match = matches.first()
 val keyUnlockData: Map<String, KeyUnlockData> = mapOf(
     match.credential.identifier to SoftwareKeyUnlockData(passphrase = "1234")
 )
-val selection = CredentialPresentmentSelection(matches = listOf(match))
+val selection = CredentialSelection(matches = listOf(match))
 
 val response = processedRequest.generateResponse(selection, keyUnlockData)
     .getOrThrow() as DeviceResponse
@@ -461,7 +461,7 @@ transferManager.addTransferEventListener { event ->
 
             // After the user confirms (here: a single match, locked key, software unlock).
             val match = matches.first()
-            val selection = CredentialPresentmentSelection(matches = listOf(match))
+            val selection = CredentialSelection(matches = listOf(match))
             val keyUnlockData = mapOf(
                 match.credential.identifier to SoftwareKeyUnlockData("passphrase_from_ui")
             )

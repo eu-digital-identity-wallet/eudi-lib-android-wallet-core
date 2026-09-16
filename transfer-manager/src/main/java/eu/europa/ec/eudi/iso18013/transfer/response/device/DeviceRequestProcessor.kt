@@ -33,14 +33,12 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.claim.Claim
 import org.multipaz.claim.findMatchingClaim
 import org.multipaz.crypto.SignatureVerificationException
-import org.multipaz.crypto.X509CertChain
-import org.multipaz.crypto.fromJavaX509Certificates
 import org.multipaz.crypto.javaX509Certificates
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.request.DocRequest
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.presentment.CredentialMatchSourceIso18013
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
@@ -56,7 +54,7 @@ import org.multipaz.mdoc.request.DeviceRequest as MultipazDeviceRequest
 /**
  * Implementation of [RequestProcessor] for [DeviceRequest] (ISO 18013-5).
  *
- * Builds a [CredentialPresentmentData] tree directly from the matched documents,
+ * Builds a [CredentialQueryResult] tree directly from the matched documents,
  * one [CredentialPresentmentSet] per parsed [DocRequest]. Each set has a single option /
  * single member containing all candidate credentials that have **at least one** of the
  * verifier's requested data elements (soft matching). Missing elements are simply omitted
@@ -100,17 +98,36 @@ class DeviceRequestProcessor(
                 false
             }
 
-            // Validate the reader cert chain against the trust store embedded in the policy.
-            val readerCertChain = parsedRequest.getRequester()?.javaX509Certificates ?: emptyList()
-            val isTrusted = readerCertChain.isNotEmpty() &&
-                    readerAuthPolicy.readerTrustStore?.validateCertificationTrustPath(readerCertChain) == true
-                    && signatureValid
+            // A request may carry several reader signatures (18013-5 2nd ed. `readerAuthAll`),
+            // each one a separate identity of the *same* reader — typically one per trust
+            // framework it is registered in. Trust is therefore disjunctive: the first identity
+            // that validates against our trust store wins, and everything downstream (display
+            // name, registration-certificate access chain) uses that same one. Requiring every
+            // signature to be trusted would reject legitimate cross-framework requests, since a
+            // wallet only holds the anchors of the frameworks it participates in.
+            //
+            // Signature *validity*, by contrast, is conjunctive: verifyReaderAuthentication above
+            // checks every signature and fails the lot if any one is broken.
+            //
+            // Note: 18013-5 clause 12.5.4 puts the use of reader information explicitly out of
+            // scope, so the disjunctive rule is our profile decision. It follows the rationale
+            // OpenID4VP 1.0 Appendix A.3.2.2 gives for the equivalent JWS JSON construct
+            // ("multiple Client Identifiers ... different trust frameworks") and matches how
+            // Multipaz's own reference PresentmentSource resolves trust.
+            val readerIdentities = parsedRequest.getRequesterIdentities()
+            val trustedIdentity = readerIdentities.firstOrNull { identity ->
+                readerAuthPolicy.readerTrustStore
+                    ?.validateCertificationTrustPath(identity.certChain.javaX509Certificates) == true
+            }
+            // With nothing trusted we still report the first identity, so that reader-auth
+            // presence and the access chain remain visible to the policy and the registration
+            // validator; only the trust verdict is negative.
+            val readerCertChain =
+                (trustedIdentity ?: readerIdentities.firstOrNull())
+                    ?.certChain?.javaX509Certificates ?: emptyList()
+            val isTrusted = trustedIdentity != null && signatureValid
 
-            val requester = Requester(
-                certChain = if (readerCertChain.isNotEmpty()) {
-                    X509CertChain.fromJavaX509Certificates(readerCertChain)
-                } else null
-            )
+            val requester = Requester(requesterIdentities = readerIdentities)
             val trustMetadata = if (isTrusted) {
                 TrustMetadata(displayName = readerCertChain.cn.takeIf { it.isNotBlank() })
             } else null
@@ -141,7 +158,7 @@ class DeviceRequestProcessor(
             ProcessedDeviceRequest(
                 documentManager = documentManager,
                 sessionTranscript = request.sessionTranscriptBytes,
-                presentmentData = CredentialPresentmentData(credentialSets),
+                presentmentData = CredentialQueryResult(credentialSets),
                 requester = requester,
                 trustMetadata = trustMetadata,
                 zkSystemRepository = zkSystemRepository,

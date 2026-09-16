@@ -32,10 +32,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.mockito.MockedStatic
 import org.multipaz.mdoc.response.DeviceResponseParser
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.securearea.software.SoftwareKeyUnlockData
+import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.util.Constants
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -112,7 +114,7 @@ class DeviceRequestProcessorTest {
             val match = processed.firstMatch()
 
             // Full disclosure: the user confirms every matched claim.
-            val selection = CredentialPresentmentSelection(matches = listOf(match))
+            val selection = CredentialSelection(matches = listOf(match))
             val result = processed.generateResponse(
                 selection = selection,
                 keyUnlockData = emptyMap(),
@@ -152,7 +154,7 @@ class DeviceRequestProcessorTest {
                 },
             )
             val result = processed.generateResponse(
-                selection = CredentialPresentmentSelection(matches = listOf(narrowedMatch)),
+                selection = CredentialSelection(matches = listOf(narrowedMatch)),
                 keyUnlockData = emptyMap(),
             )
 
@@ -177,12 +179,17 @@ class DeviceRequestProcessorTest {
 
             // Provide the correct unlock data keyed by the credential's own identifier —
             // the wallet routes the per-credential entry to SecureArea.sign during signing.
+            val boundCredential = assertIs<SecureAreaBoundCredential>(match.credential)
             val keyUnlockData = mapOf(
-                match.credential.identifier to SoftwareKeyUnlockData(KeyLockPassphrase),
+                boundCredential.identifier to SoftwareKeyUnlockData(
+                    secureArea = assertIs<SoftwareSecureArea>(boundCredential.secureArea),
+                    alias = boundCredential.alias,
+                    passphrase = KeyLockPassphrase,
+                ),
             )
 
             val result = processed.generateResponse(
-                selection = CredentialPresentmentSelection(matches = listOf(match)),
+                selection = CredentialSelection(matches = listOf(match)),
                 keyUnlockData = keyUnlockData,
             )
 

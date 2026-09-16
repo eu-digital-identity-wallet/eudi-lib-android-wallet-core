@@ -219,7 +219,7 @@ fun showRequestedDocuments() {
  *   approved in the consent UI.
  */
 suspend fun discloseDocuments(
-    selection: CredentialPresentmentSelection,
+    selection: CredentialSelection,
 ) {
     // For each match in the chosen selection, build the appropriate MyKeyUnlockData
     // and key it by `match.credential.identifier` — the response builder routes

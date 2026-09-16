@@ -42,8 +42,8 @@ import org.bouncycastle.util.encoders.Hex
 import org.json.JSONObject
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Hpke
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.Requester
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.trustmanagement.TrustMetadata
@@ -71,7 +71,7 @@ class ProcessedIsoMdocDCAPIRequest(
     private val processedDeviceRequest: ProcessedDeviceRequest,
     private val providerGetCredentialRequest: ProviderGetCredentialRequest,
     val origin: String,
-    presentmentData: CredentialPresentmentData,
+    presentmentData: CredentialQueryResult,
     requester: Requester,
     trustMetadata: TrustMetadata?,
     private val logger: Logger? = null,
@@ -84,7 +84,7 @@ class ProcessedIsoMdocDCAPIRequest(
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
     override suspend fun generateResponse(
-        selection: CredentialPresentmentSelection,
+        selection: CredentialSelection,
         keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
         return try {

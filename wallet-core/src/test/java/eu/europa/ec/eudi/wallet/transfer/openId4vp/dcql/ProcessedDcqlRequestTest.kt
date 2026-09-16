@@ -21,7 +21,7 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.mockk.mockk
 import org.junit.Assert.assertSame
 import org.junit.Test
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 
 class ProcessedDcqlRequestTest {
 
@@ -41,7 +41,7 @@ class ProcessedDcqlRequestTest {
             wrpRegistration = registration,
         )
 
-        val copy = request.withPresentmentData(mockk<CredentialPresentmentData>(relaxed = true))
+        val copy = request.withPresentmentData(mockk<CredentialQueryResult>(relaxed = true))
 
         assertSame(registration, copy.wrpRegistration)
     }
