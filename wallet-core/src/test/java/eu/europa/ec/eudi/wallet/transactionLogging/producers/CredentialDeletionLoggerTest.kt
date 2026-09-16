@@ -171,7 +171,7 @@ class CredentialDeletionLoggerTest {
     }
 
     @Test
-    fun `failed deletion with a null message records the exception type as the reason`() {
+    fun `failed deletion with a null message records the fallback reason`() {
         val document = mockk<IssuedDocument> {
             every { format } returns MsoMdocFormat("org.iso.18013.5.1.mDL")
             every { issuerMetadata } returns issuerMetadata()
@@ -187,7 +187,7 @@ class CredentialDeletionLoggerTest {
 
         val entry = assertIs<TransactionEntry.CredentialDeletion>(recorder.entries.single())
         val result = assertIs<TransactionResult.NotCompleted>(entry.transactionResult)
-        assertEquals("IllegalStateException", result.reason)
+        assertEquals("Deletion did not complete", result.reason)
     }
 
     @Test

@@ -16,9 +16,21 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.producers
 
-/** Turns a throwable into a short, non-blank reason string for a failed transaction. */
+/** Longest error message still considered readable enough to show; longer ones are replaced. */
+private const val MAX_REASON_LENGTH = 120
+
+/**
+ * Turns a throwable into a short, non-blank reason string for a failed transaction.
+ *
+ * The reason is shown to the user, so only a message that reads like one sentence is kept: the
+ * first line, and only if it is short. Anything longer (stack traces, library diagnostics) is
+ * replaced by [default]. The throwable itself still reaches the app through the callback that
+ * reported the failure.
+ */
 internal fun Throwable.toNoncompletionReason(default: String): String =
-    message?.takeIf { it.isNotBlank() }
-        ?: cause?.message?.takeIf { it.isNotBlank() }
-        ?: this::class.simpleName
-        ?: default
+    message.asReason() ?: cause?.message.asReason() ?: default
+
+private fun String?.asReason(): String? =
+    this?.substringBefore('\n')
+        ?.trim()
+        ?.takeIf { it.isNotBlank() && it.length <= MAX_REASON_LENGTH }

@@ -34,15 +34,41 @@ class NoncompletionReasonTest {
     }
 
     @Test
-    fun `falls back to the simple class name when no message is available`() {
-        // IllegalStateException() has a null message and no cause.
-        assertEquals("IllegalStateException", IllegalStateException().toNoncompletionReason("fallback"))
+    fun `uses the default when no message is available`() {
+        // The exception type is not a reason, so it is never used.
+        assertEquals("fallback", IllegalStateException().toNoncompletionReason("fallback"))
     }
 
     @Test
-    fun `uses the default only when neither message nor class name are available`() {
-        // An anonymous throwable has no simple class name.
-        val anonymous = object : Throwable() {}
-        assertEquals("fallback", anonymous.toNoncompletionReason("fallback"))
+    fun `keeps only the first line`() {
+        val throwable = IllegalStateException("Request failed\nRequest header `Accept: application/json`")
+        assertEquals("Request failed", throwable.toNoncompletionReason("fallback"))
+    }
+
+    @Test
+    fun `a message too long to read is replaced by the default`() {
+        val throwable = IllegalStateException("x".repeat(121))
+        assertEquals("fallback", throwable.toNoncompletionReason("fallback"))
+    }
+
+    @Test
+    fun `falls back to the cause when the message is unusable`() {
+        val throwable = IllegalStateException("x".repeat(121), IllegalArgumentException("root cause"))
+        assertEquals("root cause", throwable.toNoncompletionReason("fallback"))
+    }
+
+    @Test
+    fun `a library diagnostic never reaches the reason`() {
+        val throwable = IllegalStateException(
+            "Expected response body of the type 'class eu.europa.ec.eudi.openid4vci.internal.http." +
+                    "GenericErrorResponseTO (Kotlin reflection is not available)' but was 'class " +
+                    "io.ktor.utils.io.SourceByteReadChannel (Kotlin reflection is not available)'\n" +
+                    "In response from `https://issuer.example/wallet/deferredEndpoint`\n" +
+                    "Response status `401 Unauthorized`\n" +
+                    "You can read how to resolve NoTransformationFoundException at FAQ: \n" +
+                    "https://ktor.io/docs/faq.html#no-transformation-found-exception"
+        )
+
+        assertEquals("fallback", throwable.toNoncompletionReason("fallback"))
     }
 }
