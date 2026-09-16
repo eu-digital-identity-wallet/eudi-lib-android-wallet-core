@@ -81,7 +81,7 @@ class PresentationLogListenerReasonTest {
     }
 
     @Test
-    fun `a transfer error with a null message records the exception type as the reason`() {
+    fun `a transfer error with a null message records the fallback reason`() {
         val recorder = RecordingLogManager()
         val listener = listener(recorder).apply { hasProcessableRequest = true }
 
@@ -90,7 +90,7 @@ class PresentationLogListenerReasonTest {
 
         val entry = assertIs<TransactionEntry.Presentation>(recorder.entries.single())
         val result = assertIs<TransactionResult.NotCompleted>(entry.transactionResult)
-        assertEquals("IllegalStateException", result.reason)
+        assertEquals("Transfer error", result.reason)
     }
 
     @Test

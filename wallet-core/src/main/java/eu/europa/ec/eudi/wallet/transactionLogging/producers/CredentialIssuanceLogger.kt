@@ -198,7 +198,7 @@ class CredentialIssuanceLogger(
                         result.document,
                         result.documentId,
                         TransactionResult.NotCompleted(
-                            result.cause.toNoncompletionReason(REASON_ISSUANCE_FAILED)
+                            result.cause.toNoncompletionReason(REASON_DEFERRED_COLLECTION_FAILED)
                         ),
                         registration,
                         userTriggered
@@ -421,6 +421,9 @@ class CredentialIssuanceLogger(
 
         /** Reason recorded when the issuer deferred delivery and nothing was issued yet (not a failure). */
         private const val REASON_ISSUANCE_DEFERRED = "Credential issuance deferred — awaiting the credential"
+
+        /** Fallback reason when collecting a deferred credential fails without a usable error message. */
+        private const val REASON_DEFERRED_COLLECTION_FAILED = "Could not collect the deferred credential"
 
         /** Stable id for a deferred credential's row, so its resolution updates the same row. */
         private fun deferredTxId(documentId: DocumentId): String = "deferred:$documentId"

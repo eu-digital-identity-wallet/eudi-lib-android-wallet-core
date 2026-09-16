@@ -239,7 +239,7 @@ class CredentialIssuanceLoggerTest {
     }
 
     @Test
-    fun `an overall failure with a null message records the exception type as the reason`() {
+    fun `an overall failure with a null message records the fallback reason`() {
         val delegate = mockk<OpenId4VciManager>(relaxed = true)
         val callback = slot<OpenId4VciManager.OnIssueEvent>()
         every {
@@ -257,7 +257,7 @@ class CredentialIssuanceLoggerTest {
 
         val entry = assertIs<TransactionEntry.CredentialIssuance>(recorder.entries.single())
         val result = assertIs<TransactionResult.NotCompleted>(entry.transactionResult)
-        assertEquals("IllegalStateException", result.reason)
+        assertEquals("Issuance did not complete", result.reason)
     }
 
     @Test
@@ -393,6 +393,36 @@ class CredentialIssuanceLoggerTest {
         assertEquals(TransactionResult.Completed, entry.transactionResult)
         // The original trigger is unknown at deferred-resolution time, so null (TS10 §3.5).
         assertNull(entry.details.isUserTriggered)
+    }
+
+    @Test
+    fun `a failed deferred collection records a readable reason, never the library error`() {
+        val delegate = mockk<OpenId4VciManager>(relaxed = true)
+        val callback = slot<OpenId4VciManager.OnDeferredIssueResult>()
+        every {
+            delegate.issueDeferredDocument(any(), any(), capture(callback))
+        } just Runs
+        val recorder = RecordingLogManager()
+        val logger = CredentialIssuanceLogger(delegate, recorder)
+
+        logger.issueDeferredDocument(mockk(relaxed = true), null) {}
+
+        callback.captured(
+            DeferredIssueResult.DocumentFailed(
+                deferredDocument("d1", "eu.europa.ec.eudi.pid.1"),
+                IllegalStateException(
+                    "Expected response body of the type 'class eu.europa.ec.eudi.openid4vci." +
+                            "internal.http.GenericErrorResponseTO' but was 'class io.ktor.utils.io." +
+                            "SourceByteReadChannel'\nResponse status `401 Unauthorized`\n" +
+                            "You can read how to resolve NoTransformationFoundException at FAQ"
+                ),
+            )
+        )
+
+        val entry = assertIs<TransactionEntry.CredentialIssuance>(recorder.entries.single())
+        val result = assertIs<TransactionResult.NotCompleted>(entry.transactionResult)
+        assertEquals("Could not collect the deferred credential", result.reason)
+        assertEquals(0, entry.details.credentialNumberIssued)
     }
 
     @Test
