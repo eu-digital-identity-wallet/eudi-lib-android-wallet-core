@@ -18,8 +18,8 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
@@ -41,9 +41,9 @@ import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
  * @return the list of options, or an empty list when nothing can satisfy the request.
  */
 internal fun buildMultipleAwareSelections(
-    data: CredentialPresentmentData,
+    data: CredentialQueryResult,
     multipleByQueryId: Map<QueryId, Boolean>,
-): List<CredentialPresentmentSelection> {
+): List<CredentialSelection> {
 
     // Each member's matches become one or more picks, depending on the query's flag.
     fun picksForMember(
@@ -82,7 +82,7 @@ internal fun buildMultipleAwareSelections(
     // Combine the per-set picks into the final list of options.
     val perSet = data.credentialSets.map { picksForSet(it) }
     return cartesianProduct(perSet).map { perSetPicks ->
-        CredentialPresentmentSelection(matches = perSetPicks.flatten())
+        CredentialSelection(matches = perSetPicks.flatten())
     }
 }
 

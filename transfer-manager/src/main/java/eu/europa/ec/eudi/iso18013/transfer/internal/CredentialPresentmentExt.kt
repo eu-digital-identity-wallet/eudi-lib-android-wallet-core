@@ -16,8 +16,8 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.internal
 
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 
 /**
@@ -26,11 +26,11 @@ import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
  * Currently, in an ISO 18013-5 presentment each set carries exactly one option, so
  * this collects all the matches under that option.
  */
-internal fun CredentialPresentmentData.flattenToSingleSelection(): CredentialPresentmentSelection {
+internal fun CredentialQueryResult.flattenToSingleSelection(): CredentialSelection {
     val allMatches: List<CredentialPresentmentSetOptionMemberMatch> = credentialSets
         .flatMap { set ->
             val firstOption = set.options.firstOrNull() ?: return@flatMap emptyList()
             firstOption.members.flatMap { it.matches }
         }
-    return CredentialPresentmentSelection(matches = allMatches)
+    return CredentialSelection(matches = allMatches)
 }

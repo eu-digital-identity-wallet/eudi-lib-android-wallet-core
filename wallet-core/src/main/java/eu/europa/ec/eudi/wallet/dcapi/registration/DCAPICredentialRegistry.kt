@@ -70,8 +70,11 @@ internal class DCAPICredentialRegistry private constructor(
 
     companion object {
         private const val TAG = "DCAPICredentialRegistry"
-        // Digital Credentials API matcher from the multipaz project (v0.100.0-SNAPSHOT),
-        // bundled unmodified.
+        // Digital Credentials API matcher from the multipaz project (v0.101.0), bundled
+        // unmodified — byte-identical to the one multipaz ships in `multipaz-dcapi-android`.
+        // Keep it in step with the `multipaz` version in libs.versions.toml: this binary parses
+        // the credential database written by [toCredentialBytes] and has to understand the same
+        // wire identifiers (e.g. the SD-JWT VC format string) as the verifiers of its era.
         private const val DEFAULT_MATCHER_FILE = "identitycredentialmatcher.wasm"
         private const val PROTOCOLS = "protocols"
         private const val CREDENTIALS = "credentials"

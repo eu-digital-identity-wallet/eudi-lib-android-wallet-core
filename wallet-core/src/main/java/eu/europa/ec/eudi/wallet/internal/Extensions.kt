@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
 import org.multipaz.credential.Credential
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.fromJavaX509Certificates
+import org.multipaz.request.OpenID4VPRequesterIdentity
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import java.security.cert.CertificateFactory
@@ -78,15 +79,29 @@ internal fun Credential.requireIssuedDocument(
  * [legalName] is used as the [TrustMetadata.displayName] (e.g. the verifier's legal
  * name extracted by the OpenID4VP layer from `client.legalName()`); it has no effect
  * when the result is untrusted.
+ *
+ * [clientId] is the OpenID4VP `client_id` in its prefixed form (e.g.
+ * `x509_san_dns:verifier.example.com`). It is carried on the
+ * [OpenID4VPRequesterIdentity] so downstream consumers — notably transaction
+ * logging — can identify the verifier beyond its certificate chain.
  */
 internal fun ReaderTrustResult.Processed.toRequesterAndTrust(
+    clientId: String,
     legalName: String? = null,
     appId: String? = null,
     origin: String? = null
 ): Pair<Requester, TrustMetadata?> {
     val requester = Requester(
-        certChain = chain.takeIf { it.isNotEmpty() }
-            ?.let { X509CertChain.fromJavaX509Certificates(it) },
+        requesterIdentities = chain.takeIf { it.isNotEmpty() }
+            ?.let {
+                listOf(
+                    OpenID4VPRequesterIdentity(
+                        certChain = X509CertChain.fromJavaX509Certificates(it),
+                        clientId = clientId
+                    )
+                )
+            }
+            ?: emptyList(),
         appId = appId,
         origin = origin
     )

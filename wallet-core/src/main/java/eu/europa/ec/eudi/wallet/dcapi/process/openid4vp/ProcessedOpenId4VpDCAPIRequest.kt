@@ -30,7 +30,7 @@ import eu.europa.ec.eudi.wallet.internal.getSessionTranscriptBytes
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.securearea.KeyUnlockData
 
 /**
@@ -60,11 +60,11 @@ class ProcessedOpenId4VpDCAPIRequest(
     wrpRegistration = inner.wrpRegistration,
 ) {
 
-    override val presentmentSelections: List<CredentialPresentmentSelection>
+    override val presentmentSelections: List<CredentialSelection>
         get() = inner.presentmentSelections
 
     override suspend fun generateResponse(
-        selection: CredentialPresentmentSelection,
+        selection: CredentialSelection,
         keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult {
         return try {
