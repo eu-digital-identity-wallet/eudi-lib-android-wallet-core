@@ -101,7 +101,7 @@ The library supports the following features:
 |                            | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                     |
 |                            | Deferred issuing                                                        | ✅                                                                                                                      |
 |                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                  |
-|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type, <br/> ✅ Proof Type without Attestation <br/> ✅ JWT Proof Type with Attestation               |
+|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type <br/> ✅ JWT Proof Type with Key Attestation <br/> ✅ JWT Proof Type without Key Attestation <br/> ✅ No Proof |
 |                            | Notify credential issuer                                                | ❌                                                                                                                      |
 | **Issuer Trust**           | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
 |                            | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                      |
@@ -1192,6 +1192,7 @@ val customConfig = OpenId4VciManager.Config.Builder()
     .withIssuerUrl("https://custom-issuer.com")
     .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
     .withAuthFlowRedirectionURI("eudi-openid4ci://custom-authorize")
+    .withIssuanceProofProfile(OpenId4VciManager.IssuanceProofProfile.Standard)
     .withSupportedCredentialReusePolicies(
         CredentialReusePolicies.Supported(
             setOf(EudiReusePolicyType.OnceOnly, EudiReusePolicyType.LimitedTime)
@@ -1835,6 +1836,99 @@ The available policies are:
   if the issuer does not support it.
 - `CredentialResponseEncryptionPolicy.SUPPORTED` -- encryption is used when the issuer advertises
   support for it, but issuance proceeds unencrypted otherwise.
+
+#### Issuance Proof Profile
+
+The library supports configurable proof type negotiation during credential issuance via
+`IssuanceProofProfile`. This determines which proof types the wallet advertises to issuers and the
+priority order used when negotiating.
+
+During issuance, the wallet iterates through the profile's preference order and selects the first
+proof type that is both supported by the issuer and can be fulfilled by the wallet.
+
+##### Built-in profiles
+
+| Profile | Preference order | Use case |
+|---------|-----------------|----------|
+| `IssuanceProofProfile.Etsi` **(default)** | Attestation, JWT with key attestation | ETSI TS 119 472-3 / EUDI Wallet. Requires `WalletAttestationsProvider`. |
+| `IssuanceProofProfile.Standard` | JWT without key attestation, JWT with key attestation, Attestation, No proof | Base OpenID4VCI without ETSI profiling. |
+
+##### Configuration
+
+```kotlin
+// ETSI profile (default — no configuration needed)
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        // Etsi is the default — explicit call not required
+        // withIssuanceProofProfile(OpenId4VciManager.IssuanceProofProfile.Etsi)
+    }
+
+// Standard OpenID4VCI profile
+val standardConfig = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        withIssuanceProofProfile(OpenId4VciManager.IssuanceProofProfile.Standard)
+    }
+```
+
+##### Custom profile
+
+For full control over the proof type order and per-type algorithms:
+
+```kotlin
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile.ProofType
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile.ProofTypeConfig
+
+val customProfile = IssuanceProofProfile.Custom(
+    preferenceOrder = listOf(
+        ProofTypeConfig(ProofType.JWT_WITHOUT_KEY_ATTESTATION),
+        ProofTypeConfig(
+            ProofType.JWT_WITH_KEY_ATTESTATION,
+            algorithms = setOf(Algorithm.ESP256),  // restrict to ES256 only
+        ),
+    )
+)
+
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        withIssuanceProofProfile(customProfile)
+    }
+```
+
+##### Migrating from `withSupportedProofTypes` (deprecated)
+
+The previous `withSupportedProofTypes(SupportedProofTypes(...))` API is deprecated.
+It is automatically converted to `IssuanceProofProfile.Custom` internally when no explicit
+`withIssuanceProofProfile` is set. To migrate, replace:
+
+```kotlin
+// Before (deprecated)
+.withSupportedProofTypes(
+    OpenId4VciManager.SupportedProofTypes(
+        jwtProofAlgorithms = setOf(Algorithm.ESP256),
+        attestationProofAlgorithms = setOf(Algorithm.ESP256),
+    )
+)
+
+// After
+.withIssuanceProofProfile(
+    OpenId4VciManager.IssuanceProofProfile.Custom(
+        preferenceOrder = listOf(
+            ProofTypeConfig(ProofType.ATTESTATION, setOf(Algorithm.ESP256)),
+            ProofTypeConfig(ProofType.JWT_WITH_KEY_ATTESTATION, setOf(Algorithm.ESP256)),
+        )
+    )
+)
+```
 
 #### Credential Reuse Policies (ETSI TS 119 472-3)
 
