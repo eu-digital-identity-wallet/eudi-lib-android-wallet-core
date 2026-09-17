@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.wallet.transactionLogging.model.MultiLangString
 import eu.europa.ec.eudi.wallet.transactionLogging.model.Policy
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
+import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionalData
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyContact
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
@@ -40,12 +41,15 @@ import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsin
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.parsing.parseVp
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
+import kotlinx.io.bytestring.decodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import org.multipaz.presentment.CredentialMatchSource
 import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
+import org.multipaz.util.fromBase64Url
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
@@ -107,7 +111,10 @@ class PresentationLogBuilder {
                         )
                     )
                 } else {
-                    log.copy(listOfClaimsRequested = parseRequestedClaims(matches))
+                    log.copy(
+                        listOfClaimsRequested = parseRequestedClaims(matches),
+                        transactionalData = matches.transactionalData()
+                    )
                 }
             }
         }
@@ -115,6 +122,22 @@ class PresentationLogBuilder {
         else -> log.copy(
             transactionResult = TransactionResult.NotCompleted("Unsupported request type")
         )
+    }
+
+    /**
+     * The transactional data the presentation request carried (TS10 §3.19.12), or null when it
+     * carried none. Each object is base64url decoded and recorded as the JSON it carried, because
+     * its attributes are the ones the specification of the transaction data type defines.
+     */
+    private fun List<CredentialPresentmentSetOptionMemberMatch>.transactionalData(): TransactionalData? {
+        val received = flatMap { match -> match.transactionData }
+            .distinctBy { transactionData -> transactionData.rawBytes }
+            .map { transactionData ->
+                Json.parseToJsonElement(
+                    transactionData.rawBytes.decodeToString().fromBase64Url().decodeToString()
+                )
+            }
+        return received.takeIf { it.isNotEmpty() }?.let { TransactionalData(JsonArray(it)) }
     }
 
     /**

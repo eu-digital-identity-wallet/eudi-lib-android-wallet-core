@@ -37,6 +37,7 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
 import io.ktor.client.HttpClient
@@ -98,7 +99,7 @@ class OpenId4VpDCAPIRequestProcessor(
         return when (val resolution = openId4Vp.resolveRequestObject(protocol, origin, requestData)) {
             is Resolution.Invalid -> {
                 logger?.e(TAG, "Invalid OpenID4VP DC API request: ${resolution.error}")
-                RequestProcessor.ProcessedRequest.Failure(resolution.error.asException())
+                RequestProcessor.ProcessedRequest.Failure(OpenId4VpRequestException(resolution.error))
             }
 
             is Resolution.Success -> {
