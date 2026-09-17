@@ -21,7 +21,9 @@ import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.Format
+import eu.europa.ec.eudi.openid4vp.ResolutionError
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.TransactionData
 import eu.europa.ec.eudi.openid4vp.dcql.CredentialQuery
 import eu.europa.ec.eudi.openid4vp.dcql.DCQL
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
@@ -46,8 +48,11 @@ import eu.europa.ec.eudi.wallet.registration.relyingparty.toRequestedAttestation
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
 import java.security.cert.X509Certificate
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -60,6 +65,7 @@ import org.multipaz.claim.findMatchingClaim
 import org.multipaz.openid.dcql.DcqlCredentialQuery
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.TransactionData as ParsedTransactionData
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.Requester
@@ -80,12 +86,18 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
  *
  * @property documentManager Provides access to documents stored in the wallet.
  * @property openid4VpX509CertificateTrust Verifies trust in the reader's certificate.
+ * @property transactionDataTypes The transaction data types the wallet accepts, each with the
+ *   parser that reads its transaction data. This must carry
+ *   [eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig.transactionDataTypes]; left empty,
+ *   every request that contains transaction data is rejected with `invalid_transaction_data`,
+ *   whatever the configuration declares.
  */
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
     var openid4VpX509CertificateTrust: OpenId4VpReaderTrust,
     private val readerAuthPolicy: ReaderAuthPolicy,
-    private var logger: Logger? = null
+    private var logger: Logger? = null,
+    private val transactionDataTypes: List<TransactionDataType> = emptyList()
 ) : RequestProcessor {
 
     private val credentialSetsMatcher = CredentialSetsMatcher()
@@ -106,17 +118,30 @@ class DcqlRequestProcessor(
         return try {
             require(request is OpenId4VpRequest) { "Request must be an OpenId4VpRequest" }
 
-            // Temporarily reject all requests with transaction data (not yet supported)
-            val requestTransactionData = request.resolvedRequestObject.transactionData
-            if (!requestTransactionData.isNullOrEmpty()) {
-                return RequestProcessor.ProcessedRequest.Failure(
-                    IllegalArgumentException("Transaction data is not supported")
-                )
-            }
-
             val dcql = request.resolvedRequestObject.query
             val credentials = dcql.credentials
             val credentialSets = dcql.credentialSets
+
+            // OpenID4VP: transaction data requires an SD-JWT VC with Cryptographic Holder Binding,
+            // so a request is rejected when a Credential it references does not require it.
+            val transactionData = request.resolvedRequestObject.transactionData.orEmpty()
+            val referenced = transactionData.flatMap { it.credentialIds }.toSet()
+            val unbound = credentials.value.filter { query ->
+                query.id in referenced && !query.requireCryptographicHolderBindingOrDefault
+            }
+            if (unbound.isNotEmpty()) {
+                return invalidTransactionData(
+                    "Transaction data references Credentials that do not require cryptographic " +
+                            "holder binding: " + unbound.joinToString { it.id.value }
+                )
+            }
+
+            val parsedTransactionData = try {
+                transactionData.map { it to it.parse() }
+            } catch (e: Throwable) {
+                logger?.e(TAG, "Transaction data rejected", e)
+                return invalidTransactionData(e)
+            }
 
             // Resolve trust verdict and build the Requester / TrustMetadata for the Success
             // payload. The legalName goes into TrustMetadata.displayName when the cert chain
@@ -142,10 +167,18 @@ class DcqlRequestProcessor(
             )
 
             // Find candidate matches for each credential query.
-            val matchesByQueryId: Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>> =
+            val candidatesByQueryId: Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>> =
                 credentials.value.associate { query ->
                     query.id to findMatchesForQuery(query)
                 }
+
+            // Assign each transaction data to the Credentials that will carry its hash.
+            val matchesByQueryId = try {
+                candidatesByQueryId.withTransactionData(parsedTransactionData)
+            } catch (e: Throwable) {
+                logger?.e(TAG, "Transaction data cannot be presented", e)
+                return invalidTransactionData(e)
+            }
 
             // Each query's `multiple` flag, forwarded to [ProcessedDcqlRequest]
             val multipleByQueryId: Map<QueryId, Boolean> = credentials.value
@@ -250,6 +283,75 @@ class DcqlRequestProcessor(
                 source = CredentialMatchSourceOpenID4VP(credentialQuery = dcqlQuery),
                 transactionData = emptyList(),
             )
+        }
+    }
+
+    /**
+     * Returns a failure that is reported to the verifier as `invalid_transaction_data`.
+     */
+    private fun invalidTransactionData(cause: Throwable): RequestProcessor.ProcessedRequest.Failure =
+        RequestProcessor.ProcessedRequest.Failure(
+            OpenId4VpRequestException(ResolutionError.InvalidTransactionData(cause))
+        )
+
+    private fun invalidTransactionData(message: String): RequestProcessor.ProcessedRequest.Failure =
+        invalidTransactionData(IllegalArgumentException(message))
+
+    /**
+     * Reads this transaction data with the parser of its type. The hash the wallet sends is
+     * calculated over the transaction data as it was received, so the parsed result keeps those
+     * bytes.
+     *
+     * @throws IllegalArgumentException when the type is not accepted or the transaction data does
+     * not conform to it
+     */
+    private fun TransactionData.parse(): ParsedTransactionData<*> {
+        val accepted = transactionDataTypes.firstOrNull { it.value == type.value }
+        requireNotNull(accepted) { "Transaction data type '${type.value}' is not accepted" }
+        return accepted.parser.parseJson(ByteString(value.toByteArray(Charsets.US_ASCII)))
+    }
+
+    /**
+     * Returns the matches with each transaction data assigned to the Credentials that will carry
+     * its hash.
+     *
+     * OpenID4VP requires the hash of a transaction data to be sent with only one of the Credentials
+     * it references, so a transaction data is assigned to the first Credential Query that has a
+     * match able to authorize it, and then to every match of that query. The matches of the chosen
+     * query that cannot authorize it are dropped, so they are not offered to the user.
+     *
+     * @throws IllegalArgumentException when no referenced Credential can authorize a transaction
+     * data
+     */
+    private suspend fun Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>>.withTransactionData(
+        transactionData: List<Pair<TransactionData, ParsedTransactionData<*>>>
+    ): Map<QueryId, List<CredentialPresentmentSetOptionMemberMatch>> {
+        if (transactionData.isEmpty()) return this
+
+        val matches = toMutableMap()
+        val assigned = mutableMapOf<QueryId, MutableList<ParsedTransactionData<*>>>()
+
+        for ((requested, parsed) in transactionData) {
+            var chosen: QueryId? = null
+            for (queryId in requested.credentialIds) {
+                val able = matches[queryId].orEmpty().filter { parsed.isApplicable(it.credential) }
+                if (able.isNotEmpty()) {
+                    matches[queryId] = able
+                    chosen = queryId
+                    break
+                }
+            }
+            requireNotNull(chosen) {
+                "Transaction data '${requested.type.value}' references no Credential the wallet " +
+                        "can present: " + requested.credentialIds.joinToString { it.value }
+            }
+            assigned.getOrPut(chosen) { mutableListOf() }.add(parsed)
+        }
+
+        return matches.mapValues { (queryId, queryMatches) ->
+            assigned[queryId]
+                ?.let { data -> queryMatches.map { it.copy(transactionData = data) } }
+                ?: queryMatches
         }
     }
 
@@ -462,7 +564,8 @@ class DcqlRequestProcessor(
             documentManager: DocumentManager,
             readerTrustStore: ReaderTrustStore?,
             readerAuthPolicy: ReaderAuthPolicy,
-            logger: Logger? = null
+            logger: Logger? = null,
+            transactionDataTypes: List<TransactionDataType> = emptyList()
         ): DcqlRequestProcessor {
             val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
                 readerTrustStore = readerTrustStore
@@ -471,7 +574,8 @@ class DcqlRequestProcessor(
                 documentManager = documentManager,
                 openid4VpX509CertificateTrust = openId4VpReaderTrust,
                 readerAuthPolicy = readerAuthPolicy,
-                logger = logger
+                logger = logger,
+                transactionDataTypes = transactionDataTypes
             )
         }
     }

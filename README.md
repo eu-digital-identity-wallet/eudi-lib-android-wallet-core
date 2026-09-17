@@ -85,37 +85,37 @@ graph TD
 
 The library supports the following features:
 
-| Category                   | Feature                                                                 | Status                                                                                                                 |
-|----------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                      |
-|                            | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                     |
-|                            | Multiple Key Management implementations                                 | ✅                                                                                                                      |
-|                            | Support for Batch credentials per Document                              | ✅                                                                                                                      |
-| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                        |
-|                            | Authorization Code Flow                                                 | ✅                                                                                                                      |
-|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                      |
-|                            | DPoP JWT in authorization                                               | ✅                                                                                                                      |
-|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
-|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                             |
-|                            | Credential batch issuing                                                | ✅                                                                                                                      |
-|                            | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                     |
-|                            | Deferred issuing                                                        | ✅                                                                                                                      |
-|                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                  |
-|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type <br/> ✅ JWT Proof Type with Key Attestation <br/> ✅ JWT Proof Type without Key Attestation <br/> ✅ No Proof |
-|                            | Notify credential issuer                                                | ❌                                                                                                                      |
-| **Issuer Trust**           | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
-|                            | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                      |
-|                            | Signed issuer metadata verification                                     | ✅ RequireSigned (default) / PreferSigned / IgnoreSigned                                                                 |
-|                            | Custom credential format verifiers                                      | ✅ via CredentialTrustVerifier                                                                                           |
-| **Revocation Status**      | Document status resolution (token status lists)                         | ✅ JWT <br /> ✅ CWT                                                                                                     |
-|                            | Status list token signer trust verification (LoTE)                      | ✅                                                                                                                      |
-| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                        |
-|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                      |
-|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
-| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
-|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
+| Category                   | Feature                                                                 | Status                                                                                                                                                        |
+|----------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                                                             |
+|                            | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                                                            |
+|                            | Multiple Key Management implementations                                 | ✅                                                                                                                                                             |
+|                            | Support for Batch credentials per Document                              | ✅                                                                                                                                                             |
+| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                                                               |
+|                            | Authorization Code Flow                                                 | ✅                                                                                                                                                             |
+|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                                                             |
+|                            | DPoP JWT in authorization                                               | ✅                                                                                                                                                             |
+|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |
+|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                                                                    |
+|                            | Credential batch issuing                                                | ✅                                                                                                                                                             |
+|                            | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                                                          |
+|                            | Deferred issuing                                                        | ✅                                                                                                                                                             |
+|                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                                                         |
+|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type <br/> ✅ JWT Proof Type with Key Attestation <br/> ✅ JWT Proof Type without Key Attestation <br/> ✅ No Proof                          |
+|                            | Notify credential issuer                                                | ❌                                                                                                                                                             |
+| **Issuer Trust**           | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |
+|                            | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                                                             |
+|                            | Signed issuer metadata verification                                     | ✅ RequireSigned (default) / PreferSigned / IgnoreSigned                                                                                                       |
+|                            | Custom credential format verifiers                                      | ✅ via CredentialTrustVerifier                                                                                                                                 |
+| **Revocation Status**      | Document status resolution (token status lists)                         | ✅ JWT <br /> ✅ CWT                                                                                                                                            |
+|                            | Status list token signer trust verification (LoTE)                      | ✅                                                                                                                                                             |
+| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                                                               |
+|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                                                             |
+|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                                                        |
+| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                                                               |
+|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                                                               |
 |                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |
-|                            | Transaction data                                                        | ❌                                                                                                                      |
+|                            | Transaction data                                                        | ✅ SD-JWT VC <br />❌ ISO/IEC 18013-5 mdoc                                                                                                               |
 | **Trust Mark**             | EUDI Wallet Trust Mark (EC TS01 v1.2)                                   | ✅ Static (pre-distribution) <br /> ✅ Dynamic (on-demand via provider)                                                  |
 |                            | Trust Mark resource fetching                                            | ✅                                                                                                                      |
 
@@ -2556,6 +2556,173 @@ the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-manage
 for more information on how to use the wallet-core library for presentation with custom SecureArea
 implementations.
 
+### Transaction Data
+
+A verifier can include **transaction data** in a presentation request. As introduced in OpenID4VP,
+the mechanism binds the user's identification and authentication to the user's authorisation of a
+transaction: the wallet displays the transaction data before consent and binds the presentation to
+it, so the presentation proves not only *who* the user is but *what* they agreed to.
+
+The binding is a hash of the transaction data string exactly as received, carried in the Key Binding
+JWT. A transaction data type may additionally define a claim of its own, as OpenID4VP Appendix B.3.3
+recommends.
+
+For Qualified Electronic Signatures, transaction data carry the information the user needs in order
+to understand and authorise a signing operation. Two types are defined for it, in **ETSI TS 119 432
+V1.3.1** and **CSC Data Model Bindings 1.0**, and this library models both: `qesApprovalRequest`,
+with which a trust service provider asks the user to approve a signature it has prepared, and
+`qesRequest`, with which a relying party asks for one or more documents to be signed.
+
+This library parses transaction data, exposes it for display, binds the presentation to it and
+records it in the transaction log. Creating the signature itself — the exchange with the trust
+service provider and the return of the signed document — is the responsibility of the RQES
+libraries (`eudi-lib-android-rqes-core`, `eudi-lib-android-rqes-ui`).
+
+> **SD-JWT VC only.** Transaction data is currently supported for `dc+sd-jwt` credentials.
+
+#### Declaring the types you support
+
+The wallet processes only the transaction data types it declares. A request carrying an undeclared
+type is rejected, and the verifier receives `invalid_transaction_data`.
+
+```kotlin
+val openId4VpConfig = OpenId4VpConfig.Builder()
+    // ... client id schemes, formats, encryption ...
+    .withTransactionDataTypes(
+        TransactionDataType.QES_APPROVAL,   // https://cloudsignatureconsortium.org/2025/qes-approval
+        TransactionDataType.QES             // https://cloudsignatureconsortium.org/2025/qes
+    )
+    .build()
+```
+
+Declaring a type also provides the means to read it: each type carries the parser that converts
+the received JSON into a typed payload, and rejects objects that do not conform to it.
+
+| Spec type            | Type identifier                                          | Constant                          |
+|----------------------|----------------------------------------------------------|-----------------------------------|
+| `qesApprovalRequest` | `https://cloudsignatureconsortium.org/2025/qes-approval` | `TransactionDataType.QES_APPROVAL`|
+| `qesRequest`         | `https://cloudsignatureconsortium.org/2025/qes`          | `TransactionDataType.QES`         |
+
+A presented `qesApprovalRequest` adds one claim to the Key Binding JWT beside
+`transaction_data_hashes`: `org.cloudsignatureconsortium.dm.1.qesApproval`, the approval the trust
+service provider consumes to release the signature. CSC Data Model Bindings clause 7.2.1.2 defines
+it as the digest of the transaction data string as received, taken with the algorithm of
+`hashAlgorithmOID` and base64 encoded. Only that type adds it — a Credential presented for anything
+else does not carry it.
+
+A type whose contents need not be modelled can be declared with
+`TransactionDataType.raw(identifier)`; its objects are then read as plain JSON.
+
+#### Declaring a type of your own
+
+To model your own type, extend `TransactionType` and wrap it in a `TransactionDataType`:
+
+```kotlin
+@Serializable
+data class Payment(
+    @SerialName("type") val type: String,
+    @SerialName("credential_ids") val credentialIds: List<String>,
+    @SerialName("transaction_data_hashes_alg") val hashAlgorithms: List<String>? = null,
+    @SerialName("amount") val amount: String,
+    @SerialName("payee") val payee: String,
+)
+
+object PaymentTransactionType : TransactionType<Payment>(
+    displayName = "Payment",
+    identifier = "https://example.com/2026/payment",
+) {
+    override fun parseOpenId4VpRequest(jsonString: String): Payment =
+        Json.decodeFromString(Payment.serializer(), jsonString)
+
+    override fun parseJson(serialized: ByteString): TransactionData<Payment> {
+        val payload = parseOpenId4VpRequest(
+            serialized.decodeToString().fromBase64Url().decodeToString()
+        )
+        return TransactionData(
+            type = this,
+            payload = payload,
+            protocol = TransactionProtocol.OPENID4VP,
+            rawBytes = serialized,
+            hashAlgorithms = parseJoseHashAlgorithms(payload.hashAlgorithms),
+        )
+    }
+}
+```
+
+Then you can declare it as follows:
+
+```kotlin
+.withTransactionDataTypes(
+    TransactionDataType(PaymentTransactionType)
+)
+```
+
+A type that defines a top-level Key Binding JWT claim of its own — as OpenID4VP B.3.3 recommends —
+also implements `TransactionDataKeyBinding`. Its claims are added beside
+`transaction_data_hashes`, which the wallet always sends:
+
+```kotlin
+object PaymentTransactionType : TransactionType<Payment>(/* ... */), TransactionDataKeyBinding {
+    override fun keyBindingClaims(
+        transactionData: List<TransactionData<*>>
+    ): Map<String, JsonElement> = mapOf("com.example.paymentApproval" to JsonPrimitive(/* ... */))
+}
+```
+
+A claim the Key Binding JWT sets itself — `sd_hash`, `nonce`, `aud`, `iat`, `exp` — is refused, as
+are `transaction_data_hashes` and `transaction_data_hashes_alg`, and a name another declared type
+already uses.
+
+#### Reading it from a request
+
+OpenID4VP requires that a single Credential authorizes a transaction. The wallet therefore gives
+each transaction data object to one query — the first of its `credential_ids` with a credential able
+to authorize it. Each match of the selection carries the objects the Credential it presents will
+authorize:
+
+```kotlin
+selection.matches.forEach { match ->
+    match.transactionData.forEach { data ->
+        when (val payload = data.payload) {
+            is QesApprovalRequest -> {
+                val qualifier = payload.signatureQualifier          // e.g. "eu_eidas_qes"
+                payload.documentDigests.forEach { digest ->
+                    show(label = digest.label, fingerprint = digest.hash, type = digest.hashType)
+                }
+            }
+            else -> { /* your own payload types */ }
+        }
+    }
+}
+```
+
+#### Reading it from the transaction log
+
+A presentation that carried transaction data records it on its log entry, base64url decoded and
+otherwise unread. The log is not specific to any type, so resolve it again with the types the
+wallet is configured with:
+
+```kotlin
+val entry = storedJson.toTransactionEntryOrNull()
+if (entry is TransactionEntry.Presentation) {
+    val payloads: List<Any> = entry.transactionalData
+        ?.payloads(wallet.config.openId4VpConfig?.transactionDataTypes.orEmpty())
+        .orEmpty()
+
+    payloads.forEach { payload ->
+        when (payload) {
+            is QesApprovalRequest -> showSignature(payload)
+            is JsonObject -> showJson(payload)      // a raw type, or an entry no type could read
+            else -> { /* your own payload types */ }
+        }
+    }
+}
+```
+
+An entry is returned as the `JsonObject` it was recorded as when no type claims it, when it no
+longer conforms to the type that does — for example after that type's definition changed — or when
+the type that claims it was declared with `raw`. The three cases are indistinguishable.
+
 ### Transaction Logging
 
 The library can log transactions for auditing and analytics purposes. It records presentations
@@ -2601,6 +2768,8 @@ Each entry is a `TransactionEntry` — a sealed type with one subtype per kind o
 - The interacting party (name, identifier), when available
 - For presentations: which claims were requested and presented, as identifiers and paths — never
   their values
+- For presentations that carried transaction data: the objects themselves, unread — see
+  [Transaction Data](#transaction-data)
 
 Serialize an entry for storage with `toJson()`, read it back with `toTransactionEntryOrNull()`, and
 branch on its type:
@@ -2627,7 +2796,7 @@ when (entry) {
 }
 ```
 
-You can also record your own entry e.g. an `OtherTransaction` as following:
+You can also record your own entry e.g. an `OtherTransaction` as follows:
 
 ```kotlin
 wallet.transactionLogManager?.log(

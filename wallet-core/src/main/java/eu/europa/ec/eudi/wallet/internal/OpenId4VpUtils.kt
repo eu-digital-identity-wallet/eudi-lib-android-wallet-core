@@ -34,13 +34,15 @@ import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.iso18013.transfer.SessionTranscriptBytes
 import eu.europa.ec.eudi.iso18013.transfer.internal.DocumentResponseGenerator
 import eu.europa.ec.eudi.openid4vp.CoseAlgorithm
+import eu.europa.ec.eudi.openid4vp.HashAlgorithm
 import eu.europa.ec.eudi.openid4vp.OpenId4VPConfig
 import eu.europa.ec.eudi.openid4vp.PreregisteredClient
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.openid4vp.ResponseEncryptionConfiguration
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.openid4vp.SupportedClientIdPrefix
-import eu.europa.ec.eudi.openid4vp.VPConfiguration
+import eu.europa.ec.eudi.openid4vp.SupportedTransactionDataType
+import eu.europa.ec.eudi.openid4vp.TransactionData
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpFormatsSupported
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -51,6 +53,8 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.TransactionDataKeyBinding
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
@@ -61,6 +65,7 @@ import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.presentment.PresentmentUnlockReason
+import org.multipaz.presentment.TransactionData as ParsedTransactionData
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.sdjwt.SdJwt
@@ -262,6 +267,7 @@ internal fun makeOpenId4VPConfig(
         ),
         vpFormatsSupported = config.formats.toVpFormats(),
         supportedClientIdPrefixes = supportedClientIdPrefixes,
+        supportedTransactionDataTypes = config.transactionDataTypes.toSupportedTransactionDataTypes(),
         registrationCertificatePolicy = registrationCertificatePolicy
     )
 }
@@ -314,6 +320,102 @@ internal fun ResolvedRequestObject.getSessionTranscriptBytes(origin: String): Se
 
         else -> getSessionTranscriptBytes()
     }
+
+/**
+ * Converts the configured transaction data types to the types supported by the OpenID4VP library.
+ *
+ * Every type is advertised with `sha-256`, which OpenID4VP requires all implementations to support
+ * and uses as the default when a request does not state a hash algorithm.
+ */
+internal fun List<TransactionDataType>.toSupportedTransactionDataTypes(): List<SupportedTransactionDataType> =
+    map { type ->
+        SupportedTransactionDataType.SdJwtVc(
+            type = eu.europa.ec.eudi.openid4vp.TransactionDataType(type.value),
+            hashAlgorithms = type.hashAlgorithms
+        )
+    }
+
+/**
+ * The hash algorithms with which the wallet can calculate transaction data hashes, by the name of
+ * their message digest. OpenID4VP requires every implementation to support `sha-256` and uses it
+ * when a request states no algorithm.
+ */
+internal val TRANSACTION_DATA_HASH_ALGORITHMS: Map<HashAlgorithm, String> = mapOf(
+    HashAlgorithm.SHA_256 to SHA_256_ALGORITHM,
+)
+
+private fun HashAlgorithm.messageDigestName(): String =
+    TRANSACTION_DATA_HASH_ALGORITHMS[this]
+        ?: throw IllegalArgumentException("Unsupported transaction data hash algorithm '$name'")
+
+/**
+ * Calculates the Key Binding JWT claims that bind a presentation to the transaction data it
+ * authorizes, as defined by the SD-JWT VC profile of OpenID4VP.
+ *
+ * Each hash is calculated over the transaction data string as it was received, which is not
+ * base64url decoded first. `transaction_data_hashes_alg` names the algorithm used and is always
+ * included.
+ *
+ * A transaction data type may define a claim of its own besides these, as OpenID4VP recommends in
+ * Appendix B.3.3 and [TransactionDataKeyBinding] describes.
+ *
+ * @receiver the transaction data authorized by a single presentation
+ * @return the claims to add to the Key Binding JWT, or an empty map when there is no transaction data
+ * @throws IllegalArgumentException when the transaction data share no algorithm the wallet
+ * supports, when a type cannot bind the transaction data it was given, or when a type defines a
+ * claim that another type or the presentation itself already sets
+ */
+internal fun List<ParsedTransactionData<*>>.transactionDataKeyBindingClaims(): Map<String, JsonElement> {
+    if (isEmpty()) return emptyMap()
+
+    val requested = map { transactionData ->
+        transactionData.hashAlgorithms?.mapNotNull { it.hashAlgorithmName }?.toSet()
+            ?: setOf(HashAlgorithm.SHA_256.name)
+    }
+    val algorithm = requested.reduce { common, algorithms -> common intersect algorithms }
+        .map { HashAlgorithm(it) }
+        .firstOrNull { it in TRANSACTION_DATA_HASH_ALGORITHMS }
+        ?: throw IllegalArgumentException(
+            "Transaction data of a single presentation share no supported hash algorithm"
+        )
+
+    val digest = MessageDigest.getInstance(algorithm.messageDigestName())
+    val encoder = Base64.getUrlEncoder().withoutPadding()
+    val hashes = map { transactionData ->
+        JsonPrimitive(encoder.encodeToString(digest.digest(transactionData.rawBytes.toByteArray())))
+    }
+
+    val claims = mutableMapOf<String, JsonElement>(
+        OpenId4VPSpec.TRANSACTION_DATA_HASHES_ALG to JsonPrimitive(algorithm.name),
+        OpenId4VPSpec.TRANSACTION_DATA_HASHES to JsonArray(hashes),
+    )
+    groupBy { it.type }.forEach { (type, ofType) ->
+        if (type !is TransactionDataKeyBinding) return@forEach
+        type.keyBindingClaims(ofType).forEach { (claim, value) ->
+            require(claim !in KEY_BINDING_JWT_CLAIMS) {
+                "The transaction data type '${type.identifier}' cannot define the Key Binding JWT " +
+                    "claim '$claim', which the presentation sets itself"
+            }
+            require(claims.put(claim, value) == null) {
+                "The transaction data of a single presentation define the Key Binding JWT claim " +
+                    "'$claim' more than once"
+            }
+        }
+    }
+    return claims
+}
+
+/**
+ * The claims the Key Binding JWT itself carries. They are written before the transaction data
+ * claims, so a transaction data type that used one of these names would replace it unnoticed.
+ */
+private val KEY_BINDING_JWT_CLAIMS: Set<String> =
+    setOf("sd_hash", "nonce", "aud", "iat", "exp")
+
+private object OpenId4VPSpec {
+    const val TRANSACTION_DATA_HASHES: String = "transaction_data_hashes"
+    const val TRANSACTION_DATA_HASHES_ALG: String = "transaction_data_hashes_alg"
+}
 
 /**
  * Converts a list of [Format]s to [VpFormats] for use in VP configuration.
@@ -390,13 +492,17 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
  *
  * Empty `match.claims` corresponds to OpenID4VP §6.4.1 "claims=null" semantics
  * (mandatory disclosure only).
+ *
+ * [transactionData] holds the transaction data this presentation authorizes. When it is not empty,
+ * the Key Binding JWT also carries the transaction data hashes.
  */
 internal suspend fun verifiablePresentationForSdJwtVc(
     resolvedRequestObject: ResolvedRequestObject,
     match: CredentialPresentmentSetOptionMemberMatch,
     documentManager: DocumentManager,
     keyUnlockData: KeyUnlockData?,
-    audience: String? = null
+    audience: String? = null,
+    transactionData: List<ParsedTransactionData<*>> = emptyList()
 ): VerifiablePresentation.Generic {
     val document = match.credential.requireIssuedDocument(documentManager)
     return document.consumingCredential {
@@ -422,12 +528,15 @@ internal suspend fun verifiablePresentationForSdJwtVc(
                 alias = this.alias,
                 unlockReason = PresentmentUnlockReason(this)
             )
+            val transactionDataClaims = transactionData.transactionDataKeyBindingClaims()
             withContext(keyUnlockData.asProvider()) {
                 filteredSdJwt.present(
                     signingKey = signingKey,
                     nonce = resolvedRequestObject.nonce,
                     audience = audience ?: resolvedRequestObject.client.id.clientId
-                )
+                ) {
+                    transactionDataClaims.forEach { (claim, value) -> put(claim, value) }
+                }
             }.compactSerialization
         } else {
             filteredSdJwt.compactSerialization

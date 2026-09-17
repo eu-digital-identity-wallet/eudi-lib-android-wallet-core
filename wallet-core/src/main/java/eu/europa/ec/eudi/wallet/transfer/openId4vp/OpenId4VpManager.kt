@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.openid4vp.AuthorizationRequestError
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.EncryptionParameters
+import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.ErrorDispatchDetails
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
@@ -179,7 +180,7 @@ class OpenId4VpManager(
                         }
 
                         transferEventListeners.onTransferEvent(
-                            TransferEvent.Error(error.asException())
+                            TransferEvent.Error(OpenId4VpRequestException(error))
                         )
                     }
 
@@ -205,6 +206,10 @@ class OpenId4VpManager(
                         }
                         val request = OpenId4VpRequest(resolvedRequest)
                         val processedRequest = requestProcessor.process(request)
+                        processedRequest.rejectedWith()?.let { error ->
+                            dispatchErrorResponse(error, resolvedRequest.errorDispatchDetails())
+                            activeRequestObject = null
+                        }
                         transferEventListeners.onTransferEvent(
                             TransferEvent.RequestReceived(processedRequest, request)
                         )
@@ -220,6 +225,27 @@ class OpenId4VpManager(
             }
         }
     }
+
+    /**
+     * Returns the error the request was rejected with, or null when it was accepted or when it was
+     * rejected for a reason that is not reported to the verifier.
+     */
+    private fun RequestProcessor.ProcessedRequest.rejectedWith(): AuthorizationRequestError? =
+        (this as? RequestProcessor.ProcessedRequest.Failure)
+            ?.let { it.error as? OpenId4VpRequestException }
+            ?.error
+
+    /**
+     * The details with which an error is dispatched for this request.
+     */
+    private fun ResolvedRequestObject.errorDispatchDetails(): ErrorDispatchDetails =
+        ErrorDispatchDetails(
+            responseMode = responseMode,
+            nonce = nonce,
+            state = state,
+            clientId = client.id,
+            responseEncryptionSpecification = responseEncryptionSpecification,
+        )
 
     /**
      * Dispatches a protocol-level error to the Verifier.

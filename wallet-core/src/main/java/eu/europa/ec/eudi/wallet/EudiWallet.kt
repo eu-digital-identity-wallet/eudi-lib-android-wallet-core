@@ -573,7 +573,8 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         documentManager = documentManager,
                         readerTrustStore = readerTrustStore,
                         readerAuthPolicy = readerAuthPolicy,
-                        logger = loggerObj
+                        logger = loggerObj,
+                        transactionDataTypes = openId4VpConfig.transactionDataTypes
                     ).apply {
                         wrpRegistrationValidator = registrationValidator
                         this.resolvedRegistration = resolvedRegistration
@@ -596,11 +597,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     ?.let { openId4VpConfig ->
                         OpenId4VpDCAPIRequestProcessor(
                             openId4VpConfig = openId4VpConfig,
-                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore, readerAuthPolicy)
-                                .apply {
-                                    wrpRegistrationValidator = registrationValidator
-                                    this.resolvedRegistration = resolvedRegistration
-                                },
+                            dcqlRequestProcessor = DcqlRequestProcessor(
+                                documentManager = documentManager,
+                                readerTrustStore = readerTrustStore,
+                                readerAuthPolicy = readerAuthPolicy,
+                                transactionDataTypes = openId4VpConfig.transactionDataTypes
+                            ).apply {
+                                wrpRegistrationValidator = registrationValidator
+                                this.resolvedRegistration = resolvedRegistration
+                            },
                             privilegedAllowlist = privilegedAllowlist,
                             supportedProtocols = openId4VpSupported,
                             logger = loggerObj,
