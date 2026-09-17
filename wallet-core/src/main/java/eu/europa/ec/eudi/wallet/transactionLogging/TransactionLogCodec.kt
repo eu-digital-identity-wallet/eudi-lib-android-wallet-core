@@ -38,12 +38,15 @@ private val transactionLogStorageJson: Json = Json {
 fun TransactionEntry.toJson(): String =
     transactionLogStorageJson.encodeToString(TransactionEntry.serializer(), this)
 
+/** Reads a [TransactionEntry] from its storage JSON string, or the failure if it cannot be read. */
+@SuppressLint("UnsafeOptInUsageError")
+fun String.toTransactionEntry(): Result<TransactionEntry> = runCatching {
+    transactionLogStorageJson.decodeFromString(TransactionEntry.serializer(), this)
+}
+
 /**
- * Reads a [TransactionEntry] from its storage JSON string, or returns `null` if it can't be read,
- * so one bad entry can be skipped instead of failing a whole batch.
+ * Reads a [TransactionEntry] from its storage JSON string, or `null` if it cannot be read. Use
+ * [toTransactionEntry] to get the failure instead.
  */
 @SuppressLint("UnsafeOptInUsageError")
-fun String.toTransactionEntryOrNull(): TransactionEntry? =
-    runCatching {
-        transactionLogStorageJson.decodeFromString(TransactionEntry.serializer(), this)
-    }.getOrNull()
+fun String.toTransactionEntryOrNull(): TransactionEntry? = toTransactionEntry().getOrNull()

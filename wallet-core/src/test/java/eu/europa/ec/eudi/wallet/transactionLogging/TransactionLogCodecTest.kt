@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -85,6 +86,25 @@ class TransactionLogCodecTest {
     fun `decoding malformed JSON returns null instead of throwing`() {
         assertNull("not json at all".toTransactionEntryOrNull())
         assertNull("""{"foo":"bar"}""".toTransactionEntryOrNull())
+    }
+
+    @Test
+    fun `an entry that cannot be read is reported with its cause`() {
+        val failure = "not json at all".toTransactionEntry().exceptionOrNull()
+
+        assertNotNull(failure)
+    }
+
+    @Test
+    fun `an entry that can be read is returned as a success`() {
+        val entry = TransactionEntry.CredentialDeletion(
+            transactionIdentifier = "tx-result",
+            time = time,
+            transactionResult = TransactionResult.Completed,
+            credentialIdentifier = "eu.europa.ec.eudi.pid.1",
+        )
+
+        assertEquals(entry, entry.toJson().toTransactionEntry().getOrThrow())
     }
 
     @Test

@@ -67,6 +67,7 @@ sealed interface TransactionEntry {
         override val transactionResult: TransactionResult,
         val listOfClaimsRequested: List<ClaimInfo>,
         val listOfClaimsPresented: List<ClaimInfo>,
+        val transactionalData: TransactionalData? = null,
         val interactingPartyType: String = INTERACTING_PARTY_TYPE,
         val interactingPartyName: MultiLangString? = null,
         val interactingPartyIdentifier: QualifiedIdentifier? = null,

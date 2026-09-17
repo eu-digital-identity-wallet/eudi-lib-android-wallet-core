@@ -34,6 +34,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
+import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.Requester
@@ -177,7 +178,8 @@ class ProcessedDcqlRequest(
                         match = match,
                         documentManager = documentManager,
                         keyUnlockData = keyUnlockData[match.credential.identifier],
-                        audience = sdJwtAudience
+                        audience = sdJwtAudience,
+                        transactionData = match.transactionData
                     )
 
                     else -> throw IllegalArgumentException("Unsupported format: $format")
@@ -243,3 +245,4 @@ class ProcessedDcqlRequest(
             wrpRegistration = wrpRegistration as? RegistrationCertificateResult
         )
 }
+
