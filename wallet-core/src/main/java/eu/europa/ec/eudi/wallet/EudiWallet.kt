@@ -68,8 +68,7 @@ import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.Presen
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
-import eu.europa.ec.eudi.wallet.trustmark.TrustMarkProvider
-import eu.europa.ec.eudi.wallet.trustmark.TrustMarkInformation
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
@@ -120,10 +119,9 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
      * The Trust Mark manager, if trust mark data was configured at wallet creation.
      *
      * Provides access to the EUDI Wallet Trust Mark information and resources as defined
-     * in EC TS01 v1.2 (2026-06). Supports both static (pre-distribution) and dynamic
-     * (on-demand via [TrustMarkProvider]) configuration. Returns `null` when neither
-     * [TrustMarkInformation] nor [TrustMarkProvider] was supplied
-     * (e.g. for pre-certification wallets).
+     * in EC TS01 v1.2 (2026-06). Supports both [TrustMarkSource.Static] and
+     * [TrustMarkSource.Dynamic] configuration. Returns `null` when no [TrustMarkSource]
+     * was supplied (e.g. for pre-certification wallets).
      */
     val trustMarkManager: TrustMarkManager?
 
@@ -168,33 +166,28 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          * Create an instance of [EudiWallet] with the given configuration and additional configuration
          * using the [Builder] class.
          *
-         * Trust Mark information can be supplied in two ways:
-         * - **Static**: Pass a [TrustMarkInformation] instance for data compiled into the app.
-         * - **Dynamic**: Pass a [TrustMarkProvider] for data fetched from a backend at runtime.
-         *
-         * If both are provided, [trustMarkProvider] (dynamic) takes precedence.
+         * Trust Mark information can be supplied via [TrustMarkSource]:
+         * - **[TrustMarkSource.Static]**: data compiled into the app at build time.
+         * - **[TrustMarkSource.Dynamic]**: data fetched from a backend at runtime via [TrustMarkProvider][eu.europa.ec.eudi.wallet.trustmark.TrustMarkProvider].
          *
          * @param context application context
          * @param config the configuration object
          * @param walletProvider optional provider for Wallet Instance/Unit Attestations
-         * @param trustMarkProvider optional dynamic provider for Trust Mark information
-         * @param trustMarkInformation optional static Trust Mark information
+         * @param trustMarkSource optional Trust Mark delivery configuration
          * @param extraConfiguration additional configuration to be applied based on the [Builder]
          */
         operator fun invoke(
             context: Context,
             config: EudiWalletConfig,
             walletProvider: WalletAttestationsProvider? = null,
-            trustMarkProvider: TrustMarkProvider? = null,
-            trustMarkInformation: TrustMarkInformation? = null,
+            trustMarkSource: TrustMarkSource? = null,
             extraConfiguration: (Builder.() -> Unit)? = null,
         ): EudiWallet {
             val builder = Builder(
                 context = context,
                 config = config,
                 walletProvider = walletProvider,
-                trustMarkProvider = trustMarkProvider,
-                trustMarkInformation = trustMarkInformation,
+                trustMarkSource = trustMarkSource,
             )
             extraConfiguration?.invoke(builder)
             return builder.build()
@@ -223,8 +216,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         context: Context,
         val config: EudiWalletConfig,
         val walletProvider: WalletAttestationsProvider?,
-        val trustMarkProvider: TrustMarkProvider? = null,
-        val trustMarkInformation: TrustMarkInformation? = null,
+        val trustMarkSource: TrustMarkSource? = null,
     ) {
         private val context = context.applicationContext
         var storage: Storage? = null
@@ -521,25 +513,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             val documentStatusResolverToUse = getDocumentStatusResolver(loggerToUse)
 
-            val trustMarkManagerToUse = run {
+            val trustMarkManagerToUse = trustMarkSource?.let { source ->
                 val httpFactory = (ktorHttpClientFactory ?: { HttpClient() })
                     .wrappedWithLogging(loggerToUse)
                     .wrappedWithContentNegotiation()
-                when {
-                    trustMarkProvider != null -> TrustMarkManager(
-                        trustMarkProvider = trustMarkProvider,
-                        ktorHttpClientFactory = httpFactory,
-                        logger = loggerToUse,
-                    )
-
-                    trustMarkInformation != null -> TrustMarkManager(
-                        trustMarkInformation = trustMarkInformation,
-                        ktorHttpClientFactory = httpFactory,
-                        logger = loggerToUse,
-                    )
-
-                    else -> null
-                }
+                TrustMarkManager(
+                    source = source,
+                    ktorHttpClientFactory = httpFactory,
+                    logger = loggerToUse,
+                )
             }
 
             return EudiWalletImpl(

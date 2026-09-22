@@ -22,8 +22,12 @@ package eu.europa.ec.eudi.wallet.trustmark
  * Matches the two delivery mechanisms described in EC TS01 v1.2:
  * - **Pre-distribution**: data compiled into the Wallet Solution at build time ([Static]).
  * - **On-demand**: data fetched from a Wallet Provider backend at runtime ([Dynamic]).
+ *
+ * Pass an instance to [EudiWallet.invoke][eu.europa.ec.eudi.wallet.EudiWallet.Companion.invoke]
+ * or [EudiWallet.Builder][eu.europa.ec.eudi.wallet.EudiWallet.Builder] to configure
+ * the wallet's Trust Mark support.
  */
-internal sealed interface TrustMarkSource {
+sealed interface TrustMarkSource {
 
     /**
      * Static (pre-distribution) source. The [information] is known at build time and

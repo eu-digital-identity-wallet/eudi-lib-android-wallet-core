@@ -29,12 +29,10 @@ import io.ktor.client.HttpClient
  * delivery mechanisms:
  *
  * - **Static (pre-distribution)**: Trust Mark information compiled into the app
- *   at build time via [TrustMarkInformation]. Use [invoke] with a
- *   [TrustMarkInformation] instance.
+ *   at build time via [TrustMarkSource.Static].
  *
  * - **Dynamic (on-demand)**: Trust Mark information fetched at runtime from
- *   a Wallet Provider backend via [TrustMarkProvider]. Use [invoke] with a
- *   [TrustMarkProvider] instance.
+ *   a Wallet Provider backend via [TrustMarkSource.Dynamic].
  */
 fun interface TrustMarkManager {
 
@@ -55,46 +53,21 @@ fun interface TrustMarkManager {
     companion object {
 
         /**
-         * Creates a [TrustMarkManager] with **dynamic** (on-demand) Trust Mark information.
+         * Creates a [TrustMarkManager] from the given [TrustMarkSource].
          *
-         * The [trustMarkProvider] is called each time [getTrustMark] is invoked,
-         * allowing the data to be fetched from a Wallet Provider backend at runtime.
-         *
-         * @param trustMarkProvider The provider that supplies [TrustMarkInformation].
+         * @param source The trust mark delivery configuration ([TrustMarkSource.Static]
+         *   or [TrustMarkSource.Dynamic]).
          * @param ktorHttpClientFactory A factory for creating [HttpClient] instances used
          *   to fetch the [TrustMarkResource]. Defaults to a plain [HttpClient].
          * @param logger Optional logger for diagnostic output.
          * @return A [TrustMarkManager] instance.
          */
         operator fun invoke(
-            trustMarkProvider: TrustMarkProvider,
+            source: TrustMarkSource,
             ktorHttpClientFactory: () -> HttpClient = { HttpClient() },
             logger: Logger? = null,
         ): TrustMarkManager = TrustMarkManagerImpl(
-            source = TrustMarkSource.Dynamic(trustMarkProvider),
-            ktorHttpClientFactory = ktorHttpClientFactory,
-            logger = logger,
-        )
-
-        /**
-         * Creates a [TrustMarkManager] with **static** (pre-distribution) Trust Mark information.
-         *
-         * The [trustMarkInformation] is used directly by [getTrustMark] without any
-         * provider call. This matches the specification's pre-distribution delivery
-         * mechanism where the data is compiled into the Wallet Solution.
-         *
-         * @param trustMarkInformation The pre-configured Trust Mark information.
-         * @param ktorHttpClientFactory A factory for creating [HttpClient] instances used
-         *   to fetch the [TrustMarkResource]. Defaults to a plain [HttpClient].
-         * @param logger Optional logger for diagnostic output.
-         * @return A [TrustMarkManager] instance.
-         */
-        operator fun invoke(
-            trustMarkInformation: TrustMarkInformation,
-            ktorHttpClientFactory: () -> HttpClient = { HttpClient() },
-            logger: Logger? = null,
-        ): TrustMarkManager = TrustMarkManagerImpl(
-            source = TrustMarkSource.Static(trustMarkInformation),
+            source = source,
             ktorHttpClientFactory = ktorHttpClientFactory,
             logger = logger,
         )

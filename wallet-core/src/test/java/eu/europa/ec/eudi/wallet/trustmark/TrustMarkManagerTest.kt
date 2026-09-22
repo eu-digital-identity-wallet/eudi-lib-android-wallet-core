@@ -59,7 +59,7 @@ class TrustMarkManagerTest {
         coEvery { mockProvider.getTrustMarkInformation() } returns Result.failure(error)
 
         val manager = TrustMarkManager(
-            trustMarkProvider = mockProvider,
+            source = TrustMarkSource.Dynamic(mockProvider),
             ktorHttpClientFactory = mockHttpClientFactory,
         )
 
@@ -161,7 +161,7 @@ class TrustMarkManagerTest {
     fun `TrustMarkManager companion factory creates instance`() {
         val info = sampleInfo
         val manager = TrustMarkManager(
-            trustMarkProvider = TrustMarkProvider { Result.success(info) },
+            source = TrustMarkSource.Dynamic(TrustMarkProvider { Result.success(info) }),
         )
         assertTrue(manager is TrustMarkManager)
     }
