@@ -34,6 +34,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
 import eu.europa.ec.eudi.wallet.internal.i
+import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
+import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
@@ -65,6 +67,9 @@ import eu.europa.ec.eudi.wallet.transactionLogging.producers.RegisteredIssuer
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.PresentationLogger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkProvider
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkInformation
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
@@ -112,6 +117,17 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
     val transactionLogManager: TransactionLogManager?
 
     /**
+     * The Trust Mark manager, if trust mark data was configured at wallet creation.
+     *
+     * Provides access to the EUDI Wallet Trust Mark information and resources as defined
+     * in EC TS01 v1.2 (2026-06). Supports both static (pre-distribution) and dynamic
+     * (on-demand via [TrustMarkProvider]) configuration. Returns `null` when neither
+     * [TrustMarkInformation] nor [TrustMarkProvider] was supplied
+     * (e.g. for pre-certification wallets).
+     */
+    val trustMarkManager: TrustMarkManager?
+
+    /**
      * Creates an instance of [OpenId4VciManager] for the wallet to interact with the OpenID for Verifiable Credential Issuance service.
      *
      * The configuration can be provided in two ways:
@@ -150,19 +166,36 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
         /**
          * Create an instance of [EudiWallet] with the given configuration and additional configuration
-         * using the [Builder] class
+         * using the [Builder] class.
+         *
+         * Trust Mark information can be supplied in two ways:
+         * - **Static**: Pass a [TrustMarkInformation] instance for data compiled into the app.
+         * - **Dynamic**: Pass a [TrustMarkProvider] for data fetched from a backend at runtime.
+         *
+         * If both are provided, [trustMarkProvider] (dynamic) takes precedence.
          *
          * @param context application context
          * @param config the configuration object
+         * @param walletProvider optional provider for Wallet Instance/Unit Attestations
+         * @param trustMarkProvider optional dynamic provider for Trust Mark information
+         * @param trustMarkInformation optional static Trust Mark information
          * @param extraConfiguration additional configuration to be applied based on the [Builder]
          */
         operator fun invoke(
             context: Context,
             config: EudiWalletConfig,
             walletProvider: WalletAttestationsProvider? = null,
+            trustMarkProvider: TrustMarkProvider? = null,
+            trustMarkInformation: TrustMarkInformation? = null,
             extraConfiguration: (Builder.() -> Unit)? = null,
         ): EudiWallet {
-            val builder = Builder(context, config, walletProvider)
+            val builder = Builder(
+                context = context,
+                config = config,
+                walletProvider = walletProvider,
+                trustMarkProvider = trustMarkProvider,
+                trustMarkInformation = trustMarkInformation,
+            )
             extraConfiguration?.invoke(builder)
             return builder.build()
         }
@@ -190,6 +223,8 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         context: Context,
         val config: EudiWalletConfig,
         val walletProvider: WalletAttestationsProvider?,
+        val trustMarkProvider: TrustMarkProvider? = null,
+        val trustMarkInformation: TrustMarkInformation? = null,
     ) {
         private val context = context.applicationContext
         var storage: Storage? = null
@@ -486,6 +521,27 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             val documentStatusResolverToUse = getDocumentStatusResolver(loggerToUse)
 
+            val trustMarkManagerToUse = run {
+                val httpFactory = (ktorHttpClientFactory ?: { HttpClient() })
+                    .wrappedWithLogging(loggerToUse)
+                    .wrappedWithContentNegotiation()
+                when {
+                    trustMarkProvider != null -> TrustMarkManager(
+                        trustMarkProvider = trustMarkProvider,
+                        ktorHttpClientFactory = httpFactory,
+                        logger = loggerToUse,
+                    )
+
+                    trustMarkInformation != null -> TrustMarkManager(
+                        trustMarkInformation = trustMarkInformation,
+                        ktorHttpClientFactory = httpFactory,
+                        logger = loggerToUse,
+                    )
+
+                    else -> null
+                }
+            }
+
             return EudiWalletImpl(
                 context = context,
                 config = config,
@@ -501,6 +557,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 logger = loggerToUse,
                 documentStatusResolver = documentStatusResolverToUse,
                 transactionLogManager = transactionLogManagerToUse,
+                trustMarkManager = trustMarkManagerToUse,
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 issuanceMetadataStorage = issuanceMetadataStorage,
                 issuerRegistrationTrust = issuerRegistrationTrust,

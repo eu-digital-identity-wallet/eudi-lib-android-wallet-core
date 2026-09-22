@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialIssuanceLogger
 import eu.europa.ec.eudi.wallet.trust.pidClassification
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
 import io.ktor.client.HttpClient
 import org.multipaz.storage.Storage
 
@@ -58,6 +59,7 @@ class EudiWalletImpl internal constructor(
     override val walletProvider: WalletAttestationsProvider?,
     override val walletKeyManager: WalletKeyManager,
     override val transactionLogManager: TransactionLogManager?,
+    override val trustMarkManager: TrustMarkManager?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
     val issuanceMetadataStorage: Storage?,
     internal val issuerRegistrationTrust: CertificateTrust? = null,

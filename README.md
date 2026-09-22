@@ -116,6 +116,8 @@ The library supports the following features:
 |                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
 |                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |
 |                            | Transaction data                                                        | ❌                                                                                                                      |
+| **Trust Mark**             | EUDI Wallet Trust Mark (EC TS01 v1.2)                                   | ✅ Static (pre-distribution) <br /> ✅ Dynamic (on-demand via provider)                                                  |
+|                            | Trust Mark resource fetching                                            | ✅                                                                                                                      |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -432,6 +434,92 @@ val wallet = EudiWallet(
 
 **NOTE:** When Attestation Based Client Authentication is configured for OpendId4Vci, the `EudiWallet` must also be instantiated with a WalletProvider
 
+#### Configure EUDI Wallet Trust Mark
+
+The library supports the EUDI Wallet Trust Mark as defined in EC TS01 v1.2 (2026-06). The Trust
+Mark is a visible, verifiable indicator displayed in certified Wallet Solutions to inform users
+that the wallet has been certified under EU Regulation 2024/1183.
+
+The `TrustMarkManager` provides access to:
+- **`TrustMarkInformation`**: URLs for the Trust Mark resource, list of certified wallets, and
+  the wallet solution's own information page.
+- **`TrustMarkResource`**: The official Trust Mark logo and localised user information text,
+  fetched from the EC-hosted resource endpoint.
+
+Trust Mark information can be supplied in two ways, matching the specification's delivery mechanisms:
+
+##### Static (Pre-distribution)
+
+For trust mark data compiled into the app at build time, pass a `TrustMarkInformation` instance
+directly:
+
+```kotlin
+val wallet = EudiWallet(
+    context = context,
+    config = config,
+    trustMarkInformation = TrustMarkInformation(
+        trustMarkResourceURL = "https://eidas.ec.europa.eu/efda/wallet/trust-mark/resources",
+        listOfCertifiedWalletsURL = "https://eidas.ec.europa.eu/efda/wallet/certified",
+        walletSolutionInfoPageURL = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_123",
+    ),
+)
+```
+
+##### Dynamic (On-demand)
+
+For trust mark data fetched from a Wallet Provider backend at runtime, implement the
+`TrustMarkProvider` interface:
+
+```kotlin
+val wallet = EudiWallet(
+    context = context,
+    config = config,
+    trustMarkProvider = TrustMarkProvider {
+        // Fetch trust mark configuration from your Wallet Provider backend
+        myBackendService.getTrustMarkInformation()
+    },
+)
+```
+
+If both `trustMarkProvider` and `trustMarkInformation` are supplied, the dynamic provider takes
+precedence.
+
+##### Using the TrustMarkManager
+
+When trust mark data is supplied (via either method above), a `TrustMarkManager` is created
+internally and exposed via `wallet.trustMarkManager`. It is `null` when neither a provider
+nor static information was supplied.
+
+A single `getTrustMark()` call resolves the trust mark information and fetches the resource
+(logo + text) from the EC endpoint in one operation:
+
+```kotlin
+wallet.trustMarkManager?.getTrustMark()?.fold(
+    onSuccess = { trustMark ->
+        // Trust Mark information (URLs, optional QR codes)
+        val info = trustMark.information
+        // info.trustMarkResourceURL
+        // info.listOfCertifiedWalletsURL
+        // info.walletSolutionInfoPageURL
+        // info.listOfCertifiedWalletsQRCode (optional, base64)
+        // info.walletSolutionInfoPageQRCode (optional, base64)
+        // info.walletVerifierToolURL (optional)
+
+        // Trust Mark resource (logo + localised text)
+        val resource = trustMark.resource
+        // resource.image.name — e.g. "eudi-wallet-trustmark-logo.png"
+        // resource.image.url — URL to the logo image
+        // resource.text.localisations — Map<String, String> of language code to text
+        val localizedText = resource.text.localisations["en"]
+    },
+    onFailure = { error ->
+        // Handle error (provider failure, network failure, parse error, etc.)
+    }
+)
+```
+
+> **Note:** `getTrustMark()` performs an HTTP GET to the `trustMarkResourceURL`. The image URL
+> in the response is returned as-is for the UI layer to render. 
 
 ### Manage documents
 
