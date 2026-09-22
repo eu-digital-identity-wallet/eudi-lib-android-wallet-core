@@ -44,10 +44,9 @@ internal class TrustMarkManagerImpl(
         withContext(ioDispatcher) {
             val info = resolveInformation()
             logger?.d(TAG, "getTrustMark: fetching resource from ${info.trustMarkResourceURL}")
-            val resource = ktorHttpClientFactory().use { client ->
-                val json = client.get(info.trustMarkResourceURL).bodyAsText()
-                Json.decodeFromString<TrustMarkResource>(json)
-            }
+            val client = ktorHttpClientFactory()
+            val json = client.get(info.trustMarkResourceURL).bodyAsText()
+            val resource = Json.decodeFromString<TrustMarkResource>(json)
             TrustMark(information = info, resource = resource)
         }
     }.also { result ->
