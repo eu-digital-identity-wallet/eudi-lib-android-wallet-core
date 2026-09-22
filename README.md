@@ -446,43 +446,43 @@ The `TrustMarkManager` provides access to:
 - **`TrustMarkResource`**: The official Trust Mark logo and localised user information text,
   fetched from the EC-hosted resource endpoint.
 
-Trust Mark information can be supplied in two ways, matching the specification's delivery mechanisms:
+Trust Mark delivery is configured via a single `TrustMarkSource` parameter matching the
+specification's two delivery mechanisms:
 
 ##### Static (Pre-distribution)
 
-For trust mark data compiled into the app at build time, pass a `TrustMarkInformation` instance
-directly:
+For trust mark data compiled into the app at build time:
 
 ```kotlin
 val wallet = EudiWallet(
     context = context,
     config = config,
-    trustMarkInformation = TrustMarkInformation(
-        trustMarkResourceURL = "https://eidas.ec.europa.eu/efda/wallet/trust-mark/resources",
-        listOfCertifiedWalletsURL = "https://eidas.ec.europa.eu/efda/wallet/certified",
-        walletSolutionInfoPageURL = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_123",
+    trustMarkSource = TrustMarkSource.Static(
+        TrustMarkInformation(
+            trustMarkResourceURL = "https://eidas.ec.europa.eu/efda/wallet/trust-mark/resources",
+            listOfCertifiedWalletsURL = "https://eidas.ec.europa.eu/efda/wallet/certified",
+            walletSolutionInfoPageURL = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_123",
+        )
     ),
 )
 ```
 
 ##### Dynamic (On-demand)
 
-For trust mark data fetched from a Wallet Provider backend at runtime, implement the
-`TrustMarkProvider` interface:
+For trust mark data fetched from a Wallet Provider backend at runtime:
 
 ```kotlin
 val wallet = EudiWallet(
     context = context,
     config = config,
-    trustMarkProvider = TrustMarkProvider {
-        // Fetch trust mark configuration from your Wallet Provider backend
-        myBackendService.getTrustMarkInformation()
-    },
+    trustMarkSource = TrustMarkSource.Dynamic(
+        TrustMarkProvider {
+            // Fetch trust mark configuration from your Wallet Provider backend
+            myBackendService.getTrustMarkInformation()
+        }
+    ),
 )
 ```
-
-If both `trustMarkProvider` and `trustMarkInformation` are supplied, the dynamic provider takes
-precedence.
 
 ##### Using the TrustMarkManager
 
