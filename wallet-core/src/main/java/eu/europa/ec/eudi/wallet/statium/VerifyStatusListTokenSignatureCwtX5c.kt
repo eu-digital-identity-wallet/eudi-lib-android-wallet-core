@@ -16,19 +16,17 @@
 package eu.europa.ec.eudi.wallet.statium
 
 import eu.europa.ec.eudi.statium.VerifyStatusListTokenCwtSignature
-import org.multipaz.cbor.Cbor
 import org.multipaz.cose.Cose
 import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.Algorithm
-import java.security.interfaces.ECPublicKey
-import java.security.interfaces.RSAPublicKey
 import kotlin.time.Instant
 
 /**
  * Verifies the signature of a CWT (CBOR Web Token) status list token using the x5chain header.
  *
- * Parses the COSE_Sign1 structure, extracts the x5chain from unprotected headers (label 33),
- * and verifies the signature using the leaf certificate's public key.
+ * Parses the COSE_Sign1 structure (unwrapping CBOR tag 18 if present), extracts the x5chain
+ * from protected or unprotected headers, and verifies the signature using the leaf
+ * certificate's public key.
  */
 class VerifyStatusListTokenSignatureCwtX5c : VerifyStatusListTokenCwtSignature {
 
@@ -36,13 +34,11 @@ class VerifyStatusListTokenSignatureCwtX5c : VerifyStatusListTokenCwtSignature {
         statusListToken: ByteArray,
         at: Instant,
     ): Result<Unit> = runCatching {
-        // Decode COSE_Sign1 from CWT bytes
-        val coseSign1 = Cbor.decode(statusListToken).asCoseSign1
+        // Decode COSE_Sign1 from CWT bytes (unwrapping CBOR tag 18 if present)
+        val coseSign1 = decodeCoseSign1(statusListToken)
 
-        // Extract x5chain from unprotected headers (COSE label 33)
-        val x5chainDataItem = coseSign1.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
-            ?: throw IllegalStateException("Missing x5chain in COSE unprotected headers")
-        val x5chain = x5chainDataItem.asX509CertChain
+        // Extract x5chain from protected or unprotected headers (COSE label 33)
+        val x5chain = coseSign1.extractX5chain()
 
         // Get the leaf certificate
         val leafCert = x5chain.certificates.firstOrNull()
