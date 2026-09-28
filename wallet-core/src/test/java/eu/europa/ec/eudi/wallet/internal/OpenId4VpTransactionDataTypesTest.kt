@@ -63,10 +63,26 @@ class OpenId4VpTransactionDataTypesTest {
         val supported = listOf(TransactionDataType.QES_APPROVAL)
             .toSupportedTransactionDataTypes()
 
-        assertEquals(1, supported.size)
-        val sdJwtVc = assertIs<SupportedTransactionDataType.SdJwtVc>(supported.single())
+        val sdJwtVc = supported.filterIsInstance<SupportedTransactionDataType.SdJwtVc>().single()
         assertEquals(TransactionDataType.QES_APPROVAL.value, sdJwtVc.type.value)
         assertEquals(setOf(HashAlgorithm.SHA_256), sdJwtVc.hashAlgorithms)
+    }
+
+    @Test
+    fun `a type that returns a data element of its own is advertised for mdoc too`() {
+        val supported = listOf(TransactionDataType.QES_APPROVAL)
+            .toSupportedTransactionDataTypes()
+
+        val mdoc = supported.filterIsInstance<SupportedTransactionDataType.MsoMdoc>().single()
+        assertEquals(TransactionDataType.QES_APPROVAL.value, mdoc.type.value)
+    }
+
+    @Test
+    fun `a type that returns none is advertised for SD-JWT VC only`() {
+        val supported = listOf(TransactionDataType.QES).toSupportedTransactionDataTypes()
+
+        assertEquals(1, supported.size)
+        assertIs<SupportedTransactionDataType.SdJwtVc>(supported.single())
     }
 
     @Test
@@ -76,7 +92,7 @@ class OpenId4VpTransactionDataTypesTest {
 
         assertEquals(
             listOf(TransactionDataType.QES_APPROVAL.value, TransactionDataType.QES.value),
-            supported.map { it.type.value }
+            supported.map { it.type.value }.distinct()
         )
     }
 
@@ -89,7 +105,7 @@ class OpenId4VpTransactionDataTypesTest {
 
         assertEquals(
             listOf(TransactionDataType.QES_APPROVAL.value),
-            config.supportedTransactionDataTypes.map { it.type.value }
+            config.supportedTransactionDataTypes.map { it.type.value }.distinct()
         )
     }
 
