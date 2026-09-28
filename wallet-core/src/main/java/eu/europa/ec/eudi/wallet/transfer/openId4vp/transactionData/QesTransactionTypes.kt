@@ -21,6 +21,8 @@ import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import org.multipaz.cbor.Bstr
+import org.multipaz.cbor.DataItem
 import org.multipaz.documenttype.TransactionType
 import org.multipaz.presentment.TransactionData
 import org.multipaz.presentment.TransactionProtocol
@@ -42,8 +44,13 @@ object QesApprovalTransactionType :
     TransactionType<QesApprovalRequest>(
         displayName = "QES approval",
         identifier = QesApprovalRequest.TYPE,
+        openId4VpMdocResponseNamespace = QES_APPROVAL_NAMESPACE,
     ),
-    TransactionDataKeyBinding {
+    TransactionDataKeyBinding,
+    TransactionDataDeviceSigned {
+
+    override val nameSpace: String
+        get() = getMdocResponseNamespace(TransactionProtocol.OPENID4VP)
 
     override fun parseOpenId4VpRequest(jsonString: String): QesApprovalRequest =
         json.decodeFromString(QesApprovalRequest.serializer(), jsonString)
@@ -91,6 +98,34 @@ object QesApprovalTransactionType :
             .digest(approval.rawBytes.toByteArray())
         return mapOf(QES_APPROVAL_CLAIM to JsonPrimitive(base64.encodeToString(digest)))
     }
+
+    /**
+     * Calculates the `qesApproval` that binds an ISO/IEC 18013-5 mdoc presentation to the approved
+     * transaction data, as defined by CSC Data Model Bindings clause 7.2.1.1.
+     *
+     * The digest is calculated over the base64url decoded transaction data, always with SHA-256,
+     * and is returned as the digest itself, not base64 encoded. The key of the returned map is the
+     * data element identifier, within the name space [QES_APPROVAL_NAMESPACE].
+     *
+     * @throws IllegalArgumentException when [transactionData] holds more than one approval, which
+     * a single `qesApproval` cannot represent
+     */
+    override fun deviceSignedElements(
+        transactionData: List<TransactionData<*>>
+    ): Map<String, DataItem> {
+        val approval = transactionData.singleOrNull()
+            ?: throw IllegalArgumentException(
+                "A presentation carries one '$QES_APPROVAL_ELEMENT' data element, so it cannot " +
+                    "approve the ${transactionData.size} transaction data of type '$identifier' " +
+                    "that reference its Credential"
+            )
+        require(approval.payload is QesApprovalRequest) {
+            "Transaction data of type '$identifier' carries a payload of another type"
+        }
+        val decoded = approval.rawBytes.decodeToString().fromBase64Url()
+        val digest = MessageDigest.getInstance(SHA_256).digest(decoded)
+        return mapOf(QES_APPROVAL_ELEMENT to Bstr(digest))
+    }
 }
 
 /**
@@ -121,8 +156,17 @@ object QesRequestTransactionType : TransactionType<QesRequest>(
  */
 private fun ByteString.toJsonString(): String = decodeToString().fromBase64Url().decodeToString()
 
+/** The name space of the QES approval data element, per CSC Data Model Bindings clause 7.2.1.1. */
+private const val QES_APPROVAL_NAMESPACE = "org.cloudsignatureconsortium.dm.1"
+
+/** The data element identifier of the QES approval, per the same clause. */
+private const val QES_APPROVAL_ELEMENT = "qesApproval"
+
 /** The top-level claim of the Key Binding JWT that carries a QES approval. */
-private const val QES_APPROVAL_CLAIM = "org.cloudsignatureconsortium.dm.1.qesApproval"
+private const val QES_APPROVAL_CLAIM = "$QES_APPROVAL_NAMESPACE.$QES_APPROVAL_ELEMENT"
+
+/** The digest an mdoc QES approval always uses, per CSC Data Model Bindings clause 7.2.1.1. */
+private const val SHA_256 = "SHA-256"
 
 /** base64 with the standard alphabet and padding, which CSC Data Model clause 5.2 requires. */
 private val base64: Base64.Encoder = Base64.getEncoder()
