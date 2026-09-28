@@ -88,7 +88,7 @@ interface DocumentStatusResolver {
      * It allows to set the parameters for the resolver it builds a [DocumentStatusResolverImpl]
      *
      * @property verifyJwtSignature a function to verify the JWT status list token signature; default is [VerifyStatusListTokenJwtSignature.x5c]
-     * @property verifyCwtSignature a function to verify the CWT status list token signature; defaults to [VerifyStatusListTokenSignatureCwtX5c] with the builder's logger
+     * @property verifyCwtSignature a function to verify the CWT status list token signature; default is [VerifyStatusListTokenCwtSignature.x5c]
      * @property ktorHttpClientFactory a factory function to create an [HttpClient]; default is [HttpClient]
      * @property allowedClockSkew the allowed clock skew for the verification; default is [Duration.ZERO]
      * @property extractor an instance of [StatusReferenceExtractor] to extract the status reference from the document; default is [DefaultStatusReferenceExtractor]
@@ -98,7 +98,7 @@ interface DocumentStatusResolver {
     class Builder {
 
         var verifyJwtSignature: VerifyStatusListTokenJwtSignature = VerifyStatusListTokenJwtSignature.x5c
-        var verifyCwtSignature: VerifyStatusListTokenCwtSignature? = null
+        var verifyCwtSignature: VerifyStatusListTokenCwtSignature = VerifyStatusListTokenCwtSignature.x5c
         var ktorHttpClientFactory: () -> HttpClient = { HttpClient() }
         var allowedClockSkew: Duration = Duration.ZERO
         var extractor: StatusReferenceExtractor = DefaultStatusReferenceExtractor
@@ -174,7 +174,7 @@ interface DocumentStatusResolver {
         fun build(): DocumentStatusResolver {
             return DocumentStatusResolverImpl(
                 verifyJwtSignature = verifyJwtSignature,
-                verifyCwtSignature = verifyCwtSignature ?: VerifyStatusListTokenSignatureCwtX5c(logger),
+                verifyCwtSignature = verifyCwtSignature,
                 allowedClockSkew = allowedClockSkew,
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 extractor = extractor,
