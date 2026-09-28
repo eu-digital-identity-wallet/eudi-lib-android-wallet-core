@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import eu.europa.ec.eudi.sdjwt.vc.X509CertificateTrust
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -60,31 +61,25 @@ internal class SdJwtVcCredentialTrustVerifier(
 
             if (!trusted) return@X509CertificateTrust false
 
-            // Validate iss claim against leaf certificate SAN URIs
+            // Informational: check iss-to-SAN binding (not enforced — see ETSI TS 119 411-8)
             val iss = (claimSet["iss"] as? JsonPrimitive)?.contentOrNull
             if (iss == null) {
-                logger?.d(TAG, "SD-JWT has no 'iss' claim, rejecting")
-                result = CertificationChainValidation.NotTrusted(
-                    IllegalStateException("SD-JWT VC missing required 'iss' claim"),
-                )
-                return@X509CertificateTrust false
-            }
-
-            val leaf = chain.first()
-            val sanUris = leaf.sanUris()
-            if (sanUris.any { it == iss }) {
-                logger?.d(TAG, "iss='$iss' matches SAN URI in leaf certificate")
-                true
+                logger?.i(TAG, "SD-JWT has no 'iss' claim — SAN binding check skipped")
             } else {
-                logger?.d(TAG, "iss='$iss' does not match any SAN URI in leaf cert. SANs=$sanUris")
-                result = CertificationChainValidation.NotTrusted(
-                    IllegalStateException(
-                        "SD-JWT VC 'iss' claim '$iss' does not match any SAN URI " +
-                            "in the leaf certificate (SANs=$sanUris)",
-                    ),
-                )
-                false
+                val leaf = chain.first()
+                val sanUris = leaf.sanUris()
+                if (sanUris.isEmpty()) {
+                    logger?.i(TAG, "iss='$iss' — leaf certificate has no SAN URIs")
+                } else if (sanUris.none { it == iss }) {
+                    logger?.i(
+                        TAG,
+                        "iss='$iss' does not match any SAN URI in leaf cert. SANs=$sanUris",
+                    )
+                } else {
+                    logger?.d(TAG, "iss='$iss' matches SAN URI in leaf certificate")
+                }
             }
+            true
         }
 
         // Create verifier with UsingX5c method

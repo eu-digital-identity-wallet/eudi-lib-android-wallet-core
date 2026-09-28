@@ -19,7 +19,7 @@ import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
 import kotlinx.serialization.json.Json
-import org.multipaz.cbor.Cbor
+import eu.europa.ec.eudi.wallet.statium.decodeCoseSign1
 import org.multipaz.cose.Cose
 import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.Algorithm
@@ -41,7 +41,7 @@ internal suspend fun parseRegistrationCertificateCwt(
     serialized: ByteArray,
     logger: Logger? = null,
 ): RegistrationCertificateParseResult {
-    val coseSign1 = runCatching { Cbor.decode(serialized).asCoseSign1 }
+    val coseSign1 = runCatching { decodeCoseSign1(serialized) }
         .getOrElse {
             return RegistrationCertificateParseResult.Invalid(
                 RegistrationFailureReason.MALFORMED,

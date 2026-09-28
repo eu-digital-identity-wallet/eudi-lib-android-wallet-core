@@ -15,22 +15,35 @@
  */
 package eu.europa.ec.eudi.wallet.statium
 
+import eu.europa.ec.eudi.wallet.internal.d
+import eu.europa.ec.eudi.wallet.logging.Logger
 import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseSign1
 import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.X509CertChain
 
+private const val TAG = "CwtParsing"
+
 /**
- * Decodes a CWT byte array into a [CoseSign1], unwrapping CBOR tag 18 if present.
+ * Decodes a CWT byte array into a [CoseSign1], unwrapping any CBOR tags (tag 18 for
+ * COSE_Sign1, tag 61 for CWT per RFC 8392, or both nested).
  *
- * Conformant CWTs (per RFC 8392 / draft-ietf-oauth-status-list-10 §5.2) wrap the
- * COSE_Sign1 array in CBOR tag 18 (`d2`). The multipaz [CoseSign1.fromDataItem]
- * requires a bare [CborArray], so any enclosing tags must be stripped first.
+ * Uses the offset-based [Cbor.decode] overload to tolerate trailing bytes, which have
+ * been observed intermittently from reference endpoints. Trailing bytes are logged but
+ * do not cause a failure.
+ *
+ * The multipaz [CoseSign1.fromDataItem] requires a bare `CborArray`, so any enclosing
+ * tags must be stripped first.
  */
-internal fun decodeCoseSign1(cwtBytes: ByteArray): CoseSign1 {
-    var item = Cbor.decode(cwtBytes)
+internal fun decodeCoseSign1(cwtBytes: ByteArray, logger: Logger? = null): CoseSign1 {
+    val (consumed, decoded) = Cbor.decode(cwtBytes, 0)
+    if (consumed != cwtBytes.size) {
+        logger?.d(TAG, "Ignoring ${cwtBytes.size - consumed} trailing byte(s) after CWT")
+    }
+    var item: DataItem = decoded
     while (item is Tagged) item = item.taggedItem
     return item.asCoseSign1
 }
