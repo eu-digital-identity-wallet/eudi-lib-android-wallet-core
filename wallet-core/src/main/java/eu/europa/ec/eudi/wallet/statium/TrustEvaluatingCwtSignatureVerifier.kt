@@ -98,16 +98,17 @@ internal class TrustEvaluatingCwtSignatureVerifier(
         }
     }
 
+    private fun extractX5cFromCwt(statusListToken: ByteArray): List<X509Certificate> {
+        val coseSign1 = decodeCoseSign1(statusListToken, logger)
+        val x5chain = coseSign1.extractX5chain()
+
+        val javaCerts = x5chain.javaX509Certificates
+        require(javaCerts.isNotEmpty()) { "x5chain must contain at least one certificate" }
+
+        return javaCerts
+    }
+
     companion object {
         private const val TAG = "StatusListTrust"
-        private fun extractX5cFromCwt(statusListToken: ByteArray): List<X509Certificate> {
-            val coseSign1 = decodeCoseSign1(statusListToken)
-            val x5chain = coseSign1.extractX5chain()
-
-            val javaCerts = x5chain.javaX509Certificates
-            require(javaCerts.isNotEmpty()) { "x5chain must contain at least one certificate" }
-
-            return javaCerts
-        }
     }
 }

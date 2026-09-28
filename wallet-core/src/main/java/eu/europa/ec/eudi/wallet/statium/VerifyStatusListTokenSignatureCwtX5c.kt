@@ -16,6 +16,9 @@
 package eu.europa.ec.eudi.wallet.statium
 
 import eu.europa.ec.eudi.statium.VerifyStatusListTokenCwtSignature
+import eu.europa.ec.eudi.wallet.internal.d
+import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.logging.Logger
 import org.multipaz.cose.Cose
 import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.Algorithm
@@ -28,14 +31,16 @@ import kotlin.time.Instant
  * from protected or unprotected headers, and verifies the signature using the leaf
  * certificate's public key.
  */
-class VerifyStatusListTokenSignatureCwtX5c : VerifyStatusListTokenCwtSignature {
+class VerifyStatusListTokenSignatureCwtX5c(
+    private val logger: Logger? = null,
+) : VerifyStatusListTokenCwtSignature {
 
     override suspend fun invoke(
         statusListToken: ByteArray,
         at: Instant,
     ): Result<Unit> = runCatching {
         // Decode COSE_Sign1 from CWT bytes (unwrapping CBOR tag 18 if present)
-        val coseSign1 = decodeCoseSign1(statusListToken)
+        val coseSign1 = decodeCoseSign1(statusListToken, logger)
 
         // Extract x5chain from protected or unprotected headers (COSE label 33)
         val x5chain = coseSign1.extractX5chain()
@@ -50,6 +55,10 @@ class VerifyStatusListTokenSignatureCwtX5c : VerifyStatusListTokenCwtSignature {
             ?: throw IllegalStateException("Missing algorithm in COSE protected headers")
         val algorithm = Algorithm.fromCoseAlgorithmIdentifier(algIdentifier)
 
+        logger?.d(TAG, "leaf=${leafCert.ecPublicKey.curve}, alg=$algorithm (cose=$algIdentifier), " +
+            "protectedHeaders=${coseSign1.protectedHeaders.keys}, " +
+            "payloadSize=${coseSign1.payload?.size}, signatureSize=${coseSign1.signature.size}")
+
         // Verify COSE signature using the leaf certificate's public key
         Cose.coseSign1Check(
             publicKey = leafCert.ecPublicKey,
@@ -57,6 +66,14 @@ class VerifyStatusListTokenSignatureCwtX5c : VerifyStatusListTokenCwtSignature {
             signature = coseSign1,
             signatureAlgorithm = algorithm,
         )
+    }.also { result ->
+        result.onFailure { e ->
+            logger?.e(TAG, "CWT signature verification failed: ${e::class.simpleName}: ${e.message}", e)
+        }
+    }
+
+    companion object {
+        private const val TAG = "CwtSigVerify"
     }
 }
 
