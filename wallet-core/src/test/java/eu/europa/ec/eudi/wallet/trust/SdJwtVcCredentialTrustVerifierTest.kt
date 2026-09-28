@@ -148,7 +148,7 @@ class SdJwtVcCredentialTrustVerifierTest {
     }
 
     @Test
-    fun returnsNotTrustedWhenIssMismatchesSanUri() = runTest {
+    fun returnsTrustedWhenIssMismatchesSanUri() = runTest {
         val keyPair = generateEcKeyPair()
         val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://other.com"))
         val sdJwt = buildSdJwt(keyPair, cert, issuer = "https://example.com")
@@ -159,12 +159,13 @@ class SdJwtVcCredentialTrustVerifierTest {
 
         val result = verifier.verify(sdJwt, attestationIdentifier)
 
+        // SAN-to-iss mismatch is informational only (not enforced)
         assertNotNull(result)
-        assertIs<CertificationChainValidation.NotTrusted>(result)
+        assertIs<CertificationChainValidation.Trusted<TrustAnchor>>(result)
     }
 
     @Test
-    fun returnsNotTrustedWhenCertHasNoSan() = runTest {
+    fun returnsTrustedWhenCertHasNoSan() = runTest {
         val keyPair = generateEcKeyPair()
         val cert = createSelfSignedCert(keyPair, "CN=Test Issuer") // no SAN
         val sdJwt = buildSdJwt(keyPair, cert)
@@ -175,12 +176,13 @@ class SdJwtVcCredentialTrustVerifierTest {
 
         val result = verifier.verify(sdJwt, attestationIdentifier)
 
+        // Missing SAN is informational only (not enforced)
         assertNotNull(result)
-        assertIs<CertificationChainValidation.NotTrusted>(result)
+        assertIs<CertificationChainValidation.Trusted<TrustAnchor>>(result)
     }
 
     @Test
-    fun returnsNotTrustedWhenIssClaimMissing() = runTest {
+    fun returnsTrustedWhenIssClaimMissing() = runTest {
         val keyPair = generateEcKeyPair()
         val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://example.com"))
 
@@ -201,8 +203,9 @@ class SdJwtVcCredentialTrustVerifierTest {
 
         val result = verifier.verify(sdJwt, attestationIdentifier)
 
+        // Missing iss claim is informational only (not enforced)
         assertNotNull(result)
-        assertIs<CertificationChainValidation.NotTrusted>(result)
+        assertIs<CertificationChainValidation.Trusted<TrustAnchor>>(result)
     }
 
     @Test

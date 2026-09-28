@@ -15,10 +15,12 @@
  */
 package eu.europa.ec.eudi.wallet.statium
 
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.toDataItem
@@ -26,17 +28,21 @@ import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseSign1
 import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.robolectric.RobolectricTestRunner
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 @RunWith(RobolectricTestRunner::class)
 class CwtParsingExtensionsTest {
 
     @Test
-    fun decodeCoseSign1UnwrapsTag18() {
+    fun decodeCoseSign1UnwrapsTag18() = runTest {
         val coseSign1 = buildMinimalCoseSign1()
         val encoded = Cbor.encode(coseSign1.toDataItem())
         // Wrap in CBOR tag 18 (COSE_Sign1)
@@ -49,7 +55,7 @@ class CwtParsingExtensionsTest {
     }
 
     @Test
-    fun decodeCoseSign1AcceptsUntagged() {
+    fun decodeCoseSign1AcceptsUntagged() = runTest {
         val coseSign1 = buildMinimalCoseSign1()
         val encoded = Cbor.encode(coseSign1.toDataItem())
 
@@ -59,7 +65,7 @@ class CwtParsingExtensionsTest {
     }
 
     @Test
-    fun extractX5chainFromProtectedHeaders() {
+    fun extractX5chainFromProtectedHeaders() = runTest {
         val x5chain = buildSelfSignedX5chain()
         val coseSign1 = CoseSign1(
             protectedHeaders = mapOf(
@@ -77,7 +83,7 @@ class CwtParsingExtensionsTest {
     }
 
     @Test
-    fun extractX5chainFromUnprotectedHeaders() {
+    fun extractX5chainFromUnprotectedHeaders() = runTest {
         val x5chain = buildSelfSignedX5chain()
         val coseSign1 = CoseSign1(
             protectedHeaders = mapOf(
@@ -96,7 +102,7 @@ class CwtParsingExtensionsTest {
     }
 
     @Test
-    fun extractX5chainPrefersProtected() {
+    fun extractX5chainPrefersProtected() = runTest {
         val protectedChain = buildSelfSignedX5chain()
         val unprotectedChain = buildSelfSignedX5chain()
         val coseSign1 = CoseSign1(
@@ -115,8 +121,8 @@ class CwtParsingExtensionsTest {
         val result = coseSign1.extractX5chain()
         // Should return the protected chain's cert
         assertEquals(
-            protectedChain.certificates.first().encodedCertificate,
-            result.certificates.first().encodedCertificate,
+            protectedChain.certificates.first().encoded,
+            result.certificates.first().encoded,
         )
     }
 
@@ -147,18 +153,16 @@ class CwtParsingExtensionsTest {
         payload = ByteArray(10),
     )
 
-    private fun buildSelfSignedX5chain(): X509CertChain {
+    private suspend fun buildSelfSignedX5chain(): X509CertChain {
         val key = Crypto.createEcPrivateKey(EcCurve.P256)
         val cert = X509Cert.Builder(
             publicKey = key.publicKey,
-            signingKey = key,
-            signatureAlgorithm = Algorithm.ES256,
-            serialNumber = "1",
-            subject = "CN=Test",
-            issuer = "CN=Test",
-            validFrom = kotlinx.datetime.Clock.System.now(),
-            validUntil = kotlinx.datetime.Clock.System.now()
-                .plus(kotlinx.datetime.DateTimePeriod(days = 30), kotlinx.datetime.TimeZone.UTC),
+            signingKey = AsymmetricKey.anonymous(key),
+            serialNumber = ASN1Integer(1),
+            subject = X500Name.fromName("CN=Test"),
+            issuer = X500Name.fromName("CN=Test"),
+            validFrom = Clock.System.now(),
+            validUntil = Clock.System.now() + 30.days,
         ).build()
         return X509CertChain(listOf(cert))
     }
