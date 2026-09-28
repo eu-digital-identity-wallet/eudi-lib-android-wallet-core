@@ -52,7 +52,7 @@ class DocumentStatusResolverBuilderTest {
 
         // Assert default values
         assertEquals(VerifyStatusListTokenJwtSignature.x5c::class, builder.verifyJwtSignature::class)
-        assertEquals(VerifyStatusListTokenCwtSignature.x5c::class, builder.verifyCwtSignature::class)
+        assertEquals(VerifyStatusListTokenCwtSignature.x5c::class, builder.verifyCwtSignature!!::class)
         assertEquals(Duration.ZERO, builder.allowedClockSkew)
         assertEquals(DefaultStatusReferenceExtractor, builder.extractor)
     }
