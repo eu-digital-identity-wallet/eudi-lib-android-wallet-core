@@ -28,7 +28,9 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Before
+import java.net.URI
 import java.net.URL
+import kotlin.reflect.KClass
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OpenId4VpManagerRejectionTest {
@@ -53,7 +55,18 @@ class OpenId4VpManagerRejectionTest {
     }
 
     @Test
-    fun `when user rejects transaction, NegativeConsensus is dispatched and ResponseSent event is emitted`()  {
+    fun `when user rejects transaction, NegativeConsensus is dispatched and ResponseSent event is emitted`() =
+        assertRejectionEmits(DispatchOutcome.VerifierResponse.Accepted(null), TransferEvent.ResponseSent::class)
+
+    @Test
+    fun `when verifier rejects the rejection response, Rejected event is emitted`() =
+        assertRejectionEmits(DispatchOutcome.VerifierResponse.Rejected(null), TransferEvent.Rejected::class)
+
+    @Test
+    fun `when rejection is dispatched as a redirect URI, ResponseSent event is emitted`() =
+        assertRejectionEmits(DispatchOutcome.RedirectURI(URI("https://verifier.example/cb")), TransferEvent.ResponseSent::class)
+
+    private fun assertRejectionEmits(outcome: DispatchOutcome, expectedEvent: KClass<out TransferEvent>) {
         mockkStatic(Uri::class)
         val mockUri = mockk<Uri>()
         every { Uri.parse("openid4vp://example-request-uri") } returns mockUri
@@ -83,7 +96,7 @@ class OpenId4VpManagerRejectionTest {
                     consensus = match { it is Consensus.NegativeConsensus },
                     encryptionParameters = null
                 )
-            } returns DispatchOutcome.VerifierResponse.Accepted(null)
+            } returns outcome
 
             // Stub Config
             every { config.schemes } returns listOf("openid4vp")
@@ -115,7 +128,7 @@ class OpenId4VpManagerRejectionTest {
             manager.reject()
 
             verify(timeout = 2000) {
-                listener.onTransferEvent(ofType(TransferEvent.ResponseSent::class))
+                listener.onTransferEvent(ofType(expectedEvent))
             }
 
             // Double check the library interaction
