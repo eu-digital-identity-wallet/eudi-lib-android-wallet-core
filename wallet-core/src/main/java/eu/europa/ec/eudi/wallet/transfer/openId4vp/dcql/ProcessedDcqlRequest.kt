@@ -170,7 +170,8 @@ class ProcessedDcqlRequest(
                         match = match,
                         documentManager = documentManager,
                         sessionTranscript = sessionTranscriptProvider(resolvedRequestObject),
-                        keyUnlockData = keyUnlockData[match.credential.identifier]
+                        keyUnlockData = keyUnlockData[match.credential.identifier],
+                        transactionData = match.transactionData
                     )
 
                     FORMAT_SD_JWT_VC -> verifiablePresentationForSdJwtVc(

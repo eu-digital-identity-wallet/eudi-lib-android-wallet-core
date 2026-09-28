@@ -54,6 +54,7 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.TransactionDataDeviceSigned
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.TransactionDataKeyBinding
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.decodeToString
@@ -67,6 +68,9 @@ import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.presentment.PresentmentUnlockReason
 import org.multipaz.presentment.TransactionData as ParsedTransactionData
 import org.multipaz.request.JsonRequestedClaim
+import org.multipaz.cbor.DataItem
+import org.multipaz.mdoc.devicesigned.DeviceNamespaces
+import org.multipaz.mdoc.devicesigned.buildDeviceNamespaces
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
@@ -324,15 +328,28 @@ internal fun ResolvedRequestObject.getSessionTranscriptBytes(origin: String): Se
 /**
  * Converts the configured transaction data types to the types supported by the OpenID4VP library.
  *
- * Every type is advertised with `sha-256`, which OpenID4VP requires all implementations to support
- * and uses as the default when a request does not state a hash algorithm.
+ * Every type is advertised for SD-JWT VC with `sha-256`, which OpenID4VP requires all
+ * implementations to support and uses as the default when a request does not state a hash
+ * algorithm. The profile of Appendix B.3.3.1 binds any type, so every type can be presented.
+ *
+ * A type is advertised for mdoc only when it returns a data element of its own. Appendix B.2.1
+ * defines no profile that binds a type which does not, so accepting one would leave the
+ * presentation carrying nothing of the transaction it authorizes.
  */
 internal fun List<TransactionDataType>.toSupportedTransactionDataTypes(): List<SupportedTransactionDataType> =
-    map { type ->
-        SupportedTransactionDataType.SdJwtVc(
-            type = eu.europa.ec.eudi.openid4vp.TransactionDataType(type.value),
-            hashAlgorithms = type.hashAlgorithms
-        )
+    flatMap { type ->
+        val declared = eu.europa.ec.eudi.openid4vp.TransactionDataType(type.value)
+        buildList {
+            add(
+                SupportedTransactionDataType.SdJwtVc(
+                    type = declared,
+                    hashAlgorithms = type.hashAlgorithms
+                )
+            )
+            if (type.parser is TransactionDataDeviceSigned) {
+                add(SupportedTransactionDataType.MsoMdoc(type = declared))
+            }
+        }
     }
 
 /**
@@ -403,6 +420,34 @@ internal fun List<ParsedTransactionData<*>>.transactionDataKeyBindingClaims(): M
         }
     }
     return claims
+}
+
+/**
+ * Calculates the `DeviceSigned` data elements that bind a presentation to the transaction data it
+ * authorizes, as defined by OpenID4VP Appendix B.2.1.
+ *
+ * Each type that returns a data element of its own contributes it, in the name space it declares.
+ * A type that does not is not bound: unlike the SD-JWT VC profile of Appendix B.3.3.1, mdoc has no
+ * profile that binds a type which defines no element of its own.
+ *
+ * @throws IllegalArgumentException when two types return the same data element of the same name
+ * space, or when a type cannot bind its transaction data
+ */
+internal fun List<ParsedTransactionData<*>>.deviceSignedNamespaces(): DeviceNamespaces {
+    if (isEmpty()) return buildDeviceNamespaces {}
+
+    val elements = mutableMapOf<String, MutableMap<String, DataItem>>()
+    groupBy { it.type }.forEach { (type, ofType) ->
+        if (type !is TransactionDataDeviceSigned) return@forEach
+        val nameSpace = elements.getOrPut(type.nameSpace) { mutableMapOf() }
+        type.deviceSignedElements(ofType).forEach { (element, value) ->
+            require(nameSpace.put(element, value) == null) {
+                "The transaction data of a single presentation return the data element " +
+                    "'$element' of name space '${type.nameSpace}' more than once"
+            }
+        }
+    }
+    return DeviceNamespaces(elements)
 }
 
 /**
@@ -559,7 +604,8 @@ internal suspend fun verifiablePresentationForMsoMdoc(
     match: CredentialPresentmentSetOptionMemberMatch,
     documentManager: DocumentManager,
     sessionTranscript: ByteArray,
-    keyUnlockData: KeyUnlockData?
+    keyUnlockData: KeyUnlockData?,
+    transactionData: List<ParsedTransactionData<*>> = emptyList()
 ): VerifiablePresentation.Generic {
     val document = match.credential.requireIssuedDocument(documentManager)
 
@@ -572,7 +618,8 @@ internal suspend fun verifiablePresentationForMsoMdoc(
         document = document,
         transcript = sessionTranscript,
         elements = elements,
-        keyUnlockData = keyUnlockData
+        keyUnlockData = keyUnlockData,
+        deviceNamespaces = transactionData.deviceSignedNamespaces()
     )
     val deviceResponseBytes = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
         .addDocument(encodedDocument)

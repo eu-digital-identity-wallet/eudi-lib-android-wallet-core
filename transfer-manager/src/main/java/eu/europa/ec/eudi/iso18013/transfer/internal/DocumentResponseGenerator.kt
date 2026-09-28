@@ -19,15 +19,13 @@ package eu.europa.ec.eudi.iso18013.transfer.internal
 import eu.europa.ec.eudi.wallet.document.ElementIdentifier
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.NameSpace
-import eu.europa.ec.eudi.wallet.document.credential.CredentialIssuedData
-import eu.europa.ec.eudi.wallet.document.credential.getIssuedData
 import kotlinx.coroutines.withContext
-import org.multipaz.document.DocumentRequest
-import org.multipaz.document.NameSpacedData
+import org.multipaz.cbor.Cbor
 import org.multipaz.mdoc.credential.MdocCredential
-import org.multipaz.mdoc.response.DocumentGenerator
-import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.prompt.Reason
+import org.multipaz.mdoc.devicesigned.DeviceNamespaces
+import org.multipaz.mdoc.devicesigned.buildDeviceNamespaces
+import org.multipaz.mdoc.response.MdocDocument
+import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.securearea.KeyUnlockData
 
 /**
@@ -47,6 +45,8 @@ object DocumentResponseGenerator {
      * @param document the document to generate the response for
      * @param transcript the transcript to use for the response
      * @param elements the elements to include in the response
+     * @param deviceNamespaces the data elements to return in the `DeviceSigned`
+     * structure, which mdoc authentication covers
      * @param keyUnlockData the key unlock data for unlocking the document key if needed
      * @throws IllegalArgumentException if the document format is not MsoMdocFormat, the document key is invalidated,
      * @throws org.multipaz.securearea.KeyLockedException if the document key is locked and cannot be unlocked
@@ -55,14 +55,16 @@ object DocumentResponseGenerator {
         document: IssuedDocument,
         transcript: ByteArray,
         elements: Map<NameSpace, List<ElementIdentifier>>? = null,
-        keyUnlockData: KeyUnlockData? = null
+        keyUnlockData: KeyUnlockData? = null,
+        deviceNamespaces: DeviceNamespaces = buildDeviceNamespaces {}
     ): ByteArray = withContext(keyUnlockData.asProvider()) {
         document.consumingCredential {
             require(this is MdocCredential) { "Document must be in MsoMdocFormat" }
             generateDocumentBytes(
                 credential = this,
                 transcript = transcript,
-                elements = elements
+                elements = elements,
+                deviceNamespaces = deviceNamespaces
             )
         }.getOrThrow()
     }
@@ -77,6 +79,8 @@ object DocumentResponseGenerator {
      * @param document the document to generate the response for
      * @param transcript the transcript to use for the response
      * @param elements the elements to include in the response
+     * @param deviceNamespaces the data elements to return in the `DeviceSigned`
+     * structure, which mdoc authentication covers
      * @param keyUnlockData the key unlock data for unlocking the document key if needed
      * @throws IllegalArgumentException if the document format is not MsoMdocFormat
      * @throws IllegalStateException if no credential is found
@@ -86,7 +90,8 @@ object DocumentResponseGenerator {
         document: IssuedDocument,
         transcript: ByteArray,
         elements: Map<NameSpace, List<ElementIdentifier>>? = null,
-        keyUnlockData: KeyUnlockData? = null
+        keyUnlockData: KeyUnlockData? = null,
+        deviceNamespaces: DeviceNamespaces = buildDeviceNamespaces {}
     ): ByteArray = withContext(keyUnlockData.asProvider()) {
         val credential = checkNotNull(document.findCredential()) {
             "No credential found in the issued document"
@@ -95,7 +100,8 @@ object DocumentResponseGenerator {
         generateDocumentBytes(
             credential = credential,
             transcript = transcript,
-            elements = elements
+            elements = elements,
+            deviceNamespaces = deviceNamespaces
         )
     }
 
@@ -106,35 +112,29 @@ object DocumentResponseGenerator {
     private suspend fun generateDocumentBytes(
         credential: MdocCredential,
         transcript: ByteArray,
-        elements: Map<NameSpace, List<ElementIdentifier>>?
+        elements: Map<NameSpace, List<ElementIdentifier>>?,
+        deviceNamespaces: DeviceNamespaces
     ): ByteArray {
-        val credentialIssuedData =
-            credential.getIssuedData<CredentialIssuedData.MsoMdoc>()
-        val (nameSpacedData, staticAuthData) = credentialIssuedData.getOrThrow()
-        val dataElements = (elements ?: nameSpacedData.nameSpaceNames.associateWith {
-            nameSpacedData.getDataElementNames(it)
-        }).flatMap { (nameSpace, elementIdentifiers) ->
+        val disclosed = elements ?: credential.issuerNamespaces.data
+            .mapValues { (_, items) -> items.keys.toList() }
+        val requestedClaims = disclosed.flatMap { (nameSpace, elementIdentifiers) ->
             elementIdentifiers.map { elementIdentifier ->
-                DocumentRequest.DataElement(nameSpace, elementIdentifier, false)
+                MdocRequestedClaim(
+                    docType = credential.docType,
+                    namespaceName = nameSpace,
+                    dataElementName = elementIdentifier,
+                    intentToRetain = false
+                )
             }
         }
-        val request = DocumentRequest(dataElements)
-
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            request = request,
-            documentData = nameSpacedData,
-            staticAuthData = staticAuthData
+        return Cbor.encode(
+            MdocDocument.fromPresentment(
+                sessionTranscript = Cbor.decode(transcript),
+                credential = credential,
+                requestedClaims = requestedClaims,
+                deviceNamespaces = deviceNamespaces
+            ).toDataItem()
         )
-
-        return DocumentGenerator(credential.docType, staticAuthData.issuerAuth, transcript)
-            .setIssuerNamespaces(mergedIssuerNamespaces)
-            .setDeviceNamespacesSignature(
-                dataElements = NameSpacedData.Builder().build(),
-                secureArea = credential.secureArea,
-                keyAlias = credential.alias,
-                unlockReason = Reason.Unspecified
-            )
-            .generate()
     }
 
     /**

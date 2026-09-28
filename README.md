@@ -115,7 +115,7 @@ The library supports the following features:
 | **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                                                               |
 |                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                                                               |
 |                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |
-|                            | Transaction data                                                        | ✅ SD-JWT VC <br />❌ ISO/IEC 18013-5 mdoc                                                                                                               |
+|                            | Transaction data                                                        | ✅ SD-JWT VC <br />✅ ISO/IEC 18013-5 mdoc                                                                                                               |
 | **Trust Mark**             | EUDI Wallet Trust Mark (EC TS01 v1.2)                                   | ✅ Static (pre-distribution) <br /> ✅ Dynamic (on-demand via provider)                                                  |
 |                            | Trust Mark resource fetching                                            | ✅                                                                                                                      |
 
@@ -2589,7 +2589,10 @@ records it in the transaction log. Creating the signature itself — the exchang
 service provider and the return of the signed document — is the responsibility of the RQES
 libraries (`eudi-lib-android-rqes-core`, `eudi-lib-android-rqes-ui`).
 
-> **SD-JWT VC only.** Transaction data is currently supported for `dc+sd-jwt` credentials.
+> **Note:** For ISO/IEC 18013-5 mdoc, the issuer must have declared the data elements of the types
+> it supports in the `KeyAuthorizations` of the mdoc. Otherwise, the request fails: OpenID4VP
+> requires the wallet to reject a request whose data element is not authorized, and the verifier
+> receives `invalid_transaction_data`.
 
 #### Declaring the types you support
 
@@ -2683,6 +2686,24 @@ object PaymentTransactionType : TransactionType<Payment>(/* ... */), Transaction
 A claim the Key Binding JWT sets itself — `sd_hash`, `nonce`, `aud`, `iat`, `exp` — is refused, as
 are `transaction_data_hashes` and `transaction_data_hashes_alg`, and a name another declared type
 already uses.
+
+A type that defines a data element of its own — a namespace, a data element identifier and a value,
+as OpenID4VP B.2.1 recommends — also implements `TransactionDataDeviceSigned`. Its data elements are
+added to the `DeviceSigned` structure of an ISO/IEC 18013-5 mdoc presentation, and are therefore
+protected by mdoc authentication:
+
+```kotlin
+object PaymentTransactionType : TransactionType<Payment>(/* ... */), TransactionDataDeviceSigned {
+    override val nameSpace: String = "com.example.payment.1"
+
+    override fun deviceSignedElements(
+        transactionData: List<TransactionData<*>>
+    ): Map<String, DataItem> = mapOf("paymentApproval" to Bstr(/* ... */))
+}
+```
+
+Implementing this interface is required for `mso_mdoc`: a type that defines no data element cannot
+be bound to an mdoc presentation, and the wallet does not declare it for that format.
 
 #### Reading it from a request
 
