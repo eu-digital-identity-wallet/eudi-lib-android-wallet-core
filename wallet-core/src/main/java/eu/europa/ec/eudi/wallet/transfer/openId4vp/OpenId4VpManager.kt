@@ -310,25 +310,33 @@ class OpenId4VpManager(
                 logger?.d(TAG, "User rejected the request. Dispatching error.")
 
                 // Dispatch openid4vp NegativeConsensus case
-                val outcome = openId4Vp.dispatch(
+                when (val outcome = openId4Vp.dispatch(
                     request = request,
                     consensus = Consensus.NegativeConsensus,
                     encryptionParameters = encParams
-                )
+                )) {
+                    is DispatchOutcome.VerifierResponse.Accepted -> {
+                        logger?.d(TAG, "Rejection accepted by verifier.")
 
-                if (outcome is DispatchOutcome.VerifierResponse.Accepted) {
-                    logger?.d(TAG, "Rejection accepted by verifier.")
+                        val redirectUri = outcome.redirectURI
+                        if (redirectUri != null) {
+                            // Verifier wants us to redirect
+                            transferEventListeners.onTransferEvent(TransferEvent.Redirect(redirectUri))
+                        } else {
+                            // Verifier just said OK
+                            transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
+                        }
+                    }
 
-                    val redirectUri = outcome.redirectURI
-                    if (redirectUri != null) {
-                        // Verifier wants us to redirect
-                        transferEventListeners.onTransferEvent(TransferEvent.Redirect(redirectUri))
-                    } else {
-                        // Verifier just said OK
+                    is DispatchOutcome.VerifierResponse.Rejected -> {
+                        logger?.e(TAG, "Verifier rejected the rejection response")
+                        transferEventListeners.onTransferEvent(TransferEvent.Rejected(outcome.redirectURI))
+                    }
+
+                    is DispatchOutcome.RedirectURI -> {
+                        logger?.d(TAG, "Verifier respond with RedirectURI: ${outcome.value}")
                         transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
                     }
-                } else {
-                    logger?.d(TAG, "Outcome is $outcome")
                 }
 
                 activeRequestObject = null
