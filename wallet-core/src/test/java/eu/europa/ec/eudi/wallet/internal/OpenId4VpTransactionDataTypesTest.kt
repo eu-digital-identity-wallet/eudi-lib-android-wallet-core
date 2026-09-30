@@ -19,15 +19,14 @@ package eu.europa.ec.eudi.wallet.internal
 import eu.europa.ec.eudi.openid4vp.HashAlgorithm
 import eu.europa.ec.eudi.openid4vp.ResolutionError
 import eu.europa.ec.eudi.openid4vp.SupportedTransactionDataType
+import eu.europa.ec.eudi.openid4vp.X509CertificateTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.RawTransactionType
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.TransactionDataKeyBinding
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
-import io.mockk.mockk
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -100,7 +99,7 @@ class OpenId4VpTransactionDataTypesTest {
     fun `makeOpenId4VPConfig forwards the configured types`() {
         val config = makeOpenId4VPConfig(
             config = builder().withTransactionDataTypes(TransactionDataType.QES_APPROVAL).build(),
-            trust = mockk<OpenId4VpReaderTrust>()
+            trust = X509CertificateTrust { false }
         )
 
         assertEquals(
@@ -113,7 +112,7 @@ class OpenId4VpTransactionDataTypesTest {
     fun `makeOpenId4VPConfig supports no type when none is configured`() {
         val config = makeOpenId4VPConfig(
             config = builder().build(),
-            trust = mockk<OpenId4VpReaderTrust>()
+            trust = X509CertificateTrust { false }
         )
 
         assertTrue(config.supportedTransactionDataTypes.isEmpty())
