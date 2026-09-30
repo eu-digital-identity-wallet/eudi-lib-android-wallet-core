@@ -22,7 +22,7 @@ import androidx.annotation.RawRes
 import androidx.core.content.ContextCompat
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderAuth
 import org.multipaz.credential.Credential
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.fromJavaX509Certificates
@@ -66,7 +66,7 @@ internal fun Credential.requireIssuedDocument(
     ?: error("IssuedDocument not found for credential ${document.identifier}")
 
 /**
- * Adapts a [ReaderTrustResult.Processed] into a [Requester] + [TrustMetadata] pair
+ * Adapts a [OpenId4VpReaderAuth.X509] into a [Requester] + [TrustMetadata] pair
  * consumed by the presentment layer.
  *
  *  - [Requester] always carries the verified cert chain (and any provided [appId] /
@@ -85,7 +85,7 @@ internal fun Credential.requireIssuedDocument(
  * [OpenID4VPRequesterIdentity] so downstream consumers — notably transaction
  * logging — can identify the verifier beyond its certificate chain.
  */
-internal fun ReaderTrustResult.Processed.toRequesterAndTrust(
+internal fun OpenId4VpReaderAuth.X509.toRequesterAndTrust(
     clientId: String,
     legalName: String? = null,
     appId: String? = null,

@@ -45,6 +45,7 @@ import eu.europa.ec.eudi.openid4vp.SupportedTransactionDataType
 import eu.europa.ec.eudi.openid4vp.TransactionData
 import eu.europa.ec.eudi.openid4vp.VerifiablePresentation
 import eu.europa.ec.eudi.openid4vp.VpFormatsSupported
+import eu.europa.ec.eudi.openid4vp.X509CertificateTrust
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
@@ -52,7 +53,6 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionAlgorithm
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.EncryptionMethod
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.TransactionDataDeviceSigned
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.TransactionDataKeyBinding
@@ -241,7 +241,7 @@ internal fun generateJarmNonce(): String {
 
 internal fun makeOpenId4VPConfig(
     config: OpenId4VpConfig,
-    trust: OpenId4VpReaderTrust,
+    trust: X509CertificateTrust,
     registrationCertificatePolicy: RegistrationCertificatePolicy? = null,
 ): OpenId4VPConfig {
     val supportedClientIdPrefixes = config.clientIdSchemes.map { clientIdScheme ->

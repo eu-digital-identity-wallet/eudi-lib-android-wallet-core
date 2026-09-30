@@ -45,12 +45,10 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import eu.europa.ec.eudi.wallet.registration.relyingparty.extractRegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrpRegistrationValidator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.toRequestedAttestations
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderAuth
 import java.security.cert.X509Certificate
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
@@ -85,7 +83,8 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
  *    by [ProcessedDcqlRequest] for the presentation step.
  *
  * @property documentManager Provides access to documents stored in the wallet.
- * @property openid4VpX509CertificateTrust Verifies trust in the reader's certificate.
+ * @property readerTrustStore The reader trust store with which the OpenID4VP channels validate the
+ *   certificate chain of the verifier of each request. When null, no certificate chain is trusted.
  * @property transactionDataTypes The transaction data types the wallet accepts, each with the
  *   parser that reads its transaction data. This must carry
  *   [eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig.transactionDataTypes]; left empty,
@@ -94,7 +93,7 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
  */
 class DcqlRequestProcessor(
     private val documentManager: DocumentManager,
-    var openid4VpX509CertificateTrust: OpenId4VpReaderTrust,
+    internal val readerTrustStore: ReaderTrustStore?,
     private val readerAuthPolicy: ReaderAuthPolicy,
     private var logger: Logger? = null,
     private val transactionDataTypes: List<TransactionDataType> = emptyList()
@@ -143,23 +142,23 @@ class DcqlRequestProcessor(
                 return invalidTransactionData(e)
             }
 
-            // Resolve trust verdict and build the Requester / TrustMetadata for the Success
-            // payload. The legalName goes into TrustMetadata.displayName when the cert chain
-            // validated against the configured ReaderTrustStore.
+            // Build the Requester / TrustMetadata for the Success payload from the authentication
+            // of the request's verifier. The legalName goes into TrustMetadata.displayName when the
+            // cert chain validated against the configured ReaderTrustStore.
             val legalName = request.resolvedRequestObject.client.legalName()
             val clientId = request.resolvedRequestObject.client.id.clientId
-            val trustResult = openid4VpX509CertificateTrust.result
-            val (requester, trustMetadata) = when (trustResult) {
-                is ReaderTrustResult.Processed -> trustResult.toRequesterAndTrust(
+            val readerAuthentication = request.readerAuthentication
+            val (requester, trustMetadata) = when (readerAuthentication) {
+                is OpenId4VpReaderAuth.X509 -> readerAuthentication.toRequesterAndTrust(
                     clientId = clientId,
                     legalName = legalName
                 )
 
-                ReaderTrustResult.Pending -> Requester(requesterIdentities = emptyList()) to null
+                OpenId4VpReaderAuth.Absent -> Requester(requesterIdentities = emptyList()) to null
             }
 
             // Resolve the relying party's registration information for this request.
-            val accessChain = (trustResult as? ReaderTrustResult.Processed)?.chain.orEmpty()
+            val accessChain = (readerAuthentication as? OpenId4VpReaderAuth.X509)?.chain.orEmpty()
             val wrpRegistration = resolveWrpRegistration(
                 resolvedRequestObject = request.resolvedRequestObject,
                 dcql = dcql,
@@ -559,24 +558,5 @@ class DcqlRequestProcessor(
 
     companion object {
         private const val TAG = "DcqlRequestProcessor"
-
-        operator fun invoke(
-            documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore?,
-            readerAuthPolicy: ReaderAuthPolicy,
-            logger: Logger? = null,
-            transactionDataTypes: List<TransactionDataType> = emptyList()
-        ): DcqlRequestProcessor {
-            val openId4VpReaderTrust = OpenId4VpReaderTrustImpl(
-                readerTrustStore = readerTrustStore
-            )
-            return DcqlRequestProcessor(
-                documentManager = documentManager,
-                openid4VpX509CertificateTrust = openId4VpReaderTrust,
-                readerAuthPolicy = readerAuthPolicy,
-                logger = logger,
-                transactionDataTypes = transactionDataTypes
-            )
-        }
     }
 }

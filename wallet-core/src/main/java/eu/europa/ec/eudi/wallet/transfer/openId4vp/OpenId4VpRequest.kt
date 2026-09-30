@@ -22,20 +22,36 @@ import eu.europa.ec.eudi.openid4vp.EncryptionParameters
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 
-data class OpenId4VpRequest(
-    val resolvedRequestObject: ResolvedRequestObject
+/**
+ * An OpenID4VP request resolved by the OpenID4VP library, with the authentication of its verifier.
+ * Only the wallet creates instances; they are the requests that
+ * [eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor] processes.
+ *
+ * @property resolvedRequestObject the resolved request
+ * @property readerAuthentication how the verifier of the request is authenticated
+ */
+class OpenId4VpRequest internal constructor(
+    val resolvedRequestObject: ResolvedRequestObject,
+    internal val readerAuthentication: OpenId4VpReaderAuth,
 ) : Request {
     /**
      * Computes the encryption parameters required to send a response (Success or Error)
      * if the Verifier requested JARM encryption.
      */
     val responseEncryptionParameters: EncryptionParameters?
-        get() = resolvedRequestObject.responseEncryptionSpecification?.let { _ ->
-            // Generate a fresh random APU (Agreement PartyUInfo) for this specific response
-            val randomApu = generateJarmNonce()
-
-            EncryptionParameters.DiffieHellman(
-                apu = Base64URL.encode(randomApu)
-            )
-        }
+        get() = resolvedRequestObject.responseEncryptionParameters()
 }
+
+/**
+ * Computes the encryption parameters required to send a response (Success or Error) to this
+ * request if the Verifier requested JARM encryption.
+ */
+internal fun ResolvedRequestObject.responseEncryptionParameters(): EncryptionParameters? =
+    responseEncryptionSpecification?.let { _ ->
+        // Generate a fresh random APU (Agreement PartyUInfo) for this specific response
+        val randomApu = generateJarmNonce()
+
+        EncryptionParameters.DiffieHellman(
+            apu = Base64URL.encode(randomApu)
+        )
+    }
