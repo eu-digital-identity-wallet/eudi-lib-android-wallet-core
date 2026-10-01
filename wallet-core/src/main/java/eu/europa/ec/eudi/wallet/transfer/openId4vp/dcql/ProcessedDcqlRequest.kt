@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicyException
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.openid4vp.Consensus
@@ -149,7 +150,7 @@ class ProcessedDcqlRequest(
         }
         if (rejectByPolicy) {
             return ResponseResult.Failure(
-                SecurityException("Reader authentication policy rejected the request")
+                ReaderAuthPolicyException("Reader authentication policy rejected the request")
             )
         }
 
