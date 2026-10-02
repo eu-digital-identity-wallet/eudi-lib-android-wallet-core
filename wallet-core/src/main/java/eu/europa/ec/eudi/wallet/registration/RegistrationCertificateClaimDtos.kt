@@ -17,9 +17,13 @@ package eu.europa.ec.eudi.wallet.registration
 
 import android.annotation.SuppressLint
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
@@ -35,6 +39,27 @@ internal data class MultiLangDto(
     val value: String? = null,
 ) {
     val text: String get() = content ?: value ?: ""
+}
+
+/**
+ * Accepts both a flat and a nested (array of arrays) list of MultiLangString entries, and drops
+ * entries it cannot read instead of failing the whole certificate.
+ */
+internal object MultiLangListSerializer :
+    JsonTransformingSerializer<List<MultiLangDto>>(ListSerializer(MultiLangDto.serializer())) {
+
+    override fun transformDeserialize(element: JsonElement): JsonElement {
+        val entries = (element as? JsonArray) ?: return JsonArray(emptyList())
+        return JsonArray(entries.flatMap { it.asEntries() }.filter { it.isUsableEntry() })
+    }
+
+    private fun JsonElement.asEntries(): List<JsonElement> = when (this) {
+        is JsonArray -> this
+        else -> listOf(this)
+    }
+
+    private fun JsonElement.isUsableEntry(): Boolean =
+        this is JsonObject && (this["lang"] as? JsonPrimitive)?.isString == true
 }
 
 @SuppressLint("UnsafeOptInUsageError")
