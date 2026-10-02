@@ -318,6 +318,85 @@ class DocumentManagerImplTest {
     }
 
     @Test
+    fun `should return failure result when a data element is nested too deeply`() {
+        // The MSO generator logs through android.util.Log.
+        mockkStatic(Log::class)
+        every { Log.w(any(), any<String>()) } returns 0
+        val docType = "eu.europa.ec.eudi.pid.1"
+        val unsignedDocument = documentManager.createDocument(
+            format = MsoMdocFormat(docType = docType),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            )
+        ).getOrThrow()
+
+        // An element value of 20000 nested arrays, embedded with tag 24 after every 10 arrays.
+        var elementValue = CBORObject.FromObject(0)
+        repeat(2000) {
+            repeat(10) { elementValue = CBORObject.NewArray().Add(elementValue) }
+            elementValue = CBORObject.FromObjectAndTag(elementValue.EncodeToBytes(), 24)
+        }
+        val issuerSignedItem = CBORObject.NewMap()
+            .Add("digestID", 0)
+            .Add("random", ByteArray(16))
+            .Add("elementIdentifier", "family_name")
+            .Add("elementValue", elementValue)
+        val nameSpaces = CBORObject.NewMap().Add(
+            docType,
+            CBORObject.NewArray().Add(CBORObject.FromObjectAndTag(issuerSignedItem.EncodeToBytes(), 24))
+        )
+        val issuerProvidedCredentials = runBlocking {
+            unsignedDocument.getPoPSigners().map {
+                val keyInfo = it.getKeyInfo()
+                val mso = generateMso("sha-256", docType, keyInfo.publicKey, nameSpaces)
+                IssuerProvidedCredential(keyInfo.alias, generateData(nameSpaces, signMso(mso)))
+            }
+        }
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        val error = assertIs<IllegalArgumentException>(storeDocumentResult.exceptionOrNull())
+        assertIs<IllegalArgumentException>(error.cause)
+        assertFalse(documentManager.getDocumentById(unsignedDocument.id) is IssuedDocument)
+    }
+
+    @Test
+    fun `should return failure result when a claim of an SD-JWT VC is nested too deeply`() {
+        val vct = "urn:eudi:pid:1"
+        val unsignedDocument = documentManager.createDocument(
+            format = SdJwtVcFormat(vct = vct),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            )
+        ).getOrThrow()
+        val issuerProvidedCredentials = runBlocking {
+            unsignedDocument.getPoPSigners().map {
+                val keyInfo = it.getKeyInfo()
+                // A claim of 65 nested arrays. The cnf claim holds the key of the credential.
+                val payload = """{"vct":"$vct","cnf":{"jwk":${keyInfo.publicKey.toJwk()}},""" +
+                    """"nationalities":${"[".repeat(65)}"GR"${"]".repeat(65)}}"""
+                IssuerProvidedCredential(keyInfo.alias, sdJwt(payload).toByteArray())
+            }
+        }
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        val error = assertIs<IllegalArgumentException>(storeDocumentResult.exceptionOrNull())
+        assertIs<IllegalArgumentException>(error.cause)
+        assertFalse(documentManager.getDocumentById(unsignedDocument.id) is IssuedDocument)
+    }
+
+    /** An SD-JWT without disclosures, whose JWT carries [payload] and is not signed. */
+    private fun sdJwt(payload: String): String {
+        fun String.base64Url() = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(toByteArray())
+        return """{"alg":"ES256","typ":"dc+sd-jwt"}""".base64Url() + "." + payload.base64Url() + ".c2lnbmF0dXJl~"
+    }
+
+    @Test
     fun `should create document with null issuerMetaData if not provided`() {
         val createKeySettings = SoftwareCreateKeySettings.Builder().build()
         val createSettings = CreateDocumentSettings(
