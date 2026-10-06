@@ -979,6 +979,7 @@ class EudiWalletConfig {
      *             AttestationIdentifier.MDoc("eu.europa.ec.eudi.pid.1"),
      *         )),
      *     ))
+     *     loteSignerTrustAnchors(loteSignerCertificate)
      *     // Optional:
      *     relaxCertificateProfiles()
      * }
