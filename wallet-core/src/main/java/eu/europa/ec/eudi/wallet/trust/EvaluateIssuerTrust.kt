@@ -31,33 +31,59 @@ import java.security.cert.TrustAnchor
  * Shared logic for evaluating issuer trust during credential issuance.
  *
  * Used by both ProcessResponse and ProcessDeferredOutcome to verify the issuer's
- * certificate chain against the configured trust lists.
+ * certificate chain of each credential against the configured trust lists, before the
+ * credentials are stored.
  *
  * When the trust policy is [TrustPolicy.Action.ENFORCE], this function **fails closed**:
  * any condition that prevents trust evaluation (unknown format, missing verifier,
  * unclassified attestation type, missing certificate chain) is treated as a trust
  * failure and throws [IssuerNotTrustedException]. When the policy is
  * [TrustPolicy.Action.INFORM], those conditions return `null` (informational only).
+ * The issuer of every credential is evaluated, so under ENFORCE no credential is stored
+ * when the issuer of one is not trusted.
  *
  * @param issuerTrustConfig the trust configuration, or null if trust verification is not configured
  * @param document the document being issued
- * @param credential the credential received from the issuer
+ * @param credentials the credentials received from the issuer
  * @param logger optional logger for debug messages
- * @return the trust evaluation result, or null if trust verification is not configured
- *   or the policy is [TrustPolicy.Action.INFORM] and evaluation could not be performed
- * @throws IssuerNotTrustedException if the issuer is not trusted and the policy is [TrustPolicy.Action.ENFORCE]
+ * @return the first [CertificationChainValidation.NotTrusted] result; otherwise null if trust
+ *   verification is not configured or the trust of a credential was not evaluated; otherwise
+ *   the result of the first credential
+ * @throws IssuerNotTrustedException if the issuer of a credential is not trusted and the policy is
+ *   [TrustPolicy.Action.ENFORCE]
  */
 internal suspend fun evaluateIssuerTrust(
     issuerTrustConfig: IssuerTrustConfig?,
     document: Document,
-    credential: Credential,
+    credentials: List<Credential>,
     logger: Logger?,
 ): CertificationChainValidation<TrustAnchor>? {
+    require(credentials.isNotEmpty()) { "No credentials to evaluate" }
     if (issuerTrustConfig == null) {
         logger?.d(TAG, "issuerTrustConfig is null, trust verification not configured")
         return null
     }
 
+    val results = credentials.map { credential ->
+        evaluateCredentialIssuerTrust(issuerTrustConfig, document, credential, logger)
+    }
+    val notTrusted = results.firstOrNull { it is CertificationChainValidation.NotTrusted }
+    return when {
+        notTrusted != null -> notTrusted
+        results.any { it == null } -> null
+        else -> results.first()
+    }
+}
+
+/**
+ * Evaluates issuer trust for one credential, as described in [evaluateIssuerTrust].
+ */
+private suspend fun evaluateCredentialIssuerTrust(
+    issuerTrustConfig: IssuerTrustConfig,
+    document: Document,
+    credential: Credential,
+    logger: Logger?,
+): CertificationChainValidation<TrustAnchor>? {
     require(credential is Credential.Str) { "Credential must be a string" }
 
     // 1. Derive AttestationIdentifier from document format
