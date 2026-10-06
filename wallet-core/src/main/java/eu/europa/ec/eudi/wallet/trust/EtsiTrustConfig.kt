@@ -17,11 +17,10 @@ package eu.europa.ec.eudi.wallet.trust
 
 import eu.europa.ec.eudi.etsi119602.datamodel.Uri
 import eu.europa.ec.eudi.etsi119602.consultation.LoadLoTEAndPointers
-import eu.europa.ec.eudi.etsi119602.consultation.LotEMeta
 import eu.europa.ec.eudi.etsi119602.consultation.VerifyJwtSignature
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationClassifications
 import eu.europa.ec.eudi.etsi1196x2.consultation.SupportedLists
-import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import java.security.cert.X509Certificate
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -43,6 +42,7 @@ import kotlin.time.Duration.Companion.minutes
  * @property customJwtSignatureVerifier optional custom JWT signature verifier for LoTE JWTs;
  *   when null, the core uses its built-in [LoteJwtVerifier]
  * @property loteConstraints controls whether additional LoTE pointers are followed
+ * @property loteSignerTrustAnchors the trust anchors of the LoTE signers, used by the built-in [LoteJwtVerifier]
  */
 data class EtsiTrustConfig(
     val loteLocations: SupportedLists<Uri>,
@@ -53,6 +53,7 @@ data class EtsiTrustConfig(
     val relaxPkixRevocation: Boolean = false,
     val customJwtSignatureVerifier: VerifyJwtSignature? = null,
     val loteConstraints: LoadLoTEAndPointers.Constraints = LoadLoTEAndPointers.Constraints.DoNotLoadOtherPointers,
+    val loteSignerTrustAnchors: List<X509Certificate> = emptyList()
 ) {
     companion object {
         val DEFAULT_FILE_CACHE_EXPIRATION: Duration = 24.hours
@@ -63,7 +64,8 @@ data class EtsiTrustConfig(
 /**
  * DSL builder for constructing an [EtsiTrustConfig].
  *
- * [loteLocations] and [classifications] are required. All other settings have sensible defaults.
+ * [loteLocations], [classifications] and [loteSignerTrustAnchors] are required; [loteSignerTrustAnchors]
+ * is not needed when [jwtSignatureVerifier] is set. All other settings have sensible defaults.
  *
  * Example:
  * ```
@@ -78,6 +80,7 @@ data class EtsiTrustConfig(
  *             AttestationIdentifier.MDoc("eu.europa.ec.eudi.pid.1"),
  *         )),
  *     ))
+ *     loteSignerTrustAnchors(loteSignerCertificate)
  *     // Optional:
  *     relaxCertificateProfiles()
  *     fileCacheExpiration(12.hours)
@@ -96,6 +99,7 @@ class EtsiTrustConfigBuilder {
     private var customJwtSignatureVerifier: VerifyJwtSignature? = null
     private var loteConstraints: LoadLoTEAndPointers.Constraints =
         LoadLoTEAndPointers.Constraints.DoNotLoadOtherPointers
+    private var loteSignerTrustAnchors: List<X509Certificate> = emptyList()
 
     /**
      * Sets the LoTE download locations.
@@ -122,6 +126,19 @@ class EtsiTrustConfigBuilder {
      */
     fun classifications(classifications: AttestationClassifications) {
         this.classifications = classifications
+    }
+
+    /**
+     * Sets the trust anchors of the LoTE signers.
+     *
+     * A LoTE is trusted only when its signing certificate, the first certificate of its `x5c`
+     * header, is one of these certificates or chains to one of them. Not used when
+     * [jwtSignatureVerifier] is set.
+     *
+     * @param certificates the signing certificates of the LoTEs, or the CA certificates that issue them
+     */
+    fun loteSignerTrustAnchors(vararg certificates: X509Certificate) {
+        this.loteSignerTrustAnchors = certificates.toList()
     }
 
     /**
@@ -162,6 +179,9 @@ class EtsiTrustConfigBuilder {
      * When this is **not** called (the default), PKIX revocation checking is enabled and
      * strict — certificate chain validation will fail if a certificate is revoked or if
      * the revocation status cannot be determined (CRL/OCSP unavailable).
+     *
+     * This applies too when a LoTE signer chains to a CA certificate passed to
+     * [loteSignerTrustAnchors].
      */
     fun relaxPkixRevocation() {
         this.relaxPkixRevocation = true
@@ -171,7 +191,7 @@ class EtsiTrustConfigBuilder {
      * Sets a custom JWT signature verifier for LoTE JWTs.
      *
      * When not set, the core uses its built-in [LoteJwtVerifier] that
-     * verifies JWT signatures using the `x5c` certificate chain from the JWT header.
+     * verifies the LoTE signer against [loteSignerTrustAnchors].
      *
      * @param verifier the custom JWT signature verifier
      */
@@ -193,7 +213,8 @@ class EtsiTrustConfigBuilder {
      * Builds the [EtsiTrustConfig] from the current builder state.
      *
      * @return a validated [EtsiTrustConfig]
-     * @throws IllegalArgumentException if [loteLocations] or [classifications] are not set
+     * @throws IllegalArgumentException if [loteLocations] or [classifications] are not set, or if
+     *   neither [loteSignerTrustAnchors] nor [jwtSignatureVerifier] is set
      */
     internal fun build(): EtsiTrustConfig {
         val locations = requireNotNull(loteLocations) {
@@ -201,6 +222,9 @@ class EtsiTrustConfigBuilder {
         }
         val cls = requireNotNull(classifications) {
             "classifications must be provided via classifications()"
+        }
+        require(loteSignerTrustAnchors.isNotEmpty() || customJwtSignatureVerifier != null) {
+            "loteSignerTrustAnchors must be provided via loteSignerTrustAnchors()"
         }
         return EtsiTrustConfig(
             loteLocations = locations,
@@ -211,6 +235,7 @@ class EtsiTrustConfigBuilder {
             relaxPkixRevocation = relaxPkixRevocation,
             customJwtSignatureVerifier = customJwtSignatureVerifier,
             loteConstraints = loteConstraints,
+            loteSignerTrustAnchors = loteSignerTrustAnchors
         )
     }
 }

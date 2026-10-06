@@ -794,6 +794,10 @@ val config = EudiWalletConfig {
             ),
         ))
 
+        // Required unless jwtSignatureVerifier() is set: the signing certificates of the LoTEs,
+        // or the CA certificates that issue them
+        loteSignerTrustAnchors(loteSignerCertificate)
+
         // Optional: all have sensible defaults
         fileCacheExpiration(24.hours)    // how long LoTE files are cached on disk
         cacheTtl(20.minutes)             // how long trust anchors are cached in memory
@@ -817,13 +821,13 @@ val config = EudiWalletConfig {
 }
 ```
 
-> **LoTE JWT Verification:** The built-in `LoteJwtVerifier` only performs **cryptographic
-> signature verification** — it extracts the `x5c` chain from the JWT header and verifies
-> the JWS signature using the leaf certificate's public key (EC and RSA supported). It does
-> **not** perform certificate chain validation (PKIX), CRL/OCSP revocation checking, or
-> certificate profile constraint checks on the signing certificate. These additional trust
-> checks will be added in a future release. To provide a custom implementation with
-> thorough verification, pass it via `jwtSignatureVerifier()`.
+> **LoTE JWT Verification:** The built-in `LoteJwtVerifier` accepts a LoTE only when its signing
+> certificate, the first certificate of the `x5c` header, is valid now and is one of the
+> certificates passed to `loteSignerTrustAnchors()` or chains to one of them (PKIX), and the JWS
+> signature verifies with its public key. Revocation checking of a signer chain to a CA
+> certificate follows `relaxPkixRevocation()`.
+> `configureEtsiTrust` fails when neither `loteSignerTrustAnchors()` nor `jwtSignatureVerifier()`
+> is set.
 >
 > **DEV/Testing knobs:** `relaxCertificateProfiles()` strips `endEntityProfile` constraints
 > from all provider types, useful when DEV certificates don't fully conform to ETSI profile
@@ -850,7 +854,7 @@ val loadLoTE = LoadSingleLoTEWithFileCache(
 // 2. Configure LoTE pointer loading and JWT verification
 val loadLoTEAndPointers = LoadLoTEAndPointers(
     constraints = LoadLoTEAndPointers.Constraints.DoNotLoadOtherPointers,
-    verifyJwtSignature = myJwtVerifier, // Your VerifyJwtSignature implementation
+    verifyJwtSignature = myJwtVerifier, // Your VerifyJwtSignature implementation, which authenticates the LoTE signer
     loadLoTE = loadLoTE,
 )
 

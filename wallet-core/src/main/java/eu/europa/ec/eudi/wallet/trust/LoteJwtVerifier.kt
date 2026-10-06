@@ -20,33 +20,37 @@ import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.etsi119602.consultation.VerifyJwtSignature
+import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
+import eu.europa.ec.eudi.etsi1196x2.consultation.NonEmptyList
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChain
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
+import kotlinx.coroutines.CancellationException
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
+import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
-import java.util.Base64
 
 /**
  * Default LoTE JWT verifier.
  *
- * This implementation **only verifies the JWS cryptographic signature** using the leaf
- * certificate's public key from the `x5c` header. It does **not** perform:
- * - Certificate chain validation (PKIX)
- * - CRL / OCSP revocation checking on the signing certificate
- * - Certificate policy or profile constraint checks
+ * A LoTE is verified when:
+ * - its `x5c` header carries the certificate chain of its signer;
+ * - the signing certificate, the first certificate of `x5c`, is valid now;
+ * - [validateSigner] trusts the `x5c` chain against [signerTrustAnchors]; and
+ * - the JWS signature verifies with the public key of the signing certificate.
  *
- * These additional trust checks will be added in a future release. In the meantime,
- * provide a custom [VerifyJwtSignature] implementation via
- * [EtsiTrustConfig.Builder.jwtSignatureVerifier] if thorough verification is required.
- *
+ * @param signerTrustAnchors the trust anchors of the LoTE signers
+ * @param validateSigner validates the `x5c` chain against [signerTrustAnchors]
  * @param logger optional logger for diagnostic output
  */
 internal class LoteJwtVerifier(
-    private val logger: Logger? = null,
+    private val signerTrustAnchors: NonEmptyList<TrustAnchor>,
+    private val validateSigner: ValidateCertificateChain<List<X509Certificate>, TrustAnchor>,
+    private val logger: Logger? = null
 ) : VerifyJwtSignature {
 
     override suspend fun invoke(jwt: String): VerifyJwtSignature.Outcome {
@@ -61,41 +65,53 @@ internal class LoteJwtVerifier(
                 )
             }
 
-            // Build X509Certificate from the leaf (first) x5c entry
-            val leafCertBytes = x5cChain[0].decode()
             val certFactory = CertificateFactory.getInstance("X.509")
-            val leafCert = certFactory.generateCertificate(
-                ByteArrayInputStream(leafCertBytes)
-            ) as X509Certificate
+            val chain = x5cChain.map {
+                certFactory.generateCertificate(ByteArrayInputStream(it.decode())) as X509Certificate
+            }
+            val signingCert = chain.first()
+            signingCert.checkValidity()
 
             logger?.d(TAG, "Verifying LoTE JWT signature: alg=${header.algorithm}, " +
-                "leaf=${leafCert.subjectX500Principal}")
+                "signer=${signingCert.subjectX500Principal}")
 
-            // Acknowledge any critical headers declared in the JWT (e.g., "sigT")
-            // so nimbus doesn't reject the signature for unrecognized crit params
-            val deferredCritHeaders = header.criticalParams ?: emptySet()
+            when (val validation = validateSigner(chain, signerTrustAnchors)) {
+                is CertificationChainValidation.NotTrusted -> {
+                    logger?.d(TAG, "LoTE JWT signer is not trusted")
+                    VerifyJwtSignature.Outcome.NotVerified(validation.cause)
+                }
 
-            // Create verifier based on the key type
-            val verifier: JWSVerifier = when (val publicKey = leafCert.publicKey) {
-                is ECPublicKey -> ECDSAVerifier(publicKey, deferredCritHeaders)
-                is RSAPublicKey -> RSASSAVerifier(publicKey, deferredCritHeaders)
-                else -> return VerifyJwtSignature.Outcome.NotVerified(
-                    UnsupportedOperationException("Unsupported key type: ${publicKey.algorithm}")
-                )
+                is CertificationChainValidation.Trusted -> verifySignature(signedJwt, signingCert, jwt)
             }
-
-            if (signedJwt.verify(verifier)) {
-                logger?.d(TAG, "LoTE JWT signature verified successfully")
-                VerifyJwtSignature.Outcome.Verified(jwt)
-            } else {
-                logger?.d(TAG, "LoTE JWT signature verification failed")
-                VerifyJwtSignature.Outcome.NotVerified(
-                    SecurityException("JWT signature verification failed")
-                )
-            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             logger?.e(TAG, "LoTE JWT verification error: ${e.message}", e)
             VerifyJwtSignature.Outcome.NotVerified(e)
+        }
+    }
+
+    private fun verifySignature(
+        signedJwt: SignedJWT,
+        signingCert: X509Certificate,
+        jwt: String,
+    ): VerifyJwtSignature.Outcome {
+        val verifier: JWSVerifier = when (val publicKey = signingCert.publicKey) {
+            is ECPublicKey -> ECDSAVerifier(publicKey)
+            is RSAPublicKey -> RSASSAVerifier(publicKey)
+            else -> return VerifyJwtSignature.Outcome.NotVerified(
+                UnsupportedOperationException("Unsupported key type: ${publicKey.algorithm}")
+            )
+        }
+
+        return if (signedJwt.verify(verifier)) {
+            logger?.d(TAG, "LoTE JWT signature verified successfully")
+            VerifyJwtSignature.Outcome.Verified(jwt)
+        } else {
+            logger?.d(TAG, "LoTE JWT signature verification failed")
+            VerifyJwtSignature.Outcome.NotVerified(
+                SecurityException("JWT signature verification failed")
+            )
         }
     }
 
