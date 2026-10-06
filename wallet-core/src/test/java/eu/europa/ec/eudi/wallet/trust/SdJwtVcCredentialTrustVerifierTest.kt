@@ -15,10 +15,12 @@
  */
 package eu.europa.ec.eudi.wallet.trust
 
+import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.util.Base64 as NimbusBase64
+import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationIdentifier
@@ -42,6 +44,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.math.BigInteger
 import java.security.KeyPairGenerator
+import java.security.MessageDigest
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 import java.security.interfaces.ECPrivateKey
@@ -94,6 +97,20 @@ class SdJwtVcCredentialTrustVerifierTest {
     }
 
     @Test
+    fun returnsNotTrustedWhenSignatureDoesNotVerifyWithTrustedChain() = runTest {
+        val keyPair = generateEcKeyPair()
+        val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://example.com"))
+        val sdJwt = buildSdJwt(generateEcKeyPair(), cert)
+
+        val trusted = CertificationChainValidation.Trusted(mockk<TrustAnchor>())
+        coEvery { isChainTrusted.issuance(any(), eq(attestationIdentifier)) } returns trusted
+
+        val result = verifier.verify(sdJwt, attestationIdentifier)
+
+        assertIs<CertificationChainValidation.NotTrusted>(result)
+    }
+
+    @Test
     fun returnsNullForMissingX5cHeader() = runTest {
         val keyPair = generateEcKeyPair()
         // Build a JWT without x5c header
@@ -122,18 +139,24 @@ class SdJwtVcCredentialTrustVerifierTest {
         val cert = createSelfSignedCert(keyPair, "CN=Test Issuer", sanUris = listOf("https://example.com"))
 
         // Build a SD-JWT with a disclosure segment
+        val disclosure = "WyJzYWx0IiwiZ2l2ZW5fbmFtZSIsIkpvaG4iXQ"
+        val disclosureDigest = Base64URL.encode(
+            MessageDigest.getInstance("SHA-256").digest(disclosure.toByteArray())
+        ).toString()
         val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+            .type(SD_JWT_VC_TYPE)
             .x509CertChain(listOf(NimbusBase64.encode(cert.encoded)))
             .build()
         val claims = JWTClaimsSet.Builder()
             .issuer("https://example.com")
             .claim("vct", "VerifiablePortableDocumentA1")
+            .claim("_sd", listOf(disclosureDigest))
             .claim("_sd_alg", "sha-256")
             .build()
         val signedJwt = SignedJWT(header, claims)
         signedJwt.sign(ECDSASigner(keyPair.private as ECPrivateKey))
-        // Append a fake disclosure and trailing tilde
-        val sdJwt = "${signedJwt.serialize()}~WyJzYWx0IiwiZ2l2ZW5fbmFtZSIsIkpvaG4iXQ~"
+        // Append the disclosure and trailing tilde
+        val sdJwt = "${signedJwt.serialize()}~$disclosure~"
 
         val trustAnchor = mockk<TrustAnchor>()
         val trusted = CertificationChainValidation.Trusted(trustAnchor)
@@ -188,6 +211,7 @@ class SdJwtVcCredentialTrustVerifierTest {
 
         // Build SD-JWT without iss claim
         val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+            .type(SD_JWT_VC_TYPE)
             .x509CertChain(listOf(NimbusBase64.encode(cert.encoded)))
             .build()
         val claims = JWTClaimsSet.Builder()
@@ -262,6 +286,7 @@ class SdJwtVcCredentialTrustVerifierTest {
         issuer: String = "https://example.com",
     ): String {
         val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+            .type(SD_JWT_VC_TYPE)
             .x509CertChain(listOf(NimbusBase64.encode(cert.encoded)))
             .build()
         val claims = JWTClaimsSet.Builder()
@@ -271,5 +296,9 @@ class SdJwtVcCredentialTrustVerifierTest {
         val signedJwt = SignedJWT(header, claims)
         signedJwt.sign(ECDSASigner(keyPair.private as ECPrivateKey))
         return "${signedJwt.serialize()}~"
+    }
+
+    private companion object {
+        val SD_JWT_VC_TYPE = JOSEObjectType("dc+sd-jwt")
     }
 }
