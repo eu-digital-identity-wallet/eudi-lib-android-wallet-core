@@ -1047,6 +1047,11 @@ standard LoTE setup), signed metadata verification defaults to `RequireSigned`. 
 automatically creates the trust adapter using
 `VerificationContext.WalletRelyingPartyAccessCertificate`.
 
+The metadata policy applies to issuance from a credential offer, to wallet-initiated issuance and
+to re-issuance. Validation of the credential issuer's registration certificate requires
+`RequireSigned`, because the certificate is carried in the signed metadata; with `PreferSigned` or
+`IgnoreSigned` it is skipped.
+
 To override the default metadata policy:
 
 ```kotlin
