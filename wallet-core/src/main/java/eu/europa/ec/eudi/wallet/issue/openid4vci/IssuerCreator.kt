@@ -52,6 +52,7 @@ import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.registration.issuer.issuerRegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.ktor.client.HttpClient
+import org.jetbrains.annotations.VisibleForTesting
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import org.multipaz.crypto.Algorithm
@@ -239,7 +240,8 @@ internal class IssuerCreator(
      * @receiver The [OpenId4VciManager.Config].
      * @return The [OpenId4VCIConfig].
      */
-    private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
+    @VisibleForTesting
+    internal suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
         authorizationServerMetadata: CIAuthorizationServerMetadata,
         existingDpopKeyAlias: String? = null,
         credentialIssuerMetadata: CredentialIssuerMetadata? = null,
@@ -332,7 +334,7 @@ internal class IssuerCreator(
                 else -> ParUsage.IfSupported()
             },
             proofs = issuanceProofProfile.toProofsConfig(),
-            issuerMetadataPolicy = if (issuerRegistrationEnabled) issuerMetadataPolicy else IssuerMetadataPolicy.IgnoreSigned,
+            issuerMetadataPolicy = issuerMetadataPolicy,
             registrationCertificatePolicy = registrationCertificatePolicy,
         )
     }
