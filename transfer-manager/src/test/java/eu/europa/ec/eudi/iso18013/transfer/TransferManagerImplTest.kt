@@ -40,8 +40,11 @@ import org.multipaz.util.Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -286,6 +289,33 @@ class TransferManagerImplTest {
     }
 
     @Test
+    fun `startQrEngagement ends an active NFC presentation`() {
+        mockkConstructor(QrEngagement::class)
+        every { anyConstructed<QrEngagement>().configure() } just Runs
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val listener = mockk<TransferEvent.Listener>(relaxed = true)
+        manager.addTransferEventListener(listener)
+        val nfcDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>(relaxed = true)
+        manager.deviceRetrievalHelper = nfcDeviceRetrievalHelper
+
+        manager.startQrEngagement()
+
+        verify(exactly = 1) {
+            nfcDeviceRetrievalHelper.sendDeviceResponse(
+                null,
+                status = SESSION_DATA_STATUS_SESSION_TERMINATION
+            )
+        }
+        verify(exactly = 1) { nfcDeviceRetrievalHelper.disconnect() }
+        assertNull(manager.deviceRetrievalHelper)
+        assertTrue(manager.hasStarted)
+        verify(exactly = 0) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+    }
+
+    @Test
     fun `sendResponse triggers onResponseSent event and class deviceRetrievalHelper send with SessionTermination`() {
         val manager = TransferManagerImpl(
             context = Context,
@@ -294,13 +324,15 @@ class TransferManagerImplTest {
         val listener = mockk<TransferEvent.Listener>(relaxed = true)
         manager.addTransferEventListener(listener)
 
-        val mockDeviceRetrievalHelper: DeviceRetrievalHelper = mockk(relaxed = true)
+        val mockDeviceRetrievalHelper: DeviceRetrievalHelper = mockk(relaxed = true) {
+            every { sessionTranscript } returns byteArrayOf(1)
+        }
         manager.deviceRetrievalHelper = mockDeviceRetrievalHelper
 
         manager.sendResponse(
             DeviceResponse(
                 deviceResponseBytes = ByteArray(0),
-                sessionTranscriptBytes = byteArrayOf(),
+                sessionTranscriptBytes = byteArrayOf(1),
                 documentIds = listOf()
             )
         )
@@ -312,6 +344,236 @@ class TransferManagerImplTest {
                 SESSION_DATA_STATUS_SESSION_TERMINATION
             )
         }
+    }
+
+    @Test
+    fun `sendResponse does not send a response generated for another session`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val listener = mockk<TransferEvent.Listener>(relaxed = true)
+        manager.addTransferEventListener(listener)
+
+        val mockDeviceRetrievalHelper: DeviceRetrievalHelper = mockk(relaxed = true) {
+            every { sessionTranscript } returns byteArrayOf(1)
+        }
+        manager.deviceRetrievalHelper = mockDeviceRetrievalHelper
+
+        manager.sendResponse(
+            DeviceResponse(
+                deviceResponseBytes = ByteArray(0),
+                sessionTranscriptBytes = byteArrayOf(2),
+                documentIds = listOf()
+            )
+        )
+
+        verify(exactly = 0) { mockDeviceRetrievalHelper.sendDeviceResponse(any(), any()) }
+        verify(exactly = 0) { listener.onTransferEvent(TransferEvent.ResponseSent) }
+        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+    }
+
+    @Test
+    fun `sendResponse before the first message of the session triggers an error`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val listener = mockk<TransferEvent.Listener>(relaxed = true)
+        manager.addTransferEventListener(listener)
+
+        val mockDeviceRetrievalHelper: DeviceRetrievalHelper = mockk(relaxed = true) {
+            every { sessionTranscript } throws IllegalStateException("No message received from reader")
+        }
+        manager.deviceRetrievalHelper = mockDeviceRetrievalHelper
+
+        manager.sendResponse(
+            DeviceResponse(
+                deviceResponseBytes = ByteArray(0),
+                sessionTranscriptBytes = byteArrayOf(1),
+                documentIds = listOf()
+            )
+        )
+
+        verify(exactly = 0) { mockDeviceRetrievalHelper.sendDeviceResponse(any(), any()) }
+        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+    }
+
+    @Test
+    fun `sendResponse without an active session triggers an error`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val listener = mockk<TransferEvent.Listener>(relaxed = true)
+        manager.addTransferEventListener(listener)
+
+        manager.sendResponse(
+            DeviceResponse(
+                deviceResponseBytes = ByteArray(0),
+                sessionTranscriptBytes = byteArrayOf(1),
+                documentIds = listOf()
+            )
+        )
+
+        verify(exactly = 0) { listener.onTransferEvent(TransferEvent.ResponseSent) }
+        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+    }
+
+    @Test
+    fun `a presentation is active only while a session is active`() {
+        mockkConstructor(QrEngagement::class)
+        every { anyConstructed<QrEngagement>().configure() } just Runs
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+        manager.startQrEngagement()
+        val qrEngagement = manager.qrEngagement!!
+
+        assertFalse(qrEngagement.isPresentationActive())
+        assertFalse(service.isPresentationActive())
+
+        val deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        service.deviceRetrievalHelper = deviceRetrievalHelper
+        manager.deviceRetrievalHelper = deviceRetrievalHelper
+        assertTrue(qrEngagement.isPresentationActive())
+        assertTrue(service.isPresentationActive())
+
+        service.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+        assertFalse(qrEngagement.isPresentationActive())
+        assertFalse(service.isPresentationActive())
+    }
+
+    @Test
+    fun `an NFC connection is ignored while a QR presentation is active`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val listener = mockk<TransferEvent.Listener>(relaxed = true)
+        manager.addTransferEventListener(listener)
+        val qrDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        manager.deviceRetrievalHelper = qrDeviceRetrievalHelper
+
+        val service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+
+        service.nfcEngagementListener.onDeviceConnected(mockk())
+
+        assertSame(qrDeviceRetrievalHelper, manager.deviceRetrievalHelper)
+        verify(exactly = 0) { listener.onTransferEvent(TransferEvent.Connected) }
+    }
+
+    @Test
+    fun `an NFC engagement is refused while a presentation is active`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        manager.deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        val service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+
+        val response = service.processCommandApdu(byteArrayOf(0x00, 0xA4.toByte(), 0x04, 0x00), null)
+
+        assertContentEquals(byteArrayOf(0x6A, 0x82.toByte()), response)
+    }
+
+    @Test
+    fun `a QR connection is ignored while an NFC presentation is active`() {
+        mockkConstructor(QrEngagement::class)
+        every { anyConstructed<QrEngagement>().configure() } just Runs
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val listener = mockk<TransferEvent.Listener>(relaxed = true)
+        manager.addTransferEventListener(listener)
+        manager.startQrEngagement()
+        val nfcDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        manager.deviceRetrievalHelper = nfcDeviceRetrievalHelper
+
+        manager.qrEngagement!!.qrEngagementListener.onDeviceConnected(mockk())
+
+        assertSame(nfcDeviceRetrievalHelper, manager.deviceRetrievalHelper)
+        verify(exactly = 0) { listener.onTransferEvent(TransferEvent.Connected) }
+    }
+
+    @Test
+    fun `a QR session that disconnects or fails releases the presentation`() {
+        mockkConstructor(QrEngagement::class)
+        every { anyConstructed<QrEngagement>().configure() } just Runs
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        manager.startQrEngagement()
+        val qrEngagement = manager.qrEngagement!!
+        val deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        qrEngagement.deviceRetrievalHelper = deviceRetrievalHelper
+
+        manager.deviceRetrievalHelper = deviceRetrievalHelper
+        qrEngagement.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+        assertNull(manager.deviceRetrievalHelper)
+
+        manager.deviceRetrievalHelper = deviceRetrievalHelper
+        qrEngagement.deviceRetrievalHelperListener.onError(Throwable())
+        assertNull(manager.deviceRetrievalHelper)
+    }
+
+    @Test
+    fun `an NFC session that disconnects or fails releases the presentation`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+        val deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        service.deviceRetrievalHelper = deviceRetrievalHelper
+
+        manager.deviceRetrievalHelper = deviceRetrievalHelper
+        service.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+        assertNull(manager.deviceRetrievalHelper)
+
+        manager.deviceRetrievalHelper = deviceRetrievalHelper
+        service.deviceRetrievalHelperListener.onError(Throwable())
+        assertNull(manager.deviceRetrievalHelper)
+    }
+
+    @Test
+    fun `a session that ended earlier does not release a newer presentation`() {
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        val service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+        service.deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        val newerDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        manager.deviceRetrievalHelper = newerDeviceRetrievalHelper
+
+        service.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+
+        assertSame(newerDeviceRetrievalHelper, manager.deviceRetrievalHelper)
     }
 
     @Test
