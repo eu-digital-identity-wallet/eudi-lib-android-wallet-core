@@ -61,6 +61,7 @@ class TransferManagerImpl @JvmOverloads constructor(
      */
     @JvmSynthetic
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    @Volatile
     internal var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     /**
@@ -133,6 +134,8 @@ class TransferManagerImpl @JvmOverloads constructor(
      * Once the QR code is ready, the event [TransferEvent.QrEngagementReady] will be triggered
      * If the transfer has already started, an error event will be triggered
      * with an [IllegalStateException] containing the message "Transfer has already started."
+     * If a presentation session that started from an NFC engagement is active, it is ended
+     * before the QR engagement starts.
      * @see TransferEvent.QrEngagementReady
      * @see TransferEvent.Error
      */
@@ -148,9 +151,18 @@ class TransferManagerImpl @JvmOverloads constructor(
             )
             return
         }
+        // A connection is not accepted while a session is active, so the active session is
+        // ended for the QR engagement to be usable
+        if (deviceRetrievalHelper != null) {
+            stopPresentation(
+                sendSessionTerminationMessage = true,
+                useTransportSpecificSessionTermination = false,
+            )
+        }
         qrEngagement = QrEngagement(
             context = context,
             retrievalMethods = retrievalMethods,
+            isPresentationActive = { deviceRetrievalHelper != null },
             onQrEngagementReady = { qrCode ->
                 transferEventListeners.onTransferEvent(
                     TransferEvent.QrEngagementReady(qrCode),
@@ -180,6 +192,7 @@ class TransferManagerImpl @JvmOverloads constructor(
             onDisconnected = {
                 transferEventListeners.onTransferEvent(TransferEvent.Disconnected)
             },
+            onSessionEnded = { deviceRetrievalHelper -> endSession(deviceRetrievalHelper) },
             onCommunicationError = { error ->
                 Log.d(this.TAG, "onError: ${error.message}")
                 transferEventListeners.onTransferEvent(TransferEvent.Error(error))
@@ -197,6 +210,7 @@ class TransferManagerImpl @JvmOverloads constructor(
     override fun setupNfcEngagement(service: NfcEngagementService) = apply {
         service.apply {
             retrievalMethods = this@TransferManagerImpl.retrievalMethods
+            isPresentationActive = { this@TransferManagerImpl.deviceRetrievalHelper != null }
             onConnecting = {
                 transferEventListeners.onTransferEvent(TransferEvent.Connecting)
             }
@@ -207,7 +221,7 @@ class TransferManagerImpl @JvmOverloads constructor(
             onNewDeviceRequest = { deviceRequestBytes ->
                 val deviceRequest = DeviceRequest(
                     deviceRequestBytes,
-                    deviceRetrievalHelper?.sessionTranscript!!
+                    this@TransferManagerImpl.deviceRetrievalHelper?.sessionTranscript!!
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(
@@ -220,6 +234,9 @@ class TransferManagerImpl @JvmOverloads constructor(
             }
             onDisconnected = {
                 transferEventListeners.onTransferEvent(TransferEvent.Disconnected)
+            }
+            onSessionEnded = { deviceRetrievalHelper ->
+                this@TransferManagerImpl.endSession(deviceRetrievalHelper)
             }
             onCommunicationError = { error ->
                 Log.d(this.TAG, "onError: ${error.message}")
@@ -239,12 +256,35 @@ class TransferManagerImpl @JvmOverloads constructor(
      *
      * To generate the response, use the [eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest.generateResponse]
      * that is provided by the [eu.europa.ec.eudi.iso18013.transfer.TransferEvent.RequestReceived] event.
+     *
+     * The response is sent only to the session of the request it was generated for. When there is
+     * no active session, or the response was generated for another session, nothing is sent and
+     * [TransferEvent.Error] is triggered.
+     *
+     * After the response is sent, connections from other mdoc verifiers are not accepted until the
+     * mdoc verifier disconnects or [stopPresentation] is called.
      * @param response the response to send
      * @throws IllegalArgumentException if the response is not a [DeviceResponse]
      */
     override fun sendResponse(response: Response) {
         require(response is DeviceResponse) { "Response must be a DeviceResponse" }
-        deviceRetrievalHelper?.sendDeviceResponse(
+        val helper = deviceRetrievalHelper
+        if (helper == null) {
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(IllegalStateException("No active presentation session"))
+            )
+            return
+        }
+        val sessionTranscript = runCatching { helper.sessionTranscript }.getOrNull()
+        if (!sessionTranscript.contentEquals(response.sessionTranscriptBytes)) {
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(
+                    IllegalStateException("The response was generated for another presentation session")
+                )
+            )
+            return
+        }
+        helper.sendDeviceResponse(
             response.deviceResponseBytes,
             Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
         )
@@ -267,6 +307,16 @@ class TransferManagerImpl @JvmOverloads constructor(
             useTransportSpecificSessionTermination,
         )
         disconnect()
+    }
+
+    /**
+     * Releases the active session when [deviceRetrievalHelper] is its connection, so that a new
+     * connection can be accepted. The connection of an earlier session does not release a newer one.
+     */
+    private fun endSession(deviceRetrievalHelper: DeviceRetrievalHelper) {
+        if (this.deviceRetrievalHelper === deviceRetrievalHelper) {
+            this.deviceRetrievalHelper = null
+        }
     }
 
     /**

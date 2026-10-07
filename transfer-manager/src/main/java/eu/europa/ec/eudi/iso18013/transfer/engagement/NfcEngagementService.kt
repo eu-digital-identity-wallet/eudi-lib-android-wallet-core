@@ -24,6 +24,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.annotation.VisibleForTesting
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
@@ -37,6 +38,8 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
+import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.ResponseApdu
 
 /**
  * Abstract Nfc engagement service.
@@ -110,15 +113,19 @@ abstract class NfcEngagementService : HostApduService() {
     abstract val transferManager: TransferManager
 
     internal lateinit var retrievalMethods: List<DeviceRetrievalMethod>
+    internal lateinit var isPresentationActive: () -> Boolean
     internal lateinit var onConnecting: () -> Unit
     internal lateinit var onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit
     internal lateinit var onNewDeviceRequest: (request: ByteArray) -> Unit
     internal lateinit var onDisconnected: (transportSpecificTermination: Boolean) -> Unit
+    internal lateinit var onSessionEnded: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit
     internal lateinit var onCommunicationError: (error: Throwable) -> Unit
 
     private lateinit var nfcEngagement: NfcEngagementHelper
 
-    private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
+    @JvmSynthetic
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     private lateinit var eDevicePrivateKey: EcPrivateKey
 
@@ -179,7 +186,9 @@ abstract class NfcEngagementService : HostApduService() {
         }
     }
 
-    private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
+    @get:JvmSynthetic
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal val nfcEngagementListener = object : NfcEngagementHelper.Listener {
         override fun onTwoWayEngagementDetected() {
             Log.d(this.TAG, "Engagement Listener: Two Way Engagement Detected.")
         }
@@ -190,7 +199,7 @@ abstract class NfcEngagementService : HostApduService() {
         }
 
         override fun onDeviceConnected(transport: DataTransport) {
-            if (deviceRetrievalHelper != null) {
+            if (deviceRetrievalHelper != null || isPresentationActive()) {
                 Log.d(
                     TAG,
                     "Engagement Listener: Device Connected -> ignored due to active presentation",
@@ -227,7 +236,9 @@ abstract class NfcEngagementService : HostApduService() {
         }
     }
 
-    private val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
+    @get:JvmSynthetic
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
         override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onEReaderKeyReceived")
         }
@@ -239,11 +250,13 @@ abstract class NfcEngagementService : HostApduService() {
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onDeviceDisconnected")
+            deviceRetrievalHelper?.let(onSessionEnded)
             onDisconnected(transportSpecificTermination)
         }
 
         override fun onError(error: Throwable) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onError -> ${error.message}")
+            deviceRetrievalHelper?.let(onSessionEnded)
             onCommunicationError(error)
         }
     }
@@ -266,6 +279,12 @@ abstract class NfcEngagementService : HostApduService() {
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray {
+        // While a presentation is active, the engagement is refused before it sets up a
+        // data transport for another reader
+        if (isPresentationActive()) {
+            Log.d(TAG, "NFC engagement refused due to active presentation")
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND).encode()
+        }
         return nfcEngagement.nfcProcessCommandApdu(commandApdu)
     }
 
