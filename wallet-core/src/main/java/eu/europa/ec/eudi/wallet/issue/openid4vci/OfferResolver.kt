@@ -33,7 +33,7 @@ import eu.europa.ec.eudi.openid4vci.ProvisionDPoPSigner as VciProvisionDPoPSigne
 
 internal class OfferResolver(
     private val config: OpenId4VciManager.Config,
-    private val ktorHttpClientFactory: () -> HttpClient,
+    private val httpClient: HttpClient,
     private val issuerMetadataPolicy: IssuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
 ) {
 
@@ -84,13 +84,11 @@ internal class OfferResolver(
     }
 
     private suspend fun resolveAndCache(offerUri: String): Result<Offer> {
-        return ktorHttpClientFactory().use { httpClient ->
-            CredentialOffer.resolve(
-                httpClient = httpClient,
-                config = resolveConfig,
-                uri = offerUri,
-            )
-        }.map {
+        return CredentialOffer.resolve(
+            httpClient = httpClient,
+            config = resolveConfig,
+            uri = offerUri,
+        ).map {
             Offer(it)
         }.also { result ->
             result

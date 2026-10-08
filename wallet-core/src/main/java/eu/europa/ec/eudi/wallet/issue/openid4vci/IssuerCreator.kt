@@ -78,7 +78,7 @@ internal data class IssuerCreation(
 internal class IssuerCreator(
     private val context: Context,
     private val config: OpenId4VciManager.Config,
-    private val ktorHttpClientFactory: () -> HttpClient,
+    private val httpClient: HttpClient,
     private val walletInstanceAttestationProvider: WalletInstanceAttestationProvider?,
     private val walletAttestationKeyManager: WalletKeyManager,
     private val logger: Logger?,
@@ -155,9 +155,7 @@ internal class IssuerCreator(
 
 
     private suspend fun getIssuerMetadata(credentialIssuerId: CredentialIssuerId): Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>> {
-        return ktorHttpClientFactory().use {
-            Issuer.metaData(it, credentialIssuerId, issuerMetadataPolicy)
-        }
+        return Issuer.metaData(httpClient, credentialIssuerId, issuerMetadataPolicy)
     }
 
 
@@ -174,7 +172,7 @@ internal class IssuerCreator(
                 onRegistrationEvaluated = { evaluatedRegistration = it },
             ),
             credentialOffer = credentialOffer,
-            httpClient = ktorHttpClientFactory()
+            httpClient = httpClient
         ).getOrThrow().first
         return IssuerCreation(issuer, resolvedRegistration ?: evaluatedRegistration)
     }
@@ -196,7 +194,7 @@ internal class IssuerCreator(
                 ),
                 credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
                 credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-                httpClient = ktorHttpClientFactory()
+                httpClient = httpClient
             ).getOrThrow().first
             IssuerCreation(issuer, evaluatedRegistration)
         } catch (e: Throwable) {

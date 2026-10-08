@@ -182,7 +182,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.31.1-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.31.1"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -301,7 +301,9 @@ val customWallet = EudiWallet(context, config) {
     withSecureAreas(listOf(deviceSecureArea, cloudSecureArea))
     // custom logger to be used
     withLogger(myLogger)
-    // custom HTTP client for network operations
+    // custom Ktor HTTP client for network operations
+    // The factory is invoked once per internal component; wallet-core never closes the client.
+    // It is safe to return a shared HttpClient instance here.
     withKtorHttpClientFactory { HttpClient(OkHttp) { /* custom config */ } }
     // custom transaction logger for auditing
     withTransactionLogger(myTransactionLogger)
@@ -760,7 +762,7 @@ declare it explicitly:
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.31.1-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.31.1"
     // Required explicitly — Uri type is not transitive from wallet-core
     implementation "eu.europa.ec.eudi:eudi-lib-kmp-etsi-119602-consultation:${VERSION}"
 }

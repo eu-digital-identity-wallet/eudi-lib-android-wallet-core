@@ -32,17 +32,12 @@ import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.makeOpenId4VPConfig
-import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
-import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -159,12 +154,5 @@ class OpenId4VpDCAPIRequestProcessor(
 
     companion object {
         private const val TAG = "OpenId4VpDCAPIRequestProcessor"
-
-        private val DefaultHttpClientFactory: () -> HttpClient = {
-            HttpClient {
-                install(ContentNegotiation) { json() }
-                expectSuccess = true
-            }
-        }
     }
 }

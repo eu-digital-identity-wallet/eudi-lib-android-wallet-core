@@ -57,8 +57,19 @@ internal class DefaultWrpRegistrationEvaluator(
     statusTrust: CertificateTrust? = null,
     private val logger: Logger? = null,
     httpClientFactory: (() -> HttpClient)? = null,
-    private val checkRevocation: suspend (StatusReference) -> RevocationOutcome =
-        { checkStatusListRevocation(it, statusTrust, logger, httpClientFactory) },
+    private val checkRevocation: suspend (StatusReference) -> RevocationOutcome = run {
+        val client = lazy { httpClientFactory?.invoke() ?: HttpClient() }
+        val fn: suspend (StatusReference) -> RevocationOutcome = { ref ->
+            try {
+                checkStatusListRevocation(ref, statusTrust, logger, client.value)
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                RevocationOutcome.UNKNOWN
+            }
+        }
+        fn
+    },
 ) : WrpRegistrationEvaluator {
 
     override suspend fun evaluate(

@@ -33,7 +33,6 @@ import kotlin.test.assertTrue
 
 class OfferResolverTest {
 
-    private lateinit var ktorHttpClientFactory: () -> HttpClient
     private lateinit var httpClient: HttpClient
     private lateinit var credentialOffer: CredentialOffer
     private lateinit var offerResolver: OfferResolver
@@ -49,7 +48,6 @@ class OfferResolverTest {
     @BeforeTest
     fun setUp() {
         httpClient = mockk<HttpClient>(relaxed = true)
-        ktorHttpClientFactory = { httpClient }
 
         credentialOffer = mockk(relaxed = true)
         config = mockk(relaxed = true) {
@@ -58,7 +56,7 @@ class OfferResolverTest {
         }
         mockkObject(CredentialOffer.Companion)
 
-        offerResolver = OfferResolver(config, ktorHttpClientFactory)
+        offerResolver = OfferResolver(config, httpClient)
     }
 
 
