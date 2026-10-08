@@ -72,10 +72,9 @@ internal suspend fun checkStatusListRevocation(
     statusReference: StatusReference,
     statusTrust: CertificateTrust?,
     logger: Logger?,
-    httpClientFactory: (() -> HttpClient)?,
+    httpClient: HttpClient,
 ): RevocationOutcome {
     return try {
-        val httpClient = (httpClientFactory ?: { HttpClient() }).invoke()
         val getStatusListToken = GetStatusListToken.usingJwt(
             clock = Clock.System,
             httpClient = httpClient,

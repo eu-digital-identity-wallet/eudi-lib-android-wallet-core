@@ -57,6 +57,7 @@ class DocumentStatusResolverTest {
     private val verifyCwtSignature = VerifyStatusListTokenCwtSignature { _, _ ->
         Result.success(Unit)
     }
+    private lateinit var mockHttpClient: HttpClient
     private lateinit var mockHttpClientFactory: () -> HttpClient
 
     @Before
@@ -66,7 +67,8 @@ class DocumentStatusResolverTest {
         every { mockDocument.format } returns SdJwtVcFormat("urn:eu.europa.ec.eudi:pid:1")
         mockGetStatusListToken = mockk()
         mockGetStatus = mockk()
-        mockHttpClientFactory = mockk()
+        mockHttpClient = mockk(relaxed = true)
+        mockHttpClientFactory = { mockHttpClient }
 
         mockkObject(GetStatusListToken.Companion)
         mockkObject(GetStatus.Companion)
@@ -142,7 +144,7 @@ class DocumentStatusResolverTest {
         every {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory(),
+                mockHttpClient,
                 verifyJwtSignature,
                 any()   // allowedClockSkew
             )
@@ -174,7 +176,7 @@ class DocumentStatusResolverTest {
         verify(exactly = 1) {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory(),
+                mockHttpClient,
                 verifyJwtSignature,
                 0.minutes
             )
@@ -194,7 +196,7 @@ class DocumentStatusResolverTest {
         every {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory(),
+                mockHttpClient,
                 verifyJwtSignature,
                 any()   // allowedClockSkew
             )
@@ -226,7 +228,7 @@ class DocumentStatusResolverTest {
         verify(exactly = 1) {
             GetStatusListToken.Companion.usingJwt(
                 any(),  // clock
-                mockHttpClientFactory(),
+                mockHttpClient,
                 verifyJwtSignature,
                 customClockSkew
             )

@@ -37,8 +37,7 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.internal.makeOpenId4VPConfig
-import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
-import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
+import eu.europa.ec.eudi.wallet.internal.withWalletKtorPlugins
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import io.ktor.client.HttpClient
@@ -89,9 +88,8 @@ class OpenId4VpManager(
                 registrationCertificatePolicy
             ),
             httpClient = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
-                .wrappedWithLogging(logger)
-                .wrappedWithContentNegotiation()
                 .invoke()
+                .withWalletKtorPlugins(logger)
         )
     }
 

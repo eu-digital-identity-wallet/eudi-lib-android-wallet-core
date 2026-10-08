@@ -214,6 +214,8 @@ class DocumentStatusResolverImpl(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : DocumentStatusResolver {
 
+    private val httpClient: HttpClient by lazy { ktorHttpClientFactory() }
+
     override suspend fun resolveStatus(document: IssuedDocument): Result<Status> = runCatching {
         withContext(ioDispatcher) {
             logger?.d(TAG, "resolveStatus: format=${document.format}, trustConfig=${if (statusListTrustConfig != null) "present" else "null"}")
@@ -229,7 +231,7 @@ class DocumentStatusResolverImpl(
                     )
                     GetStatusListToken.usingCwt(
                         clock = Clock.System,
-                        httpClient = ktorHttpClientFactory(),
+                        httpClient = httpClient,
                         verifyStatusListTokenSignature = verifier,
                         allowedClockSkew = allowedClockSkew,
                     )
@@ -243,7 +245,7 @@ class DocumentStatusResolverImpl(
                     )
                     GetStatusListToken.usingJwt(
                         clock = Clock.System,
-                        httpClient = ktorHttpClientFactory(),
+                        httpClient = httpClient,
                         verifyStatusListTokenSignature = verifier,
                         allowedClockSkew = allowedClockSkew,
                     )

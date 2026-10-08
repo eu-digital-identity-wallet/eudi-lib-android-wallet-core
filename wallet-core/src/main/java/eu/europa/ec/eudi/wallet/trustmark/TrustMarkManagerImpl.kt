@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.trustmark
 
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.withWalletKtorPlugins
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -40,12 +41,15 @@ internal class TrustMarkManagerImpl(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : TrustMarkManager {
 
+    private val httpClient: HttpClient by lazy {
+        ktorHttpClientFactory().withWalletKtorPlugins(logger)
+    }
+
     override suspend fun getTrustMark(): Result<TrustMark> = runCatching {
         withContext(ioDispatcher) {
             val info = resolveInformation()
             logger?.d(TAG, "getTrustMark: fetching resource from ${info.trustMarkResourceURL}")
-            val client = ktorHttpClientFactory()
-            val json = client.get(info.trustMarkResourceURL).bodyAsText()
+            val json = httpClient.get(info.trustMarkResourceURL).bodyAsText()
             val resource = Json.decodeFromString<TrustMarkResource>(json)
             TrustMark(information = info, resource = resource)
         }

@@ -26,47 +26,38 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 /**
- * Wraps the [HttpClient] with a logging interceptor.
- * @receiver the [HttpClient] factory
- * @param libraryLogger the logger
- * @return the wrapped [HttpClient] factory
+ * Derives a new [HttpClient] from this one with wallet-core's standard plugins installed:
+ * JSON content negotiation (lenient) and, when a [libraryLogger] is provided, Ktor request/response
+ * logging.
+ *
+ * All plugins are composed in a single [HttpClient.config] call so that at most one intermediate
+ * client is created (the receiver), rather than one per plugin.
+ *
+ * @receiver the base [HttpClient] to derive from
+ * @param libraryLogger optional logger; when non-null, Ktor [Logging] is installed at [LogLevel.ALL]
+ * @return a derived [HttpClient] with the plugins installed
  */
 @JvmSynthetic
-internal fun (() -> HttpClient).wrappedWithLogging(libraryLogger: Logger?): (() -> HttpClient) {
-    return if (libraryLogger != null) {
-        {
+internal fun HttpClient.withWalletKtorPlugins(libraryLogger: Logger?): HttpClient {
+    return this.config {
+        libraryLogger?.let { log ->
             val ktorLogger = object : io.ktor.client.plugins.logging.Logger {
                 override fun log(message: String) {
-                    libraryLogger.d(TAG, message)
+                    log.d(TAG, message)
                 }
             }
-            this().let { client ->
-                client.config {
-                    install(Logging) {
-                        logger = ktorLogger
-                        level = LogLevel.ALL
-                    }
-                }
+            install(Logging) {
+                logger = ktorLogger
+                level = LogLevel.ALL
             }
         }
-    } else this
-}
-
-@JvmSynthetic
-internal fun (() -> HttpClient).wrappedWithContentNegotiation(): (() -> HttpClient) {
-    return {
-        val jsonSupport = Json {
-            ignoreUnknownKeys = true
-            prettyPrint = true
-        }
-        this().let { client ->
-            client.config {
-                install(ContentNegotiation) {
-                    json(
-                        json = jsonSupport,
-                    )
-                }
-            }
+        install(ContentNegotiation) {
+            json(
+                json = Json {
+                    ignoreUnknownKeys = true
+                    prettyPrint = true
+                },
+            )
         }
     }
 }

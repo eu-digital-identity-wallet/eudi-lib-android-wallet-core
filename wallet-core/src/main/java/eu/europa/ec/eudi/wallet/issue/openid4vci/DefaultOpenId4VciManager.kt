@@ -38,8 +38,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
-import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
-import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
+import eu.europa.ec.eudi.wallet.internal.withWalletKtorPlugins
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
@@ -89,19 +88,20 @@ internal class DefaultOpenId4VciManager(
     val issuerRegistration: IssuerRegistrationResolver? = null
 ) : OpenId4VciManager {
 
-    internal val httpClientFactory
-        get() = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
-            .wrappedWithLogging(logger)
-            .wrappedWithContentNegotiation()
+    internal val httpClient: HttpClient by lazy {
+        (ktorHttpClientFactory ?: DefaultHttpClientFactory)
+            .invoke()
+            .withWalletKtorPlugins(logger)
+    }
 
     private val issuerMetadataPolicy: IssuerMetadataPolicy
         get() = issuerTrustConfig?.issuerMetadataPolicy ?: IssuerMetadataPolicy.IgnoreSigned
 
     private val offerResolver: OfferResolver by lazy {
-        OfferResolver(config, httpClientFactory, issuerMetadataPolicy)
+        OfferResolver(config, httpClient, issuerMetadataPolicy)
     }
     private val issuerCreator: IssuerCreator by lazy {
-        IssuerCreator(context, config, httpClientFactory, walletProvider, walletAttestationKeyManager, logger, issuerMetadataPolicy, issuerRegistrationEnabled, issuerRegistration)
+        IssuerCreator(context, config, httpClient, walletProvider, walletAttestationKeyManager, logger, issuerMetadataPolicy, issuerRegistrationEnabled, issuerRegistration)
     }
     private val issuerAuthorization: IssuerAuthorization by lazy {
         val handler = config.authorizationHandler ?: BrowserAuthorizationHandler(context, logger)
@@ -124,7 +124,7 @@ internal class DefaultOpenId4VciManager(
 
     override suspend fun getIssuerMetadata(issuerUrl: String): Result<CredentialIssuerMetadata> {
         return CredentialIssuerId(issuerUrl).mapCatching {
-            CredentialIssuerMetadataResolver(httpClientFactory()).resolve(
+            CredentialIssuerMetadataResolver(httpClient).resolve(
                 issuer = it,
                 policy = issuerMetadataPolicy
             ).getOrThrow()
@@ -275,7 +275,7 @@ internal class DefaultOpenId4VciManager(
                     else -> {
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
                             ctx = deferredContext.issuanceContext,
-                            httpClient = httpClientFactory(),
+                            httpClient = httpClient,
                             responseEncryptionKey = null // TODO handle encrypted responses
                         ).getOrThrow()
 
