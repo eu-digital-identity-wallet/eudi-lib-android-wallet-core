@@ -64,7 +64,7 @@ internal class ProcessDeferredOutcome(
                         val contextToStore = ctx.toBytes()
                         documentManager.storeDeferredDocument(deferredDocument, contextToStore)
                             .kotlinResult.onSuccess { document ->
-                                callback(DeferredIssueResult.DocumentNotReady(document))
+                                callback(DeferredIssueResult.DocumentNotReady(document, outcome.interval))
                             }.onFailure { error ->
                                 documentManager.deleteDocumentById(deferredDocument.id)
                                 callback(
@@ -75,7 +75,7 @@ internal class ProcessDeferredOutcome(
                                 )
                             }
                     } ?: callback(
-                        DeferredIssueResult.DocumentNotReady(deferredDocument)
+                        DeferredIssueResult.DocumentNotReady(deferredDocument, outcome.interval)
                     )
                 }
 
