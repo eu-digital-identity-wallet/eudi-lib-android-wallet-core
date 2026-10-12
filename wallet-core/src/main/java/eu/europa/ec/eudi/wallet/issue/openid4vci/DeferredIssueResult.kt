@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import java.security.cert.TrustAnchor
+import kotlin.time.Duration
 
 /**
  * Result of a deferred document issuance.
@@ -68,9 +69,11 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property documentId the id of the deferred document
      * @property name the name of the document
      * @property docType the document type
+     * @property interval how long the issuer asked the wallet to wait before querying again, if known
      */
     data class DocumentNotReady(
         override val document: DeferredDocument,
+        val interval: Duration? = null,
     ) : DeferredIssueResult, DocumentDetails by DocumentDetails(document)
 
     /**

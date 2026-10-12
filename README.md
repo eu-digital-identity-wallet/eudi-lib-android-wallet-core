@@ -1731,7 +1731,8 @@ openId4VciManager.issueDeferredDocument(deferredDocument) { result ->
             val cause = result.cause
         }
         is DeferredIssueResult.DocumentNotReady -> {
-            // The document is not issued yet
+            // The document is not issued yet; result.interval, when the issuer gave one,
+            // is how long it asked the wallet to wait before querying again
         }
         is DeferredIssueResult.DocumentExpired -> {
             // The document is expired and cannot be issued
