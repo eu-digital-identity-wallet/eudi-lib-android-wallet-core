@@ -28,12 +28,14 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.logging.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.multipaz.storage.Storage
@@ -72,14 +74,14 @@ class ProcessResponseNotificationTest {
         } returns Result.success(authorizedRequest)
     }
 
-    private fun buildSut(): ProcessResponse = ProcessResponse(
+    private fun buildSut(logger: Logger? = null): ProcessResponse = ProcessResponse(
         documentManager = documentManager,
         deferredContextFactory = { _, _, _, _ -> mockk(relaxed = true) },
         clientAttestationPopKeyId = null,
         listener = listener,
         issuedDocumentIds = mutableListOf(),
         deferredDocumentIds = mutableListOf(),
-        logger = null,
+        logger = logger,
         authorizedRequest = authorizedRequest,
         issuer = issuer,
         documentToConfigurationMap = mapOf(unsignedDocument to mockk(relaxed = true)),
@@ -107,7 +109,7 @@ class ProcessResponseNotificationTest {
             Result.success(authorizedRequest)
         }
 
-        buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId))
+        runBlocking { buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId)) }
 
         runBlocking { withTimeout(2_000) { notifySent.await() } }
 
@@ -132,7 +134,7 @@ class ProcessResponseNotificationTest {
             Result.success(authorizedRequest)
         }
 
-        buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId))
+        runBlocking { buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId)) }
 
         runBlocking { withTimeout(2_000) { notifySent.await() } }
 
@@ -143,7 +145,7 @@ class ProcessResponseNotificationTest {
 
     @Test
     fun `processSubmittedRequest does not notify issuer when notificationId is absent`() {
-        buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(null))
+        runBlocking { buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(null)) }
 
         coVerify(exactly = 0) {
             with(issuer) { authorizedRequest.notify(any()) }
@@ -162,10 +164,32 @@ class ProcessResponseNotificationTest {
             throw RuntimeException("network timeout")
         }
 
-        buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId))
+        runBlocking { buildSut().processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId)) }
 
         runBlocking { withTimeout(2_000) { notifyReached.await() } }
 
+        assertTrue(emittedEvents.filterIsInstance<IssueEvent.DocumentIssued>().size == 1)
+    }
+
+    @Test
+    fun `returned notification failure is logged and does not fail the flow`() {
+        val notifId = NotificationId("test-notif-id")
+        val records = mutableListOf<Logger.Record>()
+
+        coEvery {
+            with(issuer) { authorizedRequest.notify(any()) }
+        } returns Result.failure(RuntimeException("network timeout"))
+
+        runBlocking {
+            buildSut(logger = Logger { records.add(it) })
+                .processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId))
+        }
+
+        runBlocking {
+            withTimeout(2_000) {
+                while (records.none { it.message.contains("Failed to notify issuer") }) delay(10)
+            }
+        }
         assertTrue(emittedEvents.filterIsInstance<IssueEvent.DocumentIssued>().size == 1)
     }
 }

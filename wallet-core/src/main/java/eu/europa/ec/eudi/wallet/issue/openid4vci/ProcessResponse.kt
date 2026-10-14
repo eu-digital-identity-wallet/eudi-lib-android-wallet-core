@@ -200,7 +200,7 @@ internal class ProcessResponse(
     private fun notifyIssuerAsync(event: CredentialIssuanceEvent) {
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
-                with(issuer) { authorizedRequest.notify(event) }
+                with(issuer) { authorizedRequest.notify(event) }.getOrThrow()
             }.onFailure { error ->
                 logger?.d(TAG, "Failed to notify issuer for notification ${event.id.value}: ${error.message}")
             }
