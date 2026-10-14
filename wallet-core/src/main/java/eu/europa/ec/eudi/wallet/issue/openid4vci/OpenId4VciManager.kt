@@ -488,29 +488,129 @@ interface OpenId4VciManager {
     /**
      * Declares which proof types this wallet supports, and for each, which signing algorithms.
      *
-     * This maps internally to the vci library's `ProofsConfig` and controls:
-     * 1. Which proof types the wallet advertises to the issuer
-     * 2. Which signing algorithms the wallet can use for each proof type
-     *
-     * The default supports all three proof types with ES256/ES384/ES512.
-     * To disable a specific proof type, set its algorithms to `null`.
-     *
      * @property isNoProofSupported Whether the wallet supports issuers that require no proof
-     * @property jwtProofAlgorithms Supported algorithms for JWT proof type, or null to disable
+     * @property jwtProofAlgorithms Supported algorithms for JWT proof with key attestation, or null to disable
      * @property attestationProofAlgorithms Supported algorithms for attestation proof type, or null to disable
+     * @property jwtProofsWithoutKeyAttestationAlgorithms Supported algorithms for JWT proof without key attestation, or null to disable
      */
+    @Deprecated(
+        message = "Use IssuanceProofProfile instead, which unifies proof type capabilities and negotiation order.",
+        replaceWith = ReplaceWith("IssuanceProofProfile"),
+    )
     data class SupportedProofTypes(
         val isNoProofSupported: Boolean = true,
         val jwtProofAlgorithms: Set<Algorithm>? = null,
         val attestationProofAlgorithms: Set<Algorithm>? = null,
+        val jwtProofsWithoutKeyAttestationAlgorithms: Set<Algorithm>? = null,
     ) {
+
+        internal fun toIssuanceProofProfile(): IssuanceProofProfile.Custom {
+            val configs = buildList {
+                attestationProofAlgorithms?.let {
+                    add(IssuanceProofProfile.ProofTypeConfig(IssuanceProofProfile.ProofType.ATTESTATION, it))
+                }
+                jwtProofAlgorithms?.let {
+                    add(IssuanceProofProfile.ProofTypeConfig(IssuanceProofProfile.ProofType.JWT_WITH_KEY_ATTESTATION, it))
+                }
+                jwtProofsWithoutKeyAttestationAlgorithms?.let {
+                    add(IssuanceProofProfile.ProofTypeConfig(IssuanceProofProfile.ProofType.JWT_WITHOUT_KEY_ATTESTATION, it))
+                }
+                if (isNoProofSupported) {
+                    add(IssuanceProofProfile.ProofTypeConfig(IssuanceProofProfile.ProofType.NO_PROOF))
+                }
+            }
+            return IssuanceProofProfile.Custom(configs)
+        }
+
         companion object {
             val Default = SupportedProofTypes(
                 isNoProofSupported = true,
                 jwtProofAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
                 attestationProofAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
+                jwtProofsWithoutKeyAttestationAlgorithms = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512),
             )
         }
+    }
+
+    /**
+     * Determines the proof type negotiation strategy during credential issuance.
+     *
+     * Each variant defines a preference order of proof types with their supported algorithms.
+     * During issuance, the wallet iterates through this order and selects the first proof type
+     * that is both supported by the issuer and can be fulfilled by the wallet.
+     *
+     * Presence in [preferenceOrder] means the proof type is supported by the wallet.
+     * Position determines priority. Each entry carries the signing algorithms the wallet
+     * can use for that proof type.
+     *
+     * @see Config.Builder.withIssuanceProofProfile
+     */
+    sealed interface IssuanceProofProfile {
+
+        /**
+         * The proof types that can be used during credential issuance.
+         */
+        enum class ProofType {
+            ATTESTATION,
+            JWT_WITH_KEY_ATTESTATION,
+            JWT_WITHOUT_KEY_ATTESTATION,
+            NO_PROOF,
+        }
+
+        /**
+         * A proof type with its supported signing algorithms.
+         *
+         * @property proofType the proof type
+         * @property algorithms the signing algorithms the wallet supports for this proof type
+         */
+        data class ProofTypeConfig(
+            val proofType: ProofType,
+            val algorithms: Set<Algorithm> = DEFAULT_ALGORITHMS,
+        ) {
+            companion object {
+                val DEFAULT_ALGORITHMS = setOf(Algorithm.ESP256, Algorithm.ESP384, Algorithm.ESP512)
+            }
+        }
+
+        /**
+         * The ordered list of proof type configurations to attempt during negotiation,
+         * highest priority first.
+         */
+        val preferenceOrder: List<ProofTypeConfig>
+
+        /**
+         * ETSI TS 119 472-3 / EUDI Wallet profile.
+         *
+         * Prefers attestation-backed proofs. Does not fall back to plain JWT proofs.
+         * Requires a [WalletAttestationsProvider] to be configured.
+         */
+        data object Etsi : IssuanceProofProfile {
+            override val preferenceOrder = listOf(
+                ProofTypeConfig(ProofType.ATTESTATION),
+                ProofTypeConfig(ProofType.JWT_WITH_KEY_ATTESTATION),
+            )
+        }
+
+        /**
+         * Standard OpenID4VCI without ETSI profiling.
+         *
+         * Accepts plain JWT proofs. Key attestation is used when available but not required.
+         */
+        data object Standard : IssuanceProofProfile {
+            override val preferenceOrder = listOf(
+                ProofTypeConfig(ProofType.JWT_WITHOUT_KEY_ATTESTATION),
+                ProofTypeConfig(ProofType.JWT_WITH_KEY_ATTESTATION),
+                ProofTypeConfig(ProofType.ATTESTATION),
+                ProofTypeConfig(ProofType.NO_PROOF),
+            )
+        }
+
+        /**
+         * Custom negotiation order defined by the integrator.
+         *
+         * @property preferenceOrder ordered list of proof type configurations, highest priority first
+         */
+        data class Custom(override val preferenceOrder: List<ProofTypeConfig>) : IssuanceProofProfile
     }
 
     /**
@@ -559,7 +659,7 @@ interface OpenId4VciManager {
             rsaConfig = RsaConfig(rcaKeySize = 2048),
         ),
         val supportedCredentialReusePolicies: CredentialReusePolicies? = null,
-        val proofTypes: SupportedProofTypes = SupportedProofTypes.Default,
+        val issuanceProofProfile: IssuanceProofProfile = IssuanceProofProfile.Etsi,
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -677,7 +777,10 @@ interface OpenId4VciManager {
 
             var supportedCredentialReusePolicies: CredentialReusePolicies? = null
 
-            var proofTypes: SupportedProofTypes = SupportedProofTypes.Default
+            @Deprecated("Use issuanceProofProfile instead")
+            var proofTypes: SupportedProofTypes? = null
+
+            var issuanceProofProfile: IssuanceProofProfile? = null
 
             /**
              * Set the client authentication type
@@ -860,16 +963,28 @@ interface OpenId4VciManager {
             /**
              * Sets the supported proof types and their signing algorithms.
              *
-             * Controls which proof types the wallet advertises to the issuer and which
-             * algorithms it can use. Default is [SupportedProofTypes.Default] which supports
-             * all proof types with ES256/ES384/ES512.
-             *
              * @param proofTypes The supported proof types configuration
              * @return This builder instance for method chaining
-             * @see SupportedProofTypes
              */
+            @Deprecated(
+                message = "Use withIssuanceProofProfile instead",
+                replaceWith = ReplaceWith("withIssuanceProofProfile(proofTypes.toIssuanceProofProfile())"),
+            )
             fun withSupportedProofTypes(proofTypes: SupportedProofTypes) = apply {
+                @Suppress("DEPRECATION")
                 this.proofTypes = proofTypes
+            }
+
+            /**
+             * Sets the issuance proof profile that determines how the wallet negotiates
+             * proof types with issuers.
+             *
+             * @param profile The proof negotiation profile
+             * @return This builder instance for method chaining
+             * @see IssuanceProofProfile
+             */
+            fun withIssuanceProofProfile(profile: IssuanceProofProfile) = apply {
+                this.issuanceProofProfile = profile
             }
 
             /**
@@ -881,6 +996,12 @@ interface OpenId4VciManager {
                     checkNotNull(clientAuthenticationType) { "client authentication is required" }
                 val authFlowRedirectionURI =
                     checkNotNull(authFlowRedirectionURI) { "authFlowRedirectionURI is required" }
+
+                @Suppress("DEPRECATION")
+                val resolvedProfile = issuanceProofProfile
+                    ?: proofTypes?.toIssuanceProofProfile()
+                    ?: IssuanceProofProfile.Etsi
+
                 return Config(
                     authorizationHandler = authorizationHandler,
                     clientAuthenticationType = clientAuthenticationType,
@@ -890,7 +1011,7 @@ interface OpenId4VciManager {
                     issuanceMetadataStorage = issuanceMetadataStorage,
                     responseEncryptionConfig = responseEncryptionConfig,
                     supportedCredentialReusePolicies = supportedCredentialReusePolicies,
-                    proofTypes = proofTypes,
+                    issuanceProofProfile = resolvedProfile,
                 )
             }
         }

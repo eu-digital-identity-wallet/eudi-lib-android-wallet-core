@@ -82,6 +82,13 @@ sealed interface TransferEvent {
     data class Error(val error: Throwable) : TransferEvent
 
     /**
+     * Rejected event. This event is triggered when the verifier rejects the response.
+     * This event is to be used for implementation of the OpenId4VP protocol.
+     * @property redirectUri the optional redirect URI provided by the verifier
+     */
+    data class Rejected(val redirectUri: URI?) : TransferEvent
+
+    /**
      * Interface for transfer event listener
      */
     fun interface Listener {

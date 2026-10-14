@@ -19,13 +19,12 @@ package eu.europa.ec.eudi.wallet.transfer.openId4vp
 import android.net.Uri
 import com.nimbusds.jose.util.Base64URL
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.openid4vp.AuthorizationRequestError
 import eu.europa.ec.eudi.openid4vp.Consensus
 import eu.europa.ec.eudi.openid4vp.DispatchOutcome
 import eu.europa.ec.eudi.openid4vp.EncryptionParameters
+import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.ErrorDispatchDetails
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
@@ -76,16 +75,7 @@ class OpenId4VpManager(
     var listenersExecutor: Executor? = null,
     val ktorHttpClientFactory: (() -> HttpClient)? = null,
     private val registrationCertificatePolicy: RegistrationCertificatePolicy? = null
-) : TransferEvent.Listenable, ReaderTrustStoreAware {
-
-    /**
-     * The trust store used for verifying reader certificates. Delegates to the request processor.
-     */
-    override var readerTrustStore: ReaderTrustStore?
-        get() = requestProcessor.readerTrustStore
-        set(value) {
-            requestProcessor.readerTrustStore = value
-        }
+) : TransferEvent.Listenable {
 
     /**
      * Lazy initialization of the OpenID4VP protocol handler with logging and content negotiation.
@@ -190,7 +180,7 @@ class OpenId4VpManager(
                         }
 
                         transferEventListeners.onTransferEvent(
-                            TransferEvent.Error(error.asException())
+                            TransferEvent.Error(OpenId4VpRequestException(error))
                         )
                     }
 
@@ -216,6 +206,10 @@ class OpenId4VpManager(
                         }
                         val request = OpenId4VpRequest(resolvedRequest)
                         val processedRequest = requestProcessor.process(request)
+                        processedRequest.rejectedWith()?.let { error ->
+                            dispatchErrorResponse(error, resolvedRequest.errorDispatchDetails())
+                            activeRequestObject = null
+                        }
                         transferEventListeners.onTransferEvent(
                             TransferEvent.RequestReceived(processedRequest, request)
                         )
@@ -231,6 +225,27 @@ class OpenId4VpManager(
             }
         }
     }
+
+    /**
+     * Returns the error the request was rejected with, or null when it was accepted or when it was
+     * rejected for a reason that is not reported to the verifier.
+     */
+    private fun RequestProcessor.ProcessedRequest.rejectedWith(): AuthorizationRequestError? =
+        (this as? RequestProcessor.ProcessedRequest.Failure)
+            ?.let { it.error as? OpenId4VpRequestException }
+            ?.error
+
+    /**
+     * The details with which an error is dispatched for this request.
+     */
+    private fun ResolvedRequestObject.errorDispatchDetails(): ErrorDispatchDetails =
+        ErrorDispatchDetails(
+            responseMode = responseMode,
+            nonce = nonce,
+            state = state,
+            clientId = client.id,
+            responseEncryptionSpecification = responseEncryptionSpecification,
+        )
 
     /**
      * Dispatches a protocol-level error to the Verifier.
@@ -369,13 +384,13 @@ class OpenId4VpManager(
                         }
                     }
 
-                    DispatchOutcome.VerifierResponse.Rejected -> {
+                    is DispatchOutcome.VerifierResponse.Rejected -> {
                         logger?.e(TAG, "Verifier rejected the response")
-                        transferEventListeners.onTransferEvent(
-                            TransferEvent.Error(
-                                IllegalStateException("Verifier rejected the response")
-                            )
-                        )
+                        val uri = outcome.redirectURI
+                        if (uri != null) {
+                            logger?.d(TAG, "Rejected with redirect to: $uri")
+                        }
+                        transferEventListeners.onTransferEvent(TransferEvent.Rejected(uri))
                     }
                 }
             } catch (e: Throwable) {

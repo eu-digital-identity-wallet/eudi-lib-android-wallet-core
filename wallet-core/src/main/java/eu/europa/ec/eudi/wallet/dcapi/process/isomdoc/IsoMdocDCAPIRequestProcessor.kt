@@ -24,8 +24,6 @@ import eu.europa.ec.eudi.wallet.dcapi.internal.*
 import androidx.credentials.ExperimentalDigitalCredentialApi
 import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.provider.ProviderGetCredentialRequest
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
@@ -59,14 +57,13 @@ import org.multipaz.mdoc.zkp.ZkSystemRepository
  */
 class IsoMdocDCAPIRequestProcessor(
     private val documentManager: DocumentManager,
-    override var readerTrustStore: ReaderTrustStore?,
-    private val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private val privilegedAllowlist: String,
     private var zkSystemRepository: ZkSystemRepository?,
     private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
     private val wrpRegistrationValidator: WrpRegistrationValidator? = null,
     private var logger: Logger? = null,
-) : RequestProcessor, ReaderTrustStoreAware {
+) : RequestProcessor {
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
     override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
@@ -77,7 +74,6 @@ class IsoMdocDCAPIRequestProcessor(
         val (deviceRequest, origin) = credRequest.toDeviceRequest()
         val processed = DeviceRequestProcessor(
             documentManager = documentManager,
-            readerTrustStore = readerTrustStore,
             readerAuthPolicy = readerAuthPolicy,
             zkSystemRepository = zkSystemRepository,
             zkResponsePolicy = zkResponsePolicy,

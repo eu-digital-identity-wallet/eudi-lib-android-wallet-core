@@ -30,7 +30,7 @@ import androidx.credentials.provider.ProviderGetCredentialRequest
 import androidx.credentials.registry.provider.selectedCredentialSet
 import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIProtocol
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
@@ -235,13 +235,13 @@ internal fun ProviderGetCredentialRequest.resolveDcApiRequest(
 }
 
 /**
- * Walks a [CredentialPresentmentData] tree and keeps only matches whose underlying
+ * Walks a [CredentialQueryResult] tree and keeps only matches whose underlying
  * `Credential.document.identifier` is in [credentialIds]. Empty members / options / sets
  * are pruned, so the result contains exactly the requested document(s).
  */
-internal fun CredentialPresentmentData.filterByCredentialIds(
+internal fun CredentialQueryResult.filterByCredentialIds(
     credentialIds: Set<String>,
-): CredentialPresentmentData {
+): CredentialQueryResult {
     val sets = credentialSets.mapNotNull { set ->
         val options = set.options.mapNotNull { option ->
             val members = option.members.map { member ->
@@ -257,7 +257,7 @@ internal fun CredentialPresentmentData.filterByCredentialIds(
         if (options.isEmpty()) null
         else CredentialPresentmentSet(optional = false, options = options)
     }
-    return CredentialPresentmentData(sets)
+    return CredentialQueryResult(sets)
 }
 
 /**

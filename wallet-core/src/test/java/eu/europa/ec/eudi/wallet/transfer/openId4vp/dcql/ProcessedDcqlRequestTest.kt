@@ -15,12 +15,13 @@
  */
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificate
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.mockk.mockk
 import org.junit.Assert.assertSame
 import org.junit.Test
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialQueryResult
 
 class ProcessedDcqlRequestTest {
 
@@ -36,10 +37,11 @@ class ProcessedDcqlRequestTest {
             requester = mockk(relaxed = true),
             trustMetadata = null,
             msoMdocNonce = "nonce",
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
             wrpRegistration = registration,
         )
 
-        val copy = request.withPresentmentData(mockk<CredentialPresentmentData>(relaxed = true))
+        val copy = request.withPresentmentData(mockk<CredentialQueryResult>(relaxed = true))
 
         assertSame(registration, copy.wrpRegistration)
     }

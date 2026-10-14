@@ -20,7 +20,7 @@ import eu.europa.ec.eudi.openid4vp.dcql.DCQL
 import eu.europa.ec.eudi.openid4vp.dcql.QueryId
 import org.multipaz.openid.dcql.DcqlCredentialQuery
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.RequestedClaim
 
@@ -43,7 +43,7 @@ import org.multipaz.request.RequestedClaim
  *   the user or return an `access_denied` error to the verifier.
  */
 internal fun validateSelection(
-    selection: CredentialPresentmentSelection,
+    selection: CredentialSelection,
     dcql: DCQL,
 ): String? {
     val errors = mutableListOf<String>()

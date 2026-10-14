@@ -83,7 +83,7 @@ class MsoMdocCredentialTrustVerifierTest {
     }
 
     @Test
-    fun returnsNullWhenX5chainMissing() = runTest {
+    fun returnsNotTrustedWhenX5chainMissing() = runTest {
         val coseSign1 = CoseSign1(
             protectedHeaders = mapOf(
                 Cose.COSE_LABEL_ALG.toCoseLabel to
@@ -96,7 +96,7 @@ class MsoMdocCredentialTrustVerifierTest {
 
         val credentialValue = encodeAsStaticAuthData(coseSign1)
         val result = verifier.verify(credentialValue, attestationIdentifier)
-        assertNull(result)
+        assertTrue("Expected NotTrusted but got $result", result is CertificationChainValidation.NotTrusted)
     }
 
     @Test

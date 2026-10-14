@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.response.device
 
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -28,12 +29,13 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.request.Iso18013RequesterIdentity
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Constants
@@ -73,7 +75,7 @@ class ProcessedDeviceRequestTest {
         // This is the regression test for the missing-return skipAllByPolicy bug.
         val processed = buildProcessedRequest(
             trustMetadata = null,
-            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire,
+            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire(mockk<ReaderTrustStore>()),
         )
 
         val response = processed.generateEmptyResponse()
@@ -86,7 +88,7 @@ class ProcessedDeviceRequestTest {
     fun `AlwaysRequire produces STATUS_OK response when trustMetadata is set`() = runBlocking {
         val processed = buildProcessedRequest(
             trustMetadata = TrustMetadata(displayName = "Trusted Verifier"),
-            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire,
+            readerAuthPolicy = ReaderAuthPolicy.AlwaysRequire(mockk<ReaderTrustStore>()),
         )
 
         val response = processed.generateEmptyResponse()
@@ -103,8 +105,8 @@ class ProcessedDeviceRequestTest {
         // failed). EnforceIfPresent must skip.
         val processed = buildProcessedRequest(
             trustMetadata = null,
-            requester = Requester(certChain = mockk<X509CertChain>()),
-            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            requester = Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(mockk<X509CertChain>()))),
+            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(mockk<ReaderTrustStore>()),
         )
 
         val response = processed.generateEmptyResponse()
@@ -118,8 +120,8 @@ class ProcessedDeviceRequestTest {
         // No cert chain at all — there's nothing to enforce, so we pass.
         val processed = buildProcessedRequest(
             trustMetadata = null,
-            requester = Requester(certChain = null),
-            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            requester = Requester(requesterIdentities = emptyList()),
+            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(mockk<ReaderTrustStore>()),
         )
 
         val response = processed.generateEmptyResponse()
@@ -132,8 +134,8 @@ class ProcessedDeviceRequestTest {
     fun `EnforceIfPresent produces STATUS_OK response when readerAuth is present and trust-verified`() = runBlocking {
         val processed = buildProcessedRequest(
             trustMetadata = TrustMetadata(displayName = "Trusted"),
-            requester = Requester(certChain = mockk<X509CertChain>()),
-            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
+            requester = Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(mockk<X509CertChain>()))),
+            readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(mockk<ReaderTrustStore>()),
         )
 
         val response = processed.generateEmptyResponse()
@@ -149,7 +151,7 @@ class ProcessedDeviceRequestTest {
         // Cert chain present, no trust, no enforcement → still pass.
         val processed = buildProcessedRequest(
             trustMetadata = null,
-            requester = Requester(certChain = mockk<X509CertChain>()),
+            requester = Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(mockk<X509CertChain>()))),
             readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
         )
 
@@ -175,7 +177,7 @@ class ProcessedDeviceRequestTest {
         )
 
         val result = processed.generateResponse(
-            selection = CredentialPresentmentSelection(matches = listOf(openId4VpMatch)),
+            selection = CredentialSelection(matches = listOf(openId4VpMatch)),
             keyUnlockData = emptyMap(),
         )
 
@@ -206,8 +208,8 @@ class ProcessedDeviceRequestTest {
         val processed = ProcessedDeviceRequest(
             documentManager = documentManager,
             sessionTranscript = SESSION_TRANSCRIPT,
-            presentmentData = CredentialPresentmentData(emptyList()),
-            requester = Requester(certChain = null),
+            presentmentData = CredentialQueryResult(emptyList()),
+            requester = Requester(requesterIdentities = emptyList()),
             // Trusted + DoNotEnforce so the policy gate doesn't short-circuit before the loop.
             trustMetadata = TrustMetadata(displayName = "Trusted"),
             readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
@@ -215,7 +217,7 @@ class ProcessedDeviceRequestTest {
 
         val thrown = assertFailsWith<CancellationException> {
             processed.generateResponse(
-                selection = CredentialPresentmentSelection(matches = listOf(match)),
+                selection = CredentialSelection(matches = listOf(match)),
                 keyUnlockData = emptyMap(),
             )
         }
@@ -231,7 +233,7 @@ class ProcessedDeviceRequestTest {
     fun `presentmentSelections is empty selection when presentmentData has no sets`() {
         val processed = buildProcessedRequest(
             trustMetadata = null,
-            presentmentData = CredentialPresentmentData(credentialSets = emptyList()),
+            presentmentData = CredentialQueryResult(credentialSets = emptyList()),
         )
 
         val combinations = processed.presentmentSelections
@@ -275,7 +277,7 @@ class ProcessedDeviceRequestTest {
     fun `presentmentSelections combines matches across multiple credential sets`() {
         val pidA = mockMatch()
         val mdlA = mockMatch()
-        val data = CredentialPresentmentData(
+        val data = CredentialQueryResult(
             credentialSets = listOf(
                 set(optional = false, members = listOf(listOf(pidA))),
                 set(optional = false, members = listOf(listOf(mdlA))),
@@ -298,7 +300,7 @@ class ProcessedDeviceRequestTest {
         // verifier's either/or intent.
         val optionAMatch = mockMatch()
         val optionBMatch = mockMatch()
-        val data = CredentialPresentmentData(
+        val data = CredentialQueryResult(
             credentialSets = listOf(
                 CredentialPresentmentSet(
                     optional = false,
@@ -329,7 +331,7 @@ class ProcessedDeviceRequestTest {
         // the consent UI's concern.
         val requiredMatch = mockMatch()
         val optionalMatch = mockMatch()
-        val data = CredentialPresentmentData(
+        val data = CredentialQueryResult(
             credentialSets = listOf(
                 set(optional = false, members = listOf(listOf(requiredMatch))),
                 set(optional = true, members = listOf(listOf(optionalMatch))),
@@ -348,12 +350,12 @@ class ProcessedDeviceRequestTest {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     /**
-     * Run `generateResponse` with an empty [CredentialPresentmentSelection] so that no
+     * Run `generateResponse` with an empty [CredentialSelection] so that no
      * documents are signed and the test depends only on the policy gate.
      */
     private suspend fun ProcessedDeviceRequest.generateEmptyResponse(): DeviceResponse {
         val result = generateResponse(
-            selection = CredentialPresentmentSelection(matches = emptyList()),
+            selection = CredentialSelection(matches = emptyList()),
             keyUnlockData = emptyMap(),
         )
         val success = assertIs<ResponseResult.Success>(result)
@@ -369,9 +371,9 @@ class ProcessedDeviceRequestTest {
 
     private fun buildProcessedRequest(
         trustMetadata: TrustMetadata?,
-        requester: Requester = Requester(certChain = null),
-        readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent,
-        presentmentData: CredentialPresentmentData = CredentialPresentmentData(emptyList()),
+        requester: Requester = Requester(requesterIdentities = emptyList()),
+        readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        presentmentData: CredentialQueryResult = CredentialQueryResult(emptyList()),
     ): ProcessedDeviceRequest = ProcessedDeviceRequest(
         documentManager = mockk<DocumentManager>(relaxed = true),
         sessionTranscript = SESSION_TRANSCRIPT,
@@ -393,7 +395,7 @@ class ProcessedDeviceRequestTest {
     private fun oneSetOneOptionOneMember(
         matches: List<CredentialPresentmentSetOptionMemberMatch>,
         optional: Boolean = false,
-    ): CredentialPresentmentData = CredentialPresentmentData(
+    ): CredentialQueryResult = CredentialQueryResult(
         credentialSets = listOf(set(optional = optional, members = listOf(matches))),
     )
 

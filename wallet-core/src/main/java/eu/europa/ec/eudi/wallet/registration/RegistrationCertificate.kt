@@ -73,14 +73,14 @@ data class RegistrationCertificate(
 )
 
 /**
- * An identifier of the relying party as recorded in a national register. Corresponds to the
- * WRPRC `Identifier` structure.
+ * An identifier of the relying party as recorded in a national register. Corresponds to the WRPRC
+ * `Identifier` structure. It carries the ETSI EN 319 412-1 clause 5.1.4 legal-person semantic
+ * identifier, with the scheme encoded as a prefix in [value] (for example `"LEIXG-…"`). For the
+ * decoded scheme URI and bare value see [structuredIdentifier].
  *
- * @property type the identifier type as a URI (for example LEI, EUID or VATIN), when qualified
  * @property value the identifier value
  */
 data class RegistrationIdentifier(
-    val type: String? = null,
     val value: String
 )
 

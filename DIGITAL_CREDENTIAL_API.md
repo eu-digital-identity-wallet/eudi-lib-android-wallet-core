@@ -299,7 +299,7 @@ of the transfer process:
 The processed request can be accessed through `event.processedRequest`. On success, the
 `RequestProcessor.ProcessedRequest.Success` carries `presentmentSelections` (the options the
 consent UI renders), `presentmentData` (the underlying tree), `requester`, and `trustMetadata`.
-The application picks a `CredentialPresentmentSelection` from `presentmentSelections` and
+The application picks a `CredentialSelection` from `presentmentSelections` and
 calls `success.generateResponse(...)` to produce the response. See more details in
 [README](README.md#receiving-a-request-and-sending-a-response).
 
@@ -326,23 +326,14 @@ if (error is DCAPIException) {
 ## Limitations
 
 Some features are not yet supported over the Digital Credential API. These are tied to the
-version of the credential matcher currently bundled with the library, and are expected to be
-supported as the matcher is updated:
+version of the credential matcher currently bundled with the library (multipaz v0.101.0), and are
+expected to be supported as the matcher is updated:
 
 - **DCQL `multiple` matching** — a credential query with `"multiple": true` (returning more than
   one matching credential for a single query) is not supported; one credential per query is offered.
 - **Array claim paths** — selecting individual array elements, by index (`["nationalities", 0]`) or
-  with the `null` wildcard (`["nationalities", null]`), is not supported. Requesting the whole claim
-  (`["nationalities"]`) works.
-- **Request protocol order** — when a verifier offers several protocols as alternatives in a single
-  request, the OS credential matcher commits to the first protocol it recognizes and does not fall
-  back to a later alternative, even when a document does not support that first protocol. A document
-  may therefore not be offered if a recognized-but-unsupported protocol is listed before one it does
-  support. For example, a verifier may list the draft `openid4vp` protocol (OpenID4VP Draft 24)
-  before `org-iso-mdoc`. An MSO mdoc document is offered over `org-iso-mdoc` but not over the draft
-  `openid4vp`, so the matcher commits to `openid4vp`, finds no match, and never falls back to
-  `org-iso-mdoc` — the document is not offered. Listing `org-iso-mdoc` first, or using the OpenID4VP
-  1.0 protocols `openid4vp-v1-signed` / `openid4vp-v1-unsigned` (which the document does support),
-  avoids this.
+  with the `null` wildcard (`["nationalities", null]`), is not supported. The matcher reads every
+  claim path element as a string, so a numeric index or a `null` wildcard does not resolve.
+  Requesting the whole claim (`["nationalities"]`) works.
 
 In addition, **`openid4vp-v1-multisigned`** (multi-signed OpenID4VP requests) is not supported yet.

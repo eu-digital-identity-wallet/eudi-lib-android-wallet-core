@@ -24,9 +24,6 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.trust.StatusListTrustConfig
 import eu.europa.ec.eudi.wallet.trust.TrustPolicy
-import org.multipaz.cbor.Cbor
-import org.multipaz.cose.Cose
-import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.javaX509Certificates
 import java.security.cert.X509Certificate
 import kotlin.time.Instant
@@ -35,7 +32,7 @@ import kotlin.time.Instant
  * Wraps a [VerifyStatusListTokenCwtSignature] to add ETSI trust evaluation of
  * the signer's certificate chain after cryptographic signature verification.
  *
- * Extracts the x5chain from COSE_Sign1 unprotected headers (label 33) and evaluates
+ * Extracts the x5chain from COSE_Sign1 headers (protected or unprotected) and evaluates
  * trust using the configured ETSI trust source.
  *
  * @param delegate the underlying CWT signature verifier
@@ -58,7 +55,7 @@ internal class TrustEvaluatingCwtSignatureVerifier(
         delegate(statusListToken, at).getOrThrow()
         logger?.d(TAG, "CWT: signature verification passed")
 
-        // Extract x5chain from COSE_Sign1 unprotected headers (label 33)
+        // Extract x5chain from COSE_Sign1 headers (protected or unprotected)
         val certs = extractX5cFromCwt(statusListToken)
         logger?.d(TAG, "CWT: x5chain has ${certs.size} certs, leaf=${certs.firstOrNull()?.subjectX500Principal}")
 
@@ -101,19 +98,17 @@ internal class TrustEvaluatingCwtSignatureVerifier(
         }
     }
 
+    private fun extractX5cFromCwt(statusListToken: ByteArray): List<X509Certificate> {
+        val coseSign1 = decodeCoseSign1(statusListToken, logger)
+        val x5chain = coseSign1.extractX5chain()
+
+        val javaCerts = x5chain.javaX509Certificates
+        require(javaCerts.isNotEmpty()) { "x5chain must contain at least one certificate" }
+
+        return javaCerts
+    }
+
     companion object {
         private const val TAG = "StatusListTrust"
-        private fun extractX5cFromCwt(statusListToken: ByteArray): List<X509Certificate> {
-            val coseSign1 = Cbor.decode(statusListToken).asCoseSign1
-
-            val x5chainDataItem = coseSign1.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
-                ?: throw IllegalStateException("Missing x5chain in COSE unprotected headers")
-            val x5chain = x5chainDataItem.asX509CertChain
-
-            val javaCerts = x5chain.javaX509Certificates
-            require(javaCerts.isNotEmpty()) { "x5chain must contain at least one certificate" }
-
-            return javaCerts
-        }
     }
 }

@@ -25,8 +25,6 @@ import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.internal.QrEngagement
 import eu.europa.ec.eudi.iso18013.transfer.internal.TAG
 import eu.europa.ec.eudi.iso18013.transfer.internal.stopPresentation
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -55,14 +53,8 @@ class TransferManagerImpl @JvmOverloads constructor(
     context: Context,
     override val requestProcessor: RequestProcessor,
     retrievalMethods: List<DeviceRetrievalMethod>? = null,
-) : TransferManager, ReaderTrustStoreAware {
+) : TransferManager {
     private val context = context.applicationContext
-
-    override var readerTrustStore: ReaderTrustStore?
-        get() = (requestProcessor as? ReaderTrustStoreAware)?.readerTrustStore
-        set(value) {
-            (requestProcessor as? ReaderTrustStoreAware)?.readerTrustStore = value
-        }
 
     /**
      * Device retrieval helper instance
@@ -322,7 +314,7 @@ class TransferManagerImpl @JvmOverloads constructor(
      * Builder class for instantiating a [TransferManager] implementation
      *
      * @property documentManager document manager instance
-     * @property readerTrustStore reader trust store instance
+     * @property readerAuthPolicy reader authentication policy (carries the trust store)
      * @property retrievalMethods list of device retrieval methods
      * @property zkSystemRepository ZK system repository instance
      * @property zkResponsePolicy ZK response policy
@@ -332,8 +324,7 @@ class TransferManagerImpl @JvmOverloads constructor(
     class Builder(context: Context) {
         private val context = context.applicationContext
         var documentManager: DocumentManager? = null
-        var readerTrustStore: ReaderTrustStore? = null
-        var readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.EnforceIfPresent
+        lateinit var readerAuthPolicy: ReaderAuthPolicy
         var retrievalMethods: List<DeviceRetrievalMethod>? = null
         var zkSystemRepository: ZkSystemRepository? = null
         var zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict
@@ -348,16 +339,8 @@ class TransferManagerImpl @JvmOverloads constructor(
         }
 
         /**
-         * Reader trust store instance that will be used to verify the reader's certificate
-         * @param readerTrustStore
-         */
-        fun readerTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-            this.readerTrustStore = readerTrustStore
-        }
-
-        /**
          * Policy for enforcing reader authentication results during response generation.
-         * Default is [ReaderAuthPolicy.EnforceIfPresent].
+         * The trust store is embedded in the policy.
          * @param readerAuthPolicy the reader authentication policy
          */
         fun readerAuthPolicy(readerAuthPolicy: ReaderAuthPolicy) = apply {
@@ -407,7 +390,6 @@ class TransferManagerImpl @JvmOverloads constructor(
                 context = context,
                 requestProcessor = DeviceRequestProcessor(
                     documentManager = documentManager!!,
-                    readerTrustStore = readerTrustStore,
                     readerAuthPolicy = readerAuthPolicy,
                     zkSystemRepository = zkSystemRepository,
                     zkResponsePolicy = zkResponsePolicy,

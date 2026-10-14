@@ -37,7 +37,7 @@ import org.junit.Test
 import org.multipaz.openid.dcql.DcqlClaimSet
 import org.multipaz.openid.dcql.DcqlCredentialQuery
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.RequestedClaim
@@ -71,7 +71,7 @@ class DcqlSelectionValidatorTest {
             ),
         )
 
-        val selection = CredentialPresentmentSelection(
+        val selection = CredentialSelection(
             matches = listOf(matchFor(pidId, requiredClaims = listOf(claimGivenName, claimFamilyName))),
         )
 
@@ -94,7 +94,7 @@ class DcqlSelectionValidatorTest {
             ),
         )
 
-        val selection = CredentialPresentmentSelection(matches = emptyList())
+        val selection = CredentialSelection(matches = emptyList())
 
         val error = validateSelection(selection, dcql)
         assertNotNull(error)
@@ -121,7 +121,7 @@ class DcqlSelectionValidatorTest {
         )
 
         // The user kept only given_name; family_name was deselected.
-        val selection = CredentialPresentmentSelection(
+        val selection = CredentialSelection(
             matches = listOf(
                 matchFor(
                     queryId = pidId,
@@ -166,7 +166,7 @@ class DcqlSelectionValidatorTest {
         )
 
         // The user deselected age_over_18 but kept birth_date — the second claim_set is satisfied.
-        val selection = CredentialPresentmentSelection(
+        val selection = CredentialSelection(
             matches = listOf(
                 matchFor(
                     queryId = pidId,
@@ -214,7 +214,7 @@ class DcqlSelectionValidatorTest {
         )
 
         // Neither age_over_18 nor birth_date is in the disclosed set.
-        val selection = CredentialPresentmentSelection(
+        val selection = CredentialSelection(
             matches = listOf(
                 matchFor(
                     queryId = pidId,
@@ -264,7 +264,7 @@ class DcqlSelectionValidatorTest {
         )
 
         // Only the required set has a match; the optional photo set is left empty.
-        val selection = CredentialPresentmentSelection(
+        val selection = CredentialSelection(
             matches = listOf(matchFor(pidId, requiredClaims = listOf(claimGivenName))),
         )
 
@@ -309,7 +309,7 @@ class DcqlSelectionValidatorTest {
             ),
         )
 
-        val selection = CredentialPresentmentSelection(matches = emptyList())
+        val selection = CredentialSelection(matches = emptyList())
 
         val error = validateSelection(selection, dcql)
         assertNotNull(error)

@@ -85,37 +85,39 @@ graph TD
 
 The library supports the following features:
 
-| Category                   | Feature                                                                 | Status                                                                                                                 |
-|----------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                      |
-|                            | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                     |
-|                            | Multiple Key Management implementations                                 | ✅                                                                                                                      |
-|                            | Support for Batch credentials per Document                              | ✅                                                                                                                      |
-| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                        |
-|                            | Authorization Code Flow                                                 | ✅                                                                                                                      |
-|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                      |
-|                            | DPoP JWT in authorization                                               | ✅                                                                                                                      |
-|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
-|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                             |
-|                            | Credential batch issuing                                                | ✅                                                                                                                      |
-|                            | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                     |
-|                            | Deferred issuing                                                        | ✅                                                                                                                      |
-|                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                  |
-|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type, <br/> ✅ Proof Type without Attestation <br/> ✅ JWT Proof Type with Attestation               |
-|                            | Notify credential issuer                                                | ❌                                                                                                                      |
-| **Issuer Trust**           | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                            |
-|                            | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                      |
-|                            | Signed issuer metadata verification                                     | ✅ RequireSigned (default) / PreferSigned / IgnoreSigned                                                                 |
-|                            | Custom credential format verifiers                                      | ✅ via CredentialTrustVerifier                                                                                           |
-| **Revocation Status**      | Document status resolution (token status lists)                         | ✅ JWT <br /> ✅ CWT                                                                                                     |
-|                            | Status list token signer trust verification (LoTE)                      | ✅                                                                                                                      |
-| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                        |
-|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                      |
-|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                 |
-| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                        |
-|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                        |
+| Category                   | Feature                                                                 | Status                                                                                                                                                        |
+|----------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                                                             |
+|                            | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                                                            |
+|                            | Multiple Key Management implementations                                 | ✅                                                                                                                                                             |
+|                            | Support for Batch credentials per Document                              | ✅                                                                                                                                                             |
+| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                                                               |
+|                            | Authorization Code Flow                                                 | ✅                                                                                                                                                             |
+|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                                                             |
+|                            | DPoP JWT in authorization                                               | ✅                                                                                                                                                             |
+|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |
+|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                                                                    |
+|                            | Credential batch issuing                                                | ✅                                                                                                                                                             |
+|                            | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                                                          |
+|                            | Deferred issuing                                                        | ✅                                                                                                                                                             |
+|                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                                                         |
+|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type <br/> ✅ JWT Proof Type with Key Attestation <br/> ✅ JWT Proof Type without Key Attestation <br/> ✅ No Proof                          |
+|                            | Notify credential issuer                                                | ❌                                                                                                                                                             |
+| **Issuer Trust**           | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |
+|                            | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                                                             |
+|                            | Signed issuer metadata verification                                     | ✅ RequireSigned (default) / PreferSigned / IgnoreSigned                                                                                                       |
+|                            | Custom credential format verifiers                                      | ✅ via CredentialTrustVerifier                                                                                                                                 |
+| **Revocation Status**      | Document status resolution (token status lists)                         | ✅ JWT <br /> ✅ CWT                                                                                                                                            |
+|                            | Status list token signer trust verification (LoTE)                      | ✅                                                                                                                                                             |
+| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                                                               |
+|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                                                             |
+|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                                                        |
+| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                                                               |
+|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                                                               |
 |                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |
-|                            | Transaction data                                                        | ❌                                                                                                                      |
+|                            | Transaction data                                                        | ✅ SD-JWT VC <br />✅ ISO/IEC 18013-5 mdoc                                                                                                               |
+| **Trust Mark**             | EUDI Wallet Trust Mark (EC TS01 v1.2)                                   | ✅ Static (pre-distribution) <br /> ✅ Dynamic (on-demand via provider)                                                  |
+|                            | Trust Mark resource fetching                                            | ✅                                                                                                                      |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -180,7 +182,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.30.2"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.31.1-SNAPSHOT"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -231,13 +233,13 @@ val config = EudiWalletConfig()
         // to store the keys
         useStrongBoxForKeys = true
     )
-    .configureReaderTrustStore(
-        // set the reader trusted certificates for the reader trust store
-        listOf(readerCertificate)
-    )
-    // configure the reader authentication enforcement policy
-    // default is EnforceIfPresent
-    .configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    .configureReaderAuthentication {
+        // set the reader trusted certificates
+        trustedCertificates(readerCertificate)
+        // configure the reader authentication enforcement policy
+        // default is EnforceIfPresent
+        enforceIfPresent()
+    }
     // configure the OpenId4Vci service
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.com")
@@ -297,8 +299,6 @@ val customWallet = EudiWallet(context, config) {
     withStorage(myStorage)
     // a list of SecureArea implementations to be used
     withSecureAreas(listOf(deviceSecureArea, cloudSecureArea))
-    // ReaderTrustStore to be used for reader authentication
-    withReaderTrustStore(myReaderTrustStore)
     // custom logger to be used
     withLogger(myLogger)
     // custom HTTP client for network operations
@@ -318,52 +318,63 @@ wallet-core library with custom SecureArea implementations.
 #### Reader Authentication Policy
 
 The reader authentication policy controls how reader authentication results affect document
-disclosure during proximity (BLE/NFC) and DCAPI presentations. This works in conjunction with the
-`ReaderTrustStore` configured via `configureReaderTrustStore`.
-
-When a verifier's DeviceRequest includes reader authentication, the wallet verifies the reader's
-certificate chain against the configured `ReaderTrustStore`. The `ReaderAuthPolicy` determines what
-happens based on the verification result:
-
-| Policy | Behavior |
-|---|---|
-| `ReaderAuthPolicy.DoNotEnforce` | Reader authentication is evaluated but never blocks document disclosure. Documents are always included in the response. |
-| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
-| `ReaderAuthPolicy.AlwaysRequire` | Documents are excluded unless reader authentication is present and verified successfully. |
-
-Per ISO 18013-5, when all documents are excluded due to reader authentication failure, the wallet
-returns a DeviceResponse with status 10 (General Error) instead of an empty success response.
-
-The reader auth policy can be set in two ways, for flexibility:
-
-**Inside the ETSI reader trust DSL** (when using `configureEtsiTrust`):
+disclosure during proximity (BLE/NFC), remote (OpenID4VP), and DCAPI presentations. Trust sources
+and enforcement intent are configured together via `configureReaderAuthentication`:
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureEtsiTrust { /* ... */ }
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        trustedCertificates(cert1, cert2)
+        enforceIfPresent() // default — can be omitted
     }
 }
 ```
 
-**As a standalone call** (when using certificate-based or custom `ReaderTrustStore`):
+When a verifier's request includes reader authentication, the wallet verifies the reader's
+certificate chain against the configured trust sources. The enforcement policy determines what
+happens based on the verification result:
+
+| Policy | Behavior |
+|---|---|
+| `doNotEnforce()` | Reader authentication is evaluated but never blocks document disclosure. Documents are always included in the response. |
+| `enforceIfPresent()` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
+| `alwaysRequire()` | Documents are excluded unless reader authentication is present and verified successfully. |
+
+Per ISO 18013-5, when all documents are excluded due to reader authentication failure, the wallet
+returns a DeviceResponse with status 10 (General Error) instead of an empty success response.
+
+**With ETSI trust** (trust source inherited from `configureEtsiTrust`):
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(listOf(trustedReaderCertificate))
-    configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    configureEtsiTrust { /* ... */ }
+    configureReaderAuthentication {
+        alwaysRequire()
+        // trust source resolved from configureEtsiTrust at build time
+    }
 }
 ```
 
-The standalone `configureReaderAuthPolicy()` method remains available for users who use the
-certificate-based `configureReaderTrustStore(certificates)` overloads or a custom `ReaderTrustStore`,
-since those paths don't have a DSL block.
+**With static certificates**:
+
+```kotlin
+val config = EudiWalletConfig {
+    configureReaderAuthentication {
+        trustedCertificates(trustedCert1, trustedCert2)
+        revocationPolicy(RevocationPolicy.SoftFail)
+        enforceIfPresent()
+    }
+}
+```
+
+> **Note:** `enforceIfPresent()` and `alwaysRequire()` require trust sources. If no trust
+> source is configured (and no central ETSI trust source is available), an
+> `IllegalArgumentException` is thrown at build time. Call `doNotEnforce()` to explicitly opt out.
 
 > **Note:** If a verifier includes reader authentication in its request but its certificate is not in
-> the configured `ReaderTrustStore`, the document will be excluded from the response when using
-> `EnforceIfPresent` or `AlwaysRequire` policies. To allow presentations to verifiers whose
-> certificates are not in the trust store, use `ReaderAuthPolicy.DoNotEnforce`.
+> the configured trust store, the document will be excluded from the response when using
+> `enforceIfPresent()` or `alwaysRequire()`. To allow presentations to verifiers whose
+> certificates are not in the trust store, use `doNotEnforce()`.
 
 #### WalletKeyManager Configuration
 This interface is responsible for managing Attestation Keys used during Attestation Based Client Authentication with OpenId4Vci.
@@ -423,6 +434,92 @@ val wallet = EudiWallet(
 
 **NOTE:** When Attestation Based Client Authentication is configured for OpendId4Vci, the `EudiWallet` must also be instantiated with a WalletProvider
 
+#### Configure EUDI Wallet Trust Mark
+
+The library supports the EUDI Wallet Trust Mark as defined in EC TS01 v1.2 (2026-06). The Trust
+Mark is a visible, verifiable indicator displayed in certified Wallet Solutions to inform users
+that the wallet has been certified under EU Regulation 2024/1183.
+
+The `TrustMarkManager` provides access to:
+- **`TrustMarkInformation`**: URLs for the Trust Mark resource, list of certified wallets, and
+  the wallet solution's own information page.
+- **`TrustMarkResource`**: The official Trust Mark logo and localised user information text,
+  fetched from the EC-hosted resource endpoint.
+
+Trust Mark delivery is configured via a single `TrustMarkSource` parameter matching the
+specification's two delivery mechanisms:
+
+##### Static (Pre-distribution)
+
+For trust mark data compiled into the app at build time:
+
+```kotlin
+val wallet = EudiWallet(
+    context = context,
+    config = config,
+    trustMarkSource = TrustMarkSource.Static(
+        TrustMarkInformation(
+            trustMarkResourceURL = "https://eidas.ec.europa.eu/efda/wallet/trust-mark/resources",
+            listOfCertifiedWalletsURL = "https://eidas.ec.europa.eu/efda/wallet/certified",
+            walletSolutionInfoPageURL = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_123",
+        )
+    ),
+)
+```
+
+##### Dynamic (On-demand)
+
+For trust mark data fetched from a Wallet Provider backend at runtime:
+
+```kotlin
+val wallet = EudiWallet(
+    context = context,
+    config = config,
+    trustMarkSource = TrustMarkSource.Dynamic(
+        TrustMarkProvider {
+            // Fetch trust mark configuration from your Wallet Provider backend
+            myBackendService.getTrustMarkInformation()
+        }
+    ),
+)
+```
+
+##### Using the TrustMarkManager
+
+When trust mark data is supplied (via either method above), a `TrustMarkManager` is created
+internally and exposed via `wallet.trustMarkManager`. It is `null` when neither a provider
+nor static information was supplied.
+
+A single `getTrustMark()` call resolves the trust mark information and fetches the resource
+(logo + text) from the EC endpoint in one operation:
+
+```kotlin
+wallet.trustMarkManager?.getTrustMark()?.fold(
+    onSuccess = { trustMark ->
+        // Trust Mark information (URLs, optional QR codes)
+        val info = trustMark.information
+        // info.trustMarkResourceURL
+        // info.listOfCertifiedWalletsURL
+        // info.walletSolutionInfoPageURL
+        // info.listOfCertifiedWalletsQRCode (optional, base64)
+        // info.walletSolutionInfoPageQRCode (optional, base64)
+        // info.walletVerifierToolURL (optional)
+
+        // Trust Mark resource (logo + localised text)
+        val resource = trustMark.resource
+        // resource.image.name — e.g. "eudi-wallet-trustmark-logo.png"
+        // resource.image.url — URL to the logo image
+        // resource.text.localisations — Map<String, String> of language code to text
+        val localizedText = resource.text.localisations["en"]
+    },
+    onFailure = { error ->
+        // Handle error (provider failure, network failure, parse error, etc.)
+    }
+)
+```
+
+> **Note:** `getTrustMark()` performs an HTTP GET to the `trustMarkResourceURL`. The image URL
+> in the response is returned as-is for the UI layer to render. 
 
 ### Manage documents
 
@@ -638,7 +735,7 @@ The recommended approach is to use `configureEtsiTrust` to centralize the LoTE t
 infrastructure in the core. This builds the entire trust pipeline internally — HTTP client,
 file cache, JWT signature verification, trust anchor provisioning, and caching — from a
 small set of high-level configuration knobs. Each trust area (`configureIssuerTrust`,
-`configureDocumentStatusResolver`, `configureReaderTrustStore`) inherits the shared trust
+`configureDocumentStatusResolver`, `configureReaderAuthentication`) inherits the shared trust
 source automatically and only needs area-specific settings (policies, clock skew, etc.).
 
 Each trust verification feature is independently configurable and opt-in. When not configured,
@@ -663,7 +760,7 @@ declare it explicitly:
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.30.2"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.31.1-SNAPSHOT"
     // Required explicitly — Uri type is not transitive from wallet-core
     implementation "eu.europa.ec.eudi:eudi-lib-kmp-etsi-119602-consultation:${VERSION}"
 }
@@ -714,8 +811,8 @@ val config = EudiWalletConfig {
     configureDocumentStatusResolver {
         clockSkew(5)
     }
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        alwaysRequire()
     }
 }
 ```
@@ -778,7 +875,10 @@ val config = EudiWalletConfig {
             classifications(myClassifications)
         }
     }
-    configureReaderTrustStore(isChainTrusted)
+    configureReaderAuthentication {
+        trustSource(isChainTrusted)
+        enforceIfPresent()
+    }
 }
 
 // On shutdown:
@@ -1018,45 +1118,47 @@ signature verification without ETSI trust chain validation.
 
 #### Reader Authentication with Trusted Lists
 
-`EtsiReaderTrustStore` is a drop-in replacement for `ReaderTrustStoreImpl` that delegates
-reader certificate chain validation to the ETSI library's `IsChainTrustedForEUDIW`. It
-uses the `WalletRelyingPartyAccessCertificate` (WRPAC) verification context by default.
+Reader certificate chain validation can be delegated to the ETSI library's
+`IsChainTrustedForEUDIW` using the `WalletRelyingPartyAccessCertificate` (WRPAC)
+verification context. All trust sources and enforcement are configured through the unified
+`configureReaderAuthentication` DSL.
 
-**Using centralized ETSI trust** (recommended): The DSL block inherits the trust source from
-`configureEtsiTrust` and allows setting the reader authentication policy in the same place:
+**Using centralized ETSI trust** (recommended): The trust source is inherited from
+`configureEtsiTrust` — only the enforcement policy needs to be set:
 
 ```kotlin
 val config = EudiWalletConfig {
     configureEtsiTrust { /* ... */ }
 
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        alwaysRequire()
+        // trust source resolved from configureEtsiTrust at build time
     }
 }
 ```
 
-**Using a manually built trust source**: Pass `IsChainTrustedForEUDIW` directly. The reader
-auth policy is set separately via `configureReaderAuthPolicy()`:
+**Using a manually built trust source**: Pass `IsChainTrustedForEUDIW` directly via
+`trustSource()`:
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(isChainTrusted)
-    configureReaderAuthPolicy(ReaderAuthPolicy.AlwaysRequire)
+    configureReaderAuthentication {
+        trustSource(isChainTrusted)
+        alwaysRequire()
+    }
 }
 ```
 
-**Using static certificates**: The overloads that accept `X509Certificate` lists remain
-available. The reader auth policy is set separately, and the certificate revocation checking
-policy can be configured via the `revocationPolicy` parameter (defaults to
-`RevocationPolicy.HardFail`):
+**Using static certificates**: Pass certificates directly and configure the revocation
+checking policy (defaults to `RevocationPolicy.HardFail`):
 
 ```kotlin
 val config = EudiWalletConfig {
-    configureReaderTrustStore(
-        listOf(trustedCert1, trustedCert2),
-        revocationPolicy = RevocationPolicy.SoftFail
-    )
-    configureReaderAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    configureReaderAuthentication {
+        trustedCertificates(trustedCert1, trustedCert2)
+        revocationPolicy(RevocationPolicy.SoftFail)
+        enforceIfPresent()
+    }
 }
 ```
 
@@ -1068,12 +1170,13 @@ The available revocation policies are:
 | `RevocationPolicy.SoftFail` | Validation fails if a certificate is revoked, but tolerates CRL/OCSP unavailability. |
 | `RevocationPolicy.NoCheck` | No revocation checking is performed. |
 
-> **Note:** `RevocationPolicy` only applies to the static certificate-based `configureReaderTrustStore`
-> overloads. When using ETSI/LoTE-based trust (via `configureEtsiTrust`), revocation checking is
-> controlled by `relaxPkixRevocation()` inside the `configureEtsiTrust` block instead.
+> **Note:** `RevocationPolicy` only applies to the static certificate-based
+> `trustedCertificates()` overloads. When using ETSI/LoTE-based trust (via
+> `configureEtsiTrust`), revocation checking is controlled by `relaxPkixRevocation()` inside
+> the `configureEtsiTrust` block instead.
 
 For advanced use cases requiring a specific verification context, create an
-`EtsiReaderTrustStore` explicitly:
+`EtsiReaderTrustStore` explicitly and pass it as a custom trust source:
 
 ```kotlin
 val readerTrustStore = EtsiReaderTrustStore(
@@ -1082,14 +1185,11 @@ val readerTrustStore = EtsiReaderTrustStore(
 )
 
 val config = EudiWalletConfig {
-    configureReaderTrustStore(readerTrustStore)
+    configureReaderAuthentication {
+        trustSource(readerTrustStore)
+        alwaysRequire()
+    }
 }
-```
-
-You can also update the reader trust store at runtime:
-
-```kotlin
-wallet.setReaderTrustStore(EtsiReaderTrustStore(isChainTrusted))
 ```
 
 > **Note:** For best performance during presentations, pre-warm the ETSI cache on app startup.
@@ -1151,9 +1251,9 @@ val config = EudiWalletConfig {
         clockSkew(5)
     }
 
-    // Reader authentication — trust source inherited, policy set inline
-    configureReaderTrustStore {
-        readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+    // Reader authentication — trust source inherited, enforcement set inline
+    configureReaderAuthentication {
+        enforceIfPresent()
     }
 }
 ```
@@ -1180,6 +1280,7 @@ val customConfig = OpenId4VciManager.Config.Builder()
     .withIssuerUrl("https://custom-issuer.com")
     .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
     .withAuthFlowRedirectionURI("eudi-openid4ci://custom-authorize")
+    .withIssuanceProofProfile(OpenId4VciManager.IssuanceProofProfile.Standard)
     .withSupportedCredentialReusePolicies(
         CredentialReusePolicies.Supported(
             setOf(EudiReusePolicyType.OnceOnly, EudiReusePolicyType.LimitedTime)
@@ -1824,6 +1925,99 @@ The available policies are:
 - `CredentialResponseEncryptionPolicy.SUPPORTED` -- encryption is used when the issuer advertises
   support for it, but issuance proceeds unencrypted otherwise.
 
+#### Issuance Proof Profile
+
+The library supports configurable proof type negotiation during credential issuance via
+`IssuanceProofProfile`. This determines which proof types the wallet advertises to issuers and the
+priority order used when negotiating.
+
+During issuance, the wallet iterates through the profile's preference order and selects the first
+proof type that is both supported by the issuer and can be fulfilled by the wallet.
+
+##### Built-in profiles
+
+| Profile | Preference order | Use case |
+|---------|-----------------|----------|
+| `IssuanceProofProfile.Etsi` **(default)** | Attestation, JWT with key attestation | ETSI TS 119 472-3 / EUDI Wallet. Requires `WalletAttestationsProvider`. |
+| `IssuanceProofProfile.Standard` | JWT without key attestation, JWT with key attestation, Attestation, No proof | Base OpenID4VCI without ETSI profiling. |
+
+##### Configuration
+
+```kotlin
+// ETSI profile (default — no configuration needed)
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        // Etsi is the default — explicit call not required
+        // withIssuanceProofProfile(OpenId4VciManager.IssuanceProofProfile.Etsi)
+    }
+
+// Standard OpenID4VCI profile
+val standardConfig = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        withIssuanceProofProfile(OpenId4VciManager.IssuanceProofProfile.Standard)
+    }
+```
+
+##### Custom profile
+
+For full control over the proof type order and per-type algorithms:
+
+```kotlin
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile.ProofType
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.IssuanceProofProfile.ProofTypeConfig
+
+val customProfile = IssuanceProofProfile.Custom(
+    preferenceOrder = listOf(
+        ProofTypeConfig(ProofType.JWT_WITHOUT_KEY_ATTESTATION),
+        ProofTypeConfig(
+            ProofType.JWT_WITH_KEY_ATTESTATION,
+            algorithms = setOf(Algorithm.ESP256),  // restrict to ES256 only
+        ),
+    )
+)
+
+val config = EudiWalletConfig()
+    .configureOpenId4Vci {
+        withIssuerUrl("https://issuer.com")
+        withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
+        withAuthFlowRedirectionURI("eudi-openid4ci://authorize")
+        withIssuanceProofProfile(customProfile)
+    }
+```
+
+##### Migrating from `withSupportedProofTypes` (deprecated)
+
+The previous `withSupportedProofTypes(SupportedProofTypes(...))` API is deprecated.
+It is automatically converted to `IssuanceProofProfile.Custom` internally when no explicit
+`withIssuanceProofProfile` is set. To migrate, replace:
+
+```kotlin
+// Before (deprecated)
+.withSupportedProofTypes(
+    OpenId4VciManager.SupportedProofTypes(
+        jwtProofAlgorithms = setOf(Algorithm.ESP256),
+        attestationProofAlgorithms = setOf(Algorithm.ESP256),
+    )
+)
+
+// After
+.withIssuanceProofProfile(
+    OpenId4VciManager.IssuanceProofProfile.Custom(
+        preferenceOrder = listOf(
+            ProofTypeConfig(ProofType.ATTESTATION, setOf(Algorithm.ESP256)),
+            ProofTypeConfig(ProofType.JWT_WITH_KEY_ATTESTATION, setOf(Algorithm.ESP256)),
+        )
+    )
+)
+```
+
 #### Credential Reuse Policies (ETSI TS 119 472-3)
 
 The library supports credential reuse policies as defined in ETSI TS 119 472-3 and the EU Digital
@@ -1986,8 +2180,11 @@ state of the transfer. The following events are emitted:
 6. `TransferEvent.Redirect`: This event prompts to redirect the user to the given Redirect URI.
    Get the Redirect URI from `event.redirectUri`. This event maybe be returned when OpenId4Vp is
    used as a transmission channel.
-7. `TransferEvent.Disconnected`: The devices are disconnected.
-8. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
+7. `TransferEvent.Rejected`: The verifier rejected the wallet's response. Get the optional redirect
+   URI from `event.redirectUri`. When non-null, the application should redirect the user to the
+   verifier's page. This event is used for the OpenId4VP protocol.
+8. `TransferEvent.Disconnected`: The devices are disconnected.
+9. `TransferEvent.Error`: An error occurred. Get the `Throwable` error from `event.error`.
 
 #### Attaching a TransferEvent.Listener
 
@@ -2027,12 +2224,12 @@ wallet.addTransferEventListener { event ->
             // `presentmentSelections` contains one entry per disclosable variant. The
             // application renders them to the user (typically as separate pages in a
             // pager) and forwards the confirmed one to `generateResponse`.
-            val variants: List<CredentialPresentmentSelection> = success.presentmentSelections
+            val variants: List<CredentialSelection> = success.presentmentSelections
 
             // The index the user picked in the consent UI (e.g. the active page of
             // a pager).
             val userSelectedIndex = 0
-            val selection: CredentialPresentmentSelection = variants[userSelectedIndex]
+            val selection: CredentialSelection = variants[userSelectedIndex]
             val matches = selection.matches
 
             // Per-credential unlock data, keyed by `match.credential.identifier`.
@@ -2063,6 +2260,14 @@ wallet.addTransferEventListener { event ->
             // the RP is redirecting the user to the given redirect URI
             // If this event is triggered, then the TransferEvent.ResponseSent event will not be triggered
             val redirectUri = event.redirectUri // the redirect URI
+        }
+
+        is TransferEvent.Rejected -> {
+            // The verifier rejected the wallet's response (OpenId4VP)
+            val redirectUri = event.redirectUri // optional redirect URI
+            if (redirectUri != null) {
+                // redirect the user to the verifier's page
+            }
         }
 
         TransferEvent.Disconnected -> {
@@ -2253,18 +2458,18 @@ application consumes to render its consent UI and build the response:
 
 | Field                                                              | Purpose                                                                                                                                                                                                            |
 |--------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `presentmentData: CredentialPresentmentData`                       | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
-| `presentmentSelections: List<CredentialPresentmentSelection>`      | Ready-to-use selection variants the consent UI can render directly. Each entry is one disclosable combination — the UI typically lets the user choose which variant to share, and the confirmed one is then passed to `generateResponse`. Use this instead of walking `presentmentData` unless you need fine-grained control. |
+| `presentmentData: CredentialQueryResult`                       | The tree of candidate credentials and the claims the verifier asked for. The application traverses this tree to render the consent UI and to build the user's choice.                                              |
+| `presentmentSelections: List<CredentialSelection>`      | Ready-to-use selection variants the consent UI can render directly. Each entry is one disclosable combination — the UI typically lets the user choose which variant to share, and the confirmed one is then passed to `generateResponse`. Use this instead of walking `presentmentData` unless you need fine-grained control. |
 | `requester: Requester`                                             | The verifier's transport-level identity — certificate chain when reader-auth is present, plus `appId` / `origin` if available.                                                                                     |
 | `trustMetadata: TrustMetadata?`                                    | Non-`null` only when the verifier's cert chain validated against the configured `ReaderTrustStore`. Carries `displayName` for trusted-verifier UI; `null` means the UI should render an "unknown verifier" branch. |
 
-##### The CredentialPresentmentData tree
+##### The CredentialQueryResult tree
 
-`CredentialPresentmentData` is a list of `CredentialPresentmentSet`s. Each set is a group of
+`CredentialQueryResult` is a list of `CredentialPresentmentSet`s. Each set is a group of
 alternative ways the verifier's request can be satisfied:
 
 ```
-CredentialPresentmentData
+CredentialQueryResult
 └─ List<CredentialPresentmentSet>                         ← one per credential set in the request
    ├─ optional: Boolean                                   ← required vs optional set
    └─ List<CredentialPresentmentSetOption>                ← alternative options inside the set
@@ -2276,7 +2481,7 @@ CredentialPresentmentData
 ```
 
 For each set the user accepts, the application picks exactly one option, then one match per
-member of that option, and collects them into a `CredentialPresentmentSelection`. The
+member of that option, and collects them into a `CredentialSelection`. The
 `match.claims` map already reflects the wallet's spec-compliant resolution of the verifier's
 request (DCQL `claim_sets` first-match per §6.4.1, hard-fail on missing claims) — the UI can
 display it as-is or further narrow it down if the user opts out of specific claims.
@@ -2297,7 +2502,7 @@ UI can render previews next to each claim entry (e.g. "first name: Alice").
 ##### Building the selection and generating the response
 
 After the user has confirmed which match(es) to use, the application builds a
-`CredentialPresentmentSelection`, attaches any per-credential `KeyUnlockData` keyed by
+`CredentialSelection`, attaches any per-credential `KeyUnlockData` keyed by
 `match.credential.identifier`, and calls `generateResponse`:
 
 ```kotlin
@@ -2313,12 +2518,12 @@ val transferEventListener = TransferEvent.Listener { event ->
             // `presentmentSelections` contains one entry per disclosable variant. The
             // application renders them to the user (e.g. as separate pages in a
             // pager) and forwards the confirmed one to `generateResponse`.
-            val variants: List<CredentialPresentmentSelection> = success.presentmentSelections
+            val variants: List<CredentialSelection> = success.presentmentSelections
 
             // The index the user picked in the consent UI (e.g. the active page of
             // a pager).
             val userSelectedIndex = 0
-            val selection: CredentialPresentmentSelection = variants[userSelectedIndex]
+            val selection: CredentialSelection = variants[userSelectedIndex]
             val matches = selection.matches
 
             // If any picked credential requires unlock data (e.g. PIN-locked keys),
@@ -2362,11 +2567,200 @@ the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-manage
 for more information on how to use the wallet-core library for presentation with custom SecureArea
 implementations.
 
+### Transaction Data
+
+A verifier can include **transaction data** in a presentation request. As introduced in OpenID4VP,
+the mechanism binds the user's identification and authentication to the user's authorisation of a
+transaction: the wallet displays the transaction data before consent and binds the presentation to
+it, so the presentation proves not only *who* the user is but *what* they agreed to.
+
+The binding is a hash of the transaction data string exactly as received, carried in the Key Binding
+JWT. A transaction data type may additionally define a claim of its own, as OpenID4VP Appendix B.3.3
+recommends.
+
+For Qualified Electronic Signatures, transaction data carry the information the user needs in order
+to understand and authorise a signing operation. Two types are defined for it, in **ETSI TS 119 432
+V1.3.1** and **CSC Data Model Bindings 1.0**, and this library models both: `qesApprovalRequest`,
+with which a trust service provider asks the user to approve a signature it has prepared, and
+`qesRequest`, with which a relying party asks for one or more documents to be signed.
+
+This library parses transaction data, exposes it for display, binds the presentation to it and
+records it in the transaction log. Creating the signature itself — the exchange with the trust
+service provider and the return of the signed document — is the responsibility of the RQES
+libraries (`eudi-lib-android-rqes-core`, `eudi-lib-android-rqes-ui`).
+
+> **Note:** For ISO/IEC 18013-5 mdoc, the issuer must have declared the data elements of the types
+> it supports in the `KeyAuthorizations` of the mdoc. Otherwise, the request fails: OpenID4VP
+> requires the wallet to reject a request whose data element is not authorized, and the verifier
+> receives `invalid_transaction_data`.
+
+#### Declaring the types you support
+
+The wallet processes only the transaction data types it declares. A request carrying an undeclared
+type is rejected, and the verifier receives `invalid_transaction_data`.
+
+```kotlin
+val openId4VpConfig = OpenId4VpConfig.Builder()
+    // ... client id schemes, formats, encryption ...
+    .withTransactionDataTypes(
+        TransactionDataType.QES_APPROVAL,   // https://cloudsignatureconsortium.org/2025/qes-approval
+        TransactionDataType.QES             // https://cloudsignatureconsortium.org/2025/qes
+    )
+    .build()
+```
+
+Declaring a type also provides the means to read it: each type carries the parser that converts
+the received JSON into a typed payload, and rejects objects that do not conform to it.
+
+| Spec type            | Type identifier                                          | Constant                          |
+|----------------------|----------------------------------------------------------|-----------------------------------|
+| `qesApprovalRequest` | `https://cloudsignatureconsortium.org/2025/qes-approval` | `TransactionDataType.QES_APPROVAL`|
+| `qesRequest`         | `https://cloudsignatureconsortium.org/2025/qes`          | `TransactionDataType.QES`         |
+
+A presented `qesApprovalRequest` adds one claim to the Key Binding JWT beside
+`transaction_data_hashes`: `org.cloudsignatureconsortium.dm.1.qesApproval`, the approval the trust
+service provider consumes to release the signature. CSC Data Model Bindings clause 7.2.1.2 defines
+it as the digest of the transaction data string as received, taken with the algorithm of
+`hashAlgorithmOID` and base64 encoded. Only that type adds it — a Credential presented for anything
+else does not carry it.
+
+A type whose contents need not be modelled can be declared with
+`TransactionDataType.raw(identifier)`; its objects are then read as plain JSON.
+
+#### Declaring a type of your own
+
+To model your own type, extend `TransactionType` and wrap it in a `TransactionDataType`:
+
+```kotlin
+@Serializable
+data class Payment(
+    @SerialName("type") val type: String,
+    @SerialName("credential_ids") val credentialIds: List<String>,
+    @SerialName("transaction_data_hashes_alg") val hashAlgorithms: List<String>? = null,
+    @SerialName("amount") val amount: String,
+    @SerialName("payee") val payee: String,
+)
+
+object PaymentTransactionType : TransactionType<Payment>(
+    displayName = "Payment",
+    identifier = "https://example.com/2026/payment",
+) {
+    override fun parseOpenId4VpRequest(jsonString: String): Payment =
+        Json.decodeFromString(Payment.serializer(), jsonString)
+
+    override fun parseJson(serialized: ByteString): TransactionData<Payment> {
+        val payload = parseOpenId4VpRequest(
+            serialized.decodeToString().fromBase64Url().decodeToString()
+        )
+        return TransactionData(
+            type = this,
+            payload = payload,
+            protocol = TransactionProtocol.OPENID4VP,
+            rawBytes = serialized,
+            hashAlgorithms = parseJoseHashAlgorithms(payload.hashAlgorithms),
+        )
+    }
+}
+```
+
+Then you can declare it as follows:
+
+```kotlin
+.withTransactionDataTypes(
+    TransactionDataType(PaymentTransactionType)
+)
+```
+
+A type that defines a top-level Key Binding JWT claim of its own — as OpenID4VP B.3.3 recommends —
+also implements `TransactionDataKeyBinding`. Its claims are added beside
+`transaction_data_hashes`, which the wallet always sends:
+
+```kotlin
+object PaymentTransactionType : TransactionType<Payment>(/* ... */), TransactionDataKeyBinding {
+    override fun keyBindingClaims(
+        transactionData: List<TransactionData<*>>
+    ): Map<String, JsonElement> = mapOf("com.example.paymentApproval" to JsonPrimitive(/* ... */))
+}
+```
+
+A claim the Key Binding JWT sets itself — `sd_hash`, `nonce`, `aud`, `iat`, `exp` — is refused, as
+are `transaction_data_hashes` and `transaction_data_hashes_alg`, and a name another declared type
+already uses.
+
+A type that defines a data element of its own — a namespace, a data element identifier and a value,
+as OpenID4VP B.2.1 recommends — also implements `TransactionDataDeviceSigned`. Its data elements are
+added to the `DeviceSigned` structure of an ISO/IEC 18013-5 mdoc presentation, and are therefore
+protected by mdoc authentication:
+
+```kotlin
+object PaymentTransactionType : TransactionType<Payment>(/* ... */), TransactionDataDeviceSigned {
+    override val nameSpace: String = "com.example.payment.1"
+
+    override fun deviceSignedElements(
+        transactionData: List<TransactionData<*>>
+    ): Map<String, DataItem> = mapOf("paymentApproval" to Bstr(/* ... */))
+}
+```
+
+Implementing this interface is required for `mso_mdoc`: a type that defines no data element cannot
+be bound to an mdoc presentation, and the wallet does not declare it for that format.
+
+#### Reading it from a request
+
+OpenID4VP requires that a single Credential authorizes a transaction. The wallet therefore gives
+each transaction data object to one query — the first of its `credential_ids` with a credential able
+to authorize it. Each match of the selection carries the objects the Credential it presents will
+authorize:
+
+```kotlin
+selection.matches.forEach { match ->
+    match.transactionData.forEach { data ->
+        when (val payload = data.payload) {
+            is QesApprovalRequest -> {
+                val qualifier = payload.signatureQualifier          // e.g. "eu_eidas_qes"
+                payload.documentDigests.forEach { digest ->
+                    show(label = digest.label, fingerprint = digest.hash, type = digest.hashType)
+                }
+            }
+            else -> { /* your own payload types */ }
+        }
+    }
+}
+```
+
+#### Reading it from the transaction log
+
+A presentation that carried transaction data records it on its log entry, base64url decoded and
+otherwise unread. The log is not specific to any type, so resolve it again with the types the
+wallet is configured with:
+
+```kotlin
+val entry = storedJson.toTransactionEntryOrNull()
+if (entry is TransactionEntry.Presentation) {
+    val payloads: List<Any> = entry.transactionalData
+        ?.payloads(wallet.config.openId4VpConfig?.transactionDataTypes.orEmpty())
+        .orEmpty()
+
+    payloads.forEach { payload ->
+        when (payload) {
+            is QesApprovalRequest -> showSignature(payload)
+            is JsonObject -> showJson(payload)      // a raw type, or an entry no type could read
+            else -> { /* your own payload types */ }
+        }
+    }
+}
+```
+
+An entry is returned as the `JsonObject` it was recorded as when no type claims it, when it no
+longer conforms to the type that does — for example after that type's definition changed — or when
+the type that claims it was declared with `raw`. The three cases are indistinguishable.
+
 ### Transaction Logging
 
-The library supports logging transactions for auditing and analytics purposes. Currently, only
-presentation transactions (both proximity and remote) are supported by the library. Issuing
-transactions will be added in a future release.
+The library can log transactions for auditing and analytics purposes. It records presentations
+(both proximity and remote), credential issuance and re-issuance, and credential deletions. Other
+transaction types (e.g. signing/sealing) can also be added through the same funnel. Each entry
+follows the EUDI Wallet Technical Specification 10 (TS10) data model.
 
 #### Configuring Transaction Logger
 
@@ -2376,9 +2770,9 @@ it when initializing the `EudiWallet` instance:
 ```kotlin
 // Implement the TransactionLogger interface
 class MyTransactionLogger : TransactionLogger {
-    override fun log(transaction: TransactionLog) {
-        // Implement logging logic here
-        // For example, save transaction to a local database
+    override fun log(transaction: TransactionEntry) {
+        // Store the entry in your own storage; here, serialized to JSON.
+        save(transaction.toJson())
     }
 }
 
@@ -2389,56 +2783,75 @@ val wallet = EudiWallet(context, config) {
 }
 ```
 
+> **Important — entries are updated, not only appended.** `log()` is called more than once for the
+> same transaction: once when it begins, and again when it finishes or fails. A credential the issuer
+> defers is logged when it is requested and updated when it finally arrives. Every one of those calls
+> carries the same `transactionIdentifier`, so your storage has to **upsert on that identifier**.
+> Appending each call instead leaves duplicate rows, and transactions stuck in their initial state.
+
 #### Working with Transaction Logs
 
-Transaction logs contain information about the presentation transaction, such as:
+Each entry is a `TransactionEntry` — a sealed type with one subtype per kind of transaction
+(`Presentation`, `CredentialIssuance`, `CredentialReissuance`, `CredentialDeletion`,
+`SigningSealing`, and more). Common information includes:
 
-- Timestamp of the transaction
-- Transaction status (Completed, Error, Incomplete)
-- Type of transaction (currently only Presentation is supported)
-- Relying party information
-- Raw request and response data
-- Format of the data (CBOR, JSON)
+- The transaction identifier and timestamp
+- The result (`Completed`, or `NotCompleted` with a reason)
+- The interacting party (name, identifier), when available
+- For presentations: which claims were requested and presented, as identifiers and paths — never
+  their values
+- For presentations that carried transaction data: the objects themselves, unread — see
+  [Transaction Data](#transaction-data)
 
-Here's an example of how to retrieve and parse a presentation transaction log:
+Serialize an entry for storage with `toJson()`, read it back with `toTransactionEntryOrNull()`, and
+branch on its type:
 
 ```kotlin
-// Assuming you have a TransactionLog object from your storage
-val transactionLog: TransactionLog = retrieveTransactionLog()
+// Store
+database.save(entry.toJson())
 
-// Check if it's a presentation transaction
-if (transactionLog.type == TransactionLog.Type.Presentation) {
-    // Parse the presentation transaction log
-    val presentationLogResult = PresentationTransactionLog.fromTransactionLog(transactionLog)
+// Read back (returns null if the stored value cannot be decoded)
+val entry: TransactionEntry? = storedJson.toTransactionEntryOrNull()
 
-    presentationLogResult.onSuccess { presentationLog ->
-        // Access the parsed information
-        val timestamp = presentationLog.timestamp
-        val status = presentationLog.status
-        val relyingParty = presentationLog.relyingParty
-
-        // Access the presented documents and claims
-        for (document in presentationLog.documents) {
-            val format = document.format
-            val metadata = document.metadata
-
-            // Access individual claims
-            for (claim in document.claims) {
-                val path = claim.path
-                val value = claim.value
-                // Process the claim...
-            }
-        }
+when (entry) {
+    is TransactionEntry.Presentation -> {
+        val time = entry.time
+        val result = entry.transactionResult            // Completed / NotCompleted(reason)
+        val party = entry.interactingPartyName?.content
+        // ClaimInfo: the credential id and claim paths involved — no values
+        val presented = entry.listOfClaimsPresented
     }
-
-    presentationLogResult.onFailure { error ->
-        // Handle parsing error
-    }
+    is TransactionEntry.CredentialIssuance -> { /* entry.details */ }
+    is TransactionEntry.CredentialDeletion -> { /* entry.credentialIdentifier */ }
+    null -> { /* the stored value could not be decoded */ }
+    else -> { /* other transaction kinds */ }
 }
 ```
 
-This parsed information can be used to display transaction history to the user, perform audits, or
-for any other analytical purposes.
+You can also record your own entry e.g. an `OtherTransaction` as follows:
+
+```kotlin
+wallet.transactionLogManager?.log(
+    TransactionEntry.OtherTransaction(
+        transactionIdentifier = UUID.randomUUID().toString(),
+        time = Instant.now(),
+        transactionResult = TransactionResult.Completed,
+        description = listOf("Backup exported"),
+    )
+)
+```
+
+To export the log, use `TransactionLogExport`, which produces a JSON document in the TS10 §4.1
+format:
+
+```kotlin
+val json: String = TransactionLogExport().encode(entries)
+```
+
+> **Note:** 
+>   The export is not the full spec object. TS10 defines the *Transaction Log Object* as "an
+>   exportable object in JSON Web Encryption format" this library currently produces only its
+>   plain-JSON content, without the JWE encryption.
 
 ## How to contribute
 

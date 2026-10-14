@@ -16,16 +16,13 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging
 
+import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionEntry
+
 /**
- * A logger for transactions.
- *
- * Implementations of this interface should log transactions to some persistent storage.
- * The storage can be a file, a database, or any other storage medium.
+ * Storage interface for transaction logs. The app implements this to save a
+ * [TransactionEntry] e.g. as database, file, etc.
  */
 fun interface TransactionLogger {
-    /**
-     * Logs a transaction.
-     * @param transaction The transaction to log.
-     */
-    fun log(transaction: TransactionLog)
+    /** Saves one transaction-log entry. */
+    fun log(transaction: TransactionEntry)
 }

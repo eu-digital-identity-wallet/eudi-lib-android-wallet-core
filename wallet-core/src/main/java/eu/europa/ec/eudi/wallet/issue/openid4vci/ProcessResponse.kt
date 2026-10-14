@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.CredentialIssuanceEvent
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
@@ -29,11 +30,13 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistration
 import eu.europa.ec.eudi.wallet.logging.Logger
+import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 import kotlinx.coroutines.runBlocking
@@ -52,12 +55,14 @@ internal class ProcessResponse(
     val logger: Logger? = null,
     val authorizedRequest: AuthorizedRequest,
     val issuer: Issuer,
-    val documentToConfigurationMap: Map<UnsignedDocument, Offer.OfferedDocument>,
+    val documentToConfigurationMap: Map<UnsignedDocument, Pair<Offer.OfferedDocument, IssuanceRequestPayload>>,
     val dpopKeyAlias: String?,
     val issuanceMetadataStorage: Storage,
     val clientAuthentication: ClientAuthentication,
     val replacesDocumentId: DocumentId? = null,
-    val issuerTrustConfig: IssuerTrustConfig? = null
+    val issuerTrustConfig: IssuerTrustConfig? = null,
+    val interactingParty: StoredIssuerRegistration? = null,
+    val isUserTriggered: Boolean? = null,
 ) {
 
     suspend fun process(response: SubmitRequest.Response) {
@@ -172,8 +177,10 @@ internal class ProcessResponse(
                     dpopKeyAlias
                 ).copy(
                     replacesDocumentId = replacesDocumentId,
-                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value,
+                    credentialConfigurationIdentifier = documentToConfigurationMap[unsignedDocument]?.first?.configurationIdentifier?.value,
                     credentialEndpoint = issuer.credentialOffer.credentialIssuerMetadata.credentialEndpoint.toString(),
+                    interactingParty = interactingParty,
+                    isUserTriggered = isUserTriggered
                 )
 
                 documentManager.storeDeferredDocument(
@@ -221,7 +228,7 @@ internal class ProcessResponse(
 
         runCatching {
             val credentialConfigurationId = requireNotNull(
-                documentToConfigurationMap[unsignedDocument]?.configurationIdentifier?.value
+                documentToConfigurationMap[unsignedDocument]?.first?.configurationIdentifier?.value
             ) { "Credential configuration identifier not found for document" }
 
             // Get metadata from credential offer
@@ -264,6 +271,8 @@ internal class ProcessResponse(
                 selectedReusePolicyType = selectedReusePolicy?.let {
                     it::class.simpleName
                 },
+                issuerIdentifier = interactingParty?.toRegistrationCertificate()?.structuredIdentifier(),
+                issuerName = interactingParty?.toRegistrationCertificate()?.interactingPartyName()
             )
 
             val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)

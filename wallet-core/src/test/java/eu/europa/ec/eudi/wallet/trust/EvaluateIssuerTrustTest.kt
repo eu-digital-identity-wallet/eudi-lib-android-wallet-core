@@ -61,14 +61,34 @@ class EvaluateIssuerTrustTest {
         verify(exactly = 0) { document.format }
     }
 
-    @Test
-    fun returnsNullWhenNoVerifierForFormat() = runTest {
+    @Test(expected = IssuerNotTrustedException::class)
+    fun throwsWhenNoVerifierForFormatAndEnforcePolicy() = runTest {
         every { document.format } returns MsoMdocFormat("test.doc")
 
         val config = IssuerTrustConfig(
             isChainTrustedForAttestation = mockk(),
             classifications = null,
             trustPolicy = TrustPolicy.uniform(TrustPolicy.Action.ENFORCE),
+            credentialTrustVerifiers = emptyMap(),
+            issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
+        )
+
+        evaluateIssuerTrust(
+            issuerTrustConfig = config,
+            document = document,
+            credential = credential,
+            logger = logger,
+        )
+    }
+
+    @Test
+    fun returnsNullWhenNoVerifierForFormatAndInformPolicy() = runTest {
+        every { document.format } returns MsoMdocFormat("test.doc")
+
+        val config = IssuerTrustConfig(
+            isChainTrustedForAttestation = mockk(),
+            classifications = null,
+            trustPolicy = TrustPolicy.uniform(TrustPolicy.Action.INFORM),
             credentialTrustVerifiers = emptyMap(),
             issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
         )
@@ -83,8 +103,8 @@ class EvaluateIssuerTrustTest {
         assertNull(result)
     }
 
-    @Test
-    fun returnsNullWhenVerifierReturnsNull() = runTest {
+    @Test(expected = IssuerNotTrustedException::class)
+    fun throwsWhenVerifierReturnsNullAndEnforcePolicy() = runTest {
         every { document.format } returns MsoMdocFormat("test.doc")
         coEvery { verifier.verify(any(), any()) } returns null
 
@@ -92,6 +112,27 @@ class EvaluateIssuerTrustTest {
             isChainTrustedForAttestation = mockk(),
             classifications = null,
             trustPolicy = TrustPolicy.uniform(TrustPolicy.Action.ENFORCE),
+            credentialTrustVerifiers = mapOf(MsoMdocFormat::class to verifier),
+            issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
+        )
+
+        evaluateIssuerTrust(
+            issuerTrustConfig = config,
+            document = document,
+            credential = credential,
+            logger = logger,
+        )
+    }
+
+    @Test
+    fun returnsNullWhenVerifierReturnsNullAndInformPolicy() = runTest {
+        every { document.format } returns MsoMdocFormat("test.doc")
+        coEvery { verifier.verify(any(), any()) } returns null
+
+        val config = IssuerTrustConfig(
+            isChainTrustedForAttestation = mockk(),
+            classifications = null,
+            trustPolicy = TrustPolicy.uniform(TrustPolicy.Action.INFORM),
             credentialTrustVerifiers = mapOf(MsoMdocFormat::class to verifier),
             issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
         )

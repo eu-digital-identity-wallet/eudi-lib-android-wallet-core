@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.internal
 
+import org.multipaz.crypto.Algorithm
 import org.multipaz.prompt.Reason
 import org.multipaz.securearea.KeyLockedException
 import org.multipaz.securearea.KeyUnlockData
@@ -37,6 +38,7 @@ internal fun KeyUnlockData?.asProvider(): KeyUnlockDataProvider {
         override suspend fun getKeyUnlockData(
             secureArea: SecureArea,
             alias: String,
+            algorithm: Algorithm,
             unlockReason: Reason
         ): KeyUnlockData {
             return data ?: throw KeyLockedException("No unlock data provided")

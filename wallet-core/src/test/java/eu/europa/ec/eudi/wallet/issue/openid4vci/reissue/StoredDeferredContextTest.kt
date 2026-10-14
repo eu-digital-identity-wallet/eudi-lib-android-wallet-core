@@ -106,6 +106,47 @@ class StoredDeferredContextTest {
     }
 
     @Test
+    fun `serialization round-trip preserves the interacting party registration`() {
+        val original = StoredDeferredContext(
+            credentialIssuerId = "https://issuer.example.com",
+            deferredEndpoint = "https://issuer.example.com/deferred",
+            tokenEndpoint = "https://auth.example.com/token",
+            authorizationServerId = "https://auth.example.com",
+            clientId = "wallet-client",
+            popKeyAliases = listOf("key-1"),
+            transactionId = "tx-123",
+            accessToken = "access-token",
+            interactingParty = StoredIssuerRegistration(
+                name = "ACME PID Provider",
+                legalName = "ACME Corp AE",
+                identifiers = listOf("LEIXG-529900T8BM49AURSDO55"),
+                entitlements = listOf("https://uri.etsi.org/19475/Entitlement/PID_Provider"),
+                country = "GR",
+                infoUri = "https://acme.example/info",
+            ),
+        )
+
+        val json = Json.encodeToString(original)
+        val restored = Json.decodeFromString<StoredDeferredContext>(json)
+
+        assertEquals(original, restored)
+        assertEquals(original.interactingParty, restored.interactingParty)
+    }
+
+    @Test
+    fun `a context stored before the interacting party field decodes with a null party`() {
+        // A deferred document stored before interactingParty existed has no such key; it must still
+        // decode, so no data migration is needed.
+        val legacyJson = """
+            {"credentialIssuerId":"https://issuer.example.com","deferredEndpoint":"https://issuer.example.com/deferred","tokenEndpoint":"https://auth.example.com/token","authorizationServerId":"https://auth.example.com","clientId":"wallet-client","popKeyAliases":["key-1"],"transactionId":"tx-123","accessToken":"access-token"}
+        """.trimIndent()
+
+        val restored = Json.decodeFromString<StoredDeferredContext>(legacyJson)
+
+        assertNull(restored.interactingParty)
+    }
+
+    @Test
     fun `default accessTokenType is DPoP`() {
         val context = StoredDeferredContext(
             credentialIssuerId = "https://issuer.example.com",

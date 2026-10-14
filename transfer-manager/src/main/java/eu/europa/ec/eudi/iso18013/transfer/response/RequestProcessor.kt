@@ -16,8 +16,8 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.response
 
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.Requester
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.trustmanagement.TrustMetadata
@@ -26,9 +26,9 @@ import org.multipaz.trustmanagement.TrustMetadata
  * Interface for request processor. A request processor processes the raw request and returns a processed request.
  * The processed request can be either a success or a failure.
  *
- * On success, the processor exposes the matched credentials [CredentialPresentmentData],
+ * On success, the processor exposes the matched credentials [CredentialQueryResult],
  * the verified [Requester] (cert chain, app id, origin) and any resolved [TrustMetadata].
- * The caller then drives consent UI to produce a [CredentialPresentmentSelection], which is passed
+ * The caller then drives consent UI to produce a [CredentialSelection], which is passed
  * back into [Success.generateResponse] to produce the wire response.
  */
 fun interface RequestProcessor {
@@ -57,7 +57,7 @@ fun interface RequestProcessor {
          *   request; `null` when no registration validator is configured. Common to every transport.
          */
         abstract class Success(
-            val presentmentData: CredentialPresentmentData,
+            val presentmentData: CredentialQueryResult,
             val requester: Requester,
             val trustMetadata: TrustMetadata?,
             val wrpRegistration: WrpRegistrationInfo? = null
@@ -72,13 +72,13 @@ fun interface RequestProcessor {
              * Subclasses may produce a different list (e.g. a single grouped option). An
              * empty list means the wallet cannot satisfy the request.
              */
-            open val presentmentSelections: List<CredentialPresentmentSelection>
+            open val presentmentSelections: List<CredentialSelection>
                 get() = presentmentData.getAllSelections()
 
             /**
              * Generates the response for the user-confirmed selection.
              *
-             * @param selection the user's [CredentialPresentmentSelection] of credentials/claims
+             * @param selection the user's [CredentialSelection] of credentials/claims
              *   to disclose. The selection's matches must originate from this [Success]'s
              *   [presentmentData] tree.
              * @param keyUnlockData per-credential unlock data, keyed by the
@@ -86,7 +86,7 @@ fun interface RequestProcessor {
              * @return the response result containing the wire response or an error.
              */
             abstract suspend fun generateResponse(
-                selection: CredentialPresentmentSelection,
+                selection: CredentialSelection,
                 keyUnlockData: Map<String, KeyUnlockData> = emptyMap()
             ): ResponseResult
         }

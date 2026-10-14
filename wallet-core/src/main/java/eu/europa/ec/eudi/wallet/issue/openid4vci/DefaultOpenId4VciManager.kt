@@ -20,7 +20,9 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuanceError
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
@@ -160,7 +162,7 @@ internal class DefaultOpenId4VciManager(
                     credentialConfigurationIds.map{ id -> CredentialConfigurationIdentifier(id) }
                 )
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
-                doIssue(issuer, offer, txCode, listener)
+                doIssue(issuer, offer, txCode, listener, userTriggered = true)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
@@ -179,7 +181,7 @@ internal class DefaultOpenId4VciManager(
             try {
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(issuerUrl, format)
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
-                doIssue(issuer, offer, txCode, listener)
+                doIssue(issuer, offer, txCode, listener, userTriggered = true)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByDocType failed", e)
@@ -215,7 +217,7 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener)
+                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -234,7 +236,7 @@ internal class DefaultOpenId4VciManager(
             try {
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener)
+                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -289,6 +291,7 @@ internal class DefaultOpenId4VciManager(
                                     credentialConfigurationIdentifier = deferredContext.credentialConfigurationIdentifier,
                                     credentialEndpoint = deferredContext.credentialEndpoint,
                                     replacesDocumentId = deferredContext.replacesDocumentId,
+                                    interactingParty = deferredContext.interactingParty,
                                 )
                             } ?: deferredContext,
                             logger = logger,
@@ -454,6 +457,11 @@ internal class DefaultOpenId4VciManager(
 
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
 
+                //  Resolve issuance request payloads based on credential identifiers
+                //  from the token response (one IdentifierBased payload per credential
+                //  identifier, or one ConfigurationBased payload when none are present).
+                val issuancePayloads = resolveIssuanceRequestPayloads(offer, updatedAuthorizedRequest.credentialIdentifiers)
+
                 //  Create a new UnsignedDocument (fresh keys) via DocumentCreator
                 //    This fires IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy
                 //    or IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy so the app
@@ -464,13 +472,13 @@ internal class DefaultOpenId4VciManager(
                     supportedPolicies = config.supportedCredentialReusePolicies,
                     logger = logger
                 )
-                val requestMap = documentCreator.createDocuments(offer)
+                val requestMap = documentCreator.createDocuments(issuancePayloads)
 
                 listener(IssueEvent.Started(requestMap.size))
 
                 //  Submit the issuance request using stored AuthorizedRequest
                 //  (skips the authorization flow - uses refresh token instead)
-                val submit = SubmitRequest(walletProvider, issuer, updatedAuthorizedRequest)
+                val submit = SubmitRequest(walletProvider, issuer, updatedAuthorizedRequest, config.issuanceProofProfile)
                 var response = submit.request(requestMap).also {
                     authorizedRequest = submit.authorizedRequest
                 }
@@ -486,7 +494,7 @@ internal class DefaultOpenId4VciManager(
                     }
                     logger?.d(TAG, "Re-issuance token expired for $documentId, falling back to full authorization")
                     authorizedRequest = issuerAuthorization.authorize(issuer, null)
-                    val retrySubmit = SubmitRequest(walletProvider, issuer, authorizedRequest)
+                    val retrySubmit = SubmitRequest(walletProvider, issuer, authorizedRequest, config.issuanceProofProfile)
                     response = retrySubmit.request(requestMap).also {
                         authorizedRequest = retrySubmit.authorizedRequest
                     }
@@ -511,6 +519,10 @@ internal class DefaultOpenId4VciManager(
                     clientAuthentication = issuerCreator.clientAuthentication,
                     replacesDocumentId = documentId,
                     issuerTrustConfig = issuerTrustConfig,
+                    interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
+                    // A re-issuance the User asked for allows falling back to a full authorization;
+                    // a background one does not.
+                    isUserTriggered = allowAuthorizationFallback,
                 ).process(response)
 
                 //  If new document(s) issued successfully, delete the old document.
@@ -573,15 +585,20 @@ internal class DefaultOpenId4VciManager(
 
     /**
      * Issues the given [Offer].
+     *
+     * [userTriggered] says whether the User started this issuance, as opposed to the issuer offering
+     * the credentials. It is only kept with a deferred credential (TS10 §3.5 `isUserTriggered`).
      */
     private suspend fun doIssue(
         issuer: Issuer,
         offer: Offer,
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
+        userTriggered: Boolean,
     ) {
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
-        listener(IssueEvent.Started(offer.offeredDocuments.size))
+        val issuancePayloads = resolveIssuanceRequestPayloads(offer, authorizedRequest.credentialIdentifiers)
+        listener(IssueEvent.Started(issuancePayloads.size))
         val issuedDocumentIds = mutableListOf<DocumentId>()
         val deferredDocumentIds = mutableListOf<DocumentId>()
         val documentCreator = DocumentCreator(
@@ -590,9 +607,9 @@ internal class DefaultOpenId4VciManager(
             supportedPolicies = config.supportedCredentialReusePolicies,
             logger = logger
         )
-        val requestMap = documentCreator.createDocuments(offer)
+        val requestMap = documentCreator.createDocuments(issuancePayloads)
 
-        val submit = SubmitRequest(walletProvider, issuer, authorizedRequest)
+        val submit = SubmitRequest(walletProvider, issuer, authorizedRequest, config.issuanceProofProfile)
         val response = submit.request(requestMap).also {
             authorizedRequest = submit.authorizedRequest
         }
@@ -611,6 +628,8 @@ internal class DefaultOpenId4VciManager(
             dpopKeyAlias = issuerCreator.dpopKeyAlias,
             issuanceMetadataStorage = issuanceMetadataStorage,
             clientAuthentication = issuerCreator.clientAuthentication,
+            interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
+            isUserTriggered = userTriggered,
         ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
     }
@@ -650,4 +669,30 @@ internal class DefaultOpenId4VciManager(
         }
     }
 
+}
+
+/**
+ * Resolves the [IssuanceRequestPayload] for each offered document based on the credential
+ * identifiers returned in the token response.
+ *
+ * When the Authorization Server returns `credential_identifiers` for a configuration,
+ * each identifier represents a distinct credential dataset that requires its own request.
+ * This function creates one [IssuanceRequestPayload.IdentifierBased] entry per identifier.
+ * When no identifiers are present for a configuration, a single
+ * [IssuanceRequestPayload.ConfigurationBased] entry is produced (preserving backward
+ * compatibility).
+ */
+internal fun resolveIssuanceRequestPayloads(
+    offer: Offer,
+    credentialIdentifiers: Map<CredentialConfigurationIdentifier, List<CredentialIdentifier>>?,
+): List<Pair<Offer.OfferedDocument, IssuanceRequestPayload>> = offer.offeredDocuments.flatMap { offeredDocument ->
+    val configId = offeredDocument.configurationIdentifier
+    val identifiers = credentialIdentifiers?.get(configId)
+    if (!identifiers.isNullOrEmpty()) {
+        identifiers.map { credentialIdentifier ->
+            offeredDocument to IssuanceRequestPayload.IdentifierBased(configId, credentialIdentifier)
+        }
+    } else {
+        listOf(offeredDocument to IssuanceRequestPayload.ConfigurationBased(configId))
+    }
 }

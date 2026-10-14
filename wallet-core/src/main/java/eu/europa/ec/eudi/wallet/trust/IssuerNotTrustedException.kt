@@ -19,8 +19,9 @@ package eu.europa.ec.eudi.wallet.trust
  * Thrown when the issuer certificate chain is not trusted and the
  * [trust policy][TrustPolicy] action is [TrustPolicy.Action.ENFORCE].
  *
- * @param cause the underlying cause from the trust evaluation
+ * @param message description of the trust failure
+ * @param cause the underlying cause from the trust evaluation, if available
  */
-class IssuerNotTrustedException(cause: Throwable) : Exception(
-    "Issuer certificate chain is not trusted", cause
+class IssuerNotTrustedException(message: String, cause: Throwable? = null) : Exception(
+    message, cause
 )

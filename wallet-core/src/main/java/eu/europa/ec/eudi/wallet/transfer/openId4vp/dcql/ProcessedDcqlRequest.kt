@@ -16,6 +16,8 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql
 
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicyException
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
 import eu.europa.ec.eudi.openid4vp.Consensus
@@ -33,8 +35,9 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_MSO_MDOC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.FORMAT_SD_JWT_VC
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpResponse
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.Requester
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.trustmanagement.TrustMetadata
@@ -42,9 +45,9 @@ import org.multipaz.trustmanagement.TrustMetadata
 /**
  * Implementation of [RequestProcessor.ProcessedRequest.Success] for DCQL OpenID4VP flows.
  *
- * Holds the [CredentialPresentmentData] tree produced by [DcqlRequestProcessor] together
+ * Holds the [CredentialQueryResult] tree produced by [DcqlRequestProcessor] together
  * with the verifier's [Requester] and [TrustMetadata]. [generateResponse] takes the
- * user's [CredentialPresentmentSelection] and emits an [OpenId4VpResponse] containing
+ * user's [CredentialSelection] and emits an [OpenId4VpResponse] containing
  * one [VerifiablePresentation] per match, grouped by the originating credential query.
  *
  * @property resolvedRequestObject the parsed OpenID4VP authorization request — used by
@@ -65,10 +68,11 @@ import org.multipaz.trustmanagement.TrustMetadata
 class ProcessedDcqlRequest(
     val resolvedRequestObject: ResolvedRequestObject,
     private val documentManager: DocumentManager,
-    presentmentData: CredentialPresentmentData,
+    presentmentData: CredentialQueryResult,
     requester: Requester,
     trustMetadata: TrustMetadata?,
     val msoMdocNonce: String,
+    private val readerAuthPolicy: ReaderAuthPolicy,
     private val multipleByQueryId: Map<QueryId, Boolean> = emptyMap(),
     wrpRegistration: RegistrationCertificateResult? = null
 ) : RequestProcessor.ProcessedRequest.Success(
@@ -84,7 +88,7 @@ class ProcessedDcqlRequest(
      * all candidates of the query are grouped into one option. Falls back to the default
      * behaviour when no per-query flags were supplied.
      */
-    override val presentmentSelections: List<CredentialPresentmentSelection> by lazy {
+    override val presentmentSelections: List<CredentialSelection> by lazy {
         if (multipleByQueryId.isEmpty()) {
             super.presentmentSelections
         } else {
@@ -104,7 +108,7 @@ class ProcessedDcqlRequest(
      * Per-credential [keyUnlockData] is keyed by `match.credential.identifier`.
      */
     override suspend fun generateResponse(
-        selection: CredentialPresentmentSelection,
+        selection: CredentialSelection,
         keyUnlockData: Map<String, KeyUnlockData>
     ): ResponseResult = generateResponse(
         selection = selection,
@@ -120,7 +124,7 @@ class ProcessedDcqlRequest(
      * `origin:<origin>` for DC API). The default 2-arg override reproduces the HTTP behaviour.
      */
     suspend fun generateResponse(
-        selection: CredentialPresentmentSelection,
+        selection: CredentialSelection,
         keyUnlockData: Map<String, KeyUnlockData>,
         sessionTranscriptProvider: (ResolvedRequestObject) -> ByteArray,
         sdJwtAudience: String?
@@ -133,6 +137,20 @@ class ProcessedDcqlRequest(
         validateSelection(selection, resolvedRequestObject.query)?.let { error ->
             return ResponseResult.Failure(
                 IllegalStateException("Selection does not satisfy verifier request: $error"),
+            )
+        }
+
+        // Reader authentication policy enforcement
+        val isReaderTrustVerified = trustMetadata != null
+        val readerAuthPresent = requester.requesterIdentities.isNotEmpty()
+        val rejectByPolicy = when (readerAuthPolicy) {
+            ReaderAuthPolicy.DoNotEnforce -> false
+            is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
+            is ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
+        }
+        if (rejectByPolicy) {
+            return ResponseResult.Failure(
+                ReaderAuthPolicyException("Reader authentication policy rejected the request")
             )
         }
 
@@ -153,7 +171,8 @@ class ProcessedDcqlRequest(
                         match = match,
                         documentManager = documentManager,
                         sessionTranscript = sessionTranscriptProvider(resolvedRequestObject),
-                        keyUnlockData = keyUnlockData[match.credential.identifier]
+                        keyUnlockData = keyUnlockData[match.credential.identifier],
+                        transactionData = match.transactionData
                     )
 
                     FORMAT_SD_JWT_VC -> verifiablePresentationForSdJwtVc(
@@ -161,7 +180,8 @@ class ProcessedDcqlRequest(
                         match = match,
                         documentManager = documentManager,
                         keyUnlockData = keyUnlockData[match.credential.identifier],
-                        audience = sdJwtAudience
+                        audience = sdJwtAudience,
+                        transactionData = match.transactionData
                     )
 
                     else -> throw IllegalArgumentException("Unsupported format: $format")
@@ -214,7 +234,7 @@ class ProcessedDcqlRequest(
      * the resolved relying party registration. Useful for narrowing the offered credentials to a
      * previously made selection.
      */
-    fun withPresentmentData(presentmentData: CredentialPresentmentData): ProcessedDcqlRequest =
+    fun withPresentmentData(presentmentData: CredentialQueryResult): ProcessedDcqlRequest =
         ProcessedDcqlRequest(
             resolvedRequestObject = resolvedRequestObject,
             documentManager = documentManager,
@@ -222,7 +242,9 @@ class ProcessedDcqlRequest(
             requester = requester,
             trustMetadata = trustMetadata,
             msoMdocNonce = msoMdocNonce,
+            readerAuthPolicy = readerAuthPolicy,
             multipleByQueryId = multipleByQueryId,
             wrpRegistration = wrpRegistration as? RegistrationCertificateResult
         )
 }
+

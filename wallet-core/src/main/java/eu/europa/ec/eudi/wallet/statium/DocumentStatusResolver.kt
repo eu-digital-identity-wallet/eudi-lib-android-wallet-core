@@ -256,6 +256,10 @@ class DocumentStatusResolverImpl(
             logger?.d(TAG, "resolveStatus: result=$status")
             status
         }
+    }.also { result ->
+        result.onFailure { e ->
+            logger?.e(TAG, "resolveStatus failed for ${document.format}: ${e.message}", e)
+        }
     }
 
         private fun withJwtVerifier(

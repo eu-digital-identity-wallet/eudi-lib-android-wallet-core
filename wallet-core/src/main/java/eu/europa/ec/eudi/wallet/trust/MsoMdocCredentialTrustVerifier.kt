@@ -62,7 +62,12 @@ internal class MsoMdocCredentialTrustVerifier(
 
         // Extract x5chain from unprotected headers (COSE label 33)
         val x5chainDataItem = coseSign1.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
-            ?: run { logger?.d(TAG, "No x5chain in COSE unprotected headers"); return@runCatching null }
+            ?: run {
+                logger?.d(TAG, "No x5chain in COSE unprotected headers")
+                return@runCatching CertificationChainValidation.NotTrusted(
+                    IllegalStateException("Credential has no x5chain in COSE unprotected headers")
+                )
+            }
         val x5chain = x5chainDataItem.asX509CertChain
 
         // Convert to List<X509Certificate> (JVM extension)

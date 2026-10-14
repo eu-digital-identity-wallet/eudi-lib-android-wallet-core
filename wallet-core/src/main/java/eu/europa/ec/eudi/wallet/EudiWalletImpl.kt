@@ -18,10 +18,7 @@ package eu.europa.ec.eudi.wallet
 
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.wallet.document.DocumentManager
-import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.registration.CertificateTrust
 import eu.europa.ec.eudi.wallet.registration.issuer.DefaultIssuerRegistrationEvaluator
@@ -32,11 +29,12 @@ import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialIssuanceLogger
 import eu.europa.ec.eudi.wallet.trust.pidClassification
-import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
 import io.ktor.client.HttpClient
 import org.multipaz.storage.Storage
-import java.security.cert.X509Certificate
 
 /**
  * Implementation of [EudiWallet]
@@ -46,7 +44,7 @@ import java.security.cert.X509Certificate
  * @property presentationManager the presentation manager
  * @property transferManager the transfer manager
  * @property documentStatusResolver the document status resolver
- * @property transactionLogger the transaction logger
+ * @property transactionLogManager the transaction-log funnel
  * @property ktorHttpClientFactory the ktor http client factory for use in the OpenId4VciManager and OpenId4VpManager
  * @property logger the logger
  */
@@ -60,26 +58,14 @@ class EudiWalletImpl internal constructor(
     override val documentStatusResolver: DocumentStatusResolver,
     override val walletProvider: WalletAttestationsProvider?,
     override val walletKeyManager: WalletKeyManager,
-    val transactionLogger: TransactionLogger?,
+    override val transactionLogManager: TransactionLogManager?,
+    override val trustMarkManager: TrustMarkManager?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
     val issuanceMetadataStorage: Storage?,
     internal val issuerRegistrationTrust: CertificateTrust? = null,
     internal val issuerRegistrationStatusTrust: CertificateTrust? = null,
 ) : EudiWallet, DocumentManager by documentManager, PresentationManager by presentationManager,
     DocumentStatusResolver by documentStatusResolver {
-
-    override fun setReaderTrustStore(readerTrustStore: ReaderTrustStore) = apply {
-        (this as PresentationManager).readerTrustStore = readerTrustStore
-        if (transferManager is ReaderTrustStoreAware) {
-            transferManager.readerTrustStore = readerTrustStore
-        }
-    }
-
-    override fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(trustedReaderCertificates, config.revocationPolicy))
-
-    override fun setTrustedReaderCertificates(vararg rawRes: Int) =
-        setReaderTrustStore(ReaderTrustStore.getDefault(rawRes.map { context.getCertificate(it) }, config.revocationPolicy))
 
     /**
      * Creates an instance of [OpenId4VciManager] for interacting with the OpenID for Verifiable Credential Issuance protocol.
@@ -129,7 +115,7 @@ class EudiWalletImpl internal constructor(
                 IssuerRegistrationResolver(certificateTrust, evaluator, logger)
             }
 
-        return OpenId4VciManager(context) {
+        val openId4VciManager = OpenId4VciManager(context) {
             documentManager(this@EudiWalletImpl)
             walletKeyManager(this@EudiWalletImpl.walletKeyManager)
             this@EudiWalletImpl.walletProvider?.let { walletAttestationsProvider(it) }
@@ -142,5 +128,17 @@ class EudiWalletImpl internal constructor(
             issuerRegistrationEnabled(registrationEnabled)
             issuerRegistration(issuerRegistration)
         }
+
+        // Wrap with issuance transaction logging when a transaction logger is configured.
+        return transactionLogManager?.let { manager ->
+            CredentialIssuanceLogger(
+                delegate = openId4VciManager,
+                transactionLogManager = manager,
+                logger = this@EudiWalletImpl.logger,
+                documentResolver = { id ->
+                    runCatching { this@EudiWalletImpl.getDocumentById(id) }.getOrNull()
+                },
+            )
+        } ?: openId4VciManager
     }
 }

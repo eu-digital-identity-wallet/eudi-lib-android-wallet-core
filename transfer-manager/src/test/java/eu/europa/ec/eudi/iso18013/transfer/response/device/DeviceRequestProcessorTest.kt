@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.iso18013.transfer.DeviceRequest
 import eu.europa.ec.eudi.iso18013.transfer.KeyLockPassphrase
 import eu.europa.ec.eudi.iso18013.transfer.createDocumentManager
 import eu.europa.ec.eudi.iso18013.transfer.mockAndroidLog
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
@@ -31,10 +32,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.mockito.MockedStatic
 import org.multipaz.mdoc.response.DeviceResponseParser
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.securearea.software.SoftwareKeyUnlockData
+import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.util.Constants
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -64,7 +67,7 @@ class DeviceRequestProcessorTest {
     fun `process returns ProcessedDeviceRequest with matched mDL credential and the expected requested claims`() =
         runBlocking {
             val documentManager = createDocumentManager(keyLockPassphrase = null)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce)
 
             val processed = processor.process(DeviceRequest)
 
@@ -94,7 +97,7 @@ class DeviceRequestProcessorTest {
     @Test
     fun `process returns Failure when the request is not a DeviceRequest`(): Unit = runBlocking {
         val documentManager = createDocumentManager(keyLockPassphrase = null)
-        val processor = DeviceRequestProcessor(documentManager)
+        val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce)
         val unknownRequest = mockk<Request>()
 
         val processed = processor.process(unknownRequest)
@@ -106,12 +109,12 @@ class DeviceRequestProcessorTest {
     fun `process plus generateResponse produces a valid signed DeviceResponse end-to-end`() =
         runBlocking {
             val documentManager = createDocumentManager(keyLockPassphrase = null)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce)
             val processed = assertIs<ProcessedDeviceRequest>(processor.process(DeviceRequest))
             val match = processed.firstMatch()
 
             // Full disclosure: the user confirms every matched claim.
-            val selection = CredentialPresentmentSelection(matches = listOf(match))
+            val selection = CredentialSelection(matches = listOf(match))
             val result = processed.generateResponse(
                 selection = selection,
                 keyUnlockData = emptyMap(),
@@ -140,7 +143,7 @@ class DeviceRequestProcessorTest {
             // constructor + filtering behaviour: building a selection with a narrower
             // `match.claims` map and verifying it reaches the issuer-signed output.
             val documentManager = createDocumentManager(keyLockPassphrase = null)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce)
             val processed = assertIs<ProcessedDeviceRequest>(processor.process(DeviceRequest))
             val fullMatch = processed.firstMatch()
 
@@ -151,7 +154,7 @@ class DeviceRequestProcessorTest {
                 },
             )
             val result = processed.generateResponse(
-                selection = CredentialPresentmentSelection(matches = listOf(narrowedMatch)),
+                selection = CredentialSelection(matches = listOf(narrowedMatch)),
                 keyUnlockData = emptyMap(),
             )
 
@@ -170,18 +173,23 @@ class DeviceRequestProcessorTest {
     fun `generateResponse with a PIN-locked credential succeeds when matching KeyUnlockData is provided`() =
         runBlocking {
             val documentManager = createDocumentManager(keyLockPassphrase = KeyLockPassphrase)
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce)
             val processed = assertIs<ProcessedDeviceRequest>(processor.process(DeviceRequest))
             val match = processed.firstMatch()
 
             // Provide the correct unlock data keyed by the credential's own identifier —
             // the wallet routes the per-credential entry to SecureArea.sign during signing.
+            val boundCredential = assertIs<SecureAreaBoundCredential>(match.credential)
             val keyUnlockData = mapOf(
-                match.credential.identifier to SoftwareKeyUnlockData(KeyLockPassphrase),
+                boundCredential.identifier to SoftwareKeyUnlockData(
+                    secureArea = assertIs<SoftwareSecureArea>(boundCredential.secureArea),
+                    alias = boundCredential.alias,
+                    passphrase = KeyLockPassphrase,
+                ),
             )
 
             val result = processed.generateResponse(
-                selection = CredentialPresentmentSelection(matches = listOf(match)),
+                selection = CredentialSelection(matches = listOf(match)),
                 keyUnlockData = keyUnlockData,
             )
 
@@ -209,7 +217,7 @@ class DeviceRequestProcessorTest {
             val documentManager = mockk<DocumentManager> {
                 coEvery { getDocuments(any()) } throws CancellationException("scope cancelled")
             }
-            val processor = DeviceRequestProcessor(documentManager)
+            val processor = DeviceRequestProcessor(documentManager, ReaderAuthPolicy.DoNotEnforce)
 
             val thrown = assertFailsWith<CancellationException> {
                 processor.process(DeviceRequest)

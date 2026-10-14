@@ -17,11 +17,10 @@
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
-import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.BleRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
 import eu.europa.ec.eudi.wallet.dcapi.registration.DCAPIRegistration
@@ -35,6 +34,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
 import eu.europa.ec.eudi.wallet.internal.i
+import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
+import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
@@ -42,6 +43,8 @@ import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
+import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
@@ -57,11 +60,16 @@ import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
-import eu.europa.ec.eudi.wallet.trust.asReaderTrustStore
+import eu.europa.ec.eudi.wallet.trust.ReaderAuthenticationConfigBuilder
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolverConfigBuilder
-import eu.europa.ec.eudi.wallet.transactionLogging.presentation.TransactionsDecorator
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialDeletionLogger
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.RegisteredIssuer
+import eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation.PresentationLogger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import org.multipaz.context.initializeApplication
@@ -71,7 +79,6 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
 import java.io.File
-import java.security.cert.X509Certificate
 import org.multipaz.util.Logger as IdentityLogger
 
 /**
@@ -102,33 +109,21 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
     val walletKeyManager: WalletKeyManager
 
     /**
-     * Sets the reader trust store with the given [ReaderTrustStore]. This method is useful when
-     * the reader trust store is not set in the configuration object, or when the reader trust store
-     * needs to be updated at runtime.
-     * @param readerTrustStore the reader trust store
-     * @return this [EudiWallet] instance
+     * The transaction-log funnel, if a [TransactionLogger] was configured via the builder.
+     * Host-app-triggered transactions (e.g. signing, data-protection actions) should be recorded
+     * through this manager so they share the same write path as core-produced entries.
      */
-    fun setReaderTrustStore(readerTrustStore: ReaderTrustStore): EudiWallet
+    val transactionLogManager: TransactionLogManager?
 
     /**
-     * Sets the reader trust store with the given list of [X509Certificate]. This method is useful
-     * when the reader trust store is not set in the configuration object, or when the reader trust
-     * store needs to be updated at runtime.
+     * The Trust Mark manager, if trust mark data was configured at wallet creation.
      *
-     * @param readerCertificates the list of reader certificates
-     * @return this [EudiWallet] instance
+     * Provides access to the EUDI Wallet Trust Mark information and resources as defined
+     * in EC TS01 v1.2 (2026-06). Supports both [TrustMarkSource.Static] and
+     * [TrustMarkSource.Dynamic] configuration. Returns `null` when no [TrustMarkSource]
+     * was supplied (e.g. for pre-certification wallets).
      */
-    fun setTrustedReaderCertificates(trustedReaderCertificates: List<X509Certificate>): EudiWallet
-
-    /**
-     * Sets the reader trust store with the given list of raw resource IDs. This method is useful
-     * when the reader trust store is not set in the configuration object, or when the reader trust
-     * store needs to be updated at runtime.
-     *
-     * @param rawRes the list of raw resource IDs
-     * @return this [EudiWallet] instance
-     */
-    fun setTrustedReaderCertificates(@RawRes vararg rawRes: Int): EudiWallet
+    val trustMarkManager: TrustMarkManager?
 
     /**
      * Creates an instance of [OpenId4VciManager] for the wallet to interact with the OpenID for Verifiable Credential Issuance service.
@@ -169,19 +164,31 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
         /**
          * Create an instance of [EudiWallet] with the given configuration and additional configuration
-         * using the [Builder] class
+         * using the [Builder] class.
+         *
+         * Trust Mark information can be supplied via [TrustMarkSource]:
+         * - **[TrustMarkSource.Static]**: data compiled into the app at build time.
+         * - **[TrustMarkSource.Dynamic]**: data fetched from a backend at runtime via [TrustMarkProvider][eu.europa.ec.eudi.wallet.trustmark.TrustMarkProvider].
          *
          * @param context application context
          * @param config the configuration object
+         * @param walletProvider optional provider for Wallet Instance/Unit Attestations
+         * @param trustMarkSource optional Trust Mark delivery configuration
          * @param extraConfiguration additional configuration to be applied based on the [Builder]
          */
         operator fun invoke(
             context: Context,
             config: EudiWalletConfig,
             walletProvider: WalletAttestationsProvider? = null,
+            trustMarkSource: TrustMarkSource? = null,
             extraConfiguration: (Builder.() -> Unit)? = null,
         ): EudiWallet {
-            val builder = Builder(context, config, walletProvider)
+            val builder = Builder(
+                context = context,
+                config = config,
+                walletProvider = walletProvider,
+                trustMarkSource = trustMarkSource,
+            )
             extraConfiguration?.invoke(builder)
             return builder.build()
         }
@@ -209,12 +216,12 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         context: Context,
         val config: EudiWalletConfig,
         val walletProvider: WalletAttestationsProvider?,
+        val trustMarkSource: TrustMarkSource? = null,
     ) {
         private val context = context.applicationContext
         var storage: Storage? = null
         var secureAreas: List<SecureArea>? = null
         var documentManager: DocumentManager? = null
-        var readerTrustStore: ReaderTrustStore? = null
         var presentationManager: PresentationManager? = null
         var logger: Logger? = null
         var ktorHttpClientFactory: (() -> HttpClient)? = null
@@ -256,17 +263,6 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          */
         fun withDocumentManager(documentManager: DocumentManager) =
             apply { this.documentManager = documentManager }
-
-        /**
-         * Configure with the given [ReaderTrustStore] to use for performing reader authentication.
-         * If not set, the default reader trust store will be used which is initialized with the certificates
-         * provided in the [EudiWalletConfig.configureReaderTrustStore] methods.
-         *
-         * @param readerTrustStore the reader trust store
-         * @return this [Builder] instance
-         */
-        fun withReaderTrustStore(readerTrustStore: ReaderTrustStore) =
-            apply { this.readerTrustStore = readerTrustStore }
 
         /**
          * Configure with the given [PresentationManager] to use for both proximity and remote presentation.
@@ -443,33 +439,24 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                         } else manager
                     }
 
-            val readerTrustStoreToUse = (readerTrustStore
-                ?: config.readerTrustStore
-                ?: when {
-                    config.useEtsiReaderTrust && etsiSource != null ->
-                        etsiSource.asReaderTrustStore()
+            // --- Build ReaderAuthPolicy (single policy for both transports) ---
+            val readerAuthPolicy: ReaderAuthPolicy = ReaderAuthenticationConfigBuilder()
+                .apply(config.readerAuthenticationBlock ?: {})
+                .build(etsiSource = etsiSource, logger = loggerToUse)
 
-                    else -> config.readerTrustedCertificates?.let { certificates ->
-                        ReaderTrustStoreImpl(
-                            certificates,
-                            profileValidation = { _, _ -> true },
-                            revocationPolicy = config.revocationPolicy,
-                        )
-                    }
-                })?.also {
+            // Derive trust store for components not yet migrated to ReaderAuthPolicy
+            val readerTrustStoreToUse = readerAuthPolicy.readerTrustStore?.also {
                 if (it is EtsiReaderTrustStore) it.logger = loggerToUse
             }
 
             // Registration certificate handling shared by every transport: the wallet authenticates
             // and evaluates the certificate on the proximity and DC-API paths, and supplies the same
             // evaluation to the OpenID4VP library through a RegistrationCertificatePolicy on the remote
-            // path. The trust store for the signer chain follows the same precedence as reader
-            // authentication trust (see readerTrustStoreToUse): an explicitly supplied reader trust
-            // store, then the ETSI Trusted Lists (registration certificate context) when ETSI reader
-            // trust is enabled, then the statically configured certificates. As with reader
-            // authentication, a reader trust store configured directly is therefore also used to
-            // validate the registration certificate signer chain. Revocation status is checked only
-            // against the ETSI Trusted Lists (registration certificate status context).
+            // path. When ETSI trust is available, the signer chain is checked against the WRPRC
+            // (WalletRelyingPartyRegistrationCertificate) context — distinct from the WRPAC context
+            // used for reader authentication. For non-ETSI setups the reader trust store is used as
+            // fallback. Revocation status is checked against the ETSI registration certificate status
+            // context (WalletRelyingPartyRegistrationCertificateStatus).
             val wrpRegistrationValidator: DefaultWrpRegistrationValidator?
             val registrationCertificatePolicy: RegistrationCertificatePolicy?
             val resolvedRegistration: ResolvedWrpRegistration?
@@ -478,31 +465,16 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 registrationCertificatePolicy = null
                 resolvedRegistration = null
             } else {
-                val certificateTrust: CertificateTrust? = (readerTrustStore ?: config.readerTrustStore)
-                    ?.asCertificateTrust()
-                    ?: if (config.useEtsiReaderTrust && etsiSource != null) {
-                        etsiSource.asCertificateTrust(
-                            VerificationContext.WalletRelyingPartyRegistrationCertificate,
-                            logger = loggerToUse,
-                        )
-                    } else {
-                        config.readerTrustedCertificates
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.let {
-                                ReaderTrustStoreImpl(
-                                    it,
-                                    profileValidation = { _, _ -> true },
-                                    revocationPolicy = config.revocationPolicy,
-                                ).asCertificateTrust()
-                            }
-                    }
+                val certificateTrust: CertificateTrust? =
+                    etsiSource?.asCertificateTrust(
+                        VerificationContext.WalletRelyingPartyRegistrationCertificate,
+                        logger = loggerToUse,
+                    ) ?: readerTrustStoreToUse?.asCertificateTrust()
                 val evaluator = config.wrpRegistrationEvaluator ?: DefaultWrpRegistrationEvaluator(
-                    statusTrust = if (config.useEtsiReaderTrust && etsiSource != null) {
-                        etsiSource.asCertificateTrust(
-                            VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
-                            logger = loggerToUse,
-                        )
-                    } else null,
+                    statusTrust = etsiSource?.asCertificateTrust(
+                        VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                        logger = loggerToUse,
+                    ),
                     logger = loggerToUse,
                     httpClientFactory = ktorHttpClientFactory,
                 )
@@ -518,33 +490,55 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
             val transferManager = getTransferManager(
                 documentManager = documentManagerToUse,
-                readerTrustStore = readerTrustStoreToUse,
+                readerAuthPolicy = readerAuthPolicy,
                 wrpRegistrationValidator = wrpRegistrationValidator
             )
+
+            // Single funnel for all transaction-log entries, created from the configured storage SPI.
+            val transactionLogManagerToUse = transactionLogger?.let {
+                DefaultTransactionLogManager(storage = it)
+            }
 
             val presentationManagerToUse = presentationManager ?: getDefaultPresentationManager(
                 documentManager = documentManagerToUse,
                 transferManager = transferManager,
+                readerAuthPolicy = readerAuthPolicy,
                 readerTrustStore = readerTrustStoreToUse,
                 registrationValidator = wrpRegistrationValidator,
                 registrationCertificatePolicy = registrationCertificatePolicy,
                 resolvedRegistration = resolvedRegistration,
                 loggerObj = loggerToUse
-            ).wrapWithTrasactionLogger(documentManagerToUse, loggerToUse)
+            ).wrapWithTrasactionLogger(documentManagerToUse, transactionLogManagerToUse, loggerToUse)
 
             val documentStatusResolverToUse = getDocumentStatusResolver(loggerToUse)
+
+            val trustMarkManagerToUse = trustMarkSource?.let { source ->
+                val httpFactory = (ktorHttpClientFactory ?: { HttpClient() })
+                    .wrappedWithLogging(loggerToUse)
+                    .wrappedWithContentNegotiation()
+                TrustMarkManager(
+                    source = source,
+                    ktorHttpClientFactory = httpFactory,
+                    logger = loggerToUse,
+                )
+            }
 
             return EudiWalletImpl(
                 context = context,
                 config = config,
-                documentManager = documentManagerToUse,
+                documentManager = documentManagerToUse.wrapWithDeletionLogger(
+                    transactionLogManagerToUse,
+                    loggerToUse,
+                    issuanceMetadataStorage
+                ),
                 presentationManager = presentationManagerToUse,
                 transferManager = transferManager,
                 walletProvider = walletProvider,
                 walletKeyManager = walletKeyManager ?: WalletKeyManager.getDefault(context),
                 logger = loggerToUse,
                 documentStatusResolver = documentStatusResolverToUse,
-                transactionLogger = transactionLogger,
+                transactionLogManager = transactionLogManagerToUse,
+                trustMarkManager = trustMarkManagerToUse,
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 issuanceMetadataStorage = issuanceMetadataStorage,
                 issuerRegistrationTrust = issuerRegistrationTrust,
@@ -556,13 +550,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          * Get the default [PresentationManagerImpl] instance based on the [DocumentManager] and [TransferManager] implementations
          * @param documentManager the document manager
          * @param transferManager the transfer manager
-         * @param readerTrustStore the reader trust store
+         * @param readerAuthPolicy the reader authentication policy (embeds the trust store)
+         * @param readerTrustStore the reader trust store (derived from policy, for components not yet migrated)
          * @return the default [PresentationManagerImpl] instance
          */
         @JvmSynthetic
         internal fun getDefaultPresentationManager(
             documentManager: DocumentManager,
             transferManager: TransferManager,
+            readerAuthPolicy: ReaderAuthPolicy,
             readerTrustStore: ReaderTrustStore?,
             loggerObj: Logger,
             registrationValidator: DefaultWrpRegistrationValidator? = null,
@@ -575,7 +571,9 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     requestProcessor = DcqlRequestProcessor(
                         documentManager = documentManager,
                         readerTrustStore = readerTrustStore,
-                        logger = loggerObj
+                        readerAuthPolicy = readerAuthPolicy,
+                        logger = loggerObj,
+                        transactionDataTypes = openId4VpConfig.transactionDataTypes
                     ).apply {
                         wrpRegistrationValidator = registrationValidator
                         this.resolvedRegistration = resolvedRegistration
@@ -598,11 +596,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     ?.let { openId4VpConfig ->
                         OpenId4VpDCAPIRequestProcessor(
                             openId4VpConfig = openId4VpConfig,
-                            dcqlRequestProcessor = DcqlRequestProcessor(documentManager, readerTrustStore)
-                                .apply {
-                                    wrpRegistrationValidator = registrationValidator
-                                    this.resolvedRegistration = resolvedRegistration
-                                },
+                            dcqlRequestProcessor = DcqlRequestProcessor(
+                                documentManager = documentManager,
+                                readerTrustStore = readerTrustStore,
+                                readerAuthPolicy = readerAuthPolicy,
+                                transactionDataTypes = openId4VpConfig.transactionDataTypes
+                            ).apply {
+                                wrpRegistrationValidator = registrationValidator
+                                this.resolvedRegistration = resolvedRegistration
+                            },
                             privilegedAllowlist = privilegedAllowlist,
                             supportedProtocols = openId4VpSupported,
                             logger = loggerObj,
@@ -612,8 +614,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 DCAPIManager(
                     isoMdocRequestProcessor = IsoMdocDCAPIRequestProcessor(
                         documentManager = documentManager,
-                        readerTrustStore = readerTrustStore,
-                        readerAuthPolicy = config.readerAuthPolicy,
+                        readerAuthPolicy = readerAuthPolicy,
                         privilegedAllowlist = privilegedAllowlist,
                         zkSystemRepository = config.zkSystemRepository,
                         zkResponsePolicy = config.zkResponsePolicy,
@@ -690,21 +691,20 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         }
 
         /**
-         * Get the default [TransferManager] instance based on the [DocumentManager] and [ReaderTrustStore]
+         * Get the default [TransferManager] instance based on the [DocumentManager] and [ReaderAuthPolicy]
          * @param documentManager the document manager
-         * @param readerTrustStore the reader trust store
+         * @param readerAuthPolicy the reader authentication policy (embeds the trust store)
          * @return the default [TransferManager] instance
          */
         @JvmSynthetic
         internal fun getTransferManager(
             documentManager: DocumentManager,
-            readerTrustStore: ReaderTrustStore? = null,
+            readerAuthPolicy: ReaderAuthPolicy,
             wrpRegistrationValidator: WrpRegistrationValidator? = null
         ) = TransferManager.getDefault(
             context = context,
             documentManager = documentManager,
-            readerTrustStore = readerTrustStore,
-            readerAuthPolicy = config.readerAuthPolicy,
+            readerAuthPolicy = readerAuthPolicy,
             retrievalMethods = listOf(
                 BleRetrievalMethod(
                     peripheralServerMode = config.enableBlePeripheralMode,
@@ -776,18 +776,52 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          *
          * @receiver [PresentationManager]
          * @param documentManager the document manager
+         * @param transactionLogManager the transaction-log funnel, or null if logging is disabled
          * @return [PresentationManager] wrapped with a transaction logger
          */
         internal fun PresentationManager.wrapWithTrasactionLogger(
             documentManager: DocumentManager,
+            transactionLogManager: TransactionLogManager?,
             loggerObj: Logger,
         ): PresentationManager {
-            return transactionLogger?.let { tl ->
-                TransactionsDecorator(
+            return transactionLogManager?.let { manager ->
+                PresentationLogger(
                     delegate = this,
-                    documentManager = documentManager,
-                    transactionLogger = tl,
+                    transactionLogManager = manager,
                     logger = loggerObj,
+                )
+            } ?: this
+        }
+
+        /**
+         * Wraps the [DocumentManager] with a decorator that logs credential-deletion transactions
+         * (TS10 §3.6). Returns the receiver unchanged when [transactionLogManager] is null
+         * (logging disabled).
+         *
+         * @param transactionLogManager the transaction-log funnel, or null if logging is disabled
+         * @param loggerObj the logger for internal diagnostics
+         * @param issuanceMetadataStorage where the issuer's registered details were kept at issuance,
+         *   so the deletion entry can name the issuer (TS10 §3.6)
+         * @return [DocumentManager] wrapped with a deletion logger
+         */
+        internal fun DocumentManager.wrapWithDeletionLogger(
+            transactionLogManager: TransactionLogManager?,
+            loggerObj: Logger,
+            issuanceMetadataStorage: Storage,
+        ): DocumentManager {
+            return transactionLogManager?.let { manager ->
+                CredentialDeletionLogger(
+                    delegate = this,
+                    transactionLogManager = manager,
+                    logger = loggerObj,
+                    registeredIssuerResolver = { documentId ->
+                        runBlocking {
+                            issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+                                .get(documentId)
+                                ?.let { IssuanceMetadata.fromByteArray(it.toByteArray()) }
+                                ?.let { RegisteredIssuer(it.issuerIdentifier, it.issuerName) }
+                        }
+                    },
                 )
             } ?: this
         }

@@ -27,6 +27,13 @@ import java.security.cert.X509Certificate
 
 class SubjectKey : ProfileValidation {
 
+    // SHA-1 is used here solely for SubjectKeyIdentifier verification as specified by
+    // RFC 5280 §4.2.1.2 — it is not used in a cryptographic security context.
+    // The hash checks structural consistency of the certificate (does the SKI extension
+    // match the public key?) and runs only after PKIX chain validation has already
+    // verified signatures with modern algorithms. Nearly all CAs generate SKIs using
+    // SHA-1 per the RFC, so using a different algorithm would reject legitimate certificates.
+    @SuppressWarnings("java:S4790")
     override fun validate(
         chain: List<X509Certificate>,
         trustCA: X509Certificate,

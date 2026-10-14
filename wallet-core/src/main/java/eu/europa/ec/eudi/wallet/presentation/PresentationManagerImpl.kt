@@ -23,8 +23,6 @@ import androidx.credentials.provider.PendingIntentHandler
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
 import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIManager
@@ -40,7 +38,6 @@ import org.jetbrains.annotations.VisibleForTesting
  * Implementation of the [PresentationManager] interface based on the [TransferManager],
  * [OpenId4VpManager], [DCAPIManager] implementations.
  * @property nfcEngagementServiceClass the NFC engagement service class
- * @property readerTrustStore the reader trust store
  */
 class PresentationManagerImpl @JvmOverloads constructor(
     @VisibleForTesting internal val transferManager: TransferManager,
@@ -48,18 +45,6 @@ class PresentationManagerImpl @JvmOverloads constructor(
     @VisibleForTesting internal val dcapiManager: DCAPIManager? = null,
     override val nfcEngagementServiceClass: Class<out NfcEngagementService>? = null,
 ) : PresentationManager {
-
-    private var _readerTrustStore: ReaderTrustStore? = null
-    override var readerTrustStore: ReaderTrustStore?
-        get() = _readerTrustStore
-        set(value) {
-            _readerTrustStore = value
-            if (transferManager is ReaderTrustStoreAware) {
-                transferManager.readerTrustStore = value
-            }
-            openId4vpManager?.readerTrustStore = value
-            dcapiManager?.readerTrustStore = value
-        }
 
     override fun addTransferEventListener(listener: TransferEvent.Listener) = apply {
         transferManager.addTransferEventListener(listener)

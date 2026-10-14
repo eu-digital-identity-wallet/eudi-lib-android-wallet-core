@@ -18,8 +18,14 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import eu.europa.ec.eudi.openid4vp.HashAlgorithm
 import eu.europa.ec.eudi.openid4vp.ResponseMode
+import eu.europa.ec.eudi.wallet.internal.TRANSACTION_DATA_HASH_ALGORITHMS
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.QesApprovalTransactionType
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.QesRequestTransactionType
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.RawTransactionType
 import org.multipaz.crypto.Algorithm
+import org.multipaz.documenttype.TransactionType
 
 /**
  * Configuration for OpenID4VP (OpenID for Verifiable Presentations) transfer operations.
@@ -90,6 +96,13 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
     val formats: List<Format> = builder.formats
 
     val encryptionPolicy: EncryptionPolicy = builder.encryptionPolicy
+
+    /**
+     * The transaction data types that the wallet accepts in an OpenID4VP request.
+     *
+     * When the list is empty, a request that contains transaction data is rejected.
+     */
+    val transactionDataTypes: List<TransactionDataType> = builder.transactionDataTypes
 
     /**
      * Policy enforcing constraints on the `response_mode` of an incoming request.
@@ -263,6 +276,28 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         fun withEncryptionPolicy(encryptionPolicy: EncryptionPolicy) =
             apply { this.encryptionPolicy = encryptionPolicy }
 
+        var transactionDataTypes: List<TransactionDataType> = emptyList()
+            private set
+
+        /**
+         * Sets the transaction data types that the wallet accepts. Defaults to an empty list,
+         * which rejects any request that contains transaction data.
+         *
+         * @param transactionDataTypes list of [TransactionDataType]
+         */
+        fun withTransactionDataTypes(transactionDataTypes: List<TransactionDataType>) = apply {
+            this.transactionDataTypes = transactionDataTypes
+        }
+
+        /**
+         * Sets the transaction data types that the wallet accepts. Defaults to an empty list,
+         * which rejects any request that contains transaction data.
+         *
+         * @param transactionDataTypes variable argument of [TransactionDataType]
+         */
+        fun withTransactionDataTypes(vararg transactionDataTypes: TransactionDataType) =
+            withTransactionDataTypes(transactionDataTypes.toList())
+
         /**
          * Builds the [OpenId4VpConfig].
          * @return the [OpenId4VpConfig]
@@ -287,6 +322,22 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             this.formats.forEach {
                 if (it is Format.SdJwtVc) {
                     require(it.sdJwtAlgorithms.isNotEmpty()) { "OpenId4VpConfig: sdJwtAlgorithms in SdJwtVc Format must be initialized with a not empty list" }
+                }
+            }
+
+            this.transactionDataTypes.groupBy { it.value }
+                .forEach { (type, instances) ->
+                    require(instances.size == 1) {
+                        "OpenId4VpConfig: transactionDataTypes must not contain duplicates, " +
+                                "found ${instances.size} for '$type'"
+                    }
+                }
+            this.transactionDataTypes.forEach { type ->
+                val unsupported = type.hashAlgorithms - TRANSACTION_DATA_HASH_ALGORITHMS.keys
+                require(unsupported.isEmpty()) {
+                    "OpenId4VpConfig: transaction data type '${type.value}' declares hash " +
+                            "algorithms the wallet cannot calculate: " +
+                            unsupported.joinToString { it.name }
                 }
             }
 
@@ -604,5 +655,63 @@ enum class EncryptionMethod {
          * out deprecated methods unless backward compatibility is required.
          */
         val SUPPORTED_ENCRYPTION_METHODS = entries
+    }
+}
+
+/**
+ * A transaction data type that the wallet accepts in an OpenID4VP request.
+ *
+ * [parser] reads the `transaction_data` objects of this type and rejects the ones that do not
+ * conform to it, which the wallet reports to the verifier as `invalid_transaction_data`. Declaring a
+ * type therefore also provides the means to read it. [QES_APPROVAL] and [QES] are the types defined
+ * for QES signing in ETSI TS 119 432 and CSC Data Model Bindings; [raw] declares a type whose
+ * objects are read as plain JSON, without a definition to check them against.
+ *
+ * @property parser reads the transaction data of this type
+ * @property hashAlgorithms the algorithms the wallet accepts for the hashes of this type; `sha-256`
+ * is required by OpenID4VP and cannot be left out
+ * @property value the transaction data type identifier, that is the `type` member of a
+ * `transaction_data` object
+ */
+data class TransactionDataType @JvmOverloads constructor(
+    val parser: TransactionType<*>,
+    val hashAlgorithms: Set<HashAlgorithm> = setOf(HashAlgorithm.SHA_256),
+) {
+    val value: String get() = parser.identifier
+
+    init {
+        require(value.isNotBlank()) { "TransactionDataType: value must not be blank" }
+        require(HashAlgorithm.SHA_256 in hashAlgorithms) {
+            "TransactionDataType: '${HashAlgorithm.SHA_256.name}' must be one of the hash " +
+                    "algorithms of '$value'"
+        }
+    }
+
+    override fun toString(): String = value
+
+    companion object {
+
+        /** Authorization of the creation of a qualified electronic signature or seal. */
+        @JvmField
+        val QES_APPROVAL = TransactionDataType(QesApprovalTransactionType)
+
+        /** Request for the creation of a qualified electronic signature or seal. */
+        @JvmField
+        val QES = TransactionDataType(QesRequestTransactionType)
+
+        /**
+         * Declares the transaction data type [value] without a definition of its contents. Its
+         * objects are read as plain JSON and only the members that OpenID4VP itself defines are
+         * checked.
+         *
+         * @param value the transaction data type identifier
+         * @param hashAlgorithms the algorithms the wallet accepts for the hashes of this type
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun raw(
+            value: String,
+            hashAlgorithms: Set<HashAlgorithm> = setOf(HashAlgorithm.SHA_256),
+        ): TransactionDataType = TransactionDataType(RawTransactionType(value), hashAlgorithms)
     }
 }

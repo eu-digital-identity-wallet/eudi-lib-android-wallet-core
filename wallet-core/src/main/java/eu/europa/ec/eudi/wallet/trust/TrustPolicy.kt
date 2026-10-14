@@ -37,7 +37,7 @@ fun interface TrustPolicy {
      * @return the [Action] indicating how the wallet should handle the trust verification result
      */
     fun resolve(
-        attestationIdentifier: AttestationIdentifier,
+        attestationIdentifier: AttestationIdentifier?,
         verificationContext: VerificationContext?,
     ): Action
 

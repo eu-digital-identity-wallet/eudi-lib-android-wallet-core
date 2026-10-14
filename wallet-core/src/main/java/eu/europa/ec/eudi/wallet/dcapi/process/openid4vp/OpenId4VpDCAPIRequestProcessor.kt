@@ -22,8 +22,6 @@ import eu.europa.ec.eudi.wallet.dcapi.internal.*
 import androidx.credentials.ExperimentalDigitalCredentialApi
 import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.provider.ProviderGetCredentialRequest
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
-import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreAware
 import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.openid4vp.OpenId4Vp
@@ -39,6 +37,7 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
 import io.ktor.client.HttpClient
@@ -69,13 +68,7 @@ class OpenId4VpDCAPIRequestProcessor(
     private val supportedProtocols: List<DCAPIProtocol>,
     private var logger: Logger? = null,
     private val registrationCertificatePolicy: RegistrationCertificatePolicy? = null
-) : RequestProcessor, ReaderTrustStoreAware {
-
-    override var readerTrustStore: ReaderTrustStore?
-        get() = dcqlRequestProcessor.readerTrustStore
-        set(value) {
-            dcqlRequestProcessor.readerTrustStore = value
-        }
+) : RequestProcessor {
 
     /**
      * Holds the registration certificate evaluation the OpenID4VP library policy produces while a
@@ -106,7 +99,7 @@ class OpenId4VpDCAPIRequestProcessor(
         return when (val resolution = openId4Vp.resolveRequestObject(protocol, origin, requestData)) {
             is Resolution.Invalid -> {
                 logger?.e(TAG, "Invalid OpenID4VP DC API request: ${resolution.error}")
-                RequestProcessor.ProcessedRequest.Failure(resolution.error.asException())
+                RequestProcessor.ProcessedRequest.Failure(OpenId4VpRequestException(resolution.error))
             }
 
             is Resolution.Success -> {

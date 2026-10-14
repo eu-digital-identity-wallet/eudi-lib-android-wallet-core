@@ -24,7 +24,10 @@ import eu.europa.ec.eudi.sdjwt.vc.TypeMetadataPolicy
 import eu.europa.ec.eudi.sdjwt.vc.X509CertificateTrust
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.logging.Logger
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
@@ -50,12 +53,33 @@ internal class SdJwtVcCredentialTrustVerifier(
         var result: CertificationChainValidation<TrustAnchor>? = null
 
         // Create trust callback that captures the evaluation result
-        val trust = X509CertificateTrust<List<X509Certificate>> { chain, _ ->
+        val trust = X509CertificateTrust<List<X509Certificate>> { chain, claimSet ->
             logger?.d(TAG, "x5c chain has ${chain.size} certs, leaf=${chain.firstOrNull()?.subjectX500Principal}")
             result = isChainTrusted.issuance(chain, attestationIdentifier)
             val trusted = result is CertificationChainValidation.Trusted
             logger?.d(TAG, "issuance() trusted=$trusted")
-            trusted
+
+            if (!trusted) return@X509CertificateTrust false
+
+            // Informational: check iss-to-SAN binding (not enforced — see ETSI TS 119 411-8)
+            val iss = (claimSet["iss"] as? JsonPrimitive)?.contentOrNull
+            if (iss == null) {
+                logger?.i(TAG, "SD-JWT has no 'iss' claim — SAN binding check skipped")
+            } else {
+                val leaf = chain.first()
+                val sanUris = leaf.sanUris()
+                if (sanUris.isEmpty()) {
+                    logger?.i(TAG, "iss='$iss' — leaf certificate has no SAN URIs")
+                } else if (sanUris.none { it == iss }) {
+                    logger?.i(
+                        TAG,
+                        "iss='$iss' does not match any SAN URI in leaf cert. SANs=$sanUris",
+                    )
+                } else {
+                    logger?.d(TAG, "iss='$iss' matches SAN URI in leaf certificate")
+                }
+            }
+            true
         }
 
         // Create verifier with UsingX5c method
@@ -66,7 +90,9 @@ internal class SdJwtVcCredentialTrustVerifier(
         )
 
         verifier.verify(credentialValue)
-            .onFailure { e -> logger?.e(TAG, "SD-JWT VC credential trust verification failed", e) }
+            .onFailure { e ->
+                logger?.e(TAG, "SD-JWT VC credential trust verification failed", e)
+            }
             .getOrNull()
         return result
     }
