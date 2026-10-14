@@ -43,6 +43,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(
@@ -206,6 +207,7 @@ internal class ProcessResponse(
             runCatching {
                 with(issuer) { authorizedRequest.notify(event) }.getOrThrow()
             }.onFailure { error ->
+                if (error is CancellationException) throw error
                 logger?.d(TAG, "Failed to notify issuer for notification ${event.id.value}: ${error.message}")
             }
         }
