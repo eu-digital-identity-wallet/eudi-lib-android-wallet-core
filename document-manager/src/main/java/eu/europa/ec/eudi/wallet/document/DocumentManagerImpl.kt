@@ -69,7 +69,6 @@ class DocumentManagerImpl(
     override val storage: Storage,
     override val secureAreaRepository: SecureAreaRepository,
     val ktorHttpClientFactory: (() -> HttpClient)? = null
-    // TODO: list trusted certificates
 ) : DocumentManager {
 
     /**
