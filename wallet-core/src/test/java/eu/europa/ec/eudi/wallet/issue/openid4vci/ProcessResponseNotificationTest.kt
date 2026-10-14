@@ -74,11 +74,14 @@ class ProcessResponseNotificationTest {
         } returns Result.success(authorizedRequest)
     }
 
-    private fun buildSut(logger: Logger? = null): ProcessResponse = ProcessResponse(
+    private fun buildSut(
+        logger: Logger? = null,
+        onResult: OpenId4VciManager.OnResult<IssueEvent> = listener,
+    ): ProcessResponse = ProcessResponse(
         documentManager = documentManager,
         deferredContextFactory = { _, _, _, _ -> mockk(relaxed = true) },
         clientAttestationPopKeyId = null,
-        listener = listener,
+        listener = onResult,
         issuedDocumentIds = mutableListOf(),
         deferredDocumentIds = mutableListOf(),
         logger = logger,
@@ -191,5 +194,32 @@ class ProcessResponseNotificationTest {
             }
         }
         assertTrue(emittedEvents.filterIsInstance<IssueEvent.DocumentIssued>().size == 1)
+    }
+
+    @Test
+    fun `processSubmittedRequest sends Accepted notification even when listener throws`() {
+        val notifId = NotificationId("test-notif-id")
+        val notifySent = CompletableDeferred<Unit>()
+        val eventSlot = slot<CredentialIssuanceEvent>()
+        val throwingListener = OpenId4VciManager.OnResult<IssueEvent> { throw RuntimeException("listener boom") }
+
+        coEvery {
+            with(issuer) { authorizedRequest.notify(capture(eventSlot)) }
+        } answers {
+            notifySent.complete(Unit)
+            Result.success(authorizedRequest)
+        }
+
+        runCatching {
+            runBlocking {
+                buildSut(onResult = throwingListener)
+                    .processSubmittedRequest(unsignedDocument, listOf("key1"), successOutcome(notifId))
+            }
+        }
+
+        runBlocking { withTimeout(2_000) { notifySent.await() } }
+
+        assertIs<CredentialIssuanceEvent.Accepted>(eventSlot.captured)
+        assertEquals(notifId, eventSlot.captured.id)
     }
 }
