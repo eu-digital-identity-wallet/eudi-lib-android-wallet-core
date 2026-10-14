@@ -909,8 +909,12 @@ class EudiWalletConfig {
 
     /**
      * Configure issuer trust verification for credentials issued via OpenID4VCI.
-     * Trust verification occurs after issuance, before storage. When not configured,
-     * trust verification is skipped entirely.
+     * Trust verification occurs after issuance, before storage.
+     *
+     * Issuer trust is verified by default. Without this call, the trust source and
+     * classifications of [configureEtsiTrust] are used with the `TrustPolicy.Action.ENFORCE`
+     * policy, and building the wallet fails when no trust source is available. Call
+     * `doNotVerify()` to turn verification off.
      *
      * When [configureEtsiTrust] is also called, `trustSource()` and `classifications()`
      * are optional — they default to the centrally configured ETSI trust source.
@@ -964,7 +968,8 @@ class EudiWalletConfig {
      * and [configureReaderTrustStore] no longer require explicit `trustSource()` and
      * `classifications()` calls — they default to the central ETSI trust source.
      *
-     * Each trust area still needs to be explicitly enabled via its own `configure*` call.
+     * Issuer trust and reader authentication use this trust source by default; status list
+     * trust is enabled by calling [configureDocumentStatusResolver].
      *
      * Example:
      * ```

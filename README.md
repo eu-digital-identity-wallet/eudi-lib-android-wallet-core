@@ -240,6 +240,12 @@ val config = EudiWalletConfig()
         // default is EnforceIfPresent
         enforceIfPresent()
     }
+    // configure the issuer trust verification, which is on by default
+    // the trust source can also come from configureEtsiTrust
+    .configureIssuerTrust {
+        trustSource(issuerChainTrust)
+        classifications(issuerClassifications)
+    }
     // configure the OpenId4Vci service
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.com")
@@ -738,10 +744,11 @@ small set of high-level configuration knobs. Each trust area (`configureIssuerTr
 `configureDocumentStatusResolver`, `configureReaderAuthentication`) inherits the shared trust
 source automatically and only needs area-specific settings (policies, clock skew, etc.).
 
-Each trust verification feature is independently configurable and opt-in. When not configured,
-the library behaves as before (credentials stored without trust checks, status resolved with
-standard signature verification, reader authentication via static certificate lists or
-disabled, unsigned metadata only).
+Each trust verification feature is independently configurable. Issuer trust, including signed
+issuer metadata, is verified by default (see [Issuer Trust Verification](#issuer-trust-verification)).
+The other features are opt-in; when not configured, the library behaves as before (status
+resolved with standard signature verification, reader authentication via static certificate
+lists or disabled).
 
 For advanced use cases, the design remains **protocol-agnostic** — the per-area builders still
 accept explicit `trustSource()` calls, allowing developers to compose trust validation using the
@@ -910,10 +917,24 @@ for a step-by-step guide covering all trust areas
 
 Trust verification runs after the credential is received from the issuer and before it is stored.
 Built-in verifiers handle both MsoMdoc and SD-JWT VC formats, and custom verifiers can be
-registered for additional formats. When issuer trust is not configured, verification is skipped
-entirely and credentials are stored as before.
+registered for additional formats.
 
-Enable issuer trust verification via the `configureIssuerTrust` DSL on `EudiWalletConfig`.
+Issuer trust is verified by default. Without `configureIssuerTrust`, the wallet uses the trust
+source and classifications of `configureEtsiTrust` with the `ENFORCE` policy and requires signed
+issuer metadata; building the wallet fails when no trust source is available. To turn
+verification off, call `doNotVerify()`:
+
+```kotlin
+configureIssuerTrust {
+    doNotVerify()
+}
+```
+
+A credential is then checked only for its binding to the device key; the issuer's signature and
+certificate chain are not verified, only unsigned issuer metadata is used, and
+`issuerTrustResult` is `null`.
+
+Configure issuer trust verification via the `configureIssuerTrust` DSL on `EudiWalletConfig`.
 When `configureEtsiTrust` is also used, `trustSource()` and `classifications()` are inherited
 automatically — only policy and metadata settings are needed:
 
@@ -952,6 +973,7 @@ configureIssuerTrust {
 - **`policy`** -- configures how the wallet acts on trust results (see below).
 - **`preferSignedMetadata()`** / **`ignoreSignedMetadata()`** -- relaxes the default
   `RequireSigned` metadata policy (see [Signed Issuer Metadata Verification](#signed-issuer-metadata-verification)).
+- **`doNotVerify()`** -- turns issuer trust verification off; the other settings are ignored.
 
 ##### Trust Policies
 
@@ -986,7 +1008,7 @@ manager.issueDocumentByOfferUri(offerUri) { event ->
                     // INFORM policy: credential stored, but issuer was not trusted
                 }
                 null -> {
-                    // Trust verification not configured
+                    // Issuer not verified: doNotVerify(), or not evaluated under INFORM
                 }
             }
         }

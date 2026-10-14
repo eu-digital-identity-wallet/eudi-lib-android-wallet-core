@@ -42,12 +42,12 @@ import java.security.cert.TrustAnchor
  * The issuer of every credential is evaluated, so under ENFORCE no credential is stored
  * when the issuer of one is not trusted.
  *
- * @param issuerTrustConfig the trust configuration, or null if trust verification is not configured
+ * @param issuerTrustConfig the trust configuration, or null when issuer trust verification is off
  * @param document the document being issued
  * @param credentials the credentials received from the issuer
  * @param logger optional logger for debug messages
  * @return the first [CertificationChainValidation.NotTrusted] result; otherwise null if trust
- *   verification is not configured or the trust of a credential was not evaluated; otherwise
+ *   verification is off or the trust of a credential was not evaluated; otherwise
  *   the result of the first credential
  * @throws IssuerNotTrustedException if the issuer of a credential is not trusted and the policy is
  *   [TrustPolicy.Action.ENFORCE]
@@ -60,7 +60,7 @@ internal suspend fun evaluateIssuerTrust(
 ): CertificationChainValidation<TrustAnchor>? {
     require(credentials.isNotEmpty()) { "No credentials to evaluate" }
     if (issuerTrustConfig == null) {
-        logger?.d(TAG, "issuerTrustConfig is null, trust verification not configured")
+        logger?.d(TAG, "issuerTrustConfig is null, issuer trust verification is off")
         return null
     }
 

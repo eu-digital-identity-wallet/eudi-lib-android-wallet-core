@@ -42,7 +42,7 @@ sealed interface DeferredIssueResult : OpenId4VciResult {
      * @property documentId the id of the issued document
      * @property name the name of the document
      * @property docType the document type
-     * @property issuerTrustResult the result of issuer trust verification, or null if not configured
+     * @property issuerTrustResult the result of issuer trust verification, or null if the issuer was not verified
      * @see[DocumentId] for the document id
      */
     data class DocumentIssued(
