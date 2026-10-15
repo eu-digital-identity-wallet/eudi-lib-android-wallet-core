@@ -49,7 +49,7 @@ class TransferManagerTest {
         val transferManager = TransferManager.getDefault(
             context = Context,
             documentManager = createDocumentManager(null),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         assertIs<eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl>(transferManager)
@@ -62,7 +62,7 @@ class TransferManagerTest {
         val transferManager = TransferManager.getDefault(
             context = Context,
             documentManager = createDocumentManager(null),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
             retrievalMethods = deviceRetrievalMethods
         )
 

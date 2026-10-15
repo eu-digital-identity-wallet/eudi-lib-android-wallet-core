@@ -144,7 +144,7 @@ class ProcessedDeviceRequestTest {
         assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, parseStatus(response))
     }
 
-    // ── ReaderAuthPolicy.DoNotEnforce ──────────────────────────────────────────
+    // ── ReaderAuthPolicy.DoNotEnforce() ──────────────────────────────────────────
 
     @Test
     fun `DoNotEnforce produces STATUS_OK response regardless of trust state`() = runBlocking {
@@ -152,7 +152,7 @@ class ProcessedDeviceRequestTest {
         val processed = buildProcessedRequest(
             trustMetadata = null,
             requester = Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(mockk<X509CertChain>()))),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         val response = processed.generateEmptyResponse()
@@ -173,7 +173,7 @@ class ProcessedDeviceRequestTest {
         }
         val processed = buildProcessedRequest(
             trustMetadata = TrustMetadata(displayName = "Trusted"),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         val result = processed.generateResponse(
@@ -212,7 +212,7 @@ class ProcessedDeviceRequestTest {
             requester = Requester(requesterIdentities = emptyList()),
             // Trusted + DoNotEnforce so the policy gate doesn't short-circuit before the loop.
             trustMetadata = TrustMetadata(displayName = "Trusted"),
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
 
         val thrown = assertFailsWith<CancellationException> {
@@ -372,7 +372,7 @@ class ProcessedDeviceRequestTest {
     private fun buildProcessedRequest(
         trustMetadata: TrustMetadata?,
         requester: Requester = Requester(requesterIdentities = emptyList()),
-        readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         presentmentData: CredentialQueryResult = CredentialQueryResult(emptyList()),
     ): ProcessedDeviceRequest = ProcessedDeviceRequest(
         documentManager = mockk<DocumentManager>(relaxed = true),

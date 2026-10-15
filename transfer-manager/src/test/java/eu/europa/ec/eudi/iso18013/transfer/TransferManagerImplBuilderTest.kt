@@ -50,7 +50,7 @@ class TransferManagerImplBuilderTest {
     fun buildTransferManagerWithDefaults() {
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
-            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce)
+            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
             .build()
 
         assertNotNull(transferManager)
@@ -61,7 +61,7 @@ class TransferManagerImplBuilderTest {
     fun buildTransferManagerWithoutDocumentManagerThrowsException() {
         val throwable = assertFailsWith<IllegalArgumentException> {
             TransferManagerImpl.Builder(Context)
-                .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce)
+                .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
                 .build()
         }
 
@@ -73,7 +73,7 @@ class TransferManagerImplBuilderTest {
         val retrievalMethods: List<DeviceRetrievalMethod> = listOf(mockk(), mockk())
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
-            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce)
+            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
             .retrievalMethods(retrievalMethods)
             .build()
 
@@ -86,7 +86,7 @@ class TransferManagerImplBuilderTest {
     fun buildTransferManagerWithDefaultZkResponsePolicy() {
         val transferManager = TransferManagerImpl.Builder(Context)
             .documentManager(createDocumentManager(null))
-            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce)
+            .readerAuthPolicy(ReaderAuthPolicy.DoNotEnforce())
             .build()
 
         assertNotNull(transferManager)

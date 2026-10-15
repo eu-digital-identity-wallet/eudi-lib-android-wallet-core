@@ -563,7 +563,7 @@ Three policies are available:
 
 | Policy | Behavior |
 |---|---|
-| `ReaderAuthPolicy.DoNotEnforce` | The response is always produced regardless of reader-auth state. |
+| `ReaderAuthPolicy.DoNotEnforce()` | The response is always produced regardless of reader-auth state. An optional `ReaderTrustStore` can be provided for trust evaluation without gating disclosure. |
 | `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** If the verifier supplied a reader cert chain, that chain **must** also be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. Requests without any reader auth are allowed through. |
 | `ReaderAuthPolicy.AlwaysRequire` | The request must be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. |
 

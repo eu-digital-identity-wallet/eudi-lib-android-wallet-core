@@ -134,7 +134,7 @@ class ReaderAuthenticationConfigBuilder {
         }?.also { if (it is EtsiReaderTrustStore) it.logger = logger }
 
         return when (enforcement) {
-            Enforcement.DoNotEnforce -> ReaderAuthPolicy.DoNotEnforce
+            Enforcement.DoNotEnforce -> ReaderAuthPolicy.DoNotEnforce(trustStore)
             Enforcement.EnforceIfPresent -> {
                 requireNotNull(trustStore) {
                     "enforceIfPresent() requires trust sources. " +
