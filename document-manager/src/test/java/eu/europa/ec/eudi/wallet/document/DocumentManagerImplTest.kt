@@ -16,10 +16,17 @@
 
 package eu.europa.ec.eudi.wallet.document
 
+import android.util.Log
+import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.wallet.document.credential.IssuerProvidedCredential
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.sample.generateData
+import eu.europa.ec.eudi.wallet.document.sample.generateMso
+import eu.europa.ec.eudi.wallet.document.sample.signMso
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.runBlocking
 import org.multipaz.cbor.Cbor
 import org.multipaz.credential.SecureAreaBoundCredential
@@ -32,6 +39,7 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
@@ -145,6 +153,90 @@ class DocumentManagerImplTest {
     }
 
     @Test
+    fun `should return failure result when a data element does not match its digest in the mso`() {
+        val unsignedDocument = createPidDocument()
+        val issuerProvidedCredentials = issuerProvidedCredentials(
+            unsignedDocument = unsignedDocument,
+            msoDocType = PID_DOC_TYPE,
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Roe"),
+        )
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "Digest mismatch")
+    }
+
+    @Test
+    fun `should return failure result when the docType in the mso does not match the document`() {
+        val unsignedDocument = createPidDocument()
+        val issuerProvidedCredentials = issuerProvidedCredentials(
+            unsignedDocument = unsignedDocument,
+            msoDocType = "org.iso.18013.5.1.mDL",
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Doe"),
+        )
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "DocType in MSO")
+    }
+
+    /**
+     * Builds issuer-provided credentials whose MSO is signed over [msoNameSpaces] and [msoDocType],
+     * while the credential carries [issuedNameSpaces].
+     */
+    private fun issuerProvidedCredentials(
+        unsignedDocument: UnsignedDocument,
+        msoDocType: String,
+        msoNameSpaces: CBORObject,
+        issuedNameSpaces: CBORObject,
+    ): List<IssuerProvidedCredential> {
+        // The MSO generator logs through android.util.Log, which is not available in unit tests
+        mockkStatic(Log::class)
+        every { Log.w(any(), any<String>()) } returns 0
+        try {
+            return runBlocking {
+                unsignedDocument.getPoPSigners().map { signer ->
+                    val keyInfo = signer.getKeyInfo()
+                    val mso = generateMso("sha-256", msoDocType, keyInfo.publicKey, msoNameSpaces)
+                    IssuerProvidedCredential(
+                        publicKeyAlias = keyInfo.alias,
+                        data = generateData(issuedNameSpaces, signMso(mso)),
+                    )
+                }
+            }
+        } finally {
+            unmockkStatic(Log::class)
+        }
+    }
+
+    private fun createPidDocument(): UnsignedDocument =
+        documentManager.createDocument(
+            format = MsoMdocFormat(docType = PID_DOC_TYPE),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            ),
+        ).getOrThrow()
+
+    private fun pidNameSpaces(familyName: String): CBORObject {
+        val issuerSignedItem = CBORObject.NewOrderedMap()
+            .Add("digestID", 0)
+            .Add("random", ByteArray(16) { 1 })
+            .Add("elementIdentifier", "family_name")
+            .Add("elementValue", familyName)
+        return CBORObject.NewMap().Add(
+            PID_DOC_TYPE,
+            CBORObject.NewArray().Add(CBORObject.FromObjectAndTag(issuerSignedItem.EncodeToBytes(), 24)),
+        )
+    }
+
+    @Test
     fun `should create document with null issuerMetaData if not provided`() {
         val createKeySettings = SoftwareCreateKeySettings.Builder().build()
         val createSettings = CreateDocumentSettings(
@@ -227,5 +319,9 @@ class DocumentManagerImplTest {
         // Validate failure
         assertTrue(storeDeferredResult.isFailure)
         assertIs<IllegalArgumentException>(storeDeferredResult.exceptionOrNull())
+    }
+
+    private companion object {
+        private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
     }
 }
