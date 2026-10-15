@@ -128,7 +128,7 @@ class ProcessedDeviceRequest(
             val isReaderTrustVerified = trustMetadata != null
             val readerAuthPresent = requester.requesterIdentities.isNotEmpty()
             val skipAllByPolicy = when (readerAuthPolicy) {
-                ReaderAuthPolicy.DoNotEnforce -> false
+                is ReaderAuthPolicy.DoNotEnforce -> false
                 is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
                 is ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
             }

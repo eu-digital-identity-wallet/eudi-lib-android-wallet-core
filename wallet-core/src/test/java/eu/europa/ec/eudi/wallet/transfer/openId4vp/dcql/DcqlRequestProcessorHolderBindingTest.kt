@@ -253,7 +253,7 @@ class DcqlRequestProcessorHolderBindingTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce())
     }
 
     private fun buildOpenId4VpRequest(dcql: DCQL): OpenId4VpRequest {

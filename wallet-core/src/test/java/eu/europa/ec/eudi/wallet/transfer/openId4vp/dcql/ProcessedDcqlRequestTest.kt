@@ -37,7 +37,7 @@ class ProcessedDcqlRequestTest {
             requester = mockk(relaxed = true),
             trustMetadata = null,
             msoMdocNonce = "nonce",
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
             wrpRegistration = registration,
         )
 

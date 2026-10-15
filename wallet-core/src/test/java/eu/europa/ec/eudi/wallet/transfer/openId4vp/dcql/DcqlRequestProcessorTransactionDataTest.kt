@@ -259,7 +259,7 @@ class DcqlRequestProcessorTransactionDataTest {
         return DcqlRequestProcessor(
             documentManager = documentManager,
             openid4VpX509CertificateTrust = trust,
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
             transactionDataTypes = accepts
         )
     }
