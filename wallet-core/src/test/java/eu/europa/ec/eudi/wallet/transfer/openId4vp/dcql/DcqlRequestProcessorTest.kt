@@ -861,7 +861,7 @@ class DcqlRequestProcessorTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce())
     }
 
     /**
@@ -947,7 +947,7 @@ class DcqlRequestProcessorTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce())
     }
 
     /**
@@ -977,7 +977,7 @@ class DcqlRequestProcessorTest {
             every { readerTrustStore } returns null
             every { readerTrustStore = any() } returns Unit
         }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce())
     }
 
     /**

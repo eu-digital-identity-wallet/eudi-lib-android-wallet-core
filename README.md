@@ -369,12 +369,20 @@ val config = EudiWalletConfig {
 
 > **Note:** `enforceIfPresent()` and `alwaysRequire()` require trust sources. If no trust
 > source is configured (and no central ETSI trust source is available), an
-> `IllegalArgumentException` is thrown at build time. Call `doNotEnforce()` to explicitly opt out.
+> `IllegalArgumentException` is thrown at build time. Call `doNotEnforce()` to explicitly opt out
+> of enforcement.
 
 > **Note:** If a verifier includes reader authentication in its request but its certificate is not in
 > the configured trust store, the document will be excluded from the response when using
-> `enforceIfPresent()` or `alwaysRequire()`. To allow presentations to verifiers whose
-> certificates are not in the trust store, use `doNotEnforce()`.
+> `enforceIfPresent()` or `alwaysRequire()`. For **proximity** presentations,
+> `doNotEnforce()` allows disclosure regardless of trust status.
+
+> **Important:** For **OpenID4VP signed requests** (including DC API), trust evaluation is
+> mandated by the protocol — the verifier's certificate chain must be validated before the
+> request is accepted. `doNotEnforce()` controls only whether the trust result gates document
+> disclosure; it does not bypass protocol-level authentication. Trust material (ETSI or static
+> certificates) must still be configured when accepting signed OpenID4VP requests, even with
+> `doNotEnforce()`.
 
 #### WalletKeyManager Configuration
 This interface is responsible for managing Attestation Keys used during Attestation Based Client Authentication with OpenId4Vci.

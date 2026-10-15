@@ -37,9 +37,13 @@ sealed interface ReaderAuthPolicy {
     /**
      * Do not enforce reader authentication results.
      * Documents are always included in the response regardless of trust status.
-     * No trust evaluation is performed.
+     *
+     * Trust evaluation may still be performed (e.g. for OpenID4VP signed requests)
+     * when a [readerTrustStore] is provided, but the result never gates document disclosure.
      */
-    data object DoNotEnforce : ReaderAuthPolicy
+    data class DoNotEnforce(
+        override val readerTrustStore: ReaderTrustStore? = null,
+    ) : ReaderAuthPolicy
 
     /**
      * Enforce reader authentication when present.
