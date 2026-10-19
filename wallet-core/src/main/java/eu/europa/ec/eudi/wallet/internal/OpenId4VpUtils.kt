@@ -272,7 +272,8 @@ internal fun makeOpenId4VPConfig(
         vpFormatsSupported = config.formats.toVpFormats(),
         supportedClientIdPrefixes = supportedClientIdPrefixes,
         supportedTransactionDataTypes = config.transactionDataTypes.toSupportedTransactionDataTypes(),
-        registrationCertificatePolicy = registrationCertificatePolicy
+        registrationCertificatePolicy = registrationCertificatePolicy,
+        errorDispatchPolicy = config.errorDispatchPolicy
     )
 }
 
