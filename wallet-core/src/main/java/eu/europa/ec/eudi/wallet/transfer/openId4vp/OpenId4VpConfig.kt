@@ -18,6 +18,7 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import eu.europa.ec.eudi.openid4vp.ErrorDispatchPolicy
 import eu.europa.ec.eudi.openid4vp.HashAlgorithm
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.wallet.internal.TRANSACTION_DATA_HASH_ALGORITHMS
@@ -71,12 +72,16 @@ import org.multipaz.documenttype.TransactionType
  * @property encryptionPolicy Policy enforcing `response_mode` constraints on incoming
  *   requests (default: [EncryptionPolicy.HAIP], which accepts only encrypted response
  *   modes — `direct_post.jwt` for OpenID4VP and `dc_api.jwt` for DC-API).
+ * @property errorDispatchPolicy Policy deciding to which verifiers protocol-level error responses
+ *   (OpenID4VP section 8.5) are sent when an authorization request is rejected (default:
+ *   [ErrorDispatchPolicy.OnlyAuthenticatedClients]).
  *
  * @see ClientIdScheme
  * @see EncryptionAlgorithm
  * @see EncryptionMethod
  * @see Format
  * @see EncryptionPolicy
+ * @see ErrorDispatchPolicy
  * @since 1.0.0
  */
 class OpenId4VpConfig private constructor(private val builder: Builder) {
@@ -103,6 +108,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      * When the list is empty, a request that contains transaction data is rejected.
      */
     val transactionDataTypes: List<TransactionDataType> = builder.transactionDataTypes
+
+    val errorDispatchPolicy: ErrorDispatchPolicy = builder.errorDispatchPolicy
 
     /**
      * Policy enforcing constraints on the `response_mode` of an incoming request.
@@ -297,6 +304,21 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
          */
         fun withTransactionDataTypes(vararg transactionDataTypes: TransactionDataType) =
             withTransactionDataTypes(transactionDataTypes.toList())
+
+        var errorDispatchPolicy: ErrorDispatchPolicy = ErrorDispatchPolicy.OnlyAuthenticatedClients
+            private set
+
+        /**
+         * Sets the [ErrorDispatchPolicy] that decides to which verifiers a protocol-level error
+         * response is sent when an authorization request is rejected. Defaults to
+         * [ErrorDispatchPolicy.OnlyAuthenticatedClients]. Use [ErrorDispatchPolicy.AllClients]
+         * to also report errors to verifiers that failed authentication, e.g. to help relying
+         * parties debug their access certificate setup in non-production environments.
+         *
+         * @param errorDispatchPolicy the policy to apply.
+         */
+        fun withErrorDispatchPolicy(errorDispatchPolicy: ErrorDispatchPolicy) =
+            apply { this.errorDispatchPolicy = errorDispatchPolicy }
 
         /**
          * Builds the [OpenId4VpConfig].
