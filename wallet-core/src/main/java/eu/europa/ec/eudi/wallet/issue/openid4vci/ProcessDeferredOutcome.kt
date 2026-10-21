@@ -84,7 +84,7 @@ internal class ProcessDeferredOutcome(
                     val trustResult = evaluateIssuerTrust(
                         issuerTrustConfig = issuerTrustConfig,
                         document = deferredDocument,
-                        credential = credentials.first().first,
+                        credentials = credentials.map { it.first },
                         logger = logger,
                     )
                     documentManager.storeIssuedDocument(deferredDocument, credentials) {

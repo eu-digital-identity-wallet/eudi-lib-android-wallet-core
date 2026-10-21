@@ -35,7 +35,8 @@ import kotlin.reflect.KClass
  * A trust source must be provided via one of the [trustSource] overloads.
  * When using [IsChainTrustedForEUDIW] or [ComposeChainTrust] as the trust source,
  * [classifications] must also be provided so the builder can construct an
- * [IsChainTrustedForAttestation] instance.
+ * [IsChainTrustedForAttestation] instance. Call [doNotVerify] to turn issuer trust
+ * verification off.
  *
  * Example:
  * ```
@@ -57,8 +58,20 @@ class IssuerTrustConfigBuilder {
     private var policyBuilder: (TrustPolicy.Builder.() -> Unit)? = null
     private val customVerifiers = mutableMapOf<KClass<out DocumentFormat>, CredentialTrustVerifier>()
     private var metadataPolicyMode: MetadataPolicyMode = MetadataPolicyMode.REQUIRE
+    private var verify = true
 
     private enum class MetadataPolicyMode { IGNORE, REQUIRE, PREFER }
+
+    /**
+     * Turns issuer trust verification off.
+     *
+     * A received credential is then checked only for its binding to the device key; the
+     * issuer's signature and certificate chain are not verified and signed issuer metadata
+     * is not used. The other settings of this builder are ignored.
+     */
+    fun doNotVerify() {
+        this.verify = false
+    }
 
     /**
      * Sets the trust source from a pre-built [IsChainTrustedForAttestation].
@@ -169,11 +182,11 @@ class IssuerTrustConfigBuilder {
     /**
      * Builds the [IssuerTrustConfig] from the current builder state.
      *
-     * @return a validated [IssuerTrustConfig]
+     * @return a validated [IssuerTrustConfig], or null when [doNotVerify] was called
      * @throws IllegalArgumentException if no trust source is configured, or if classifications
      *   are missing when required by the trust source type
      */
-    internal fun build(): IssuerTrustConfig = build(null, null)
+    internal fun build(): IssuerTrustConfig? = build(null, null)
 
     /**
      * Builds the [IssuerTrustConfig], using the provided defaults for trust source and
@@ -184,20 +197,23 @@ class IssuerTrustConfigBuilder {
      *
      * @param defaultSource default EUDIW trust source if [trustSource] was not called
      * @param defaultClassifications default classifications if [classifications] was not called
-     * @return a validated [IssuerTrustConfig]
+     * @return a validated [IssuerTrustConfig], or null when [doNotVerify] was called
      * @throws IllegalArgumentException if no trust source is available
      */
     internal fun build(
         defaultSource: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>?,
         defaultClassifications: AttestationClassifications?,
         logger: Logger? = null,
-    ): IssuerTrustConfig {
+    ): IssuerTrustConfig? {
+        if (!verify) return null
+
         val effectiveEudiwSource = eudiwSource ?: defaultSource
         val effectiveClassifications = classifications ?: defaultClassifications
 
         val attestation = preBuiltAttestation ?: run {
             val eudiw = requireNotNull(effectiveEudiwSource) {
-                "A trust source must be provided via trustSource()"
+                "Issuer trust requires a trust source. Call trustSource() or configureEtsiTrust(), " +
+                    "or use doNotVerify() to opt out."
             }
             val cls = requireNotNull(effectiveClassifications) {
                 "AttestationClassifications must be provided when using IsChainTrustedForEUDIW as trust source"

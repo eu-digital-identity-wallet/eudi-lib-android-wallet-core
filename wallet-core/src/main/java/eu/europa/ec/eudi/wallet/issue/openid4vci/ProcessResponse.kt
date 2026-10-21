@@ -125,7 +125,7 @@ internal class ProcessResponse(
                 val trustResult = evaluateIssuerTrust(
                     issuerTrustConfig = issuerTrustConfig,
                     document = unsignedDocument,
-                    credential = credentials.first().first,
+                    credentials = credentials.map { it.first },
                     logger = logger,
                 )
 

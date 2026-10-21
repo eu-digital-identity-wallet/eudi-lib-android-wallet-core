@@ -47,7 +47,7 @@ class IssuerTrustConfigBuilderTest {
         val config = IssuerTrustConfigBuilder().apply {
             trustSource(mockAttestation)
             ignoreSignedMetadata()
-        }.build()
+        }.build()!!
 
         assertEquals(mockAttestation, config.isChainTrustedForAttestation)
         assertNull(config.classifications)
@@ -63,7 +63,7 @@ class IssuerTrustConfigBuilderTest {
         val config = IssuerTrustConfigBuilder().apply {
             trustSource(mockEudiw)
             classifications(classifications)
-        }.build()
+        }.build()!!
 
         assertNotNull(config.isChainTrustedForAttestation)
         assertEquals(classifications, config.classifications)
@@ -72,6 +72,15 @@ class IssuerTrustConfigBuilderTest {
     @Test(expected = IllegalArgumentException::class)
     fun throwsWhenTrustSourceMissing() {
         IssuerTrustConfigBuilder().build()
+    }
+
+    @Test
+    fun doNotVerifyBuildsNoConfig() {
+        val config = IssuerTrustConfigBuilder().apply {
+            doNotVerify()
+        }.build()
+
+        assertNull(config)
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -92,7 +101,7 @@ class IssuerTrustConfigBuilderTest {
             trustSource(mockAttestation)
             credentialTrustVerifier(MsoMdocFormat::class, mockVerifier)
             ignoreSignedMetadata()
-        }.build()
+        }.build()!!
 
         assertEquals(mockVerifier, config.credentialTrustVerifiers[MsoMdocFormat::class])
         // Default verifiers for MsoMdoc (overridden) and SdJwtVc (default)
@@ -106,7 +115,7 @@ class IssuerTrustConfigBuilderTest {
         val config = IssuerTrustConfigBuilder().apply {
             trustSource(mockAttestation)
             ignoreSignedMetadata()
-        }.build()
+        }.build()!!
 
         val action = config.trustPolicy.resolve(
             AttestationIdentifier.MDoc("org.iso.18013.5.1.mDL"),
@@ -125,7 +134,7 @@ class IssuerTrustConfigBuilderTest {
         val config = IssuerTrustConfigBuilder().apply {
             trustSource(mockEudiw)
             classifications(classifications)
-        }.build()
+        }.build()!!
 
         assertTrue(config.issuerMetadataPolicy is IssuerMetadataPolicy.RequireSigned)
     }
@@ -146,7 +155,7 @@ class IssuerTrustConfigBuilderTest {
         val config = IssuerTrustConfigBuilder().apply {
             trustSource(mockAttestation)
             ignoreSignedMetadata()
-        }.build()
+        }.build()!!
 
         assertEquals(IssuerMetadataPolicy.IgnoreSigned, config.issuerMetadataPolicy)
     }
@@ -162,7 +171,7 @@ class IssuerTrustConfigBuilderTest {
             trustSource(mockEudiw)
             classifications(classifications)
             requireSignedMetadata()
-        }.build()
+        }.build()!!
 
         assertTrue(config.issuerMetadataPolicy is IssuerMetadataPolicy.RequireSigned)
     }
@@ -178,7 +187,7 @@ class IssuerTrustConfigBuilderTest {
             trustSource(mockEudiw)
             classifications(classifications)
             ignoreSignedMetadata()
-        }.build()
+        }.build()!!
 
         assertEquals(IssuerMetadataPolicy.IgnoreSigned, config.issuerMetadataPolicy)
     }

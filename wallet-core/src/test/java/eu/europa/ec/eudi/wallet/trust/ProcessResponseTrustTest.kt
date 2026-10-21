@@ -178,6 +178,34 @@ class ProcessResponseTrustTest {
     }
 
     @Test
+    fun rejectsBatchWithEnforceWhenALaterCredentialIsNotTrusted() = runTest {
+        coEvery { verifier.verify("first-credential", any()) } returns
+            CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { verifier.verify("second-credential", any()) } returns
+            CertificationChainValidation.NotTrusted(IllegalStateException("not trusted"))
+        setupStoreIssuedDocument()
+
+        val outcome = mockk<SubmissionOutcome.Success> {
+            every { credentials } returns listOf(
+                IssuedCredential.string("first-credential"),
+                IssuedCredential.string("second-credential"),
+            )
+            every { selectedCredentialReusePolicy } returns null
+        }
+        var capturedEvent: IssueEvent? = null
+        val listener = OpenId4VciManager.OnResult<IssueEvent> { capturedEvent = it }
+        val config = createConfig(TrustPolicy.Action.ENFORCE)
+
+        createProcessResponse(listener, config)
+            .processSubmittedRequest(unsignedDocument, listOf("key-alias-1", "key-alias-2"), outcome)
+
+        assertTrue("Expected DocumentFailed but got $capturedEvent",
+            capturedEvent is IssueEvent.DocumentFailed)
+        assertTrue((capturedEvent as IssueEvent.DocumentFailed).cause is IssuerNotTrustedException)
+        verify(exactly = 0) { documentManager.storeIssuedDocument(any(), any()) }
+    }
+
+    @Test
     fun storesDocumentWithInformAndNotTrusted() = runTest {
         val cause = IllegalStateException("not trusted")
         val notTrusted = CertificationChainValidation.NotTrusted(cause)
