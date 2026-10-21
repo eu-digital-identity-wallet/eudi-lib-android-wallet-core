@@ -16,22 +16,47 @@
 
 package eu.europa.ec.eudi.wallet.document
 
+import android.util.Log
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.util.Base64
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
+import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.wallet.document.credential.IssuerProvidedCredential
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.document.sample.generateData
+import eu.europa.ec.eudi.wallet.document.sample.generateMso
+import eu.europa.ec.eudi.wallet.document.sample.issuerCertificate
+import eu.europa.ec.eudi.wallet.document.sample.issuerPrivateKey
+import eu.europa.ec.eudi.wallet.document.sample.signMso
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.runBlocking
 import org.multipaz.cbor.Cbor
-import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import java.security.KeyPairGenerator
+import java.security.PrivateKey
+import java.security.interfaces.ECPrivateKey
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
@@ -96,52 +121,197 @@ class DocumentManagerImplTest {
         assertIs<IllegalArgumentException>(storeDocumentResult.exceptionOrNull())
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun `should return failure result when public keys of document and mso don't match`() {
-        val createKeySettings = SoftwareCreateKeySettings.Builder().build()
-        val createDocumentSettings = CreateDocumentSettings(
-            secureAreaIdentifier = secureArea.identifier,
-            createKeySettings = createKeySettings,
-
-        )
-        val createDocumentResult = documentManager.createDocument(
-            format = MsoMdocFormat(docType = "eu.europa.ec.eudi.pid.1"),
-            createSettings = createDocumentSettings
-        )
-        assertTrue(createDocumentResult.isSuccess)
-        val unsignedDocument = createDocumentResult.getOrThrow()
-
-        // Use issuer data that is known to not match the document's generated key.
-        // "eu_pid.hex" is used here, assuming it contains a key different from the dynamically generated one.
-        val mismatchedIssuerDataBytes =
-            getResourceAsText("eu_pid.hex").hexToByteArray(HexFormat.Default)
-
-        // Construct IssuerProvidedCredential list using the alias from the unsignedDocument
-        // but with the mismatched MSO data.
-        val issuerProvidedCredentials = runBlocking {
-            unsignedDocument.baseDocument.getPendingCredentials()
-                .filterIsInstance<SecureAreaBoundCredential>()
-                .map {
-                    IssuerProvidedCredential(
-                        publicKeyAlias = it.alias,
-                        data = mismatchedIssuerDataBytes
-                    )
-                }
-        }
-
-        // Ensure there's at least one credential to provide, otherwise the test might not hit the intended logic.
-        assertTrue(
-            issuerProvidedCredentials.isNotEmpty(),
-            "Document should have pending credentials to test MSO mismatch."
+        val unsignedDocument = createPidDocument()
+        val otherDeviceKey = runBlocking { Crypto.createEcPrivateKey(EcCurve.P256).publicKey }
+        val issuerProvidedCredentials = issuerProvidedCredentials(
+            unsignedDocument = unsignedDocument,
+            msoDocType = PID_DOC_TYPE,
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Doe"),
+            msoDeviceKey = otherDeviceKey,
         )
 
         val storeDocumentResult =
             documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
         assertTrue(storeDocumentResult.isFailure)
-        // The specific exception for a key mismatch might be more specific,
-        // but IllegalArgumentException is a common fallback.
-        assertIs<IllegalArgumentException>(storeDocumentResult.exceptionOrNull())
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "Public key in MSO")
+    }
+
+    @Test
+    fun `should return failure result when the mso signature does not verify with the x5chain certificate`() {
+        val unsignedDocument = createPidDocument()
+        val issuerProvidedCredentials = issuerProvidedCredentials(
+            unsignedDocument = unsignedDocument,
+            msoDocType = PID_DOC_TYPE,
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Doe"),
+            msoSigningKey = otherIssuerKey(),
+        )
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertIs<SignatureVerificationException>(storeDocumentResult.exceptionOrNull())
+    }
+
+    @Test
+    fun `should store an sd-jwt vc whose signature verifies with the x5c certificate`() {
+        val unsignedDocument = createSdJwtVcDocument()
+
+        val storeDocumentResult = documentManager.storeIssuedDocument(
+            unsignedDocument,
+            sdJwtVcCredentials(unsignedDocument, signingKey = issuerPrivateKey),
+        )
+
+        assertTrue(storeDocumentResult.isSuccess, "${storeDocumentResult.exceptionOrNull()}")
+    }
+
+    @Test
+    fun `should return failure result when the sd-jwt vc signature does not verify with the x5c certificate`() {
+        val unsignedDocument = createSdJwtVcDocument()
+
+        val storeDocumentResult = documentManager.storeIssuedDocument(
+            unsignedDocument,
+            sdJwtVcCredentials(unsignedDocument, signingKey = otherIssuerKey()),
+        )
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertIs<SignatureVerificationException>(storeDocumentResult.exceptionOrNull())
+    }
+
+    @Test
+    fun `should return failure result when a data element does not match its digest in the mso`() {
+        val unsignedDocument = createPidDocument()
+        val issuerProvidedCredentials = issuerProvidedCredentials(
+            unsignedDocument = unsignedDocument,
+            msoDocType = PID_DOC_TYPE,
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Roe"),
+        )
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "Digest mismatch")
+    }
+
+    @Test
+    fun `should return failure result when the docType in the mso does not match the document`() {
+        val unsignedDocument = createPidDocument()
+        val issuerProvidedCredentials = issuerProvidedCredentials(
+            unsignedDocument = unsignedDocument,
+            msoDocType = "org.iso.18013.5.1.mDL",
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Doe"),
+        )
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "DocType in MSO")
+    }
+
+    /**
+     * Builds issuer-provided credentials whose MSO is signed over [msoNameSpaces] and [msoDocType],
+     * while the credential carries [issuedNameSpaces]. The MSO binds [msoDeviceKey], or the key of
+     * the credential when null, and is signed with [msoSigningKey].
+     */
+    private fun issuerProvidedCredentials(
+        unsignedDocument: UnsignedDocument,
+        msoDocType: String,
+        msoNameSpaces: CBORObject,
+        issuedNameSpaces: CBORObject,
+        msoDeviceKey: EcPublicKey? = null,
+        msoSigningKey: PrivateKey = issuerPrivateKey,
+    ): List<IssuerProvidedCredential> {
+        // The MSO generator logs through android.util.Log, which is not available in unit tests
+        mockkStatic(Log::class)
+        every { Log.w(any(), any<String>()) } returns 0
+        try {
+            return runBlocking {
+                unsignedDocument.getPoPSigners().map { signer ->
+                    val keyInfo = signer.getKeyInfo()
+                    val deviceKey = msoDeviceKey ?: keyInfo.publicKey
+                    val mso = generateMso("sha-256", msoDocType, deviceKey, msoNameSpaces)
+                    IssuerProvidedCredential(
+                        publicKeyAlias = keyInfo.alias,
+                        data = generateData(issuedNameSpaces, signMso(mso, msoSigningKey)),
+                    )
+                }
+            }
+        } finally {
+            unmockkStatic(Log::class)
+        }
+    }
+
+    /**
+     * Builds issuer-provided SD-JWT VCs bound to the keys of [unsignedDocument], signed with
+     * [signingKey] and carrying the sample issuer certificate in their x5c header.
+     */
+    private fun sdJwtVcCredentials(
+        unsignedDocument: UnsignedDocument,
+        signingKey: PrivateKey,
+    ): List<IssuerProvidedCredential> = runBlocking {
+        unsignedDocument.getPoPSigners().map { signer ->
+            val keyInfo = signer.getKeyInfo()
+            val header = JWSHeader.Builder(JWSAlgorithm.ES256)
+                .type(JOSEObjectType("dc+sd-jwt"))
+                .x509CertChain(listOf(Base64.encode(issuerCertificate.encoded)))
+                .build()
+            val claims = JWTClaimsSet.Builder()
+                .issuer("https://issuer.example")
+                .claim("vct", SD_JWT_VCT)
+                .claim("cnf", mapOf("jwk" to JWK.parse(keyInfo.publicKey.toJwk().toString()).toJSONObject()))
+                .build()
+            val jwt = SignedJWT(header, claims).apply { sign(ECDSASigner(signingKey as ECPrivateKey)) }
+            IssuerProvidedCredential(
+                publicKeyAlias = keyInfo.alias,
+                data = "${jwt.serialize()}~".encodeToByteArray(),
+            )
+        }
+    }
+
+    /** Returns a key of the curve of the sample issuer key, which its certificate does not certify. */
+    private fun otherIssuerKey(): PrivateKey =
+        KeyPairGenerator.getInstance("EC")
+            .apply { initialize((issuerPrivateKey as ECPrivateKey).params) }
+            .generateKeyPair()
+            .private
+
+    private fun createSdJwtVcDocument(): UnsignedDocument =
+        documentManager.createDocument(
+            format = SdJwtVcFormat(vct = SD_JWT_VCT),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            ),
+        ).getOrThrow()
+
+    private fun createPidDocument(): UnsignedDocument =
+        documentManager.createDocument(
+            format = MsoMdocFormat(docType = PID_DOC_TYPE),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            ),
+        ).getOrThrow()
+
+    private fun pidNameSpaces(familyName: String): CBORObject {
+        val issuerSignedItem = CBORObject.NewOrderedMap()
+            .Add("digestID", 0)
+            .Add("random", ByteArray(16) { 1 })
+            .Add("elementIdentifier", "family_name")
+            .Add("elementValue", familyName)
+        return CBORObject.NewMap().Add(
+            PID_DOC_TYPE,
+            CBORObject.NewArray().Add(CBORObject.FromObjectAndTag(issuerSignedItem.EncodeToBytes(), 24)),
+        )
     }
 
     @Test
@@ -227,5 +397,10 @@ class DocumentManagerImplTest {
         // Validate failure
         assertTrue(storeDeferredResult.isFailure)
         assertIs<IllegalArgumentException>(storeDeferredResult.exceptionOrNull())
+    }
+
+    private companion object {
+        private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
+        private const val SD_JWT_VCT = "urn:eudi:pid:1"
     }
 }

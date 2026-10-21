@@ -930,9 +930,9 @@ configureIssuerTrust {
 }
 ```
 
-A credential is then checked only for its binding to the device key; the issuer's signature and
-certificate chain are not verified, only unsigned issuer metadata is used, and
-`issuerTrustResult` is `null`.
+A credential is then checked only for its integrity (issuer signature, binding to the device key
+and, for mdoc, the digests and `docType`); the issuer's certificate chain is not verified, only
+unsigned issuer metadata is used, and `issuerTrustResult` is `null`.
 
 Configure issuer trust verification via the `configureIssuerTrust` DSL on `EudiWalletConfig`.
 When `configureEtsiTrust` is also used, `trustSource()` and `classifications()` are inherited
@@ -983,6 +983,9 @@ A `TrustPolicy` determines the action taken when an issuer is not trusted:
 |-----------|-----------------------------------------------------------------------------|
 | `ENFORCE` | Reject the credential -- delete it and emit `IssueEvent.DocumentFailed`.    |
 | `INFORM`  | Store the credential regardless and attach the result to `DocumentIssued`.  |
+
+A credential whose issuer signature does not verify with its certificate is rejected under both
+policies.
 
 The default policy is `ENFORCE` for all credentials. Use the `policy` DSL to override per
 verification context or per attestation type. Resolution order (highest priority first):
