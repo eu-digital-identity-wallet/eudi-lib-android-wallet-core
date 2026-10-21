@@ -117,11 +117,11 @@ fun calculateDigests(
     }
 }
 
-fun signMso(mso: ByteArray) = Sign1Message(false, true).apply {
+fun signMso(mso: ByteArray, signingKey: PrivateKey = issuerPrivateKey) = Sign1Message(false, true).apply {
     protectedAttributes.Add(Algorithm.AsCBOR(), ECDSA_256.AsCBOR())
     unprotectedAttributes.Add(33L, issuerCertificate.encoded)
     SetContent(mso.withTag24())
-    sign(issuerPrivateKey.oneKey)
+    sign(signingKey.oneKey)
 }.EncodeToCBORObject()
 
 fun generateData(

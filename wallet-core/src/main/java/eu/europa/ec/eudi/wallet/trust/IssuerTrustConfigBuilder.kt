@@ -65,9 +65,10 @@ class IssuerTrustConfigBuilder {
     /**
      * Turns issuer trust verification off.
      *
-     * A received credential is then checked only for its binding to the device key; the
-     * issuer's signature and certificate chain are not verified and signed issuer metadata
-     * is not used. The other settings of this builder are ignored.
+     * A received credential is then checked only for its integrity (issuer signature, binding
+     * to the device key and, for mdoc, the digests and `docType`); the issuer's certificate
+     * chain is not verified and signed issuer metadata is not used. The other settings of this
+     * builder are ignored.
      */
     fun doNotVerify() {
         this.verify = false
