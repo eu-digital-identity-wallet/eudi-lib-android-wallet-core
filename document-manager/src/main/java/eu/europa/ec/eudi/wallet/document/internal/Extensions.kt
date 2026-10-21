@@ -27,6 +27,11 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.EcPublicKey
 import kotlin.time.Duration.Companion.seconds
 
+// Stable CBOR type discriminators for CredentialPolicy (not affected by R8 obfuscation)
+internal const val POLICY_TYPE_ONCE_ONLY = "once_only"
+internal const val POLICY_TYPE_LIMITED_TIME = "limited_time"
+internal const val POLICY_TYPE_ROTATING_BATCH = "rotating_batch"
+
 /**
  * Extension property that converts an EcPublicKey to its CBOR-encoded representation.
  *
@@ -75,16 +80,18 @@ internal val ByteArray.sdJwtVcString: String
  */
 internal fun CreateDocumentSettings.CredentialPolicy.toDataItem(): DataItem {
     return buildCborMap {
-        put("type", this@toDataItem.javaClass.name)
         when (val policy = this@toDataItem) {
             is CreateDocumentSettings.CredentialPolicy.OnceOnly -> {
+                put("type", POLICY_TYPE_ONCE_ONLY)
                 put("numberOfCredentials", policy.numberOfCredentials.toLong())
                 policy.reissueTriggerUnused?.let { put("reissueTriggerUnused", it.toLong()) }
             }
             is CreateDocumentSettings.CredentialPolicy.LimitedTime -> {
+                put("type", POLICY_TYPE_LIMITED_TIME)
                 policy.reissueTriggerLifetimeLeft?.let { put("reissueTriggerLifetimeLeft", it.inWholeSeconds) }
             }
             is CreateDocumentSettings.CredentialPolicy.RotatingBatch -> {
+                put("type", POLICY_TYPE_ROTATING_BATCH)
                 put("numberOfCredentials", policy.numberOfCredentials.toLong())
                 policy.reissueTriggerLifetimeLeft?.let { put("reissueTriggerLifetimeLeft", it.inWholeSeconds) }
             }
@@ -108,21 +115,21 @@ internal fun CreateDocumentSettings.CredentialPolicy.Companion.fromDataItem(data
     }
 
     return when (val type = dataItem["type"].asTstr) {
-        CreateDocumentSettings.CredentialPolicy.OnceOnly::class.java.name ->
+        POLICY_TYPE_ONCE_ONLY ->
             CreateDocumentSettings.CredentialPolicy.OnceOnly(
                 numberOfCredentials = dataItem["numberOfCredentials"].asNumber.toInt(),
                 reissueTriggerUnused = dataItem.getOrNull("reissueTriggerUnused")?.asNumber?.toInt(),
             )
-        CreateDocumentSettings.CredentialPolicy.LimitedTime::class.java.name ->
+        POLICY_TYPE_LIMITED_TIME ->
             CreateDocumentSettings.CredentialPolicy.LimitedTime(
                 reissueTriggerLifetimeLeft = dataItem.getOrNull("reissueTriggerLifetimeLeft")?.asNumber?.toLong()?.seconds,
             )
-        CreateDocumentSettings.CredentialPolicy.RotatingBatch::class.java.name ->
+        POLICY_TYPE_ROTATING_BATCH ->
             CreateDocumentSettings.CredentialPolicy.RotatingBatch(
                 numberOfCredentials = dataItem["numberOfCredentials"].asNumber.toInt(),
                 reissueTriggerLifetimeLeft = dataItem.getOrNull("reissueTriggerLifetimeLeft")?.asNumber?.toLong()?.seconds,
             )
-        else -> throw IllegalArgumentException("Unknown credential policy type: $type")
+        else -> CreateDocumentSettings.CredentialPolicy.RotatingBatch()
     }
 }
 
