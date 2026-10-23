@@ -304,7 +304,7 @@ class EudiWalletBuilderTest {
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
                 .configureIssuerTrust { doNotVerify() }
-        val customLogger: Logger = mockk()
+        val customLogger: Logger = mockk(relaxed = true)
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
