@@ -24,7 +24,7 @@ version = providers.gradleProperty("VERSION_NAME").get()
 
 extensions.configure<LibraryExtension> {
     namespace = NAMESPACE
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26
@@ -64,6 +64,15 @@ extensions.configure<LibraryExtension> {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all {
+                it.jvmArgs(
+                    "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                    "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                    "--add-opens=java.base/java.util=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED"
+                )
+            }
         }
     }
 
