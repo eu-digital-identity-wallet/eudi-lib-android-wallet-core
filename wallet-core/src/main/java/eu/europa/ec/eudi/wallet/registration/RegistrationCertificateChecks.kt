@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.statium.GetStatusListToken
 import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.statium.StatusReference
 import eu.europa.ec.eudi.wallet.internal.d
+import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.HttpClient
 import kotlin.coroutines.cancellation.CancellationException
@@ -66,7 +67,8 @@ internal enum class RevocationOutcome { VALID, REVOKED, UNKNOWN, NOT_CHECKED }
  * Checks the registration certificate's revocation status against its status list.
  *
  * Returns [RevocationOutcome.VALID] or [RevocationOutcome.REVOKED] according to the status list, or
- * [RevocationOutcome.UNKNOWN] when a check is attempted but cannot be completed.
+ * [RevocationOutcome.UNKNOWN] when the check cannot be completed or no trust is configured for the
+ * status list signer.
  */
 internal suspend fun checkStatusListRevocation(
     statusReference: StatusReference,
@@ -74,6 +76,10 @@ internal suspend fun checkStatusListRevocation(
     logger: Logger?,
     httpClientFactory: (() -> HttpClient)?,
 ): RevocationOutcome {
+    if (statusTrust == null) {
+        logger?.i(TAG, "registration certificate revocation status not checked: no trust for the status list signer")
+        return RevocationOutcome.UNKNOWN
+    }
     return try {
         val httpClient = (httpClientFactory ?: { HttpClient() }).invoke()
         val getStatusListToken = GetStatusListToken.usingJwt(

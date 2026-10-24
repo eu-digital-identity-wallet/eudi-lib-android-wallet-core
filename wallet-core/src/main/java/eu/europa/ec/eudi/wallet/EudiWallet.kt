@@ -46,17 +46,16 @@ import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
-import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
+import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
-import eu.europa.ec.eudi.wallet.registration.CertificateTrust
-import eu.europa.ec.eudi.wallet.registration.asCertificateTrust
+import eu.europa.ec.eudi.wallet.registration.RegistrationTrust
 import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrprcAuthenticator
-import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrpRegistrationEvaluator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.DefaultWrpRegistrationValidator
 import eu.europa.ec.eudi.wallet.registration.relyingparty.wrpRegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
+import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
 import eu.europa.ec.eudi.wallet.trust.EtsiReaderTrustStore
 import eu.europa.ec.eudi.wallet.trust.EtsiTrustProvider
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfigBuilder
@@ -385,21 +384,27 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             val etsiSource = etsiTrustProvider?.isChainTrusted
             val etsiClassifications = config.etsiTrustConfig?.classifications
 
-            // Trust for the credential issuer's registration certificate and for the status list that
-            // carries its revocation status. Both ETSI verification contexts cover an issuer as well as
-            // a verifier, so the same trusted lists serve the issuance and the presentation path.
-            val issuerRegistrationTrust = etsiSource?.asCertificateTrust(
-                VerificationContext.WalletRelyingPartyRegistrationCertificate,
-                logger = loggerToUse,
-            )
-            val issuerRegistrationStatusTrust = etsiSource?.asCertificateTrust(
-                VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
-                logger = loggerToUse,
-            )
-
             // Resolve deferred issuer trust config
             config.issuerTrustConfig = config.issuerTrustBlock?.let { block ->
                 IssuerTrustConfigBuilder().apply(block).build(etsiSource, etsiClassifications, loggerToUse)
+            }
+
+            // Trust for the credential issuer's registration certificate and for the status list that
+            // carries its revocation status. Both ETSI verification contexts cover an issuer as well as
+            // a verifier, so the same trusted lists serve the issuance and the presentation path.
+            // Certificates configured with configureIssuerRegistrationTrust take precedence for both
+            // signers. The certificate is carried in the signed issuer metadata, so the trust is needed
+            // only when signed metadata is required.
+            val issuerRegistrationTrust = RegistrationTrust.forIssuer(config, etsiSource, loggerToUse)
+            if (config.issuerRegistrationPolicy == IssuerRegistrationPolicy.Enabled &&
+                config.issuerTrustConfig?.issuerMetadataPolicy is IssuerMetadataPolicy.RequireSigned
+            ) {
+                requireNotNull(issuerRegistrationTrust.certificateTrust) {
+                    "IssuerRegistrationPolicy.Enabled with signed issuer metadata requires trust for issuer " +
+                        "registration certificates. Call configureIssuerRegistrationTrust() or " +
+                        "configureEtsiTrust(), or configureIssuerRegistrationPolicy(IssuerRegistrationPolicy.Disabled) " +
+                        "to opt out."
+                }
             }
 
             // Resolve deferred status resolver config
@@ -454,38 +459,38 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
             // evaluation to the OpenID4VP library through a RegistrationCertificatePolicy on the remote
             // path. When ETSI trust is available, the signer chain is checked against the WRPRC
             // (WalletRelyingPartyRegistrationCertificate) context — distinct from the WRPAC context
-            // used for reader authentication. For non-ETSI setups the reader trust store is used as
-            // fallback. Revocation status is checked against the ETSI registration certificate status
-            // context (WalletRelyingPartyRegistrationCertificateStatus).
+            // used for reader authentication — and the status list signer against the registration
+            // certificate status context (WalletRelyingPartyRegistrationCertificateStatus).
+            // Certificates configured with configureWrpRegistrationTrust take precedence for both
+            // signers. The reader trust store is not used, so an access certificate authority cannot
+            // vouch for a registration certificate.
             val wrpRegistrationValidator: DefaultWrpRegistrationValidator?
             val registrationCertificatePolicy: RegistrationCertificatePolicy?
             val resolvedRegistration: ResolvedWrpRegistration?
+
             if (config.wrpRegistrationPolicy == WrpRegistrationPolicy.Disabled) {
                 wrpRegistrationValidator = null
                 registrationCertificatePolicy = null
                 resolvedRegistration = null
             } else {
-                val certificateTrust: CertificateTrust? =
-                    etsiSource?.asCertificateTrust(
-                        VerificationContext.WalletRelyingPartyRegistrationCertificate,
-                        logger = loggerToUse,
-                    ) ?: readerTrustStoreToUse?.asCertificateTrust()
-                val evaluator = config.wrpRegistrationEvaluator ?: DefaultWrpRegistrationEvaluator(
-                    statusTrust = etsiSource?.asCertificateTrust(
-                        VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
-                        logger = loggerToUse,
-                    ),
+                val registrationTrust = RegistrationTrust.forRelyingParty(config, etsiSource, loggerToUse)
+                val certificateTrust = requireNotNull(registrationTrust.certificateTrust) {
+                    "WrpRegistrationPolicy.Enabled requires trust for relying party registration certificates. " +
+                        "Call configureWrpRegistrationTrust() or configureEtsiTrust(), or " +
+                        "configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled) to opt out."
+                }
+                val evaluator = registrationTrust.wrpRegistrationEvaluator(
+                    custom = config.wrpRegistrationEvaluator,
                     logger = loggerToUse,
                     httpClientFactory = ktorHttpClientFactory,
                 )
-                val authenticator = certificateTrust?.let { DefaultWrprcAuthenticator(it, loggerToUse) }
-                wrpRegistrationValidator = authenticator?.let { DefaultWrpRegistrationValidator(it, evaluator) }
+                val authenticator = DefaultWrprcAuthenticator(certificateTrust, loggerToUse)
+                wrpRegistrationValidator = DefaultWrpRegistrationValidator(authenticator, evaluator)
                 // The library policy and the request processor evaluate the same certificate for a
                 // request, one after the other; the first evaluation is held for the second to reuse.
-                resolvedRegistration = if (authenticator != null) ResolvedWrpRegistration() else null
-                registrationCertificatePolicy = authenticator?.let {
-                    wrpRegistrationCertificatePolicy(it, evaluator, resolvedRegistration, loggerToUse)
-                }
+                resolvedRegistration = ResolvedWrpRegistration()
+                registrationCertificatePolicy =
+                    wrpRegistrationCertificatePolicy(authenticator, evaluator, resolvedRegistration, loggerToUse)
             }
 
             val transferManager = getTransferManager(
@@ -541,8 +546,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 trustMarkManager = trustMarkManagerToUse,
                 ktorHttpClientFactory = ktorHttpClientFactory,
                 issuanceMetadataStorage = issuanceMetadataStorage,
-                issuerRegistrationTrust = issuerRegistrationTrust,
-                issuerRegistrationStatusTrust = issuerRegistrationStatusTrust
+                issuerRegistrationTrust = issuerRegistrationTrust
             )
         }
 

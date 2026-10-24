@@ -38,6 +38,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.math.BigInteger
@@ -141,6 +142,30 @@ class DefaultWrpRegistrationEvaluatorTest {
             RegistrationFailureReason.REVOCATION_STATUS_UNKNOWN,
             (result as RegistrationCertificateResult.Failed).reason,
         )
+    }
+
+    @Test
+    fun `without trust for the status list signer the revocation status is not checked`() = runTest {
+        var statusListFetched = false
+        val withoutStatusTrust = DefaultWrpRegistrationEvaluator(
+            statusTrust = null,
+            httpClientFactory = {
+                statusListFetched = true
+                throw RuntimeException("status endpoint unreachable")
+            },
+        )
+
+        val result = withoutStatusTrust.evaluate(
+            registration = registration(identifier = "ORG-123"),
+            accessCertificate = certificateWithOrgId("ORG-123"),
+            requestedAttestations = emptyList(),
+        )
+
+        assertEquals(
+            RegistrationFailureReason.REVOCATION_STATUS_UNKNOWN,
+            (result as RegistrationCertificateResult.Failed).reason,
+        )
+        assertFalse(statusListFetched)
     }
 
     @Test

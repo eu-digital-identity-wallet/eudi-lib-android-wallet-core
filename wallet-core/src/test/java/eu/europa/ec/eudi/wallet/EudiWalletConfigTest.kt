@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet
 
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
@@ -30,6 +31,7 @@ import java.security.cert.X509Certificate
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -151,5 +153,67 @@ class EudiWalletConfigTest {
 
         assertEquals(customTrustStore, config.readerTrustStore)
         assertNull(config.readerTrustedCertificates)
+    }
+
+    @Test
+    fun testConfigureWrpRegistrationTrust() {
+        val certificate = mockk<X509Certificate>()
+        val statusListCertificate = mockk<X509Certificate>()
+
+        val defaults = EudiWalletConfig {
+            configureWrpRegistrationTrust(listOf(certificate))
+        }
+        assertEquals(listOf(certificate), defaults.wrpRegistrationTrustedCertificates)
+        assertEquals(listOf(certificate), defaults.wrpRegistrationStatusListTrustedCertificates)
+        assertEquals(RevocationPolicy.HardFail, defaults.wrpRegistrationRevocationPolicy)
+
+        val config = EudiWalletConfig {
+            configureWrpRegistrationTrust(listOf(certificate), listOf(statusListCertificate), RevocationPolicy.SoftFail)
+        }
+        assertEquals(listOf(statusListCertificate), config.wrpRegistrationStatusListTrustedCertificates)
+        assertEquals(RevocationPolicy.SoftFail, config.wrpRegistrationRevocationPolicy)
+    }
+
+    @Test
+    fun testConfigureWrpRegistrationTrustRejectsEmptyCertificates() {
+        val certificate = mockk<X509Certificate>()
+
+        assertFailsWith<IllegalArgumentException> {
+            EudiWalletConfig().configureWrpRegistrationTrust(emptyList(), listOf(certificate))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            EudiWalletConfig().configureWrpRegistrationTrust(listOf(certificate), emptyList())
+        }
+    }
+
+    @Test
+    fun testConfigureIssuerRegistrationTrust() {
+        val certificate = mockk<X509Certificate>()
+        val statusListCertificate = mockk<X509Certificate>()
+
+        val defaults = EudiWalletConfig {
+            configureIssuerRegistrationTrust(listOf(certificate))
+        }
+        assertEquals(listOf(certificate), defaults.issuerRegistrationTrustedCertificates)
+        assertEquals(listOf(certificate), defaults.issuerRegistrationStatusListTrustedCertificates)
+        assertEquals(RevocationPolicy.HardFail, defaults.issuerRegistrationRevocationPolicy)
+
+        val config = EudiWalletConfig {
+            configureIssuerRegistrationTrust(listOf(certificate), listOf(statusListCertificate), RevocationPolicy.SoftFail)
+        }
+        assertEquals(listOf(statusListCertificate), config.issuerRegistrationStatusListTrustedCertificates)
+        assertEquals(RevocationPolicy.SoftFail, config.issuerRegistrationRevocationPolicy)
+    }
+
+    @Test
+    fun testConfigureIssuerRegistrationTrustRejectsEmptyCertificates() {
+        val certificate = mockk<X509Certificate>()
+
+        assertFailsWith<IllegalArgumentException> {
+            EudiWalletConfig().configureIssuerRegistrationTrust(emptyList(), listOf(certificate))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            EudiWalletConfig().configureIssuerRegistrationTrust(listOf(certificate), emptyList())
+        }
     }
 }

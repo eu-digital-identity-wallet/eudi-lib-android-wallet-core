@@ -17,6 +17,8 @@
 package eu.europa.ec.eudi.wallet
 
 import android.content.Context
+import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationClassifications
+import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
@@ -25,6 +27,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMeta
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
+import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
@@ -42,8 +45,12 @@ import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.securearea.SecureArea
 import org.multipaz.storage.Storage
 import java.io.File
+import java.security.cert.TrustAnchor
+import java.security.cert.X509Certificate
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 
@@ -64,6 +71,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
@@ -97,6 +105,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customSecureArea: SecureArea = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -134,6 +143,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customStorageEngine: Storage = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -170,6 +180,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customDocumentManager: DocumentManager = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -208,6 +219,7 @@ class EudiWalletBuilderTest {
                     trustSource(customReaderTrustStore)
                     enforceIfPresent()
                 }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val documentManager: DocumentManager = mockk(relaxed = true)
         val transferManager: TransferManager = mockk(relaxed = true)
 
@@ -247,6 +259,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customPresentationManager: PresentationManager = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -289,6 +302,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customLogger: Logger = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -321,6 +335,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customHttpClientFactory: () -> HttpClient = { mockk() }
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -356,6 +371,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customTransactionLogger: TransactionLogger = mockk()
         val documentManager: DocumentManager = mockk(relaxed = true)
         val defaultPresentationManager: PresentationManagerImpl = mockk(relaxed = true)
@@ -408,6 +424,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
         val customDocumentStatusResolver: DocumentStatusResolver = mockk()
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -448,6 +465,7 @@ class EudiWalletBuilderTest {
 
         val config = EudiWalletConfig()
                 .configureReaderAuthentication { doNotEnforce() }
+                .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
             .configureOpenId4Vp(openId4VpConfig)
 
         val builder = spyk(EudiWallet.Builder(context, config, null)) {
@@ -467,5 +485,84 @@ class EudiWalletBuilderTest {
         assertIs<EudiWalletImpl>(wallet)
         assertIs<PresentationManagerImpl>(wallet.presentationManager)
         assertNotNull(wallet.presentationManager.openId4vpManager)
+    }
+
+    @Test
+    fun `build fails when relying party registration is enabled with reader authentication trust only`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { trustSource(mockk<ReaderTrustStore>()) }
+
+        val error = assertFailsWith<IllegalArgumentException> { builder(config).build() }
+
+        assertContains(error.message.orEmpty(), "configureWrpRegistrationTrust")
+    }
+
+    @Test
+    fun `build fails when issuer registration is enabled with signed metadata but without trust`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { doNotEnforce() }
+            .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
+            .configureIssuerTrust {
+                trustSource(mockk<IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>>())
+                classifications(AttestationClassifications())
+            }
+
+        val error = assertFailsWith<IllegalArgumentException> { builder(config).build() }
+
+        assertContains(error.message.orEmpty(), "configureIssuerRegistrationTrust")
+    }
+
+    @Test
+    fun `issuer registration without signed metadata required needs no trust`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { doNotEnforce() }
+            .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
+            .configureIssuerTrust {
+                trustSource(mockk<IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>>())
+                classifications(AttestationClassifications())
+                preferSignedMetadata()
+            }
+
+        assertIs<EudiWalletImpl>(builder(config).build())
+    }
+
+    @Test
+    fun `configured relying party registration trust satisfies the relying party registration policy`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { doNotEnforce() }
+            .configureWrpRegistrationTrust(listOf(mockk<X509Certificate>()))
+
+        assertIs<EudiWalletImpl>(builder(config).build())
+    }
+
+    @Test
+    fun `configured issuer registration trust satisfies the issuer registration policy`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { doNotEnforce() }
+            .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
+            .configureIssuerTrust {
+                trustSource(mockk<IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>>())
+                classifications(AttestationClassifications())
+            }
+            .configureIssuerRegistrationTrust(listOf(mockk<X509Certificate>()))
+
+        assertIs<EudiWalletImpl>(builder(config).build())
+    }
+
+    private fun builder(config: EudiWalletConfig): EudiWallet.Builder {
+        val context: Context = mockk {
+            every { applicationContext } returns this
+            every { noBackupFilesDir } returns File("no-backup")
+        }
+        val capabilities = mockk<AndroidKeystoreSecureArea.Capabilities> {
+            every { secureLockScreenSetup } returns true
+            every { strongBoxSupported } returns true
+        }
+        return spyk(EudiWallet.Builder(context, config, null)) {
+            every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)
+            every { getTransferManager(any(), any(), any()) } returns mockk(relaxed = true)
+            every { getDocumentStatusResolver(any()) } returns mockk(relaxed = true)
+            every { this@spyk.capabilities } returns capabilities
+        }
     }
 }

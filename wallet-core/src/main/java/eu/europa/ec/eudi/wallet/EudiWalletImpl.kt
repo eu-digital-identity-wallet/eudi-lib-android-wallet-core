@@ -20,8 +20,7 @@ import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
-import eu.europa.ec.eudi.wallet.registration.CertificateTrust
-import eu.europa.ec.eudi.wallet.registration.issuer.DefaultIssuerRegistrationEvaluator
+import eu.europa.ec.eudi.wallet.registration.RegistrationTrust
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -31,7 +30,7 @@ import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.statium.DocumentStatusResolver
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.CredentialIssuanceLogger
-import eu.europa.ec.eudi.wallet.trust.pidClassification
+import eu.europa.ec.eudi.wallet.trust.issuerRegistrationPidClassification
 import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
 import io.ktor.client.HttpClient
 import org.multipaz.storage.Storage
@@ -62,8 +61,7 @@ class EudiWalletImpl internal constructor(
     override val trustMarkManager: TrustMarkManager?,
     val ktorHttpClientFactory: (() -> HttpClient)?,
     val issuanceMetadataStorage: Storage?,
-    internal val issuerRegistrationTrust: CertificateTrust? = null,
-    internal val issuerRegistrationStatusTrust: CertificateTrust? = null,
+    internal val issuerRegistrationTrust: RegistrationTrust = RegistrationTrust(null, null),
 ) : EudiWallet, DocumentManager by documentManager, PresentationManager by presentationManager,
     DocumentStatusResolver by documentStatusResolver {
 
@@ -101,17 +99,15 @@ class EudiWalletImpl internal constructor(
         // The resolver carries everything the issuance path needs to validate the credential issuer's
         // registration certificate, so it is assembled here rather than where it is used. It is null
         // when validation is off or no trust is available for the certificate's signer chain.
-        val issuerRegistration = issuerRegistrationTrust
+        val issuerRegistration = issuerRegistrationTrust.certificateTrust
             ?.takeIf { registrationEnabled }
             ?.let { certificateTrust ->
-                val evaluator = this@EudiWalletImpl.config.issuerRegistrationEvaluator
-                    ?: DefaultIssuerRegistrationEvaluator(
-                        isPid = this@EudiWalletImpl.config.etsiTrustConfig
-                            ?.classifications.pidClassification,
-                        statusTrust = issuerRegistrationStatusTrust,
-                        logger = logger,
-                        httpClientFactory = httpClientFactory,
-                    )
+                val evaluator = issuerRegistrationTrust.issuerRegistrationEvaluator(
+                    custom = this@EudiWalletImpl.config.issuerRegistrationEvaluator,
+                    isPid = this@EudiWalletImpl.config.issuerRegistrationPidClassification,
+                    logger = logger,
+                    httpClientFactory = httpClientFactory,
+                )
                 IssuerRegistrationResolver(certificateTrust, evaluator, logger)
             }
 

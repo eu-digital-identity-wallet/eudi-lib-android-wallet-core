@@ -23,9 +23,13 @@ compared against, and how the outcome is read.
 | Registered scope | `credentials` — what it may request | `provides_attestations` — what it may issue |
 | Out-of-scope finding | Over-**asking** (claim level) | Over-**providing** (attestation level) |
 | Policy | `WrpRegistrationPolicy` | `IssuerRegistrationPolicy` |
+| Trust anchors | `configureWrpRegistrationTrust`, else `configureEtsiTrust` | `configureIssuerRegistrationTrust`, else `configureEtsiTrust` |
 | Outcome read from | `ProcessedRequest.Success.wrpRegistration` | `Offer.issuerRegistration`, `OpenId4VciManager.resolveIssuerRegistration(…)` |
 
-> **Note:** Registration-certificate handling is **enabled by default** on both paths.
+> **Note:** Registration-certificate handling is **enabled by default** on both paths. An enabled path
+> needs trust for registration certificates — the issuance path when signed issuer metadata is
+> required — otherwise building the wallet fails; see
+> [Trust for registration certificates](#trust-for-registration-certificates).
 
 The relying party's registration certificate is distinct from its **access certificate (WRPAC)** —
 the X.509 e-seal that authenticates the request itself — and is bound to it. The same relationship
@@ -93,7 +97,7 @@ Both paths produce a `RegistrationCertificateResult`:
 
 | Reason | Meaning | Stage |
 |---|---|---|
-| `CERTIFICATE_ABSENT` | No registration certificate was carried (presentation path; on the issuance path an absent certificate yields `null` instead) | Authentication |
+| `CERTIFICATE_ABSENT` | No registration certificate was carried | Authentication |
 | `MALFORMED` | The certificate could not be parsed | Authentication |
 | `SIGNATURE_INVALID` | The signature could not be verified | Authentication |
 | `UNTRUSTED_PROVIDER` | The signer chain is not trusted | Authentication |
@@ -103,6 +107,157 @@ Both paths produce a `RegistrationCertificateResult`:
 | `REVOKED` | The status list reports the certificate as revoked | Evaluation |
 | `REVOCATION_STATUS_UNKNOWN` | The revocation status could not be determined | Evaluation |
 | `ENTITLEMENT_MISSING` | The issuer is not registered for the provider role that issuing the offered attestations requires (issuance path only) | Evaluation |
+
+---
+
+## Trust for registration certificates
+
+Validating a registration certificate checks two certificate chains against trust anchors:
+
+- **Provider trust** — the signer chain of the certificate (the registration-certificate provider's
+  e-seal).
+- **Status-list trust** — the signer chain of the status-list token used for the revocation check.
+
+Each path takes both from the first of these sources that is configured:
+
+1. **Configured certificates** — `configureWrpRegistrationTrust` for relying parties,
+   `configureIssuerRegistrationTrust` for credential issuers.
+2. **ETSI Trusted Lists** — `configureEtsiTrust`: provider trust from
+   `WalletRelyingPartyRegistrationCertificate` and status-list trust from
+   `WalletRelyingPartyRegistrationCertificateStatus`. The same trusted lists serve both paths.
+
+The reader authentication trust (`configureReaderAuthentication`) is not used for registration
+certificates.
+
+With a path's policy `Enabled` (the default) and neither source configured, building the wallet fails
+with an `IllegalArgumentException` that names the missing configuration — on the issuance path when
+the wallet requires signed issuer metadata, since only then is the certificate validated. Set the
+path's policy to `Disabled` to opt out. When the ETSI Trusted Lists are the source and the
+`wrprcProviders` list is not configured, the wallet builds and registration certificates fail with
+`UNTRUSTED_PROVIDER`.
+
+### `configureWrpRegistrationTrust` and `configureIssuerRegistrationTrust`
+
+Both methods take the same parameters:
+
+```kotlin
+// relying parties (presentation)
+fun configureWrpRegistrationTrust(
+    trustedCertificates: List<X509Certificate>,
+    trustedStatusListCertificates: List<X509Certificate> = trustedCertificates,
+    revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
+): EudiWalletConfig
+
+// credential issuers (issuance)
+fun configureIssuerRegistrationTrust(
+    trustedCertificates: List<X509Certificate>,
+    trustedStatusListCertificates: List<X509Certificate> = trustedCertificates,
+    revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
+): EudiWalletConfig
+```
+
+| Parameter | Meaning |
+|---|---|
+| `trustedCertificates` | The trust anchors for the certificate's signer chain: the CA certificates of the registration-certificate provider. |
+| `trustedStatusListCertificates` | The trust anchors for the status-list token's signer chain. Defaults to `trustedCertificates`; set it when the status lists are signed under a different certificate authority, otherwise their revocation status cannot be confirmed and the result is `REVOCATION_STATUS_UNKNOWN`. |
+| `revocationPolicy` | Revocation checking of both chains. `HardFail` (default): the validation fails when a certificate is revoked or its revocation status cannot be determined, for example when it names no CRL distribution point or its CRL cannot be retrieved. `SoftFail`: the validation fails when a certificate is revoked; a failure to retrieve the revocation information, for example an unreachable CRL, is tolerated. `NoCheck`: no revocation checking. |
+
+Neither list may be empty (`IllegalArgumentException`). The chains are validated with PKIX against the
+given certificates as trust anchors.
+
+**Precedence.** Configured certificates take precedence over the ETSI Trusted Lists for that path:
+once set, the path's registration certificates and their status lists are validated against them
+alone. The ETSI Trusted Lists still serve the other registration path unless it is configured too,
+and the other trust areas that take their trust from `configureEtsiTrust`.
+
+**Custom evaluators.** With `configureWrpRegistrationEvaluator` or
+`configureIssuerRegistrationEvaluator`, the configured `trustedCertificates` still authenticate the
+certificate before the evaluator runs. The revocation check is then the custom evaluator's own, so
+`trustedStatusListCertificates` applies only to the built-in evaluators.
+
+**Issuance.** The issuer's registration certificate is carried in the signed issuer metadata, so it is
+validated only when signed metadata is required; otherwise it is skipped
+(see [Issuance](#issuance--the-credential-issuers-registration-certificate)).
+
+### Examples
+
+**A complete configuration without the ETSI Trusted Lists.** Access certificates and relying-party
+registration certificates have their own trust. Without `configureIssuerTrust` no signed issuer
+metadata is required, so issuer registration certificates are not validated and need no trust; with
+it, see *The same registrar for both paths* below:
+
+```kotlin
+val config = EudiWalletConfig()
+    .configureReaderAuthentication {
+        trustedCertificates(accessCertificateCa)           // access certificates (WRPAC)
+    }
+    .configureWrpRegistrationTrust(listOf(registrarCa))    // relying-party registration certificates
+// ... rest of the configuration, without configureIssuerTrust
+```
+
+The examples that start from `config.` show only the registration-certificate trust; `config` is
+configured as above.
+
+**Status lists signed under a different certificate authority:**
+
+```kotlin
+config.configureWrpRegistrationTrust(
+    trustedCertificates = listOf(registrarCa),
+    trustedStatusListCertificates = listOf(statusListCa),
+)
+```
+
+**The same registrar for both paths,** with signed issuer metadata so that issuer registration
+certificates are validated:
+
+```kotlin
+val config = EudiWalletConfig()
+    .configureReaderAuthentication {
+        trustedCertificates(accessCertificateCa)
+    }
+    .configureIssuerTrust { /* … */ }                       // signed issuer metadata, required by default
+    .configureWrpRegistrationTrust(listOf(registrarCa))
+    .configureIssuerRegistrationTrust(listOf(registrarCa))
+```
+
+**Selected registrars, with the ETSI Trusted Lists for everything else:**
+
+```kotlin
+val config = EudiWalletConfig()
+    .configureEtsiTrust { /* … */ }
+    .configureIssuerTrust { /* … */ }
+    .configureWrpRegistrationTrust(listOf(registrarCa))
+// relying-party registration certificates: registrarCa
+// issuer registration certificates, reader authentication, issuer trust: the ETSI Trusted Lists
+```
+
+**Revocation information that cannot be retrieved is tolerated:**
+
+```kotlin
+config.configureWrpRegistrationTrust(
+    trustedCertificates = listOf(registrarCa),
+    revocationPolicy = RevocationPolicy.SoftFail,
+)
+```
+
+**Certificates bundled as raw resources (Android):**
+
+```kotlin
+fun Context.certificate(@RawRes id: Int): X509Certificate =
+    resources.openRawResource(id).use {
+        CertificateFactory.getInstance("X.509").generateCertificate(it) as X509Certificate
+    }
+
+config.configureWrpRegistrationTrust(listOf(context.certificate(R.raw.registrar_ca)))
+```
+
+**Java:**
+
+```java
+config.configureWrpRegistrationTrust(registrarCas);
+config.configureWrpRegistrationTrust(registrarCas, statusListCas);
+config.configureWrpRegistrationTrust(registrarCas, registrarCas, RevocationPolicy.SoftFail.INSTANCE);
+```
 
 ---
 
@@ -132,22 +287,19 @@ val eudiWallet = EudiWallet(context, config)
 ```
 
 - `WrpRegistrationPolicy.Enabled` (default) — the certificate is validated and its outcome is
-  surfaced to the user.
+  surfaced to the user. On the OpenID4VP path, the OpenID4VP library also applies its own checks to
+  the registration certificate and may reject the request.
 - `WrpRegistrationPolicy.Disabled` — the certificate is neither validated nor surfaced.
 
 ### Trust anchors
 
-Two trust stores are needed, both taken from the wallet's reader trust configuration
-(`configureReaderTrustStore`):
+Provider trust and status-list trust come from `configureWrpRegistrationTrust`, else from the ETSI
+Trusted Lists; see [Trust for registration certificates](#trust-for-registration-certificates).
 
-- **Provider trust** — validates the certificate's signer chain (the registration-certificate
-  provider's e-seal).
-- **Status-list trust** — validates the status-list token used for the revocation check.
-
-**Primary — ETSI Trusted Lists.** The intended production source. Enable ETSI reader trust
-(`configureReaderTrustStore { }` together with `configureEtsiTrust`); both stores are then taken from
-the trusted lists — provider trust from `WalletRelyingPartyRegistrationCertificate` and status-list
-trust from `WalletRelyingPartyRegistrationCertificateStatus`.
+**ETSI Trusted Lists.** The intended production source. The relying-party registration-certificate
+provider list must be configured. Reader authentication takes its trust (the access-certificate
+provider list) from the same `configureEtsiTrust` configuration when `configureReaderAuthentication`
+sets no trust source of its own.
 
 ```kotlin
 val config = EudiWalletConfig()
@@ -157,23 +309,14 @@ val config = EudiWalletConfig()
             wrprcProviders = Uri("https://trustedlist.../WRPRCProviders.jwt"), // required for WRPRC validation
         ))
     }
-    .configureReaderTrustStore { /* enable ETSI-based reader/registration trust (needs configureEtsiTrust) */ }
+    .configureReaderAuthentication {
+        enforceIfPresent()
+    }
 ```
-
-**Override — a static or custom store.** Alternatively, provide your own reader trust store
-(`configureReaderTrustStore(store)` / `configureReaderTrustStore(certificates)`); it takes precedence
-over the ETSI lists. Provider trust then uses that store, and status-list trust is unset — only the
-status-list token's own signature is checked, without establishing that its signer is a trusted
-status-list provider.
 
 > **Note:** Binding needs the request to be reader-authenticated: the access certificate is taken from
 > the proximity reader auth or the signed remote request. A request with no reader authentication has
 > no requester identity, so binding fails (`NOT_BOUND_TO_REQUESTER`).
-
-> **Note:** Provider trust is what activates the handling. With the policy `Enabled` but none of the
-> three sources above configured, there is no trust to authenticate a certificate against, so nothing
-> is validated and nothing is surfaced — `wrpRegistration` is `null` and no request is rejected. Set
-> up reader trust to switch the handling on.
 
 ### Custom evaluation (advanced)
 
@@ -228,8 +371,7 @@ eudiWallet.addTransferEventListener { event ->
                         // result.reason — why validation failed (authentication or evaluation)
                         // result.registration — the parsed registration, when read before the failure
                     }
-                    // Not handled: the policy is Disabled, or no reader trust is configured
-                    // (see Trust anchors) — in which case nothing is validated or surfaced.
+                    // Not handled: the policy is Disabled — nothing is validated or surfaced.
                     null -> Unit
                 }
 
@@ -288,13 +430,16 @@ Unlike `verifier_info` on the presentation path, `issuer_info` has no basis in t
 itself: OpenID4VCI defines no equivalent metadata parameter, and no generic extension point for one.
 It is added to the issuer metadata entirely by ETSI TS 119 472-3.
 
-**Signed metadata is required.** Validation runs only when the wallet is configured to verify signed
-issuer metadata; otherwise it is silently skipped and logged.
+**Signed metadata is required.** The certificate is validated only when the wallet requires signed
+issuer metadata (`configureIssuerTrust { requireSignedMetadata() }`); otherwise it is skipped.
 
-**An absent certificate is not a failure to the wallet.** Metadata that carries no registration
-certificate yields `null` rather than `Failed(CERTIFICATE_ABSENT)`, so the application can tell "the
-issuer offered none" apart from "one was offered and did not validate". Metadata that carries more than
-one is reported as `Failed(MALFORMED)`.
+**When the issuance stops.** With the policy `Enabled` and signed metadata required, the OpenID4VCI
+library stops the issuance, with `IssueEvent.Failure`, when the issuer metadata does not carry exactly
+one registration certificate in string form. Before the issuance, the offer and
+`resolveIssuerRegistration(…)` report this as `Failed(CERTIFICATE_ABSENT)` or `Failed(MALFORMED)`, so
+the application can inform the user. Any other evaluation outcome is reported without stopping the
+issuance, and the application decides whether to proceed; for `ENTITLEMENT_MISSING`, see
+[The entitlement check](#the-entitlement-check).
 
 ### Enabling and disabling
 
@@ -312,14 +457,15 @@ val config = EudiWalletConfig()
 ```
 
 - `IssuerRegistrationPolicy.Enabled` (default) — the certificate is validated and its outcome is
-  surfaced to the user.
+  surfaced to the user, including the absence of a certificate.
 - `IssuerRegistrationPolicy.Disabled` — the certificate is neither validated nor surfaced.
 
 ### Trust anchors
 
-The certificate's signer chain and the status list used for the revocation check are validated against
-the ETSI Trusted Lists, the same trust the presentation path uses. Without `configureEtsiTrust` there is
-nothing to validate the certificate against, so validation is skipped and logged.
+Provider trust and status-list trust come from `configureIssuerRegistrationTrust`, else from the ETSI
+Trusted Lists, the same lists as on the presentation path; see
+[Trust for registration certificates](#trust-for-registration-certificates). Validation also needs
+signed metadata, as described under *Enabling and disabling* above.
 
 ### Custom evaluation (advanced)
 
@@ -331,7 +477,8 @@ finally compares the offered credential configurations against the registered `p
 scope, reporting anything outside it as `overProvidedAttestations`.
 
 Replacing the evaluator replaces the entitlement check too. A custom evaluator that does not implement
-it does not satisfy ISSU_24a / ISSU_34a.
+it does not satisfy ISSU_24a / ISSU_34a. An exception thrown by a custom evaluator during issuance stops
+the issuance.
 
 You can replace the evaluation stage via `configureIssuerRegistrationEvaluator`:
 
@@ -369,10 +516,11 @@ openId4VciManager.resolveDocumentOffer(offerUri) { result ->
                 // registration.overProvidedAttestations — attestations offered outside the registered scope
             }
             is RegistrationCertificateResult.Failed -> {
-                // registration.reason — why validation failed
+                // registration.reason — why validation failed, CERTIFICATE_ABSENT when the
+                // issuer offered no registration certificate
             }
-            // Not handled: the policy is Disabled, signed issuer metadata is not configured,
-            // or the issuer offered no registration certificate.
+            // Not handled: the policy is Disabled, signed metadata is not required, or the
+            // evaluation could not be performed.
             null -> Unit
         }
     }
@@ -393,7 +541,8 @@ val outcome = openId4VciManager.resolveIssuerRegistration(documentId)
 when (val registration = outcome.getOrNull()) {
     is RegistrationCertificateResult.Failed -> {
         // the issuer could not be verified — registration.reason says why
-        // (UNTRUSTED_PROVIDER, EXPIRED, REVOKED, MALFORMED, …); inform the user and refuse if you choose to
+        // (CERTIFICATE_ABSENT, UNTRUSTED_PROVIDER, EXPIRED, REVOKED, MALFORMED, …); inform the user
+        // and refuse if you choose to
         val reason = registration.reason
     }
     is RegistrationCertificateResult.Verified ->
@@ -403,7 +552,8 @@ when (val registration = outcome.getOrNull()) {
             // verified, but the issuer offers attestations beyond its registered scope (over-providing)
             // registration.overProvidedAttestations — the attestation types outside the registered scope
         }
-    // null: no verdict to act on — proceed as for an unregulated issuer
+    // null (a failed Result): the policy is Disabled, signed metadata is not required, or the check
+    // could not be performed
     null -> Unit
 }
 ```
@@ -430,14 +580,16 @@ wallet's own classification of an attestation is local configuration — so requ
 would refuse providers legitimately registered under a different one of the three.
 
 Which offered attestations are PIDs is decided by the `pids` classification already configured for
-trust-area routing (`configureEtsiTrust { classifications(...) }`), so this check and the trust
-evaluation cannot disagree. An attestation identifying no type, and every attestation when no `pids`
+trust-area routing — that of `configureIssuerTrust { classifications(...) }`, else that of
+`configureEtsiTrust { classifications(...) }` — so this check and the trust evaluation cannot
+disagree. An attestation identifying no type, and every attestation when no `pids`
 classification is configured, counts as non-PID.
 
-A shortfall is a **hard failure**, `Failed(ENTITLEMENT_MISSING, registration)` — not a finding on a
-verified result. Per ISSU_24a / ISSU_34a the wallet must not request issuance, so this is deliberately
-the one scope-shaped check that does not produce a warning the application may choose to accept. The
-parsed `registration` is still carried, so the provider can be named on the blocking screen.
+A shortfall is a validation failure, `Failed(ENTITLEMENT_MISSING, registration)` — not a finding on a
+verified result. Like the other outcomes of the evaluation, it is reported without stopping the
+issuance. ARF ISSU_24a / ISSU_34a require the wallet to warn the user and not to request the issuance
+in this case, so on this outcome the application should not proceed with the issuance. The parsed
+`registration` is still carried, so the provider can be named when the issuance is refused.
 
 An absent or empty `entitlements` claim satisfies nothing: a certificate that does not confirm the
 role cannot be treated as confirming it.

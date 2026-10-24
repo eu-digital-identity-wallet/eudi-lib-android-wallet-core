@@ -19,6 +19,9 @@ package eu.europa.ec.eudi.wallet.trust
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationClassifications
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationIdentifier
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationIdentifierPredicate
+import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
+import eu.europa.ec.eudi.wallet.EudiWalletConfig
+import io.mockk.mockk
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -53,5 +56,37 @@ class PidClassificationTest {
 
         assertFalse(classifications.pidClassification.test(pid))
         assertFalse(classifications.pidClassification.test(mdl))
+    }
+
+    @Test
+    fun `issuer registration takes the pid classification of the issuer trust configuration over that of etsi`() {
+        val config = EudiWalletConfig {
+            configureEtsiTrust {
+                loteLocations(mockk())
+                classifications(AttestationClassifications(pids = AttestationIdentifierPredicate.any(setOf(mdl))))
+            }
+        }
+        config.issuerTrustConfig = IssuerTrustConfig(
+            isChainTrustedForAttestation = mockk(),
+            classifications = AttestationClassifications(pids = AttestationIdentifierPredicate.any(setOf(pid))),
+            trustPolicy = TrustPolicy.uniform(TrustPolicy.Action.INFORM),
+            credentialTrustVerifiers = emptyMap(),
+            issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
+        )
+
+        assertTrue(config.issuerRegistrationPidClassification.test(pid))
+        assertFalse(config.issuerRegistrationPidClassification.test(mdl))
+    }
+
+    @Test
+    fun `without issuer trust classifications issuer registration takes those of the etsi trust configuration`() {
+        val config = EudiWalletConfig {
+            configureEtsiTrust {
+                loteLocations(mockk())
+                classifications(AttestationClassifications(pids = AttestationIdentifierPredicate.any(setOf(pid))))
+            }
+        }
+
+        assertTrue(config.issuerRegistrationPidClassification.test(pid))
     }
 }

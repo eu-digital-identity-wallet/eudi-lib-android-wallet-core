@@ -216,9 +216,8 @@ class DcqlRequestProcessor(
      * [RegistrationFailureReason], so the user can be warned (WRP-VALIDATION-02).
      *
      * Returns null when registration is not enforced, that is when no verifier is configured (the
-     * registration policy is [eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy.Disabled]
-     * or no ETSI trust source is available); in that case the registration is neither validated nor
-     * surfaced.
+     * registration policy is [eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy.Disabled]);
+     * in that case the registration is neither validated nor surfaced.
      */
     private suspend fun resolveWrpRegistration(
         resolvedRequestObject: ResolvedRequestObject,
