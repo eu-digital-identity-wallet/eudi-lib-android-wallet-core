@@ -300,11 +300,15 @@ internal class IssuerCreator(
                     "configured (configureIssuerTrust { requireSignedMetadata() }); skipping it.",
             )
         }
-        if (issuerRegistrationEnabled && issuerRegistration == null) {
+        if (issuerRegistrationEnabled &&
+            issuerMetadataPolicy is IssuerMetadataPolicy.RequireSigned &&
+            issuerRegistration == null
+        ) {
             logger?.i(
                 TAG,
                 "issuer registration validation is enabled but no trust is available for the " +
-                    "registration certificate signer chain (needs configureEtsiTrust); skipping it.",
+                    "registration certificate signer chain (needs configureEtsiTrust or " +
+                    "configureIssuerRegistrationTrust); skipping it.",
             )
         }
 

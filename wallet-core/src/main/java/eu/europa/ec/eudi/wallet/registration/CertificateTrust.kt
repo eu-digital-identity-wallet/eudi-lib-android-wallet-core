@@ -20,6 +20,8 @@ import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
 import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import java.security.cert.TrustAnchor
@@ -58,3 +60,44 @@ internal fun IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>.asCertif
         false
     }
 }
+
+/**
+ * The trust for the signer of a registration certificate: the configured [trustedCertificates], else
+ * the ETSI registration certificate context of [etsiSource].
+ */
+internal fun registrationCertificateTrust(
+    trustedCertificates: List<X509Certificate>?,
+    revocationPolicy: RevocationPolicy,
+    etsiSource: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>?,
+    logger: Logger? = null,
+): CertificateTrust? =
+    trustedCertificates?.asCertificateTrust(revocationPolicy)
+        ?: etsiSource?.asCertificateTrust(
+            VerificationContext.WalletRelyingPartyRegistrationCertificate,
+            logger = logger
+        )
+
+/**
+ * The trust for the signer of a registration certificate's status list: the configured
+ * [statusListTrustedCertificates], else the ETSI registration certificate status context of
+ * [etsiSource].
+ */
+internal fun registrationStatusTrust(
+    statusListTrustedCertificates: List<X509Certificate>?,
+    revocationPolicy: RevocationPolicy,
+    etsiSource: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>?,
+    logger: Logger? = null,
+): CertificateTrust? =
+    statusListTrustedCertificates?.asCertificateTrust(revocationPolicy)
+        ?: etsiSource?.asCertificateTrust(
+            VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+            logger = logger,
+        )
+
+/**
+ * Validates chains against these certificates as trust anchors, without the ISO/IEC 18013-5 reader
+ * certificate profile checks.
+ */
+private fun List<X509Certificate>.asCertificateTrust(revocationPolicy: RevocationPolicy): CertificateTrust =
+    ReaderTrustStoreImpl(this, profileValidation = { _, _ -> true }, revocationPolicy = revocationPolicy)
+        .asCertificateTrust()

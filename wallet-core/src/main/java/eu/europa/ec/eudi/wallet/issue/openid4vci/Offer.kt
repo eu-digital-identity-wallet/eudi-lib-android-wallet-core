@@ -38,8 +38,8 @@ import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
  * @property txCodeSpec offered documents
  * @property issuerRegistration the outcome of validating the credential issuer's registration
  *  certificate (`issuer_info`, ETSI TS 119 472-3) for this offer, or null when issuer registration
- *  validation is disabled or the metadata carries no registration certificate. The result is
- *  informative; the wallet may present it to the user before issuance proceeds.
+ *  validation is disabled, signed issuer metadata is not required, or the evaluation could not be
+ *  performed. The wallet may present it to the user before the issuance starts.
  */
 
 data class Offer(

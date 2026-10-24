@@ -670,14 +670,18 @@ class EudiWalletConfig {
      * - [WrpRegistrationPolicy.Disabled]: the registration certificate is not validated or surfaced.
      * - [WrpRegistrationPolicy.Enabled] (default): the registration certificate is validated and the user
      *   is informed of the outcome — warned when it could not be validated and when requested
-     *   attributes fall outside the registered scope — without blocking the presentation.
+     *   attributes fall outside the registered scope — without blocking the presentation. On the
+     *   OpenID4VP path, the OpenID4VP library also applies its own checks to the registration
+     *   certificate and may reject the request.
      *
-     * Validating a registration certificate against the ETSI Trusted Lists requires the Wallet-Relying
-     * Party registration certificate provider list to be configured; supply its location via the
-     * `wrprcProviders` entry of the ETSI trust configuration ([configureEtsiTrust]). When the ETSI
-     * trust source is not configured, the certificates set through [configureReaderTrustStore] are
-     * used as a testing fallback; without either, a registration certificate cannot be trusted and
-     * validation fails.
+     * The registration certificate is validated against the certificates set through
+     * [configureWrpRegistrationTrust], else against the ETSI Trusted Lists of [configureEtsiTrust]. The
+     * reader authentication trust ([configureReaderAuthentication]) is not used. With the policy enabled
+     * and neither [configureWrpRegistrationTrust] nor [configureEtsiTrust] called, building the wallet
+     * fails with an [IllegalArgumentException]. When the ETSI Trusted Lists are the source and the
+     * Wallet-Relying Party registration certificate provider list (`wrprcProviders`) is not configured,
+     * the wallet builds and registration certificates fail with
+     * [eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason.UNTRUSTED_PROVIDER].
      *
      * @see WrpRegistrationPolicy
      */
@@ -723,6 +727,46 @@ class EudiWalletConfig {
         this.wrpRegistrationEvaluator = evaluator
     }
 
+    internal var wrpRegistrationTrustedCertificates: List<X509Certificate>? = null
+        private set
+
+    internal var wrpRegistrationStatusListTrustedCertificates: List<X509Certificate>? = null
+        private set
+
+    internal var wrpRegistrationRevocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
+        private set
+
+    /**
+     * Configure the trust anchors — the certificate authority certificates of the registration
+     * certificate providers — for relying party registration certificates and for the status lists
+     * that carry their revocation status. They take precedence over the ETSI Trusted Lists set with
+     * [configureEtsiTrust].
+     *
+     * When not configured, the registration certificate signer and the status list signer are
+     * validated against the ETSI Trusted Lists; without them, building the wallet fails while
+     * [wrpRegistrationPolicy] is [WrpRegistrationPolicy.Enabled].
+     *
+     * @param trustedCertificates the trust anchors for the registration certificate signer chain
+     * @param trustedStatusListCertificates the trust anchors for the status list signer chain; defaults to
+     * [trustedCertificates]. Set it when the status lists are signed under a different certificate
+     * authority, otherwise their revocation status cannot be confirmed (`REVOCATION_STATUS_UNKNOWN`).
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
+     * @return the [EudiWalletConfig] instance
+     * @throws IllegalArgumentException if [trustedCertificates] or [trustedStatusListCertificates] is empty
+     */
+    @JvmOverloads
+    fun configureWrpRegistrationTrust(
+        trustedCertificates: List<X509Certificate>,
+        trustedStatusListCertificates: List<X509Certificate> = trustedCertificates,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    ) = apply {
+        require(trustedCertificates.isNotEmpty()) { "trustedCertificates must not be empty" }
+        require(trustedStatusListCertificates.isNotEmpty()) { "trustedStatusListCertificates must not be empty" }
+        this.wrpRegistrationTrustedCertificates = trustedCertificates
+        this.wrpRegistrationStatusListTrustedCertificates = trustedStatusListCertificates
+        this.wrpRegistrationRevocationPolicy = revocationPolicy
+    }
+
     /**
      * The issuer registration certificate policy applied during OpenID4VCI issuance;
      * [IssuerRegistrationPolicy.Enabled] by default.
@@ -737,8 +781,14 @@ class EudiWalletConfig {
      * issuance. Enabled by default; call with [IssuerRegistrationPolicy.Disabled] to opt out.
      *
      * The registration certificate is carried in the signed issuer metadata, so validation only runs
-     * when signed metadata is configured (via [configureIssuerTrust] `{ requireSignedMetadata() }`);
-     * otherwise it is silently skipped.
+     * when signed metadata is required ([configureIssuerTrust], whose default is
+     * `requireSignedMetadata()`); otherwise it is skipped. When it runs, the OpenID4VCI library stops
+     * the issuance if the issuer metadata carries no registration certificate, more than one, or one
+     * that is not a string; any other evaluation outcome is reported without stopping the issuance.
+     *
+     * With the policy enabled and signed metadata required, trust for the registration certificate
+     * signer must be configured ([configureIssuerRegistrationTrust] or [configureEtsiTrust]); otherwise
+     * building the wallet fails with an [IllegalArgumentException].
      *
      * @param policy the issuer registration policy
      * @return the [EudiWalletConfig] instance
@@ -766,6 +816,50 @@ class EudiWalletConfig {
      */
     fun configureIssuerRegistrationEvaluator(evaluator: IssuerRegistrationEvaluator) = apply {
         this.issuerRegistrationEvaluator = evaluator
+    }
+
+    internal var issuerRegistrationTrustedCertificates: List<X509Certificate>? = null
+        private set
+
+    internal var issuerRegistrationStatusListTrustedCertificates: List<X509Certificate>? = null
+        private set
+
+    internal var issuerRegistrationRevocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
+        private set
+
+    /**
+     * Configure the trust anchors — the certificate authority certificates of the registration
+     * certificate providers — for credential issuer registration certificates and for the status lists
+     * that carry their revocation status. They take precedence over the ETSI Trusted Lists set with
+     * [configureEtsiTrust].
+     *
+     * When not configured, the registration certificate signer and the status list signer are
+     * validated against the ETSI Trusted Lists; without them, building the wallet fails while
+     * [issuerRegistrationPolicy] is [IssuerRegistrationPolicy.Enabled] and signed metadata is required.
+     *
+     * The registration certificate is carried in the signed issuer metadata, so it is validated only
+     * when signed metadata is required ([configureIssuerTrust], whose default is
+     * `requireSignedMetadata()`).
+     *
+     * @param trustedCertificates the trust anchors for the registration certificate signer chain
+     * @param trustedStatusListCertificates the trust anchors for the status list signer chain; defaults to
+     * [trustedCertificates]. Set it when the status lists are signed under a different certificate
+     * authority, otherwise their revocation status cannot be confirmed (`REVOCATION_STATUS_UNKNOWN`).
+     * @param revocationPolicy the certificate revocation checking policy (default [RevocationPolicy.HardFail])
+     * @return the [EudiWalletConfig] instance
+     * @throws IllegalArgumentException if [trustedCertificates] or [trustedStatusListCertificates] is empty
+     */
+    @JvmOverloads
+    fun configureIssuerRegistrationTrust(
+        trustedCertificates: List<X509Certificate>,
+        trustedStatusListCertificates: List<X509Certificate> = trustedCertificates,
+        revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    ) = apply {
+        require(trustedCertificates.isNotEmpty()) { "trustedCertificates must not be empty" }
+        require(trustedStatusListCertificates.isNotEmpty()) { "trustedStatusListCertificates must not be empty" }
+        this.issuerRegistrationTrustedCertificates = trustedCertificates
+        this.issuerRegistrationStatusListTrustedCertificates = trustedStatusListCertificates
+        this.issuerRegistrationRevocationPolicy = revocationPolicy
     }
 
     var userAuthenticationRequired: Boolean = true

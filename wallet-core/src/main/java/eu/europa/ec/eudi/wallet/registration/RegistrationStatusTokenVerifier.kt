@@ -28,12 +28,11 @@ import kotlin.time.Instant
 
 /**
  * Verifies the signature of the status list token that carries a registration certificate's
- * revocation status. The signature is checked against the certificate in the token's `x5c` header.
- * When [statusTrust] is set, that certificate chain is additionally validated against it; when null,
- * only the signature is verified.
+ * revocation status. The signature is checked against the certificate in the token's `x5c` header,
+ * and that certificate chain is validated against [statusTrust].
  */
 internal class RegistrationStatusTokenVerifier(
-    private val statusTrust: CertificateTrust? = null,
+    private val statusTrust: CertificateTrust
 ) : VerifyStatusListTokenJwtSignature {
 
     override suspend fun invoke(statusListToken: String, at: Instant): Result<Unit> = runCatching {
@@ -50,10 +49,8 @@ internal class RegistrationStatusTokenVerifier(
         }
         check(jwt.verify(verifier)) { "status list token signature is invalid" }
 
-        if (statusTrust != null) {
-            check(statusTrust.isTrusted(chain)) {
-                "status list token certificate chain is not trusted"
-            }
+        check(statusTrust.isTrusted(chain)) {
+            "status list token certificate chain is not trusted"
         }
     }
 }

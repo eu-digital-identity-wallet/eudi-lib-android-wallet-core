@@ -240,6 +240,9 @@ val config = EudiWalletConfig()
         // default is EnforceIfPresent
         enforceIfPresent()
     }
+    // set the trust anchors (CA certificates) of the providers of relying-party registration
+    // certificates (see REGISTRATION_CERTIFICATE.md)
+    .configureWrpRegistrationTrust(listOf(registrationCertificateProviderCa))
     // configure the OpenId4Vci service
     .configureOpenId4Vci {
         withIssuerUrl("https://issuer.com")
@@ -375,6 +378,11 @@ val config = EudiWalletConfig {
 > the configured trust store, the document will be excluded from the response when using
 > `enforceIfPresent()` or `alwaysRequire()`. To allow presentations to verifiers whose
 > certificates are not in the trust store, use `doNotEnforce()`.
+
+> **Note:** The reader authentication trust is not used for relying-party registration
+> certificates. Without `configureEtsiTrust`, call `configureWrpRegistrationTrust(...)` or
+> `configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)`; otherwise building the wallet
+> fails. See [REGISTRATION_CERTIFICATE.md](REGISTRATION_CERTIFICATE.md#trust-for-registration-certificates).
 
 #### WalletKeyManager Configuration
 This interface is responsible for managing Attestation Keys used during Attestation Based Client Authentication with OpenId4Vci.
@@ -879,6 +887,10 @@ val config = EudiWalletConfig {
         trustSource(isChainTrusted)
         enforceIfPresent()
     }
+    // registration certificates take their trust from configureEtsiTrust or from these methods,
+    // not from trustSource(); see REGISTRATION_CERTIFICATE.md
+    configureWrpRegistrationTrust(registrarCas)
+    configureIssuerRegistrationTrust(registrarCas)
 }
 
 // On shutdown:
@@ -948,6 +960,11 @@ configureIssuerTrust {
 - **`policy`** -- configures how the wallet acts on trust results (see below).
 - **`preferSignedMetadata()`** / **`ignoreSignedMetadata()`** -- relaxes the default
   `RequireSigned` metadata policy (see [Signed Issuer Metadata Verification](#signed-issuer-metadata-verification)).
+
+Without `configureEtsiTrust`, a wallet that requires signed issuer metadata (the default) with
+`IssuerRegistrationPolicy.Enabled` (the default) also needs `configureIssuerRegistrationTrust(...)` or
+`configureIssuerRegistrationPolicy(IssuerRegistrationPolicy.Disabled)`; otherwise building the wallet
+fails. See [REGISTRATION_CERTIFICATE.md](REGISTRATION_CERTIFICATE.md#trust-for-registration-certificates).
 
 ##### Trust Policies
 
@@ -1171,7 +1188,8 @@ The available revocation policies are:
 | `RevocationPolicy.NoCheck` | No revocation checking is performed. |
 
 > **Note:** `RevocationPolicy` only applies to the static certificate-based
-> `trustedCertificates()` overloads. When using ETSI/LoTE-based trust (via
+> `trustedCertificates()` overloads and to `configureWrpRegistrationTrust` /
+> `configureIssuerRegistrationTrust`. When using ETSI/LoTE-based trust (via
 > `configureEtsiTrust`), revocation checking is controlled by `relaxPkixRevocation()` inside
 > the `configureEtsiTrust` block instead.
 

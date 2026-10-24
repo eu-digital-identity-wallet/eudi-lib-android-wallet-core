@@ -68,10 +68,10 @@ interface OpenId4VciManager {
      *
      * @param issuerUrl the issuer URL to resolve metadata from
      * @param credentialConfigurationIds the offered credential configuration identifiers
-     * @return success with the validation verdict when a validation ran; a failure when no validation
-     *   applied (the wallet does not require signed issuer metadata, or the issuer published no
-     *   registration certificate); or a failure carrying the underlying error when the check could not
-     *   be performed
+     * @return success with the validation verdict, or `Failed(CERTIFICATE_ABSENT)` when the issuer
+     *   published no registration certificate; a failure when no validation applied (issuer
+     *   registration validation is disabled or the wallet does not require signed issuer metadata); or
+     *   a failure carrying the underlying error when the check could not be performed
      */
     suspend fun resolveIssuerRegistration(
         issuerUrl: String,
@@ -85,9 +85,9 @@ interface OpenId4VciManager {
      * document is replaced.
      *
      * @param documentId the identifier of the document that would be re-issued
-     * @return success with the validation verdict when a validation ran; a failure when no validation
-     *   applied; or a failure carrying the underlying error when the check could not be performed,
-     *   including when no issuance metadata is stored for [documentId]
+     * @return success with the outcome, as for the issuer and configuration overload; a failure when
+     *   no validation applied; or a failure carrying the underlying error when the check could not be
+     *   performed, including when no issuance metadata is stored for [documentId]
      */
     suspend fun resolveIssuerRegistration(documentId: DocumentId): Result<RegistrationCertificateResult>
 
