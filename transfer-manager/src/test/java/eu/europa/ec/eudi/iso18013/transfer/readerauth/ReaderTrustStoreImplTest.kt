@@ -84,6 +84,69 @@ class ReaderTrustStoreImplTest {
     }
 
     @Test
+    fun testChainIsValidatedUpToAnIntermediateTrustedCertificate() {
+        val (leaf, intermediate, root) = loadValidThreeCertChain()
+
+        val trustStore = ReaderTrustStoreImpl(
+            trustedCertificates = listOf(intermediate),
+            profileValidation = { _, _ -> true },
+            revocationPolicy = RevocationPolicy.NoCheck,
+            errorLogger = { _, _, _ -> }
+        )
+
+        assertTrue(trustStore.validateCertificationTrustPath(listOf(leaf, intermediate)))
+        assertTrue(trustStore.validateCertificationTrustPath(listOf(leaf, intermediate, root)))
+    }
+
+    @Test
+    fun testChainIsValidatedUpToTheFirstTrustedCertificate() {
+        val (leaf, intermediate, root) = loadValidThreeCertChain()
+
+        val profileValidation = mockk<ProfileValidation>()
+        every { profileValidation.validate(any(), any()) } returns true
+
+        val trustStore = ReaderTrustStoreImpl(
+            trustedCertificates = listOf(root, intermediate),
+            profileValidation = profileValidation,
+            revocationPolicy = RevocationPolicy.NoCheck,
+            errorLogger = { _, _, _ -> }
+        )
+
+        assertTrue(trustStore.validateCertificationTrustPath(listOf(leaf, intermediate, root)))
+        verify(exactly = 1) { profileValidation.validate(listOf(leaf), intermediate) }
+    }
+
+    @Test
+    fun testTrustedSelfSignedSignerCertificateIsValidated() {
+        val profileValidation = mockk<ProfileValidation>()
+        every { profileValidation.validate(any(), any()) } returns true
+
+        val trustStore = ReaderTrustStoreImpl(
+            trustedCertificates = listOf(rootCertificate),
+            profileValidation = profileValidation,
+            revocationPolicy = RevocationPolicy.NoCheck,
+            errorLogger = { _, _, _ -> }
+        )
+
+        assertTrue(trustStore.validateCertificationTrustPath(listOf(rootCertificate)))
+        verify(exactly = 1) { profileValidation.validate(listOf(rootCertificate), rootCertificate) }
+    }
+
+    @Test
+    fun testChainIsRejectedWhenTheSignerIsNotIssuedByTheFirstTrustedCertificate() {
+        val (_, intermediate, _) = loadValidThreeCertChain()
+
+        val trustStore = ReaderTrustStoreImpl(
+            trustedCertificates = listOf(intermediate),
+            profileValidation = { _, _ -> true },
+            revocationPolicy = RevocationPolicy.NoCheck,
+            errorLogger = { _, _, _ -> }
+        )
+
+        assertFalse(trustStore.validateCertificationTrustPath(listOf(leafCertificate, intermediate)))
+    }
+
+    @Test
     fun testValidationReturnsFalseWhenProfileValidationFails() {
         val certificateChain = listOf(leafCertificate, rootCertificate)
 

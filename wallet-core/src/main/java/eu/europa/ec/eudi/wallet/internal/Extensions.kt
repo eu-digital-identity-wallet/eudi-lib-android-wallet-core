@@ -69,7 +69,7 @@ internal fun Credential.requireIssuedDocument(
  * Adapts a [ReaderTrustResult.Processed] into a [Requester] + [TrustMetadata] pair
  * consumed by the presentment layer.
  *
- *  - [Requester] always carries the verified cert chain (and any provided [appId] /
+ *  - [Requester] always carries the received cert chain (and any provided [appId] /
  *    [origin]) regardless of the trust outcome — consumers consult [TrustMetadata]
  *    for the trust verdict.
  *  - [TrustMetadata] is populated only when the chain validated against the

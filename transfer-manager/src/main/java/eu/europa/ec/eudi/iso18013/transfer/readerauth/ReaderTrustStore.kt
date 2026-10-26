@@ -48,8 +48,8 @@ interface ReaderTrustStore {
      *
      * The trust manager should be initialized with a set of trusted certificates.
      * The chain is trusted if a trusted certificate can be found that has signed
-     * any certificate in the chain. The trusted certificate itself will be
-     * validated as well.
+     * any certificate in the chain. A trusted certificate included in the chain
+     * is not validated itself.
      *
      * @param chainToDocumentSigner the document signer, intermediate certificates and optional root certificate
      * @return false if no trusted certificate could be found for the certificate chain or if the certificate chain is invalid for any reason
