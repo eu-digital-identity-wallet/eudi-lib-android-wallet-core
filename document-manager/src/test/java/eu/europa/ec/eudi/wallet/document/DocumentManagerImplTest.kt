@@ -39,11 +39,14 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.SignatureVerificationException
+import org.multipaz.document.AbstractDocumentMetadata
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
@@ -411,13 +414,28 @@ class DocumentManagerImplTest {
     }
 
     @Test
-    fun `should report a document whose metadata cannot be read as not found when deleting`() {
+    fun `should report a document without metadata as not found when deleting`() {
         val sharedStorage = EphemeralStorage()
         val document = runBlocking { managerOver("owner", sharedStorage).documentStore.createDocument() }
 
         val result = managerOver("other", sharedStorage).deleteDocumentById(document.identifier)
 
         assertIs<IllegalArgumentException>(result.exceptionOrNull())
+    }
+
+    @Test
+    fun `should return a failure when deleting a document whose metadata cannot be read`() {
+        val sharedStorage = EphemeralStorage()
+        val unreadableMetadata = object : AbstractDocumentMetadata {
+            override fun serialize() = ByteString(Cbor.encode(buildCborMap {}))
+        }
+        val document = runBlocking {
+            managerOver("owner", sharedStorage).documentStore.createDocument(metadata = unreadableMetadata)
+        }
+
+        val result = managerOver("other", sharedStorage).deleteDocumentById(document.identifier)
+
+        assertIs<IllegalStateException>(result.exceptionOrNull())
     }
 
     @Test

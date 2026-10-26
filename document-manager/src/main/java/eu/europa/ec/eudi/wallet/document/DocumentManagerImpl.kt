@@ -142,14 +142,18 @@ class DocumentManagerImpl(
      */
     override fun deleteDocumentById(documentId: DocumentId): Outcome<ProofOfDeletion?> {
         return runBlocking {
-            documentStore.lookupDocument(documentId)
-                ?.takeIf { identityDocument -> identityDocument.isManagedByThisManager() }
-                ?.let { identityDocument ->
-                    val proofOfDeletion = null
-                    documentStore.deleteDocument(identityDocument.identifier)
-                    Outcome.success(proofOfDeletion)
-                }
-                ?: Outcome.failure(IllegalArgumentException("Document with $documentId not found"))
+            try {
+                documentStore.lookupDocument(documentId)
+                    ?.takeIf { identityDocument -> identityDocument.isManagedByThisManager() }
+                    ?.let { identityDocument ->
+                        val proofOfDeletion = null
+                        documentStore.deleteDocument(identityDocument.identifier)
+                        Outcome.success(proofOfDeletion)
+                    }
+                    ?: Outcome.failure(IllegalArgumentException("Document with $documentId not found"))
+            } catch (e: Throwable) {
+                Outcome.failure(e)
+            }
         }
     }
 
@@ -301,7 +305,7 @@ class DocumentManagerImpl(
     }
 
     /**
-     * Whether this document is managed by this document manager. A document whose metadata cannot be read
+     * Whether this document is managed by this document manager. A document without a document manager ID
      * is not.
      */
     private fun IdentityDocument.isManagedByThisManager(): Boolean =
