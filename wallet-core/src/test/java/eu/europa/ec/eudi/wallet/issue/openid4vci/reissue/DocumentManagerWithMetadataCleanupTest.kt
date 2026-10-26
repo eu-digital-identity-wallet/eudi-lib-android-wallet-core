@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci.reissue
 
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.Outcome
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -32,7 +33,7 @@ class DocumentManagerWithMetadataCleanupTest {
 
     @Test
     fun `deleteDocumentById delegates to wrapped DocumentManager and returns its result`() {
-        val expectedResult = mockk<eu.europa.ec.eudi.wallet.document.Outcome<eu.europa.ec.eudi.wallet.document.ProofOfDeletion?>>()
+        val expectedResult = Outcome.success<eu.europa.ec.eudi.wallet.document.ProofOfDeletion?>(null)
         val delegate = mockk<DocumentManager>(relaxed = true) {
             every { deleteDocumentById("doc-123") } returns expectedResult
         }
@@ -54,7 +55,9 @@ class DocumentManagerWithMetadataCleanupTest {
         table.insert("doc-123", ByteString(byteArrayOf(1, 2, 3)))
         assertNotNull(table.get("doc-123"))
 
-        val delegate = mockk<DocumentManager>(relaxed = true)
+        val delegate = mockk<DocumentManager>(relaxed = true) {
+            every { deleteDocumentById("doc-123") } returns Outcome.success(null)
+        }
         val wrapper = DocumentManagerWithMetadataCleanup(delegate, storage)
 
         wrapper.deleteDocumentById("doc-123")
@@ -66,9 +69,31 @@ class DocumentManagerWithMetadataCleanupTest {
     }
 
     @Test
+    fun `deleteDocumentById keeps issuance metadata when the document is not deleted`() = runTest {
+        val storage = EphemeralStorage()
+        val table = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+        table.insert("doc-123", ByteString(byteArrayOf(1, 2, 3)))
+
+        val delegate = mockk<DocumentManager>(relaxed = true) {
+            every { deleteDocumentById("doc-123") } returns
+                Outcome.failure(IllegalArgumentException("Document with doc-123 not found"))
+        }
+        val wrapper = DocumentManagerWithMetadataCleanup(delegate, storage)
+
+        wrapper.deleteDocumentById("doc-123")
+
+        // Wait for any async metadata deletion (runs on Dispatchers.IO)
+        Thread.sleep(500)
+
+        assertNotNull(table.get("doc-123"))
+    }
+
+    @Test
     fun `deleteDocumentById succeeds even when no metadata exists for the document`() = runTest {
         val storage = EphemeralStorage()
-        val delegate = mockk<DocumentManager>(relaxed = true)
+        val delegate = mockk<DocumentManager>(relaxed = true) {
+            every { deleteDocumentById("unknown-doc") } returns Outcome.success(null)
+        }
         val wrapper = DocumentManagerWithMetadataCleanup(delegate, storage)
 
         // Should not throw even though "unknown-doc" has no metadata

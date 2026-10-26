@@ -293,8 +293,8 @@ class DocumentManagerImplTest {
             ),
         ).getOrThrow()
 
-    private fun createPidDocument(): UnsignedDocument =
-        documentManager.createDocument(
+    private fun createPidDocument(manager: DocumentManagerImpl = documentManager): UnsignedDocument =
+        manager.createDocument(
             format = MsoMdocFormat(docType = PID_DOC_TYPE),
             createSettings = CreateDocumentSettings(
                 secureAreaIdentifier = secureArea.identifier,
@@ -398,6 +398,64 @@ class DocumentManagerImplTest {
         assertTrue(storeDeferredResult.isFailure)
         assertIs<IllegalArgumentException>(storeDeferredResult.exceptionOrNull())
     }
+
+    @Test
+    fun `should not delete a document managed by another document manager`() {
+        val sharedStorage = EphemeralStorage()
+        val document = createPidDocument(managerOver("owner", sharedStorage))
+
+        val result = managerOver("other", sharedStorage).deleteDocumentById(document.id)
+
+        assertIs<IllegalArgumentException>(result.exceptionOrNull())
+        assertNotNull(managerOver("owner", sharedStorage).getDocumentById(document.id))
+    }
+
+    @Test
+    fun `should report a document whose metadata cannot be read as not found when deleting`() {
+        val sharedStorage = EphemeralStorage()
+        val document = runBlocking { managerOver("owner", sharedStorage).documentStore.createDocument() }
+
+        val result = managerOver("other", sharedStorage).deleteDocumentById(document.identifier)
+
+        assertIs<IllegalArgumentException>(result.exceptionOrNull())
+    }
+
+    @Test
+    fun `should not store as issued a document managed by another document manager`() {
+        val sharedStorage = EphemeralStorage()
+        val document = createPidDocument(managerOver("owner", sharedStorage))
+        val credentials = issuerProvidedCredentials(
+            unsignedDocument = document,
+            msoDocType = PID_DOC_TYPE,
+            msoNameSpaces = pidNameSpaces("Doe"),
+            issuedNameSpaces = pidNameSpaces("Doe"),
+        )
+
+        val result = managerOver("other", sharedStorage).storeIssuedDocument(document, credentials)
+
+        assertIs<IllegalArgumentException>(result.exceptionOrNull())
+        val stored = assertNotNull(managerOver("owner", sharedStorage).getDocumentById(document.id))
+        assertFalse(stored is IssuedDocument)
+    }
+
+    @Test
+    fun `should not store for deferred issuance a document managed by another document manager`() {
+        val sharedStorage = EphemeralStorage()
+        val document = createPidDocument(managerOver("owner", sharedStorage))
+
+        val result = managerOver("other", sharedStorage)
+            .storeDeferredDocument(document, "related data".encodeToByteArray())
+
+        assertIs<IllegalArgumentException>(result.exceptionOrNull())
+        val stored = assertNotNull(managerOver("owner", sharedStorage).getDocumentById(document.id))
+        assertFalse(stored is DeferredDocument)
+    }
+
+    private fun managerOver(identifier: String, storage: Storage) = DocumentManagerImpl(
+        identifier = identifier,
+        storage = storage,
+        secureAreaRepository = secureAreaRepository,
+    )
 
     private companion object {
         private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
