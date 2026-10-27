@@ -118,12 +118,14 @@ Validating a registration certificate checks two certificate chains against trus
   e-seal).
 - **Status-list trust** — the signer chain of the status-list token used for the revocation check.
 
-Each path takes both from the first of these sources that is configured:
+For relying parties and for credential issuers separately, configured certificates take precedence
+over the ETSI Trusted Lists:
 
 1. **Configured certificates** — `configureWrpRegistrationTrust` for relying parties,
-   `configureIssuerRegistrationTrust` for credential issuers.
-2. **ETSI Trusted Lists** — `configureEtsiTrust`: provider trust from
-   `WalletRelyingPartyRegistrationCertificate` and status-list trust from
+   `configureIssuerRegistrationTrust` for credential issuers. When they are set, the ETSI Trusted
+   Lists are not used for that path.
+2. **ETSI Trusted Lists** — `configureEtsiTrust`, when no certificates are configured: provider
+   trust from `WalletRelyingPartyRegistrationCertificate` and status-list trust from
    `WalletRelyingPartyRegistrationCertificateStatus`. The same trusted lists serve both paths.
 
 The reader authentication trust (`configureReaderAuthentication`) is not used for registration
