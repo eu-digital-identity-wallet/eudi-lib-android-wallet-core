@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.minutes
  * @property fileCacheExpiration how long downloaded LoTE files are cached on disk (default: 24 hours)
  * @property cacheTtl how long the in-memory trust anchor cache is valid (default: 20 minutes)
  * @property relaxCertificateProfiles whether to strip end-entity profile constraints (for DEV/testing)
- * @property relaxPkixRevocation whether to disable PKIX revocation checking (for DEV/testing)
+ * @property pkixRevocationPolicy PKIX revocation checking policy for certificate chain validation (default: CRLPriority)
  * @property customJwtSignatureVerifier optional custom JWT signature verifier for LoTE JWTs;
  *   when null, the core uses its built-in [LoteJwtVerifier]
  * @property loteConstraints controls whether additional LoTE pointers are followed
@@ -50,7 +50,7 @@ data class EtsiTrustConfig(
     val fileCacheExpiration: Duration = DEFAULT_FILE_CACHE_EXPIRATION,
     val cacheTtl: Duration = DEFAULT_CACHE_TTL,
     val relaxCertificateProfiles: Boolean = false,
-    val relaxPkixRevocation: Boolean = false,
+    val pkixRevocationPolicy: PkixRevocationPolicy = PkixRevocationPolicy.CRLPriority,
     val customJwtSignatureVerifier: VerifyJwtSignature? = null,
     val loteConstraints: LoadLoTEAndPointers.Constraints = LoadLoTEAndPointers.Constraints.DoNotLoadOtherPointers,
 ) {
@@ -92,7 +92,7 @@ class EtsiTrustConfigBuilder {
     private var fileCacheExpiration: Duration = EtsiTrustConfig.DEFAULT_FILE_CACHE_EXPIRATION
     private var cacheTtl: Duration = EtsiTrustConfig.DEFAULT_CACHE_TTL
     private var relaxCertificateProfiles: Boolean = false
-    private var relaxPkixRevocation: Boolean = false
+    private var pkixRevocationPolicy: PkixRevocationPolicy = PkixRevocationPolicy.CRLPriority
     private var customJwtSignatureVerifier: VerifyJwtSignature? = null
     private var loteConstraints: LoadLoTEAndPointers.Constraints =
         LoadLoTEAndPointers.Constraints.DoNotLoadOtherPointers
@@ -156,15 +156,40 @@ class EtsiTrustConfigBuilder {
     /**
      * Disables PKIX revocation checking during certificate chain validation.
      *
-     * When called, `isRevocationEnabled` is set to `false` on the PKIX parameters.
-     * Use this for DEV/testing environments where CRL/OCSP endpoints may not be available.
-     *
-     * When this is **not** called (the default), PKIX revocation checking is enabled and
-     * strict — certificate chain validation will fail if a certificate is revoked or if
-     * the revocation status cannot be determined (CRL/OCSP unavailable).
+     * @deprecated Use [pkixRevocationPolicy] instead. This method maps to
+     *   [PkixRevocationPolicy.Disabled]. For granular control, use
+     *   `pkixRevocationPolicy(PkixRevocationPolicy.CRLOnly)` or other policies.
      */
+    @Deprecated(
+        message = "Use pkixRevocationPolicy(PkixRevocationPolicy.Disabled) instead",
+        replaceWith = ReplaceWith("pkixRevocationPolicy(PkixRevocationPolicy.Disabled)")
+    )
     fun relaxPkixRevocation() {
-        this.relaxPkixRevocation = true
+        this.pkixRevocationPolicy = PkixRevocationPolicy.Disabled
+    }
+
+    /**
+     * Sets the PKIX revocation checking policy for certificate chain validation.
+     *
+     * Controls how CRL and OCSP revocation data is fetched and validated during
+     * ETSI LoTE trust anchor provisioning.
+     *
+     * **IMPORTANT**: Android blocks HTTP URLs for CRL/OCSP endpoints. Only HTTPS
+     * endpoints are supported. Certificate chains with HTTP-only revocation endpoints
+     * will fail validation unless [PkixRevocationPolicy.Disabled] or
+     * [PkixRevocationPolicy.SoftFail] policies are used.
+     *
+     * @param policy the revocation checking policy (default: [PkixRevocationPolicy.CRLPriority])
+     *
+     * Available policies:
+     * - [PkixRevocationPolicy.Disabled] - No revocation checking
+     * - [PkixRevocationPolicy.SoftFail] - OCSP→CRL, tolerate unavailable
+     * - [PkixRevocationPolicy.CRLPriority] - CRL→OCSP fallback (default)
+     * - [PkixRevocationPolicy.CRLOnly] - CRL only, no OCSP
+     * - [PkixRevocationPolicy.OCSPPriority] - OCSP→CRL fallback (Java default)
+     */
+    fun pkixRevocationPolicy(policy: PkixRevocationPolicy) {
+        this.pkixRevocationPolicy = policy
     }
 
     /**
@@ -208,7 +233,7 @@ class EtsiTrustConfigBuilder {
             fileCacheExpiration = fileCacheExpiration,
             cacheTtl = cacheTtl,
             relaxCertificateProfiles = relaxCertificateProfiles,
-            relaxPkixRevocation = relaxPkixRevocation,
+            pkixRevocationPolicy = pkixRevocationPolicy,
             customJwtSignatureVerifier = customJwtSignatureVerifier,
             loteConstraints = loteConstraints,
         )

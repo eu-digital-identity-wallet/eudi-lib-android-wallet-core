@@ -45,7 +45,7 @@ test-runner = "1.6.2"
 testng = "7.11.0"
 upokecenter-cbor = "4.5.6"
 zxing-core = "3.5.3"
-eudi-lib-kmp-etsi1196x2="0.4.0-alpha.3"
+eudi-lib-kmp-etsi1196x2="0.4.0-alpha.4"
 
 [libraries]
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidx-credentials" }
