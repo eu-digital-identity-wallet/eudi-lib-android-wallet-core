@@ -349,7 +349,7 @@ class EudiWalletConfig {
      *
      * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
      * during trust path validation. The default is [RevocationPolicy.HardFail].
-     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `pkixRevocationPolicy(...)` instead.
      *
      * Example:
      * ```
@@ -382,7 +382,7 @@ class EudiWalletConfig {
      *
      * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
      * during trust path validation. The default is [RevocationPolicy.HardFail].
-     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `pkixRevocationPolicy(...)` instead.
      *
      * Example:
      * ```
@@ -414,7 +414,7 @@ class EudiWalletConfig {
      *
      * The [revocationPolicy] controls certificate revocation checking (CRL/OCSP)
      * during trust path validation. The default is [RevocationPolicy.HardFail].
-     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `relaxPkixRevocation()` instead.
+     * For ETSI/LoTE-based trust, use [configureEtsiTrust] with `pkixRevocationPolicy(...)` instead.
      *
      * Example:
      * ```
@@ -643,7 +643,7 @@ class EudiWalletConfig {
      * This applies only when the [ReaderTrustStore] is built from static trusted
      * certificates (via [configureReaderTrustStore] with certificate lists or raw
      * resources). ETSI/LoTE-based trust stores handle revocation internally via
-     * [configureEtsiTrust] with `relaxPkixRevocation()`.
+     * [configureEtsiTrust] with `pkixRevocationPolicy(...)`.
      *
      * Set this through the `revocationPolicy` parameter of the certificate-based
      * [configureReaderTrustStore] overloads.

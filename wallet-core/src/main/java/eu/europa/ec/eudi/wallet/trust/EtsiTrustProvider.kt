@@ -33,8 +33,10 @@ import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.HttpClient
 import kotlinx.io.files.Path
+import java.security.cert.PKIXRevocationChecker
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
+import java.util.EnumSet
 
 /**
  * Internal provider that constructs the full ETSI LoTE trust pipeline from an [EtsiTrustConfig].
@@ -106,19 +108,19 @@ internal class EtsiTrustProvider(
                 customization = { isRevocationEnabled = false }
             )
             PkixRevocationPolicy.SoftFail -> ValidateCertificateChainUsingPKIXJvm.withRevocationChecker {
-                options = java.util.EnumSet.of(
-                    java.security.cert.PKIXRevocationChecker.Option.SOFT_FAIL
+                options = EnumSet.of(
+                    PKIXRevocationChecker.Option.PREFER_CRLS,
+                    PKIXRevocationChecker.Option.NO_FALLBACK,
+                    PKIXRevocationChecker.Option.SOFT_FAIL
                 )
             }
             PkixRevocationPolicy.CRLPriority -> ValidateCertificateChainUsingPKIXJvm.withRevocationChecker {
-                options = java.util.EnumSet.of(
-                    java.security.cert.PKIXRevocationChecker.Option.PREFER_CRLS
-                )
+                options = EnumSet.of(PKIXRevocationChecker.Option.PREFER_CRLS)
             }
             PkixRevocationPolicy.CRLOnly -> ValidateCertificateChainUsingPKIXJvm.withRevocationChecker {
-                options = java.util.EnumSet.of(
-                    java.security.cert.PKIXRevocationChecker.Option.PREFER_CRLS,
-                    java.security.cert.PKIXRevocationChecker.Option.NO_FALLBACK
+                options = EnumSet.of(
+                    PKIXRevocationChecker.Option.PREFER_CRLS,
+                    PKIXRevocationChecker.Option.NO_FALLBACK
                 )
             }
             PkixRevocationPolicy.OCSPPriority -> ValidateCertificateChainUsingPKIXJvm.withRevocationChecker {

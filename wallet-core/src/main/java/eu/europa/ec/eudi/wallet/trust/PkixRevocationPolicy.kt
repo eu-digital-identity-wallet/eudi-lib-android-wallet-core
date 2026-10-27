@@ -22,9 +22,7 @@ package eu.europa.ec.eudi.wallet.trust
  * that control how CRL and OCSP revocation data is fetched and validated during
  * certificate chain verification.
  *
- * **IMPORTANT**: Android blocks HTTP URLs for CRL/OCSP endpoints. Only HTTPS endpoints
- * are supported. Certificate chains with HTTP-only revocation endpoints will fail
- * validation unless [Disabled] or [SoftFail] policies are used.
+ * **IMPORTANT**: Only HTTPS CRL/OCSP endpoints are supported. HTTP endpoints are not supported.
  */
 enum class PkixRevocationPolicy {
     /**
@@ -35,15 +33,11 @@ enum class PkixRevocationPolicy {
     Disabled,
 
     /**
-     * Enables revocation checking with OCSP primary, CRL fallback, tolerating
-     * unavailable revocation data.
+     * Enables revocation checking with CRL only, no OCSP fallback, allowing the revocation
+     * check to succeed if the CRL cannot be obtained because of a network error.
+     * A revoked certificate is still rejected.
      *
-     * Maps to: `PKIXRevocationChecker.Option.SOFT_FAIL`
-     *
-     * Validation succeeds even when:
-     * - OCSP responder is unreachable
-     * - CRL distribution point is unreachable
-     * - Certificate lacks revocation endpoints
+     * Maps to: `PKIXRevocationChecker.Option.PREFER_CRLS + NO_FALLBACK + SOFT_FAIL`
      */
     SoftFail,
 
