@@ -806,7 +806,7 @@ val config = EudiWalletConfig {
         fileCacheExpiration(24.hours)    // how long LoTE files are cached on disk
         cacheTtl(20.minutes)             // how long trust anchors are cached in memory
         relaxCertificateProfiles()       // strip endEntityProfile constraints (DEV/testing)
-        relaxPkixRevocation()            // disable PKIX revocation checks (DEV/testing)
+        // pkixRevocationPolicy(PkixRevocationPolicy.CRLPriority)  // default if omitted
         // jwtSignatureVerifier(custom)  // override built-in JWT verifier
         // loteConstraints(...)          // control LoTE pointer following
     }
@@ -835,10 +835,34 @@ val config = EudiWalletConfig {
 >
 > **DEV/Testing knobs:** `relaxCertificateProfiles()` strips `endEntityProfile` constraints
 > from all provider types, useful when DEV certificates don't fully conform to ETSI profile
-> requirements. `relaxPkixRevocation()` disables CRL/OCSP revocation checks when endpoints
-> are not available in the test environment. When `relaxPkixRevocation()` is **not** called,
-> PKIX revocation checking is enabled and strict — certificate chain validation will fail if
-> a certificate is revoked or if the revocation status cannot be determined.
+> requirements.
+>
+> **PKIX Revocation Policy:** Controls how CRL and OCSP revocation data is validated during
+> certificate chain verification. **When `pkixRevocationPolicy()` is not explicitly called,
+> the default is `PkixRevocationPolicy.CRLPriority`.** Available policies:
+>
+> - **`PkixRevocationPolicy.CRLPriority`** (default) — CRL primary, OCSP fallback.
+>   Attempts CRL first; if CRL fetch succeeds, uses CRL. If CRL fetch fails, falls back to
+>   OCSP. If both fail, validation fails.
+>
+> - **`PkixRevocationPolicy.CRLOnly`** — CRL only, no OCSP fallback.
+>   Only uses Certificate Revocation Lists (CRL) for revocation checking. If CRL fetch fails,
+>   validation fails (no OCSP fallback).
+>
+> - **`PkixRevocationPolicy.OCSPPriority`** — OCSP primary, CRL fallback.
+>   Java's default behavior. Attempts OCSP first; if OCSP succeeds, uses OCSP. If OCSP fails,
+>   falls back to CRL. If both fail, validation fails.
+>
+> - **`PkixRevocationPolicy.SoftFail`** — OCSP primary, CRL fallback, tolerate unavailable.
+>   Validation succeeds even when OCSP/CRL endpoints are unreachable or certificates lack
+>   revocation endpoints.
+>
+> - **`PkixRevocationPolicy.Disabled`** — No revocation checking.
+>   Equivalent to deprecated `relaxPkixRevocation()`.
+>
+> **IMPORTANT:** Android blocks HTTP URLs for CRL/OCSP endpoints. Only HTTPS endpoints are
+> supported. Certificate chains with HTTP-only revocation endpoints will fail validation unless
+> `Disabled` or `SoftFail` policies are used.
 
 #### Advanced: Manual Trust Anchor Resolution (LoTE)
 
@@ -1190,8 +1214,9 @@ The available revocation policies are:
 > **Note:** `RevocationPolicy` only applies to the static certificate-based
 > `trustedCertificates()` overloads and to `configureWrpRegistrationTrust` /
 > `configureIssuerRegistrationTrust`. When using ETSI/LoTE-based trust (via
-> `configureEtsiTrust`), revocation checking is controlled by `relaxPkixRevocation()` inside
-> the `configureEtsiTrust` block instead.
+> `configureEtsiTrust`), revocation checking is controlled by `pkixRevocationPolicy()` inside
+> the `configureEtsiTrust` block instead. See [Trusted Lists](#trusted-lists) for details on
+> `PkixRevocationPolicy` options.
 
 For advanced use cases requiring a specific verification context, create an
 `EtsiReaderTrustStore` explicitly and pass it as a custom trust source:
@@ -1253,7 +1278,7 @@ val config = EudiWalletConfig {
         ))
         // DEV/testing relaxations (omit in production):
         // relaxCertificateProfiles()
-        // relaxPkixRevocation()
+        // pkixRevocationPolicy(PkixRevocationPolicy.Disabled)  // or SoftFail for testing
     }
 
     // Issuer trust — trust source + classifications inherited from configureEtsiTrust
