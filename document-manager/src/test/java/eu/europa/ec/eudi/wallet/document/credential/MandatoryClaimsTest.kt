@@ -20,7 +20,14 @@ import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
 import eu.europa.ec.eudi.wallet.document.getResourceAsText
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.document.NameSpacedData
 import kotlin.test.Test
@@ -59,8 +66,34 @@ class MandatoryClaimsTest {
     }
 
     @Test
-    fun sdJwtIgnoresNestedPaths() {
-        assertTrue(sdJwtClaims.missingMandatoryClaims(listOf(listOf("address", "not_issued"))).isEmpty())
+    fun sdJwtNestedPathInObjectPasses() {
+        val paths = listOf(listOf("address", "street_address"))
+        assertTrue(sdJwtClaims.missingMandatoryClaims(paths).isEmpty())
+    }
+
+    @Test
+    fun sdJwtNestedPathMissingInObjectFails() {
+        val paths = listOf(listOf("address", "not_issued"))
+        assertEquals(paths, sdJwtClaims.missingMandatoryClaims(paths))
+    }
+
+    @Test
+    fun sdJwtNestedPathBelowPrimitiveFails() {
+        val paths = listOf(listOf("family_name", "first"))
+        assertEquals(paths, sdJwtClaims.missingMandatoryClaims(paths))
+    }
+
+    @Test
+    fun sdJwtNestedPathSelectsAllArrayElements() {
+        val claims = buildJsonObject {
+            putJsonArray("nationalities") {
+                addJsonObject { put("country_code", "NL") }
+                addJsonObject { put("name", "Netherlands") }
+            }
+        }
+        val present = listOf("nationalities", "country_code")
+        val missing = listOf("nationalities", "region")
+        assertEquals(listOf(missing), claims.missingMandatoryClaims(listOf(present, missing)))
     }
 
     @Test
@@ -85,5 +118,57 @@ class MandatoryClaimsTest {
             paths,
             NameSpacedData.fromIssuerProvidedData(withoutNameSpaces).missingMandatoryClaims(paths),
         )
+    }
+
+    private val nestedMdocData: NameSpacedData
+        get() = NameSpacedData.Builder()
+            .putEntry(pidNameSpace, "family_name", Cbor.encode(Tstr("Doe")))
+            .putEntry(pidNameSpace, "place_of_birth", Cbor.encode(buildCborMap {
+                put("country", "NL")
+            }))
+            .putEntry(pidNameSpace, "nationalities", Cbor.encode(buildCborArray {
+                add(buildCborMap { put("country_code", "NL") })
+                add(buildCborMap { put("name", "Netherlands") })
+            }))
+            .putEntry(pidNameSpace, "birth_date", Cbor.encode(Tagged(1004, buildCborMap {
+                put("year", 1990)
+            })))
+            .build()
+
+    @Test
+    fun mdocNestedPathInMapPasses() {
+        val paths = listOf(listOf(pidNameSpace, "place_of_birth", "country"))
+        assertTrue(nestedMdocData.missingMandatoryClaims(paths).isEmpty())
+    }
+
+    @Test
+    fun mdocNestedPathMissingInMapFails() {
+        val paths = listOf(listOf(pidNameSpace, "place_of_birth", "locality"))
+        assertEquals(paths, nestedMdocData.missingMandatoryClaims(paths))
+    }
+
+    @Test
+    fun mdocNestedPathSelectsAllArrayElements() {
+        val present = listOf(pidNameSpace, "nationalities", "country_code")
+        val missing = listOf(pidNameSpace, "nationalities", "region")
+        assertEquals(listOf(missing), nestedMdocData.missingMandatoryClaims(listOf(present, missing)))
+    }
+
+    @Test
+    fun mdocNestedPathBelowPrimitiveFails() {
+        val paths = listOf(listOf(pidNameSpace, "family_name", "first"))
+        assertEquals(paths, nestedMdocData.missingMandatoryClaims(paths))
+    }
+
+    @Test
+    fun mdocNestedPathInTaggedValuePasses() {
+        val paths = listOf(listOf(pidNameSpace, "birth_date", "year"))
+        assertTrue(nestedMdocData.missingMandatoryClaims(paths).isEmpty())
+    }
+
+    @Test
+    fun mdocNestedPathUnderMissingElementFails() {
+        val paths = listOf(listOf(pidNameSpace, "address", "street"))
+        assertEquals(paths, nestedMdocData.missingMandatoryClaims(paths))
     }
 }
