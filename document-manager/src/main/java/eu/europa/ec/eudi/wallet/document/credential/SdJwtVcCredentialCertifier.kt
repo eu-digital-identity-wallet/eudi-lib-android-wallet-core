@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.document.credential
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.KeyConverter
 import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps
+import eu.europa.ec.eudi.sdjwt.DefaultSdJwtOps.recreateClaimsAndDisclosuresPerClaim
 import eu.europa.ec.eudi.wallet.document.internal.sdJwtVcString
 import io.ktor.client.HttpClient
 import kotlinx.io.bytestring.ByteString
@@ -46,8 +47,11 @@ import kotlin.time.Instant
  * - Presence of the `cnf` (confirmation) claim with a `jwk` key
  * - Device public key binding: the key in the `cnf` claim must match the credential's key
  * - Extraction of validity period from `nbf`/`iat` and `exp` claims
+ * - Presence of the top-level claims that the issuer marks as mandatory
  */
-class SdJwtVcCredentialCertifier : CredentialCertification {
+class SdJwtVcCredentialCertifier(
+    private val mandatoryClaims: List<List<String>> = emptyList(),
+) : CredentialCertification {
     override suspend fun certifyCredential(
         credential: SecureAreaBoundCredential,
         issuedCredential: IssuerProvidedCredential,
@@ -56,6 +60,12 @@ class SdJwtVcCredentialCertifier : CredentialCertification {
 
         val sdJwt = DefaultSdJwtOps.unverifiedIssuanceFrom(data.sdJwtVcString).getOrElse {
             throw IllegalArgumentException("Invalid SD-JWT VC", it)
+        }
+
+        if (mandatoryClaims.isNotEmpty()) {
+            val (recreatedClaims, _) = sdJwt.recreateClaimsAndDisclosuresPerClaim()
+            val missing = recreatedClaims.missingMandatoryClaims(mandatoryClaims)
+            if (missing.isNotEmpty()) throw MissingMandatoryClaimsException(missing)
         }
 
         val (_, claims) = sdJwt.jwt

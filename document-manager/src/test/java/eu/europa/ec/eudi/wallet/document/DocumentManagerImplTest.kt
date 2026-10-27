@@ -17,7 +17,9 @@
 package eu.europa.ec.eudi.wallet.document
 
 import eu.europa.ec.eudi.wallet.document.credential.IssuerProvidedCredential
+import eu.europa.ec.eudi.wallet.document.credential.MissingMandatoryClaimsException
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
@@ -142,6 +144,43 @@ class DocumentManagerImplTest {
         // The specific exception for a key mismatch might be more specific,
         // but IllegalArgumentException is a common fallback.
         assertIs<IllegalArgumentException>(storeDocumentResult.exceptionOrNull())
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    @Test
+    fun `should return failure result when issued document misses mandatory claims`() {
+        val nameSpace = "eu.europa.ec.eudi.pid.1"
+        val issuerMetadata = IssuerMetadata(
+            documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+            display = emptyList(),
+            claims = listOf(
+                IssuerMetadata.Claim(path = listOf(nameSpace, "family_name"), mandatory = true),
+                IssuerMetadata.Claim(path = listOf(nameSpace, "not_issued"), mandatory = true),
+                IssuerMetadata.Claim(path = listOf(nameSpace, "also_not_issued"), mandatory = false),
+            ),
+            credentialIssuerIdentifier = "https://issuer.example.com",
+            issuerDisplay = null,
+        )
+        val unsignedDocument = documentManager.createDocument(
+            format = MsoMdocFormat(docType = nameSpace),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            ),
+            issuerMetadata = issuerMetadata,
+        ).getOrThrow()
+        val issuerData = getResourceAsText("eu_pid.hex").hexToByteArray(HexFormat.Default)
+        val issuerProvidedCredentials = runBlocking {
+            unsignedDocument.baseDocument.getPendingCredentials()
+                .filterIsInstance<SecureAreaBoundCredential>()
+                .map { IssuerProvidedCredential(publicKeyAlias = it.alias, data = issuerData) }
+        }
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        val error = assertIs<MissingMandatoryClaimsException>(storeDocumentResult.exceptionOrNull())
+        assertEquals(listOf(listOf(nameSpace, "not_issued")), error.claims)
     }
 
     @Test

@@ -23,14 +23,21 @@ import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.wallet.document.internal.getEmbeddedCBORObject
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.document.NameSpacedData
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 
-class MsoMdocCredentialCertifier() : CredentialCertification {
+class MsoMdocCredentialCertifier(
+    private val mandatoryClaims: List<List<String>> = emptyList(),
+) : CredentialCertification {
     override suspend fun certifyCredential(
         credential: SecureAreaBoundCredential,
         issuedCredential: IssuerProvidedCredential,
     ) {
         val data = issuedCredential.data
+        if (mandatoryClaims.isNotEmpty()) {
+            val missing = NameSpacedData.fromIssuerProvidedData(data).missingMandatoryClaims(mandatoryClaims)
+            if (missing.isNotEmpty()) throw MissingMandatoryClaimsException(missing)
+        }
         val issuerSigned = CBORObject.DecodeFromBytes(data)
         val issuerAuthBytes = issuerSigned["issuerAuth"].EncodeToBytes()
         val issuerAuth =
