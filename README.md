@@ -853,16 +853,14 @@ val config = EudiWalletConfig {
 >   Java's default behavior. Attempts OCSP first; if OCSP succeeds, uses OCSP. If OCSP fails,
 >   falls back to CRL. If both fail, validation fails.
 >
-> - **`PkixRevocationPolicy.SoftFail`** — OCSP primary, CRL fallback, tolerate unavailable.
->   Validation succeeds even when OCSP/CRL endpoints are unreachable or certificates lack
->   revocation endpoints.
+> - **`PkixRevocationPolicy.SoftFail`** — CRL only, no OCSP fallback, tolerating network
+>   errors. The revocation check succeeds if the CRL cannot be obtained because of a network
+>   error. A revoked certificate is still rejected.
 >
 > - **`PkixRevocationPolicy.Disabled`** — No revocation checking.
 >   Equivalent to deprecated `relaxPkixRevocation()`.
 >
-> **IMPORTANT:** Android blocks HTTP URLs for CRL/OCSP endpoints. Only HTTPS endpoints are
-> supported. Certificate chains with HTTP-only revocation endpoints will fail validation unless
-> `Disabled` or `SoftFail` policies are used.
+> **IMPORTANT:** Only HTTPS CRL/OCSP endpoints are supported. HTTP endpoints are not supported.
 
 #### Advanced: Manual Trust Anchor Resolution (LoTE)
 

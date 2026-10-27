@@ -156,9 +156,7 @@ class EtsiTrustConfigBuilder {
     /**
      * Disables PKIX revocation checking during certificate chain validation.
      *
-     * @deprecated Use [pkixRevocationPolicy] instead. This method maps to
-     *   [PkixRevocationPolicy.Disabled]. For granular control, use
-     *   `pkixRevocationPolicy(PkixRevocationPolicy.CRLOnly)` or other policies.
+     * Equivalent to `pkixRevocationPolicy(PkixRevocationPolicy.Disabled)`.
      */
     @Deprecated(
         message = "Use pkixRevocationPolicy(PkixRevocationPolicy.Disabled) instead",
@@ -174,19 +172,17 @@ class EtsiTrustConfigBuilder {
      * Controls how CRL and OCSP revocation data is fetched and validated during
      * ETSI LoTE trust anchor provisioning.
      *
-     * **IMPORTANT**: Android blocks HTTP URLs for CRL/OCSP endpoints. Only HTTPS
-     * endpoints are supported. Certificate chains with HTTP-only revocation endpoints
-     * will fail validation unless [PkixRevocationPolicy.Disabled] or
-     * [PkixRevocationPolicy.SoftFail] policies are used.
-     *
-     * @param policy the revocation checking policy (default: [PkixRevocationPolicy.CRLPriority])
+     * **IMPORTANT**: Only HTTPS CRL/OCSP endpoints are supported. HTTP endpoints are
+     * not supported.
      *
      * Available policies:
      * - [PkixRevocationPolicy.Disabled] - No revocation checking
-     * - [PkixRevocationPolicy.SoftFail] - OCSP→CRL, tolerate unavailable
+     * - [PkixRevocationPolicy.SoftFail] - CRL only, no OCSP, tolerate network errors
      * - [PkixRevocationPolicy.CRLPriority] - CRL→OCSP fallback (default)
      * - [PkixRevocationPolicy.CRLOnly] - CRL only, no OCSP
      * - [PkixRevocationPolicy.OCSPPriority] - OCSP→CRL fallback (Java default)
+     *
+     * @param policy the revocation checking policy (default: [PkixRevocationPolicy.CRLPriority])
      */
     fun pkixRevocationPolicy(policy: PkixRevocationPolicy) {
         this.pkixRevocationPolicy = policy
