@@ -28,15 +28,22 @@ import org.multipaz.cose.toCoseLabel
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
+import org.multipaz.document.NameSpacedData
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 
-class MsoMdocCredentialCertifier() : CredentialCertification {
+class MsoMdocCredentialCertifier(
+    private val mandatoryClaims: List<List<String>> = emptyList(),
+) : CredentialCertification {
     override suspend fun certifyCredential(
         credential: SecureAreaBoundCredential,
         issuedCredential: IssuerProvidedCredential,
     ) {
         val data = issuedCredential.data
+        if (mandatoryClaims.isNotEmpty()) {
+            val missing = NameSpacedData.fromIssuerProvidedData(data).missingMandatoryClaims(mandatoryClaims)
+            if (missing.isNotEmpty()) throw MissingMandatoryClaimsException(missing)
+        }
         val issuerSigned = CBORObject.DecodeFromBytes(data)
         val issuerAuthBytes = issuerSigned["issuerAuth"].EncodeToBytes()
 

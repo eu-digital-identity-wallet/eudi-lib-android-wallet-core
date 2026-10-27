@@ -27,8 +27,10 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.upokecenter.cbor.CBORObject
 import eu.europa.ec.eudi.wallet.document.credential.IssuerProvidedCredential
+import eu.europa.ec.eudi.wallet.document.credential.MissingMandatoryClaimsException
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.document.sample.generateData
 import eu.europa.ec.eudi.wallet.document.sample.generateMso
 import eu.europa.ec.eudi.wallet.document.sample.issuerCertificate
@@ -394,6 +396,43 @@ class DocumentManagerImplTest {
     private fun sdJwt(payload: String): String {
         fun String.base64Url() = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(toByteArray())
         return """{"alg":"ES256","typ":"dc+sd-jwt"}""".base64Url() + "." + payload.base64Url() + ".c2lnbmF0dXJl~"
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    @Test
+    fun `should return failure result when issued document misses mandatory claims`() {
+        val nameSpace = "eu.europa.ec.eudi.pid.1"
+        val issuerMetadata = IssuerMetadata(
+            documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+            display = emptyList(),
+            claims = listOf(
+                IssuerMetadata.Claim(path = listOf(nameSpace, "family_name"), mandatory = true),
+                IssuerMetadata.Claim(path = listOf(nameSpace, "not_issued"), mandatory = true),
+                IssuerMetadata.Claim(path = listOf(nameSpace, "also_not_issued"), mandatory = false),
+            ),
+            credentialIssuerIdentifier = "https://issuer.example.com",
+            issuerDisplay = null,
+        )
+        val unsignedDocument = documentManager.createDocument(
+            format = MsoMdocFormat(docType = nameSpace),
+            createSettings = CreateDocumentSettings(
+                secureAreaIdentifier = secureArea.identifier,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            ),
+            issuerMetadata = issuerMetadata,
+        ).getOrThrow()
+        val issuerData = getResourceAsText("eu_pid.hex").hexToByteArray(HexFormat.Default)
+        val issuerProvidedCredentials = runBlocking {
+            unsignedDocument.getPoPSigners().map {
+                IssuerProvidedCredential(publicKeyAlias = it.getKeyInfo().alias, data = issuerData)
+            }
+        }
+
+        val storeDocumentResult =
+            documentManager.storeIssuedDocument(unsignedDocument, issuerProvidedCredentials)
+
+        val error = assertIs<MissingMandatoryClaimsException>(storeDocumentResult.exceptionOrNull())
+        assertEquals(listOf(listOf(nameSpace, "not_issued")), error.claims)
     }
 
     @Test
