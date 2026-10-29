@@ -1425,6 +1425,13 @@ __Important note__:
   the [CustomizeSecureArea.md](CustomizeSecureArea.md#how-to-use-custom-key-management-with-openid4vci)
   for more information on how to use the wallet-core library and OpenId4VCI with custom SecureArea
   implementations.
+- A credential whose data is nested deeper than 64 levels is not stored, and the document fails
+  with `IssueEvent.DocumentFailed` (`DeferredIssueResult.DocumentFailed` for deferred issuance).
+  For details, see
+  [`CBORObjectExtensions.kt`](document-manager/src/main/java/eu/europa/ec/eudi/wallet/document/internal/CBORObjectExtensions.kt)
+  (mdoc) and
+  [`JsonElementExtensions.kt`](document-manager/src/main/java/eu/europa/ec/eudi/wallet/document/internal/JsonElementExtensions.kt)
+  (SD-JWT VC).
 
 The following example shows how to issue a document using OpenID4VCI:
 

@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.document
 import eu.europa.ec.eudi.wallet.document.credential.CredentialCertification
 import eu.europa.ec.eudi.wallet.document.credential.CredentialFactory
 import eu.europa.ec.eudi.wallet.document.credential.IssuerProvidedCredential
+import eu.europa.ec.eudi.wallet.document.format.DocumentData
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
@@ -248,6 +249,17 @@ class DocumentManagerImpl(
                 // check that for all credentials we have issuer provided data
                 require(issuerProvidedData.size == credentials.size) {
                     "Issuer provided data size (${issuerProvidedData.size}) does not match credentials size (${credentials.size})"
+                }
+
+                // A credential is stored only when the claims of its data can be read.
+                for (issuedCredential in issuerProvidedData) {
+                    try {
+                        DocumentData.make(unsignedDocument.format, issuedCredential.data, issuerMetadata = null).claims
+                    } catch (e: Exception) {
+                        throw IllegalArgumentException("The claims of the issuer provided data cannot be read", e)
+                    } catch (e: StackOverflowError) {
+                        throw IllegalArgumentException("The claims of the issuer provided data cannot be read", e)
+                    }
                 }
 
                 val credentialCertifier = CredentialCertification(unsignedDocument.format)
