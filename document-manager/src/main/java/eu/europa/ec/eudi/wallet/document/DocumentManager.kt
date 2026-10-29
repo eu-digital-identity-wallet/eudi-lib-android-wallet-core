@@ -126,6 +126,7 @@ interface DocumentManager {
      * This method finalizes the document issuance process by storing the document along with
      * the issuer-provided credentials. It completes the document lifecycle from unsigned to
      * fully issued status. The document becomes ready for use in verification scenarios.
+     * The document will only be stored if it's managed by this DocumentManager instance.
      *
      * The method performs the following key operations:
      * 1. Validates that the issuer-provided credentials match the document's pending credentials
@@ -150,6 +151,7 @@ interface DocumentManager {
      * This method is used when the document issuance process cannot be completed immediately
      * and requires additional steps or time to complete. It stores the unsigned document 
      * along with additional data needed to resume and complete the issuance process later.
+     * The document will only be stored if it's managed by this DocumentManager instance.
      *
      * Deferred issuance is useful in scenarios where:
      * - The issuer requires multi-step verification

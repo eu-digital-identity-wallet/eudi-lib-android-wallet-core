@@ -33,6 +33,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
 import org.jetbrains.annotations.VisibleForTesting
 import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.document.Document as IdentityDocument
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.storage.Storage
@@ -133,20 +134,26 @@ class DocumentManagerImpl(
     }
 
     /**
-     * Delete a document by its identifier.
+     * Delete a document by its identifier. Only a document managed by this document manager is deleted;
+     * a document of another document manager is reported as not found.
      *
      * @param documentId the identifier of the document
      * @return the result of the deletion. If successful, it will return a proof of deletion. If not, it will return an error.
      */
     override fun deleteDocumentById(documentId: DocumentId): Outcome<ProofOfDeletion?> {
         return runBlocking {
-            documentStore.lookupDocument(documentId)
-                ?.let { identityDocument ->
-                    val proofOfDeletion = null
-                    documentStore.deleteDocument(identityDocument.identifier)
-                    Outcome.success(proofOfDeletion)
-                }
-                ?: Outcome.failure(IllegalArgumentException("Document with $documentId not found"))
+            try {
+                documentStore.lookupDocument(documentId)
+                    ?.takeIf { identityDocument -> identityDocument.isManagedByThisManager() }
+                    ?.let { identityDocument ->
+                        val proofOfDeletion = null
+                        documentStore.deleteDocument(identityDocument.identifier)
+                        Outcome.success(proofOfDeletion)
+                    }
+                    ?: Outcome.failure(IllegalArgumentException("Document with $documentId not found"))
+            } catch (e: Throwable) {
+                Outcome.failure(e)
+            }
         }
     }
 
@@ -214,6 +221,8 @@ class DocumentManagerImpl(
 
     /**
      * Store an issued document. This method will store the document with its issuer provided data.
+     * Only a document managed by this document manager is stored; a document of another document manager
+     * is reported as not found.
      *
      * @param unsignedDocument the unsigned document
      * @param issuerProvidedData the issuer provided data
@@ -229,6 +238,9 @@ class DocumentManagerImpl(
                     "Issuer provided data cannot be empty"
                 }
                 val identityDocument = unsignedDocument.baseDocument
+                require(identityDocument.isManagedByThisManager()) {
+                    "Document with ${unsignedDocument.id} not found"
+                }
 
                 val credentials = identityDocument.getPendingCredentials()
                     .filterIsInstance<SecureAreaBoundCredential>()
@@ -261,8 +273,9 @@ class DocumentManagerImpl(
     }
 
     /**
-     * Store an unsigned document for deferred issuance. This method will store the document with the related
-     * to the issuance data.
+     * Store an unsigned document for deferred issuance. This method will store the document with the data
+     * related to the issuance. Only a document managed by this document manager is stored; a document of another
+     * document manager is reported as not found.
      *
      * @param unsignedDocument the unsigned document
      * @param relatedData the related data
@@ -275,6 +288,7 @@ class DocumentManagerImpl(
         return runBlocking {
             try {
                 val identityDocument = documentStore.lookupDocument(unsignedDocument.id)
+                    ?.takeIf { it.isManagedByThisManager() }
                     ?: throw IllegalArgumentException("Document with ${unsignedDocument.id} not found")
 
                 identityDocument.edit {
@@ -289,6 +303,13 @@ class DocumentManagerImpl(
             }
         }
     }
+
+    /**
+     * Whether this document is managed by this document manager. A document without a document manager ID
+     * is not.
+     */
+    private fun IdentityDocument.isManagedByThisManager(): Boolean =
+        runCatching { documentManagerId }.getOrNull() == this@DocumentManagerImpl.identifier
 
     companion object {
         private const val TAG = "DocumentManagerImpl"

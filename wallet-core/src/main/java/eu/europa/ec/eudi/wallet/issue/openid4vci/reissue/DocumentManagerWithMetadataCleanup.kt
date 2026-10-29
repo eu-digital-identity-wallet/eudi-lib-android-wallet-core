@@ -33,7 +33,8 @@ import org.multipaz.storage.Storage
  * issuance metadata when documents are deleted.
  *
  * This ensures that when the wallet-ui (or any caller) deletes a document via
- * [deleteDocumentById], the corresponding issuance metadata is also removed.
+ * [deleteDocumentById], the corresponding issuance metadata is also removed. When the document
+ * is not deleted, its issuance metadata is kept.
  *
  * @property delegate The delegate [DocumentManager] instance.
  * @property issuanceMetadataStorage The storage containing issuance metadata.
@@ -46,8 +47,8 @@ internal class DocumentManagerWithMetadataCleanup(
 ) : DocumentManager by delegate {
 
     override fun deleteDocumentById(documentId: DocumentId): Outcome<ProofOfDeletion?> {
-        return delegate.deleteDocumentById(documentId).also {
-            deleteIssuanceMetadata(documentId)
+        return delegate.deleteDocumentById(documentId).also { outcome ->
+            if (outcome.isSuccess) deleteIssuanceMetadata(documentId)
         }
     }
 
