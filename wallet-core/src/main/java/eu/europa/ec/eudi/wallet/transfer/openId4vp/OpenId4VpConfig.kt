@@ -18,7 +18,6 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
-import eu.europa.ec.eudi.openid4vp.ErrorDispatchPolicy
 import eu.europa.ec.eudi.openid4vp.HashAlgorithm
 import eu.europa.ec.eudi.openid4vp.ResponseMode
 import eu.europa.ec.eudi.wallet.internal.TRANSACTION_DATA_HASH_ALGORITHMS
@@ -109,7 +108,30 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      */
     val transactionDataTypes: List<TransactionDataType> = builder.transactionDataTypes
 
+    /**
+     * Policy deciding to which verifiers a protocol-level error response is sent when an
+     * authorization request is rejected.
+     */
     val errorDispatchPolicy: ErrorDispatchPolicy = builder.errorDispatchPolicy
+
+    /**
+     * Policy deciding to which verifiers the wallet sends a protocol-level error response
+     * (OpenID4VP section 8.5) when it rejects an authorization request.
+     */
+    enum class ErrorDispatchPolicy {
+
+        /**
+         * Errors are sent to every verifier, including verifiers that failed authentication.
+         * Useful to help relying parties debug their access certificate setup in
+         * non-production environments.
+         */
+        AllClients,
+
+        /**
+         * Errors are sent only to verifiers that were successfully authenticated.
+         */
+        OnlyAuthenticatedClients,
+    }
 
     /**
      * Policy enforcing constraints on the `response_mode` of an incoming request.
