@@ -273,9 +273,21 @@ internal fun makeOpenId4VPConfig(
         supportedClientIdPrefixes = supportedClientIdPrefixes,
         supportedTransactionDataTypes = config.transactionDataTypes.toSupportedTransactionDataTypes(),
         registrationCertificatePolicy = registrationCertificatePolicy,
-        errorDispatchPolicy = config.errorDispatchPolicy
+        errorDispatchPolicy = config.errorDispatchPolicy.toOpenId4VpErrorDispatchPolicy(),
     )
 }
+
+/**
+ * Maps the wallet's [OpenId4VpConfig.ErrorDispatchPolicy] to the policy of the OpenID4VP library.
+ */
+internal fun OpenId4VpConfig.ErrorDispatchPolicy.toOpenId4VpErrorDispatchPolicy(): eu.europa.ec.eudi.openid4vp.ErrorDispatchPolicy =
+    when (this) {
+        OpenId4VpConfig.ErrorDispatchPolicy.AllClients ->
+            eu.europa.ec.eudi.openid4vp.ErrorDispatchPolicy.AllClients
+
+        OpenId4VpConfig.ErrorDispatchPolicy.OnlyAuthenticatedClients ->
+            eu.europa.ec.eudi.openid4vp.ErrorDispatchPolicy.OnlyAuthenticatedClients
+    }
 
 /**
  * Extension function to get the session transcript bytes from a resolved OpenID4VP authorization request.
