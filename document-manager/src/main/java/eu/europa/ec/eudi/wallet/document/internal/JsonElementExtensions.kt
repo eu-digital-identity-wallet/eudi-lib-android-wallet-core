@@ -48,7 +48,9 @@ internal fun JsonElement.parse(): Any? {
 }
 
 private fun JsonElement.parse(depth: Int): Any? {
-    require(depth <= MAX_ISSUER_DATA_DEPTH) { "Issuer data exceeds the maximum nesting depth of $MAX_ISSUER_DATA_DEPTH" }
+    if (this is JsonArray || this is JsonObject) {
+        require(depth < MAX_ISSUER_DATA_DEPTH) { "Issuer data exceeds the maximum nesting depth of $MAX_ISSUER_DATA_DEPTH" }
+    }
     return when (this) {
         is JsonArray -> map { it.parse(depth + 1) }
         is JsonObject -> mapValues { (_, v) -> v.parse(depth + 1) }

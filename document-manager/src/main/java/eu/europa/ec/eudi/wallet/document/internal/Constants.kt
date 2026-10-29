@@ -21,7 +21,7 @@
 package eu.europa.ec.eudi.wallet.document.internal
 
 /**
- * The maximum nesting depth of issuer provided data, in CBOR and in JSON. In CBOR the depth
- * continues into the values embedded with tag 24.
+ * The maximum nesting depth of issuer provided data: the number of nested arrays, maps and values
+ * embedded with tag 24 in CBOR, and of nested arrays and objects in JSON.
  */
 internal const val MAX_ISSUER_DATA_DEPTH = 64

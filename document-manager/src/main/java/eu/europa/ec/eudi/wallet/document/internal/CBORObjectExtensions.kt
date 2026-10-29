@@ -83,11 +83,11 @@ private fun ByteArray.toObject(depth: Int): Any? {
  * - arrays (as Lists)
  * - maps (as Map associations)
  *
- * @param depth the nesting depth of this object, which continues into the values embedded with tag 24
+ * @param depth the number of arrays, maps and values embedded with tag 24 that contain this object
  * @return The CBORObject converted to an appropriate native Kotlin type.
  */
 private fun CBORObject.parse(depth: Int): Any? = when {
-    depth > MAX_ISSUER_DATA_DEPTH -> throw IllegalArgumentException("Issuer data exceeds the maximum nesting depth of $MAX_ISSUER_DATA_DEPTH")
+    isContainer() && depth >= MAX_ISSUER_DATA_DEPTH -> throw IllegalArgumentException("Issuer data exceeds the maximum nesting depth of $MAX_ISSUER_DATA_DEPTH")
     isNull -> null
     isTrue -> true
     isFalse -> false
@@ -109,4 +109,8 @@ private fun CBORObject.parse(depth: Int): Any? = when {
         else -> null
     }
 }
+
+/** Whether this object contains other values: an array, a map or a value embedded with tag 24. */
+private fun CBORObject.isContainer(): Boolean =
+    type == CBORType.Array || type == CBORType.Map || (type == CBORType.ByteString && HasMostOuterTag(24))
 
