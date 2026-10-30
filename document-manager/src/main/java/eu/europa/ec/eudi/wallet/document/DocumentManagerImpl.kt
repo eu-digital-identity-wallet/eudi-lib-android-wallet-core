@@ -239,7 +239,8 @@ class DocumentManagerImpl(
                     "Issuer provided data size (${issuerProvidedData.size}) does not match credentials size (${credentials.size})"
                 }
 
-                val credentialCertifier = CredentialCertification(unsignedDocument.format)
+                val credentialCertifier =
+                    CredentialCertification(unsignedDocument.format, unsignedDocument.issuerMetadata)
 
                 for (credential in credentials) {
                     credentialCertifier.certifyCredential(

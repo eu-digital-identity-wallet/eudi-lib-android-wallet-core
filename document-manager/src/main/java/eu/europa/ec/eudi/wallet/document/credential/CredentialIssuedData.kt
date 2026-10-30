@@ -95,8 +95,8 @@ inline fun <reified D : CredentialIssuedData> SecureAreaBoundCredential.getIssue
 fun NameSpacedData.Companion.fromIssuerProvidedData(issuerProvidedData: ByteArray): NameSpacedData {
     return NameSpacedData.Builder()
         .let { builder ->
-            Cbor.decode(issuerProvidedData)["nameSpaces"].asMap
-                .forEach { (nameSpace, dataElements) ->
+            Cbor.decode(issuerProvidedData).getOrNull("nameSpaces")?.asMap
+                ?.forEach { (nameSpace, dataElements) ->
                     dataElements.asArray.forEach { dataElement ->
                         val d =
                             dataElement.asTaggedEncodedCbor.asMap.mapKeys { it.key.asTstr }

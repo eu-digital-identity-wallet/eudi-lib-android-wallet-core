@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.document.credential.MissingMandatoryClaimsException
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DeferredContextFactory
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
@@ -197,5 +198,26 @@ class ProcessResponseTrustTest {
         val documentIssued = capturedEvent as IssueEvent.DocumentIssued
         assertEquals(notTrusted, documentIssued.issuerTrustResult)
         assertEquals(issuedDocument, documentIssued.document)
+    }
+
+    @Test
+    fun rejectsDocumentMissingMandatoryClaims() = runTest {
+        val missing = MissingMandatoryClaimsException(listOf(listOf("family_name")))
+        every {
+            documentManager.storeIssuedDocument(any(), any())
+        } returns Outcome.failure(missing)
+
+        val outcome = createOutcome()
+        var capturedEvent: IssueEvent? = null
+        val listener = OpenId4VciManager.OnResult<IssueEvent> { capturedEvent = it }
+
+        createProcessResponse(listener, config = null)
+            .processSubmittedRequest(unsignedDocument, listOf(keyAlias), outcome)
+
+        assertTrue("Expected DocumentFailed but got $capturedEvent",
+            capturedEvent is IssueEvent.DocumentFailed)
+        assertEquals(missing, (capturedEvent as IssueEvent.DocumentFailed).cause)
+        verify { documentManager.deleteDocumentById("unsigned-doc-id") }
+        assertTrue(issuedDocumentIds.isEmpty())
     }
 }
