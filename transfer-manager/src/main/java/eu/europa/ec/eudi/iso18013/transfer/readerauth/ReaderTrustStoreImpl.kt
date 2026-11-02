@@ -70,6 +70,11 @@ class ReaderTrustStoreImpl(
     override fun validateCertificationTrustPath(chainToDocumentSigner: List<X509Certificate>): Boolean {
         if (chainToDocumentSigner.isEmpty()) return false
 
+        val firstTrustedIndex = (1 until chainToDocumentSigner.size)
+            .firstOrNull { chainToDocumentSigner[it] in trustedCertificates }
+        val certificationPath =
+            firstTrustedIndex?.let { chainToDocumentSigner.take(it) } ?: chainToDocumentSigner
+
         return try {
             val certStore = CertStore.getInstance(
                 "Collection",
@@ -111,12 +116,12 @@ class ReaderTrustStoreImpl(
             }
 
             val certPath = CertificateFactory.getInstance("X.509")
-                .generateCertPath(chainToDocumentSigner)
+                .generateCertPath(certificationPath)
             val certPathValidationResult = validator
                 .validate(certPath, params) as PKIXCertPathValidatorResult
             val trustedRootCA = certPathValidationResult.trustAnchor.trustedCert
 
-            profileValidation.validate(chainToDocumentSigner, trustedRootCA)
+            profileValidation.validate(certificationPath, trustedRootCA)
         } catch (e: Exception) {
             when (e) {
                 is InvalidAlgorithmParameterException ->

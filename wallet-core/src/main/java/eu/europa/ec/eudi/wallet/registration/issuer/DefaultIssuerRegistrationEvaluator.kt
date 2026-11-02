@@ -44,13 +44,13 @@ import java.security.cert.X509Certificate
  *
  * @param isPid the classification deciding which offered attestations are PIDs, which selects the
  *   entitlement each one requires; defaults to classifying nothing as a PID
- * @param statusTrust trust for the status list token signer chain; when null only the token's own
- *   signature is checked, without establishing that its signer is a trusted status list provider
+ * @param statusTrust trust for the status list token signer chain; when null the revocation status is
+ *   not checked and the revocation check yields REVOCATION_STATUS_UNKNOWN
  * @param checkRevocation the revocation check; defaults to a status-list check
  */
 internal class DefaultIssuerRegistrationEvaluator(
     private val isPid: AttestationIdentifierPredicate = AttestationIdentifierPredicate.None,
-    statusTrust: CertificateTrust? = null,
+    internal val statusTrust: CertificateTrust? = null,
     private val logger: Logger? = null,
     httpClientFactory: (() -> HttpClient)? = null,
     private val checkRevocation: suspend (StatusReference) -> RevocationOutcome =

@@ -50,6 +50,7 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
+import eu.europa.ec.eudi.wallet.registration.RegistrationFailureReason
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import io.ktor.client.HttpClient
@@ -328,9 +329,8 @@ internal class DefaultOpenId4VciManager(
 
     /**
      * Evaluates the credential issuer's registration certificate for this offer and returns a copy
-     * carrying the outcome. Returns the offer unchanged when issuer registration validation is
-     * disabled, signed issuer metadata is not configured, or no trust is available for the
-     * certificate's signer chain.
+     * carrying the outcome; the outcome is null when issuer registration validation is disabled, signed
+     * issuer metadata is not required, or the evaluation could not be performed.
      */
     private suspend fun Offer.withIssuerRegistration(): Offer =
         copy(
@@ -342,10 +342,10 @@ internal class DefaultOpenId4VciManager(
 
     /**
      * Authenticates and evaluates the credential issuer's registration certificate for the given
-     * metadata and offered configurations. A success carries the validation verdict; a failure means
-     * no validation applied — signed issuer metadata is not required, no resolver is available, or the
-     * issuer published no registration certificate — or carries the underlying error when the
-     * resolution itself failed.
+     * metadata and offered configurations. A success carries the validation verdict, or
+     * [RegistrationFailureReason.CERTIFICATE_ABSENT] when the issuer published no registration
+     * certificate; a failure means no validation applied — signed issuer metadata is not required or
+     * no resolver is available — or carries the underlying error when the resolution itself failed.
      */
     private suspend fun evaluateIssuerRegistration(
         metadata: CredentialIssuerMetadata,
@@ -360,11 +360,7 @@ internal class DefaultOpenId4VciManager(
             resolver.resolve(metadata = metadata, offeredConfigurationIds = configurationIds)
         }.fold(
             onSuccess = { result ->
-                if (result == null) {
-                    Result.failure(IllegalStateException("issuer registration validation not applicable: issuer published no registration certificate"))
-                } else {
-                    Result.success(result)
-                }
+                Result.success(result ?: RegistrationCertificateResult.Failed(RegistrationFailureReason.CERTIFICATE_ABSENT))
             },
             onFailure = { error ->
                 logger?.e(TAG, "issuer registration resolution failed", error)

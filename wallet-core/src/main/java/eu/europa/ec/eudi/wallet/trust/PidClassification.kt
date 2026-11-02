@@ -18,13 +18,23 @@ package eu.europa.ec.eudi.wallet.trust
 
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationClassifications
 import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationIdentifierPredicate
+import eu.europa.ec.eudi.wallet.EudiWalletConfig
 
 /**
  * The classification deciding which attestations are PIDs, as configured for trust-area routing
- * (`configureEtsiTrust { classifications(...) }`). It is the single source of truth for the question,
- * so checks that treat PIDs differently from other attestations agree with the trust evaluation.
+ * (the `classifications(...)` of `configureIssuerTrust` or `configureEtsiTrust`). It is the single
+ * source of truth for the question, so checks that treat PIDs differently from other attestations
+ * agree with the trust evaluation.
  *
  * Absent configuration classifies nothing as a PID.
  */
 internal val AttestationClassifications?.pidClassification: AttestationIdentifierPredicate
     get() = this?.pids ?: AttestationIdentifierPredicate.None
+
+/**
+ * The classification deciding which attestations are PIDs when a credential issuer's registration is
+ * evaluated: that of the issuer trust configuration ([EudiWalletConfig.configureIssuerTrust]), else
+ * that of the ETSI trust configuration ([EudiWalletConfig.configureEtsiTrust]).
+ */
+internal val EudiWalletConfig.issuerRegistrationPidClassification: AttestationIdentifierPredicate
+    get() = (issuerTrustConfig?.classifications ?: etsiTrustConfig?.classifications).pidClassification

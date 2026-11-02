@@ -48,13 +48,13 @@ import java.security.cert.X509Certificate
  * corresponding [RegistrationFailureReason]; requested claims outside the registered scope are
  * reported as [RegistrationCertificateResult.Verified.overAskedClaims] on an otherwise verified result.
  *
- * @param statusTrust trust store for the status list token signer chain; when null only the token's
- *   own signature is checked, without establishing that its signer is a trusted status list provider
+ * @param statusTrust trust store for the status list token signer chain; when null the revocation
+ *   status is not checked and the revocation check yields REVOCATION_STATUS_UNKNOWN
  * @param checkRevocation the revocation check; defaults to a status-list check
  */
 
 internal class DefaultWrpRegistrationEvaluator(
-    statusTrust: CertificateTrust? = null,
+    internal val statusTrust: CertificateTrust? = null,
     private val logger: Logger? = null,
     httpClientFactory: (() -> HttpClient)? = null,
     private val checkRevocation: suspend (StatusReference) -> RevocationOutcome =
