@@ -21,8 +21,8 @@ package eu.europa.ec.eudi.wallet.registration.issuer
  * issuance.
  *
  * The registration certificate is carried in the signed issuer metadata, so [Enabled] validation
- * only runs when signed metadata is configured (via `configureIssuerTrust { requireSignedMetadata() }`);
- * otherwise it is silently skipped.
+ * only runs when signed metadata is required (`configureIssuerTrust`, whose default is
+ * `requireSignedMetadata()`); otherwise it is skipped.
  */
 enum class IssuerRegistrationPolicy {
     /** The issuer registration certificate is validated and its outcome surfaced (default). */

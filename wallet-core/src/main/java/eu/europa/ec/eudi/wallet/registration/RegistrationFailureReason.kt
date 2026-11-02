@@ -16,11 +16,15 @@
 package eu.europa.ec.eudi.wallet.registration
 
 /**
- * The reason a relying party's registration certificate could not be validated.
+ * The reason a registration certificate, of a relying party or a credential issuer, could not be
+ * validated.
  */
 enum class RegistrationFailureReason {
 
-    /** The request carried no registration certificate. */
+    /**
+     * No registration certificate was carried: the request carried none, or for a credential issuer
+     * the issuer metadata carries none.
+     */
     CERTIFICATE_ABSENT,
 
     /** The certificate is malformed and could not be parsed. */
@@ -44,7 +48,10 @@ enum class RegistrationFailureReason {
     /** The certificate's revocation status could not be determined. */
     REVOCATION_STATUS_UNKNOWN,
 
-    /** The certificate is not bound to the relying party that signed the request. */
+    /**
+     * The certificate is not bound to the entity's access certificate: the one that signed the request,
+     * or on issuance the one that signed the issuer metadata.
+     */
     NOT_BOUND_TO_REQUESTER,
 
     /**

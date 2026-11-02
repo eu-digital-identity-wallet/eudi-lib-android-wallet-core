@@ -45,6 +45,9 @@ val pidIssuerCerts: List<X509Certificate> = loadCertificates("pid-issuer-ca.pem"
 
 // Certificates of trusted verifiers / relying parties (WRPAC)
 val wrpacCerts: List<X509Certificate> = loadCertificates("verifier-ca.pem")
+
+// Certificates of trusted providers of registration certificates
+val registrarCerts: List<X509Certificate> = loadCertificates("registrar-ca.pem")
 ```
 
 ### Choose a certificate chain validator
@@ -128,6 +131,10 @@ config = EudiWalletConfig {
         enforceIfPresent()
         revocationPolicy(RevocationPolicy.HardFail)
     }
+
+    // registration certificates; see REGISTRATION_CERTIFICATE.md
+    configureWrpRegistrationTrust(registrarCerts)
+    configureIssuerRegistrationTrust(registrarCerts)
 }
 ```
 
