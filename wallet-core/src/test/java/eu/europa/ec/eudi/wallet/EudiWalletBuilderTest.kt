@@ -27,6 +27,9 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.KeyProtectionPolicy
+import eu.europa.ec.eudi.wallet.document.KeyProtectionState
+import eu.europa.ec.eudi.wallet.document.KeyProtectionUnsupportedException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMetadataCleanup
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
@@ -637,14 +640,50 @@ class EudiWalletBuilderTest {
         assertIs<EudiWalletImpl>(builder(config).build())
     }
 
-    private fun builder(config: EudiWalletConfig): EudiWallet.Builder {
+    @Test
+    fun `build fails when user authentication is required and the device is not secured`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { doNotEnforce() }
+            .configureIssuerTrust { doNotVerify() }
+            .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
+
+        val error = assertFailsWith<KeyProtectionUnsupportedException> {
+            builder(config, secureLockScreenSetup = false).build()
+        }
+
+        assertEquals(KeyProtectionUnsupportedException.Protection.UserAuthentication, error.protection)
+    }
+
+    @Test
+    fun `build exposes the key protections that apply without changing the configuration`() {
+        val config = EudiWalletConfig()
+            .configureReaderAuthentication { doNotEnforce() }
+            .configureIssuerTrust { doNotVerify() }
+            .configureWrpRegistrationPolicy(WrpRegistrationPolicy.Disabled)
+
+        val wallet = builder(config, strongBoxSupported = false)
+            .withLogger(Logger { })
+            .build()
+
+        assertEquals(
+            KeyProtectionState(userAuthenticationRequired = true, useStrongBox = false),
+            wallet.keyProtectionState,
+        )
+        assertEquals(KeyProtectionPolicy.IfSupported, config.strongBoxPolicy)
+    }
+
+    private fun builder(
+        config: EudiWalletConfig,
+        secureLockScreenSetup: Boolean = true,
+        strongBoxSupported: Boolean = true,
+    ): EudiWallet.Builder {
         val context: Context = mockk {
             every { applicationContext } returns this
             every { noBackupFilesDir } returns File("no-backup")
         }
         val capabilities = mockk<AndroidKeystoreSecureArea.Capabilities> {
-            every { secureLockScreenSetup } returns true
-            every { strongBoxSupported } returns true
+            every { this@mockk.secureLockScreenSetup } returns secureLockScreenSetup
+            every { this@mockk.strongBoxSupported } returns strongBoxSupported
         }
         return spyk(EudiWallet.Builder(context, config, null)) {
             every { getDefaultDocumentManager(any(), any()) } returns mockk(relaxed = true)

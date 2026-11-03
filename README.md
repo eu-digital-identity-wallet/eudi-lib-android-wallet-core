@@ -225,13 +225,13 @@ val config = EudiWalletConfig()
     )
     // configure the built-in key creation settings
     .configureDocumentKeyCreation(
-        // set userAuthenticationRequired to true to require user authentication
-        userAuthenticationRequired = true,
+        // require user authentication; building the wallet fails if the device
+        // is not secured with a PIN, pattern or password
+        userAuthentication = KeyProtectionPolicy.Required,
+        // use the device's StrongBox if available to store the keys
+        strongBox = KeyProtectionPolicy.IfSupported,
         // set userAuthenticationTimeout to 30 seconds
-        userAuthenticationTimeout = 30_000.milliseconds,
-        // set useStrongBoxForKeys to true to use the device's StrongBox if available
-        // to store the keys
-        useStrongBoxForKeys = true
+        userAuthenticationTimeout = 30_000.milliseconds
     )
     .configureReaderAuthentication {
         // set the reader trusted certificates
@@ -324,6 +324,51 @@ val customWallet = EudiWallet(context, config) {
 
 See the [CustomizeSecureArea.md](CustomizeSecureArea.md) for more information on how to use the
 wallet-core library with custom SecureArea implementations.
+
+#### Document Key Protection
+
+`configureDocumentKeyCreation` sets a `KeyProtectionPolicy` for user authentication and for StrongBox.
+The policies apply to the keys that `getDefaultCreateKeySettings` and `getDefaultCreateDocumentSettings`
+create in `AndroidKeystoreSecureArea`. Keys in other secure areas (see
+[CustomizeSecureArea.md](CustomizeSecureArea.md)), or created with a `configure` block, use the
+settings given by the app.
+
+The device support is checked once, when the wallet is built, for the whole wallet:
+
+| Policy        | The device supports the protection | The device does not support it  |
+|---------------|------------------------------------|---------------------------------|
+| `Required`    | Applied                            | Building the wallet fails       |
+| `IfSupported` | Applied                            | The keys are created without it |
+| `Disabled`    | Not applied                        | Not applied                     |
+
+When building fails, the exception is a `KeyProtectionUnsupportedException`, whose `protection` is the
+protection that the device does not support (`UserAuthentication` or `StrongBox`):
+
+```kotlin
+val wallet = try {
+    EudiWallet(context, config)
+} catch (e: KeyProtectionUnsupportedException) {
+    when (e.protection) {
+        KeyProtectionUnsupportedException.Protection.UserAuthentication -> {
+            // ask the user to set up a screen lock
+        }
+        KeyProtectionUnsupportedException.Protection.StrongBox -> {
+            // the device cannot be used with this configuration
+        }
+    }
+    return
+}
+```
+
+The defaults are `Required` for user authentication and `IfSupported` for StrongBox. The protections
+that apply are in `wallet.keyProtectionState`:
+
+```kotlin
+val state = wallet.keyProtectionState
+if (!state.useStrongBox) {
+    // the keys are created outside StrongBox on this device
+}
+```
 
 #### Reader Authentication Policy
 

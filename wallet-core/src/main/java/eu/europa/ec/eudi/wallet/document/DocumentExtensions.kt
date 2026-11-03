@@ -134,19 +134,23 @@ object DocumentExtensions {
 
     /**
      * Returns the default secure area identifier and [CreateKeySettings] for the [EudiWallet] instance.
-     * The key settings are based on the [EudiWalletConfig] and use the [AndroidKeystoreSecureArea].
+     * The key settings are based on [EudiWallet.keyProtectionState] and the user authentication timeout
+     * in [EudiWalletConfig], and use the [AndroidKeystoreSecureArea].
      *
      * This is useful when handling [IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy],
      * where only key-related settings are needed and the credential policy is determined by
      * the issuer's reuse policy.
      *
      * The [attestationChallenge] is generated using a [SecureRandom] instance if not provided.
-     * The [configure] lambda can be used to further customize the [AndroidKeystoreCreateKeySettings].
+     * With a [configure] lambda, the lambda sets the key settings instead: [EudiWallet.keyProtectionState]
+     * and the user authentication timeout are not applied.
      *
      * @receiver The [EudiWallet] instance.
      * @param attestationChallenge The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated.
-     * @param configure A lambda to further customize the [AndroidKeystoreCreateKeySettings].
-     *                 If not provided, settings will use values from [EudiWalletConfig].
+     * @param configure A lambda that sets the [AndroidKeystoreCreateKeySettings] instead of
+     *                 [EudiWallet.keyProtectionState]; settings that it does not set keep the defaults of
+     *                 [AndroidKeystoreCreateKeySettings.Builder]. If not provided, settings will use
+     *                 [EudiWallet.keyProtectionState].
      * @return A [Pair] of the secure area identifier and [CreateKeySettings].
      * @see AndroidKeystoreCreateKeySettings.Builder
      * @see AndroidKeystoreSecureArea
@@ -167,9 +171,9 @@ object DocumentExtensions {
             AndroidKeystoreCreateKeySettings.Builder(ByteString(attestationChallengeToUse))
         val createKeySettings = when (configure) {
             null -> builder
-                .setUseStrongBox(config.useStrongBoxForKeys)
+                .setUseStrongBox(keyProtectionState.useStrongBox)
                 .setUserAuthenticationRequired(
-                    required = config.userAuthenticationRequired,
+                    required = keyProtectionState.userAuthenticationRequired,
                     timeout = config.userAuthenticationTimeout,
                     userAuthenticationTypes = setOf(
                         UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC
@@ -184,7 +188,7 @@ object DocumentExtensions {
 
     /**
      * Returns the default [CreateDocumentSettings] for the [EudiWallet] instance.
-     * The default settings are based on the [EudiWalletConfig] and the presence of an available
+     * The default settings are based on [EudiWallet.keyProtectionState] and the presence of an available
      * [AndroidKeystoreSecureArea] implementation.
      *
      * This is useful when handling [IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy],
@@ -194,8 +198,10 @@ object DocumentExtensions {
      * @param offeredDocument The [Offer.OfferedDocument] for which to create the default settings.
      * @param attestationChallenge The attestation challenge to use when creating the keys. If `null`, a random challenge will be generated.
      * @param credentialPolicy The policy for credential usage. Defaults to [RotatingBatch].
-     * @param configure A lambda to further customize the [AndroidKeystoreCreateKeySettings].
-     *                 If not provided, settings will use values from [EudiWalletConfig].
+     * @param configure A lambda that sets the [AndroidKeystoreCreateKeySettings] instead of
+     *                 [EudiWallet.keyProtectionState]; settings that it does not set keep the defaults of
+     *                 [AndroidKeystoreCreateKeySettings.Builder]. If not provided, settings will use
+     *                 [EudiWallet.keyProtectionState].
      * @return The default [CreateDocumentSettings] configured for the offered document.
      * @throws NoSuchElementException if no [AndroidKeystoreSecureArea] implementation is available.
      * @see AndroidKeystoreCreateKeySettings.Builder

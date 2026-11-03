@@ -32,6 +32,9 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DocumentManagerWithMeta
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.KeyProtectionPolicy
+import eu.europa.ec.eudi.wallet.document.KeyProtectionState
+import eu.europa.ec.eudi.wallet.document.KeyProtectionUnsupportedException
 import eu.europa.ec.eudi.wallet.internal.LogPrinterImpl
 import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
@@ -106,6 +109,15 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
 
     val walletProvider: WalletAttestationsProvider?
     val walletKeyManager: WalletKeyManager
+
+    /**
+     * The protections applied to the keys created with
+     * [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateKeySettings] and
+     * [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings],
+     * determined when the wallet is built from [EudiWalletConfig.configureDocumentKeyCreation] and
+     * the device support.
+     */
+    val keyProtectionState: KeyProtectionState
 
     /**
      * The transaction-log funnel, if a [TransactionLogger] was configured via the builder.
@@ -355,11 +367,12 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
          * **Note**: The [EudiWalletConfig.documentsStoragePath] is not set, the default storage path
          * will be used which is the application's no backup files directory.
          *
-         * **Note**: The [EudiWalletConfig.userAuthenticationRequired] is set to true and the device is not secured with a PIN,
-         * pattern, or password, the configuration will be updated to set the user authentication required to false.
-         *
-         * **Note**: The [EudiWalletConfig.useStrongBoxForKeys] is set to true and the device does not support StrongBox,
-         * the configuration will be updated to set the use StrongBox for keys to false.
+         * **Note**: With [KeyProtectionPolicy.Required] in [EudiWalletConfig.configureDocumentKeyCreation],
+         * building fails with [KeyProtectionUnsupportedException] if the device is not secured with a PIN,
+         * pattern or password (user authentication) or does not support StrongBox.
+         * With [KeyProtectionPolicy.IfSupported], the keys are created without
+         * the protection that the device does not support. The protections that apply are in
+         * [EudiWallet.keyProtectionState]; the configuration is not changed.
          *
          * @return [EudiWallet]
          */
@@ -369,8 +382,10 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 IdentityLogger.logPrinter = LogPrinterImpl(it)
             }
             initializeApplication(context.applicationContext)
-            ensureStrongBoxIsSupported(loggerToUse)
-            ensureUserAuthIsSupported(loggerToUse)
+            val keyProtectionState = KeyProtectionState(
+                userAuthenticationRequired = resolveUserAuthentication(loggerToUse),
+                useStrongBox = resolveStrongBox(loggerToUse),
+            )
 
             // Build ETSI trust provider if configured
             val etsiTrustProvider = config.etsiTrustConfig?.let {
@@ -540,6 +555,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                 transferManager = transferManager,
                 walletProvider = walletProvider,
                 walletKeyManager = walletKeyManager ?: WalletKeyManager.getDefault(context),
+                keyProtectionState = keyProtectionState,
                 logger = loggerToUse,
                 documentStatusResolver = documentStatusResolverToUse,
                 transactionLogManager = transactionLogManagerToUse,
@@ -745,35 +761,70 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
         }
 
         /**
-         * Check if user authentication is required and update the configuration
-         * if the device is not secure and the configuration is set to require user authentication
+         * Resolve whether the document keys require user authentication, from
+         * [EudiWalletConfig.userAuthenticationPolicy] and whether the device is secured with a PIN,
+         * pattern or password.
+         *
+         * @throws KeyProtectionUnsupportedException if the policy is [KeyProtectionPolicy.Required] and the device is not secured
          */
         @JvmSynthetic
-        internal fun ensureUserAuthIsSupported(loggerObj: Logger) {
-            if (capabilities.secureLockScreenSetup.not() && config.userAuthenticationRequired) {
-                loggerObj.i(
-                    TAG,
-                    """User authentication is required but the device is not secured with a PIN, pattern, or password.
-                    | Setting EudiWalletConfig.userAuthenticationRequired to false.""".trimMargin()
-                )
-                config.userAuthenticationRequired = false
+        internal fun resolveUserAuthentication(loggerObj: Logger): Boolean =
+            when (config.userAuthenticationPolicy) {
+                KeyProtectionPolicy.Required -> {
+                    if (!capabilities.secureLockScreenSetup) {
+                        throw KeyProtectionUnsupportedException(
+                            protection = KeyProtectionUnsupportedException.Protection.UserAuthentication,
+                            message = "User authentication is required for document keys but the device is not secured " +
+                                "with a PIN, pattern or password. Ask the user to set up a screen lock, or use " +
+                                "KeyProtectionPolicy.IfSupported or KeyProtectionPolicy.Disabled in " +
+                                "configureDocumentKeyCreation() to create the keys without it."
+                        )
+                    }
+                    true
+                }
+
+                KeyProtectionPolicy.IfSupported -> capabilities.secureLockScreenSetup.also { supported ->
+                    if (!supported) {
+                        loggerObj.i(
+                            TAG,
+                            "The device is not secured with a PIN, pattern or password. " +
+                                "Document keys are created without user authentication."
+                        )
+                    }
+                }
+
+                KeyProtectionPolicy.Disabled -> false
             }
-        }
 
         /**
-         * Check if StrongBox is supported on the device and update the configuration
-         * if it is not supported and the configuration is set to use StrongBox
+         * Resolve whether the document keys are created in StrongBox, from
+         * [EudiWalletConfig.strongBoxPolicy] and whether the device supports StrongBox.
+         *
+         * @throws KeyProtectionUnsupportedException if the policy is [KeyProtectionPolicy.Required] and the device does not support StrongBox
          */
         @JvmSynthetic
-        internal fun ensureStrongBoxIsSupported(loggerObj: Logger) {
-            if (capabilities.strongBoxSupported.not() && config.useStrongBoxForKeys) {
-                loggerObj.i(
-                    TAG, """StrongBox is not supported on this device.
-                    | Setting EudiWalletConfig.useStrongBoxForKeys to false.""".trimMargin()
-                )
-                config.useStrongBoxForKeys = false
+        internal fun resolveStrongBox(loggerObj: Logger): Boolean =
+            when (config.strongBoxPolicy) {
+                KeyProtectionPolicy.Required -> {
+                    if (!capabilities.strongBoxSupported) {
+                        throw KeyProtectionUnsupportedException(
+                            protection = KeyProtectionUnsupportedException.Protection.StrongBox,
+                            message = "StrongBox is required for document keys but the device does not support it. " +
+                                "Use KeyProtectionPolicy.IfSupported or KeyProtectionPolicy.Disabled " +
+                                "in configureDocumentKeyCreation() to create the keys without it.",
+                        )
+                    }
+                    true
+                }
+
+                KeyProtectionPolicy.IfSupported -> capabilities.strongBoxSupported.also { supported ->
+                    if (!supported) {
+                        loggerObj.i(TAG, "StrongBox is not supported on this device. Document keys are created without it.")
+                    }
+                }
+
+                KeyProtectionPolicy.Disabled -> false
             }
-        }
 
         /**
          * Wrap the [PresentationManager] with a transaction logger
