@@ -39,7 +39,9 @@ internal data class RegistrationCertificateDto(
     @SerialName("sub_gn") val givenName: String? = null,
     @SerialName("sub_fn") val familyName: String? = null,
     val country: String? = null,
-    @SerialName("srv_description") val serviceDescription: List<MultiLangDto> = emptyList(),
+    @SerialName("srv_description")
+    @Serializable(with = MultiLangListSerializer::class)
+    val serviceDescription: List<MultiLangDto> = emptyList(),
     val entitlements: List<String> = emptyList(),
     @SerialName("registry_uri") val registryUri: String? = null,
     @SerialName("privacy_policy") val privacyPolicy: String? = null,
@@ -52,6 +54,7 @@ internal data class RegistrationCertificateDto(
     val exp: Long? = null,
     val status: StatusDto? = null,
     @SerialName("intended_use_id") val intendedUseId: String? = null,
+    @Serializable(with = MultiLangListSerializer::class)
     val purpose: List<MultiLangDto> = emptyList(),
     val credentials: List<CredentialDto> = emptyList(),
     @SerialName("provides_attestations") val providedAttestations: List<CredentialDto> = emptyList(),
