@@ -48,9 +48,13 @@ fun interface AuthorizationHandler {
  *
  * @property authorizationCode The authorization code received from the authorization server
  * @property serverState The state parameter from the authorization server used for CSRF protection
+ * @property dpopNonce The DPoP nonce the authorization server returned with the authorization response, if any.
+ * When present and not blank, it is used for the token request instead of the nonce obtained during the
+ * authorization request. Only return a nonce issued by the authorization server whose token endpoint is used.
  */
 data class AuthorizationResponse(
     val authorizationCode: String,
     val serverState: String,
+    val dpopNonce: String? = null,
 )
 
