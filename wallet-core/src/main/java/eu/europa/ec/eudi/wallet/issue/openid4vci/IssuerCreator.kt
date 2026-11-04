@@ -24,6 +24,8 @@ import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestError
+import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestException
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
@@ -178,6 +180,8 @@ internal class IssuerCreator(
      * before [Issuer.make] is called.
      *
      * The http client is closed if creation fails; otherwise the returned issuer keeps using it.
+     * Metadata resolution errors are rethrown as reported by the metadata resolvers, see
+     * [metadataResolutionReasonOrSelf].
      *
      * @param credentialIssuerId the credential issuer
      * @param credentialConfigurationIdentifiers the credential configurations to request
@@ -202,7 +206,7 @@ internal class IssuerCreator(
                 config = resolutionConfig,
                 credentialIssuerId = credentialIssuerId,
                 credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-            ).getOrThrow()
+            ).getOrElse { throw it.metadataResolutionReasonOrSelf() }
             val auth = credentialOffer.authorizationServerMetadata.toClientAuthentication().getOrThrow()
             clientAuthentication = auth
             val issuer = Issuer.make(
@@ -367,6 +371,20 @@ internal class IssuerCreator(
         )
     }
 }
+
+/**
+ * Unwraps the credential issuer and authorization server metadata resolution errors that
+ * [CredentialOffer.walletInitiated] wraps in a [CredentialOfferRequestException], which carries
+ * neither a message nor a cause. The unwrapped errors are the ones [Issuer.metaData] throws, so
+ * callers and the transaction log see the same failure as when the metadata was fetched up front.
+ * Any other error is returned unchanged.
+ */
+private fun Throwable.metadataResolutionReasonOrSelf(): Throwable =
+    when (val error = (this as? CredentialOfferRequestException)?.error) {
+        is CredentialOfferRequestError.UnableToResolveCredentialIssuerMetadata -> error.reason
+        is CredentialOfferRequestError.UnableToResolveAuthorizationServerMetadata -> error.reason
+        else -> this
+    }
 
 private fun OpenId4VciManager.IssuanceProofProfile.toProofsConfig(): ProofsConfig {
     val byType = preferenceOrder.associateBy { it.proofType }
