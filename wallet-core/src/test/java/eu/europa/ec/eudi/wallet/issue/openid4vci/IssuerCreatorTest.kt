@@ -21,6 +21,7 @@ import com.nimbusds.oauth2.sdk.id.Issuer
 import eu.europa.ec.eudi.openid4vci.CertificateChainTrust
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataError
 import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
 import eu.europa.ec.eudi.openid4vci.EcConfig
 import eu.europa.ec.eudi.openid4vci.EncryptionSupportConfig
@@ -37,6 +38,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.mockk.CapturingSlot
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -113,18 +115,9 @@ class IssuerCreatorTest {
     fun `attestation key is derived from the authorization server issuer of the resolved offer`() = runTest {
         val keyAliasInput = slot<String>()
         val supportedAlgorithms = slot<List<Algorithm>>()
-        val keyInfo = mockk<KeyInfo> {
-            every { algorithm } returns Algorithm.ESP256
-            every { alias } returns ATTESTATION_KEY_ALIAS
-        }
-        val walletAttestationKeyManager = mockk<WalletKeyManager> {
-            coEvery {
-                getOrCreateWalletAttestationKey(capture(keyAliasInput), capture(supportedAlgorithms))
-            } returns Result.success(WalletAttestationKey(keyInfo) { it })
-        }
         val creator = issuerCreator(
             clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased("client"),
-            walletAttestationKeyManager = walletAttestationKeyManager,
+            walletAttestationKeyManager = walletAttestationKeyManager(keyAliasInput, supportedAlgorithms),
         )
 
         creator.createIssuer(CREDENTIAL_ISSUER, listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)))
@@ -152,6 +145,64 @@ class IssuerCreatorTest {
         assertFalse(createdClients.single().isActive)
     }
 
+    /**
+     * The client authentication passed to [eu.europa.ec.eudi.openid4vci.Issuer.make] must be the one
+     * built from the resolved offer, not the placeholder used to resolve it. Only an attestation-based
+     * client authentication is checked against the client attestation algorithms the authorization
+     * server advertises, so with the placeholder issuer creation would succeed.
+     */
+    @Test
+    fun `Issuer make receives the client authentication built from the resolved offer`() = runTest {
+        val creator = issuerCreator(
+            clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased("client"),
+            walletAttestationKeyManager = walletAttestationKeyManager(),
+            authorizationServerMetadata = authorizationServerMetadata(
+                advertisesClientAttestation = true,
+                clientAttestationSigningAlgorithm = "ES384",
+            ),
+        )
+
+        val error = assertFails {
+            creator.createIssuer(CREDENTIAL_ISSUER, listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)))
+        }
+
+        assertTrue(
+            error.message.orEmpty().contains("Client Attestation JWS Algorithm not supported"),
+            "unexpected failure: $error",
+        )
+    }
+
+    @Test
+    fun `metadata resolution errors are rethrown as reported by the metadata resolver`() = runTest {
+        val creator = issuerCreator(issuerMetadataAvailable = false)
+
+        val error = assertFails {
+            creator.createIssuer(CREDENTIAL_ISSUER, listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)))
+        }
+
+        assertIs<CredentialIssuerMetadataError>(error)
+        assertFalse(createdClients.single().isActive)
+    }
+
+    /**
+     * A [WalletKeyManager] that returns an ES256 attestation key, capturing the alias input and the
+     * algorithms it is asked for.
+     */
+    private fun walletAttestationKeyManager(
+        keyAliasInput: CapturingSlot<String> = slot(),
+        supportedAlgorithms: CapturingSlot<List<Algorithm>> = slot(),
+    ): WalletKeyManager {
+        val keyInfo = mockk<KeyInfo> {
+            every { algorithm } returns Algorithm.ESP256
+            every { alias } returns ATTESTATION_KEY_ALIAS
+        }
+        return mockk {
+            coEvery {
+                getOrCreateWalletAttestationKey(capture(keyAliasInput), capture(supportedAlgorithms))
+            } returns Result.success(WalletAttestationKey(keyInfo) { it })
+        }
+    }
+
     /** Number of requests made to the given well-known metadata path. */
     private fun requestCount(wellKnownPath: String): Int =
         requestedPaths.count { it.startsWith(wellKnownPath) }
@@ -165,13 +216,16 @@ class IssuerCreatorTest {
             OpenId4VciManager.ClientAuthenticationType.None("client"),
         walletAttestationKeyManager: WalletKeyManager = mockk(),
         authorizationServerMetadata: String = authorizationServerMetadata(advertisesClientAttestation = true),
+        issuerMetadataAvailable: Boolean = true,
     ): IssuerCreator {
         val jsonHeaders = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
             requestedPaths += path
             when {
-                path.startsWith(ISSUER_WELL_KNOWN_PATH) -> respond(ISSUER_METADATA, HttpStatusCode.OK, jsonHeaders)
+                path.startsWith(ISSUER_WELL_KNOWN_PATH) && issuerMetadataAvailable ->
+                    respond(ISSUER_METADATA, HttpStatusCode.OK, jsonHeaders)
+
                 path.startsWith(AUTHORIZATION_SERVER_WELL_KNOWN_PATH) ->
                     respond(authorizationServerMetadata, HttpStatusCode.OK, jsonHeaders)
 
@@ -223,13 +277,16 @@ class IssuerCreatorTest {
 
         /**
          * Authorization server metadata, optionally advertising attestation-based client
-         * authentication with ES256.
+         * authentication with ES256 proofs of possession and the given client attestation algorithm.
          */
-        fun authorizationServerMetadata(advertisesClientAttestation: Boolean): String {
+        fun authorizationServerMetadata(
+            advertisesClientAttestation: Boolean,
+            clientAttestationSigningAlgorithm: String = "ES256",
+        ): String {
             val clientAttestation = if (advertisesClientAttestation) {
                 """
                   "token_endpoint_auth_methods_supported": ["attest_jwt_client_auth"],
-                  "client_attestation_signing_alg_values_supported": ["ES256"],
+                  "client_attestation_signing_alg_values_supported": ["$clientAttestationSigningAlgorithm"],
                   "client_attestation_pop_signing_alg_values_supported": ["ES256"],
                 """
             } else ""
