@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.iso18013.transfer
 
 import android.util.Log
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
+import com.android.identity.android.mdoc.transport.DataTransport
 import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.iso18013.transfer.internal.QrEngagement
@@ -518,10 +519,12 @@ class TransferManagerImplTest {
         }
         manager.setupNfcEngagement(service)
 
-        service.nfcEngagementListener.onDeviceConnected(mockk())
+        val transport = mockk<DataTransport>(relaxed = true)
+        service.nfcEngagementListener.onDeviceConnected(transport)
 
         assertSame(qrDeviceRetrievalHelper, manager.deviceRetrievalHelper)
         verify(exactly = 0) { listener.onTransferEvent(TransferEvent.Connected) }
+        verify(exactly = 1) { transport.close() }
     }
 
     @Test
@@ -556,10 +559,12 @@ class TransferManagerImplTest {
         val nfcDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
         manager.deviceRetrievalHelper = nfcDeviceRetrievalHelper
 
-        manager.qrEngagement!!.qrEngagementListener.onDeviceConnected(mockk())
+        val transport = mockk<DataTransport>(relaxed = true)
+        manager.qrEngagement!!.qrEngagementListener.onDeviceConnected(transport)
 
         assertSame(nfcDeviceRetrievalHelper, manager.deviceRetrievalHelper)
         verify(exactly = 0) { listener.onTransferEvent(TransferEvent.Connected) }
+        verify(exactly = 1) { transport.close() }
     }
 
     @Test

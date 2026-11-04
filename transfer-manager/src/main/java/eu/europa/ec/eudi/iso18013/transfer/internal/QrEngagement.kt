@@ -91,6 +91,8 @@ internal class QrEngagement(
                     this.TAG,
                     "OnDeviceConnected for QR engagement -> ignoring due to active presentation"
                 )
+                // The transport of the ignored mdoc verifier is closed, as no one else closes it
+                transport.close()
                 return
             }
 
