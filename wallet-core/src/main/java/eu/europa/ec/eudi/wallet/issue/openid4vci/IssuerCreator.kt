@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
@@ -117,17 +118,11 @@ internal class IssuerCreator(
         issuerUrl: String,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
-    ): IssuerCreation {
-
-        val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
-            .map { getIssuerMetadata(it) }
-            .getOrThrow()
-
-        return doCreateIssuer(
-            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifiers,
-            existingDpopKeyAlias
-        )
-    }
+    ): IssuerCreation = doCreateIssuer(
+        CredentialIssuerId(issuerUrl).getOrThrow(),
+        credentialConfigurationIdentifiers,
+        existingDpopKeyAlias,
+    )
 
     /**
      * Creates an [Issuer] from the given [DocumentFormat].
@@ -142,23 +137,17 @@ internal class IssuerCreator(
             is MsoMdocFormat -> DocTypeFilter(documentFormat.docType)
             is SdJwtVcFormat -> VctFilter(documentFormat.vct)
         }
-        val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
-            .map { getIssuerMetadata(it) }
-            .getOrThrow()
+        val credentialIssuerId = CredentialIssuerId(issuerUrl).getOrThrow()
+        val issuerMetadata = ktorHttpClientFactory().use {
+            CredentialIssuerMetadataResolver(it).resolve(credentialIssuerId, issuerMetadataPolicy)
+        }.getOrThrow()
 
         val configurationId = issuerMetadata.credentialConfigurationsSupported
             .filterValues { conf -> formatFilter(conf) }
             .firstNotNullOfOrNull { (confId, _) -> confId }
             ?: throw IllegalStateException("No suitable configuration found")
 
-        return doCreateIssuer(issuerMetadata, authorizationServerMetadata.first(), listOf(configurationId))
-    }
-
-
-    private suspend fun getIssuerMetadata(credentialIssuerId: CredentialIssuerId): Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>> {
-        return ktorHttpClientFactory().use {
-            Issuer.metaData(it, credentialIssuerId, issuerMetadataPolicy)
-        }
+        return doCreateIssuer(credentialIssuerId, listOf(configurationId))
     }
 
 
@@ -181,23 +170,32 @@ internal class IssuerCreator(
     }
 
     private suspend fun doCreateIssuer(
-        credentialIssuerMetadata: CredentialIssuerMetadata,
-        authorizationServerMetadata: CIAuthorizationServerMetadata,
+        credentialIssuerId: CredentialIssuerId,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
     ): IssuerCreation {
         return try {
             var evaluatedRegistration: RegistrationCertificateResult? = null
-            val issuer = Issuer.makeWalletInitiated(
-                config = config.toOpenId4VCIConfig(
-                    authorizationServerMetadata,
-                    existingDpopKeyAlias,
-                    credentialIssuerMetadata,
-                    onRegistrationEvaluated = { evaluatedRegistration = it },
-                ),
-                credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
+            val resolutionConfig = config.toOpenId4VCIConfig(
+                authorizationServerMetadata = null,
+                existingDpopKeyAlias = existingDpopKeyAlias,
+                onRegistrationEvaluated = { evaluatedRegistration = it },
+            )
+            val httpClient = ktorHttpClientFactory()
+            // The two steps of Issuer.makeWalletInitiated, split so the client authentication is
+            // built from the authorization server metadata of the resolved offer.
+            val credentialOffer = CredentialOffer.walletInitiated(
+                httpClient = httpClient,
+                config = resolutionConfig,
+                credentialIssuerId = credentialIssuerId,
                 credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-                httpClient = ktorHttpClientFactory()
+            ).getOrThrow()
+            val auth = credentialOffer.authorizationServerMetadata.toClientAuthentication().getOrThrow()
+            clientAuthentication = auth
+            val issuer = Issuer.make(
+                config = resolutionConfig.copy(clientAuthentication = auth),
+                credentialOffer = credentialOffer,
+                httpClient = httpClient,
             ).getOrThrow().first
             IssuerCreation(issuer, evaluatedRegistration)
         } catch (e: Throwable) {
@@ -242,14 +240,25 @@ internal class IssuerCreator(
      */
     @VisibleForTesting
     internal suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
-        authorizationServerMetadata: CIAuthorizationServerMetadata,
+        authorizationServerMetadata: CIAuthorizationServerMetadata?,
         existingDpopKeyAlias: String? = null,
         credentialIssuerMetadata: CredentialIssuerMetadata? = null,
         resolvedRegistration: RegistrationCertificateResult? = null,
         onRegistrationEvaluated: (RegistrationCertificateResult) -> Unit = {},
     ): OpenId4VCIConfig {
-        val auth = authorizationServerMetadata.toClientAuthentication().getOrThrow()
-        clientAuthentication = auth
+        // Without the authorization server metadata the config only resolves the offer, which never
+        // reads the client authentication; the caller replaces it before Issuer.make().
+        val auth = when (authorizationServerMetadata) {
+            null -> ClientAuthentication.None(
+                when (val type = clientAuthenticationType) {
+                    is OpenId4VciManager.ClientAuthenticationType.None -> type.clientId
+                    is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> type.clientId
+                }
+            )
+            else -> authorizationServerMetadata.toClientAuthentication().getOrThrow().also {
+                clientAuthentication = it
+            }
+        }
         // Resolve DPoP usage
         val dPoPUsage = when (dpopConfig) {
             DPopConfig.Disabled -> DPoPUsage.Never
