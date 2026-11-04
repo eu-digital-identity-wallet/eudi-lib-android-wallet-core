@@ -53,6 +53,7 @@ dependencies {
     testImplementation(libs.kotlin.coroutines.test)
     testImplementation(libs.biometric.ktx)
     testImplementation(libs.robolectric)
+    testImplementation(libs.ktor.client.mock)
 
     androidTestImplementation(libs.android.junit)
     androidTestImplementation(libs.mockito.android)
