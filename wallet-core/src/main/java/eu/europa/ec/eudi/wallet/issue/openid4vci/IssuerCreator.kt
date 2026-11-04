@@ -169,11 +169,27 @@ internal class IssuerCreator(
         return IssuerCreation(issuer, resolvedRegistration ?: evaluatedRegistration)
     }
 
+    /**
+     * Creates an [Issuer] for wallet-initiated issuance.
+     *
+     * Performs the two steps of [Issuer.makeWalletInitiated] separately: the credential offer is
+     * resolved first, which fetches the credential issuer and authorization server metadata once,
+     * and the client authentication is then built from the resolved authorization server metadata
+     * before [Issuer.make] is called.
+     *
+     * The http client is closed if creation fails; otherwise the returned issuer keeps using it.
+     *
+     * @param credentialIssuerId the credential issuer
+     * @param credentialConfigurationIdentifiers the credential configurations to request
+     * @param existingDpopKeyAlias alias of an existing DPoP key to reuse (for re-issuance)
+     * @return the [Issuer] and the registration outcome evaluated by [Issuer.make]
+     */
     private suspend fun doCreateIssuer(
         credentialIssuerId: CredentialIssuerId,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
     ): IssuerCreation {
+        val httpClient = ktorHttpClientFactory()
         return try {
             var evaluatedRegistration: RegistrationCertificateResult? = null
             val resolutionConfig = config.toOpenId4VCIConfig(
@@ -181,9 +197,6 @@ internal class IssuerCreator(
                 existingDpopKeyAlias = existingDpopKeyAlias,
                 onRegistrationEvaluated = { evaluatedRegistration = it },
             )
-            val httpClient = ktorHttpClientFactory()
-            // The two steps of Issuer.makeWalletInitiated, split so the client authentication is
-            // built from the authorization server metadata of the resolved offer.
             val credentialOffer = CredentialOffer.walletInitiated(
                 httpClient = httpClient,
                 config = resolutionConfig,
@@ -199,6 +212,7 @@ internal class IssuerCreator(
             ).getOrThrow().first
             IssuerCreation(issuer, evaluatedRegistration)
         } catch (e: Throwable) {
+            httpClient.close()
             logger?.e(TAG, "Failed to create wallet-initiated issuer", e)
             throw e
         }
@@ -236,6 +250,9 @@ internal class IssuerCreator(
     /**
      * Converts the [OpenId4VciManager.Config] to [OpenId4VCIConfig].
      * @receiver The [OpenId4VciManager.Config].
+     * @param authorizationServerMetadata the metadata the client authentication is built from. When
+     * null, the client authentication is a placeholder: the config can only be used to resolve a
+     * credential offer, which does not read it, and the caller replaces it before [Issuer.make].
      * @return The [OpenId4VCIConfig].
      */
     @VisibleForTesting
@@ -246,8 +263,6 @@ internal class IssuerCreator(
         resolvedRegistration: RegistrationCertificateResult? = null,
         onRegistrationEvaluated: (RegistrationCertificateResult) -> Unit = {},
     ): OpenId4VCIConfig {
-        // Without the authorization server metadata the config only resolves the offer, which never
-        // reads the client authentication; the caller replaces it before Issuer.make().
         val auth = when (authorizationServerMetadata) {
             null -> ClientAuthentication.None(
                 when (val type = clientAuthenticationType) {
