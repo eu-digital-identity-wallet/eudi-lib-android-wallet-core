@@ -175,10 +175,11 @@ class TransferManagerImpl @JvmOverloads constructor(
                 this.deviceRetrievalHelper = deviceRetrievalHelper
                 transferEventListeners.onTransferEvent(TransferEvent.Connected)
             },
-            onNewDeviceRequest = { deviceRequestBytes ->
+            onNewDeviceRequest = { deviceRetrievalHelper, deviceRequestBytes ->
+                // The session transcript of the connection that received the request
                 val deviceRequest = DeviceRequest(
                     deviceRequestBytes,
-                    deviceRetrievalHelper?.sessionTranscript!!
+                    deviceRetrievalHelper.sessionTranscript
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(
@@ -218,10 +219,11 @@ class TransferManagerImpl @JvmOverloads constructor(
                 this@TransferManagerImpl.deviceRetrievalHelper = deviceRetrievalHelper
                 transferEventListeners.onTransferEvent(TransferEvent.Connected)
             }
-            onNewDeviceRequest = { deviceRequestBytes ->
+            onNewDeviceRequest = { deviceRetrievalHelper, deviceRequestBytes ->
+                // The session transcript of the connection that received the request
                 val deviceRequest = DeviceRequest(
                     deviceRequestBytes,
-                    this@TransferManagerImpl.deviceRetrievalHelper?.sessionTranscript!!
+                    deviceRetrievalHelper.sessionTranscript
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(

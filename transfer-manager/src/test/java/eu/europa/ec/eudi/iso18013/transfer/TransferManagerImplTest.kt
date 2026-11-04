@@ -32,6 +32,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import org.junit.Assert.assertThrows
@@ -175,7 +176,7 @@ class TransferManagerImplTest {
         assertEquals(retrievalMethods, service.retrievalMethods)
         assertIs<() -> Unit>(service.onConnecting)
         assertIs<(DeviceRetrievalHelper) -> Unit>(service.onDeviceRetrievalHelperReady)
-        assertIs<(ByteArray) -> Unit>(service.onNewDeviceRequest)
+        assertIs<(DeviceRetrievalHelper, ByteArray) -> Unit>(service.onNewDeviceRequest)
         assertIs<(Throwable) -> Unit>(service.onCommunicationError)
         assertIs<(Boolean) -> Unit>(service.onDisconnected)
 
@@ -189,7 +190,7 @@ class TransferManagerImplTest {
         assertSame(deviceRetrievalHelper, manager.deviceRetrievalHelper)
         verify { listener.onTransferEvent(TransferEvent.Connected) }
 
-        service.onNewDeviceRequest(ByteArray(0))
+        service.onNewDeviceRequest(deviceRetrievalHelper, ByteArray(0))
         verify {
             listener.onTransferEvent(any<TransferEvent.RequestReceived>())
         }
@@ -371,6 +372,56 @@ class TransferManagerImplTest {
         verify(exactly = 0) { mockDeviceRetrievalHelper.sendDeviceResponse(any(), any()) }
         verify(exactly = 0) { listener.onTransferEvent(TransferEvent.ResponseSent) }
         verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+    }
+
+    @Test
+    fun `an NFC request is stamped with the session transcript of the connection that received it`() {
+        val requestProcessor = mockk<RequestProcessor>()
+        val request = slot<Request>()
+        coEvery { requestProcessor.process(capture(request)) } returns mockk(relaxed = true)
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = requestProcessor,
+        )
+        val service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+        manager.deviceRetrievalHelper = mockk<DeviceRetrievalHelper> {
+            every { sessionTranscript } returns byteArrayOf(1)
+        }
+        val receivingDeviceRetrievalHelper = mockk<DeviceRetrievalHelper> {
+            every { sessionTranscript } returns byteArrayOf(2)
+        }
+
+        service.onNewDeviceRequest(receivingDeviceRetrievalHelper, ByteArray(0))
+
+        assertContentEquals(byteArrayOf(2), assertIs<DeviceRequest>(request.captured).sessionTranscriptBytes)
+    }
+
+    @Test
+    fun `a QR request is stamped with the session transcript of the connection that received it`() {
+        mockkConstructor(QrEngagement::class)
+        every { anyConstructed<QrEngagement>().configure() } just Runs
+        val requestProcessor = mockk<RequestProcessor>()
+        val request = slot<Request>()
+        coEvery { requestProcessor.process(capture(request)) } returns mockk(relaxed = true)
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = requestProcessor,
+        )
+        manager.startQrEngagement()
+        manager.deviceRetrievalHelper = mockk<DeviceRetrievalHelper> {
+            every { sessionTranscript } returns byteArrayOf(1)
+        }
+        val receivingDeviceRetrievalHelper = mockk<DeviceRetrievalHelper> {
+            every { sessionTranscript } returns byteArrayOf(2)
+        }
+
+        manager.qrEngagement!!.onNewDeviceRequest(receivingDeviceRetrievalHelper, ByteArray(0))
+
+        assertContentEquals(byteArrayOf(2), assertIs<DeviceRequest>(request.captured).sessionTranscriptBytes)
     }
 
     @Test
@@ -608,7 +659,7 @@ class TransferManagerImplTest {
         assertSame(deviceRetrievalHelper, manager.deviceRetrievalHelper)
         verify { listener.onTransferEvent(any<TransferEvent.Connected>()) }
 
-        manager.qrEngagement!!.onNewDeviceRequest(DeviceRequest.deviceRequestBytes)
+        manager.qrEngagement!!.onNewDeviceRequest(deviceRetrievalHelper, DeviceRequest.deviceRequestBytes)
         verify { listener.onTransferEvent(any<TransferEvent.RequestReceived>()) }
 
         manager.qrEngagement!!.onDisconnected(true)
