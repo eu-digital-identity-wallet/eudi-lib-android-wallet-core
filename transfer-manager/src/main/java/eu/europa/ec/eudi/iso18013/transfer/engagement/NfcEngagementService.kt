@@ -204,6 +204,8 @@ abstract class NfcEngagementService : HostApduService() {
                     TAG,
                     "Engagement Listener: Device Connected -> ignored due to active presentation",
                 )
+                // The transport of the ignored mdoc verifier is closed, as no one else closes it
+                transport.close()
                 return
             }
 
