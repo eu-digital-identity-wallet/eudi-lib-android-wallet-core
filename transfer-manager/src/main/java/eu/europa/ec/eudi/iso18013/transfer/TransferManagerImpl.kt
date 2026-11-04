@@ -134,8 +134,9 @@ class TransferManagerImpl @JvmOverloads constructor(
      * Once the QR code is ready, the event [TransferEvent.QrEngagementReady] will be triggered
      * If the transfer has already started, an error event will be triggered
      * with an [IllegalStateException] containing the message "Transfer has already started."
-     * If a presentation session that started from an NFC engagement is active, it is ended
-     * before the QR engagement starts.
+     * If a presentation session is active, for example one started from an NFC engagement,
+     * an error event will be triggered with an [IllegalStateException] containing the message
+     * "A presentation session is active."; call [stopPresentation] to end it first.
      * @see TransferEvent.QrEngagementReady
      * @see TransferEvent.Error
      */
@@ -151,13 +152,18 @@ class TransferManagerImpl @JvmOverloads constructor(
             )
             return
         }
-        // A connection is not accepted while a session is active, so the active session is
-        // ended for the QR engagement to be usable
+        // A connection is not accepted while a session is active, so a QR engagement would be
+        // unusable. The session must be stopped first.
         if (deviceRetrievalHelper != null) {
-            stopPresentation(
-                sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = false,
+            Log.d(this.TAG, SESSION_ACTIVE_MSG)
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(
+                    IllegalStateException(
+                        SESSION_ACTIVE_MSG,
+                    ),
+                ),
             )
+            return
         }
         qrEngagement = QrEngagement(
             context = context,
@@ -343,6 +349,7 @@ class TransferManagerImpl @JvmOverloads constructor(
      */
     companion object {
         private const val TRANSFER_STARTED_MSG = "Transfer has already started."
+        private const val SESSION_ACTIVE_MSG = "A presentation session is active."
 
         /**
          * Extension function to trigger transfer events for each listener in the collection
