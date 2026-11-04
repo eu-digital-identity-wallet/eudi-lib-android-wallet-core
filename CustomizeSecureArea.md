@@ -63,6 +63,11 @@ val wallet = EudiWallet(context, walletConfig) {
 }
 ```
 
+`configureDocumentKeyCreation` applies only to keys in `AndroidKeystoreSecureArea`. The device support
+is checked when the wallet is built, also for a wallet that uses only custom secure areas: with the
+defaults, building fails on a device without a screen lock. See
+[Document Key Protection](README.md#document-key-protection).
+
 For detailed information on EudiWallet configuration, please refer to
 the [EudiWallet documentation](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core?tab=readme-ov-file#initialize-the-library)
 

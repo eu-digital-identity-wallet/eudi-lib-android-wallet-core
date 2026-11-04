@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
 import eu.europa.ec.eudi.wallet.EudiWalletConfig.Companion.DEFAULT_DOCUMENT_MANAGER_IDENTIFIER
 import eu.europa.ec.eudi.wallet.dcapi.DCAPIConfig
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.KeyProtectionPolicy
 import eu.europa.ec.eudi.wallet.internal.getCertificate
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -69,13 +70,12 @@ import kotlin.time.Duration.Companion.minutes
  *         level = Logger.LEVEL_INFO
  *     )
  *     .configureDocumentKeyCreation(
- *         // set userAuthenticationRequired to true to require user authentication
- *         userAuthenticationRequired = true,
+ *         // require user authentication; building the wallet fails if the device is not secured
+ *         userAuthentication = KeyProtectionPolicy.Required,
+ *         // use the device's StrongBox if available to store the keys
+ *         strongBox = KeyProtectionPolicy.IfSupported,
  *         // set userAuthenticationTimeout to 30 seconds
- *         userAuthenticationTimeout = 30_000L,
- *         // set useStrongBoxForKeys to true to use the the device's StrongBox if available
- *         // to store the keys
- *         useStrongBoxForKeys = true
+ *         userAuthenticationTimeout = 30.seconds,
  *     )
  *     .configureReaderTrustStore(
  *         // set the reader trusted certificates for the reader trust store
@@ -141,9 +141,9 @@ import kotlin.time.Duration.Companion.minutes
  * @property logSizeLimit the log size limit
  * @property readerTrustedCertificates the reader trusted certificates
  * @property readerAuthPolicy the reader authentication enforcement policy for proximity and DCAPI presentations
- * @property userAuthenticationRequired whether user authentication is required
+ * @property userAuthenticationPolicy whether the document keys require user authentication
  * @property userAuthenticationTimeout the user authentication timeout
- * @property useStrongBoxForKeys whether to use the strong box for keys
+ * @property strongBoxPolicy whether the document keys are created in StrongBox
  * @property documentStatusResolverClockSkew the clock skew for the document status resolver
  * @property zkSystemRepository the Zero-Knowledge Proofs (ZKP) system repository
  *
@@ -862,49 +862,101 @@ class EudiWalletConfig {
         this.issuerRegistrationRevocationPolicy = revocationPolicy
     }
 
-    var userAuthenticationRequired: Boolean = true
-        internal set // internal for setting the default value from the builder
+    var userAuthenticationPolicy: KeyProtectionPolicy = KeyProtectionPolicy.Required
+        private set
     var userAuthenticationTimeout: Duration = 0.milliseconds
         private set
-    var useStrongBoxForKeys: Boolean = true
-        internal set // internal for setting the default value from the builder
+    var strongBoxPolicy: KeyProtectionPolicy = KeyProtectionPolicy.IfSupported
+        private set
 
     /**
-     * Configure the document key creation. This allows to configure if user authentication is
-     * required to unlock key usage, the user authentication timeout and whether to use the
-     * strong box for keys.
-     * These values are used to create the [eu.europa.ec.eudi.wallet.document.CreateDocumentSettings]
-     * using [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings]
-     * method.
+     * Whether user authentication was requested for the document keys. The value that applies to
+     * the keys is [EudiWallet.keyProtectionState].
+     */
+    @Deprecated(
+        "Returns the requested policy, not the value that applies to the keys. Use " +
+            "EudiWallet.keyProtectionState.userAuthenticationRequired for the value that applies to the keys, " +
+            "or userAuthenticationPolicy for the requested policy",
+        level = DeprecationLevel.ERROR,
+    )
+    val userAuthenticationRequired: Boolean
+        get() = userAuthenticationPolicy != KeyProtectionPolicy.Disabled
+
+    /**
+     * Whether StrongBox was requested for the document keys. The value that applies to the keys is
+     * [EudiWallet.keyProtectionState].
+     */
+    @Deprecated(
+        "Returns the requested policy, not the value that applies to the keys. Use " +
+            "EudiWallet.keyProtectionState.useStrongBox for the value that applies to the keys, " +
+            "or strongBoxPolicy for the requested policy",
+        level = DeprecationLevel.ERROR,
+    )
+    val useStrongBoxForKeys: Boolean
+        get() = strongBoxPolicy != KeyProtectionPolicy.Disabled
+
+    /**
+     * Configure the protection of the keys created with
+     * [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateKeySettings] and
+     * [eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings].
+     * These methods create the keys in [org.multipaz.securearea.AndroidKeystoreSecureArea]. Keys in
+     * other secure areas, or created with a `configure` block, use the settings given by the app.
      *
-     * **Note**: when setting userAuthenticationRequired to true, device must be secured with a PIN, pattern
-     * or password.
+     * The device support is checked once, when the wallet is built, for the whole wallet. With
+     * [KeyProtectionPolicy.Required], building the wallet fails with
+     * [eu.europa.ec.eudi.wallet.document.KeyProtectionUnsupportedException] if the device does not
+     * support the protection. With [KeyProtectionPolicy.IfSupported], the keys are created without it. The
+     * protections that apply are in [EudiWallet.keyProtectionState].
      *
-     * **Note**: when setting useStrongBoxForKeys to true, the device must support the StrongBox.
+     * Without this call, user authentication is [KeyProtectionPolicy.Required] with a timeout of 0,
+     * and StrongBox is [KeyProtectionPolicy.IfSupported].
      *
-     * The default values are:
-     * - userAuthenticationRequired: true
-     * - userAuthenticationTimeout: 0
-     * - useStrongBoxForKeys: true if supported by the device
+     * @param userAuthentication whether the keys require user authentication; the device must be
+     * secured with a PIN, pattern or password
+     * @param strongBox whether the keys are created in StrongBox
+     * @param userAuthenticationTimeout if 0, user authentication is required for every use of the
+     * key, otherwise it is required within the given duration
+     */
+    fun configureDocumentKeyCreation(
+        userAuthentication: KeyProtectionPolicy,
+        strongBox: KeyProtectionPolicy,
+        userAuthenticationTimeout: Duration = 0.milliseconds,
+    ) = apply {
+        this.userAuthenticationPolicy = userAuthentication
+        this.strongBoxPolicy = strongBox
+        this.userAuthenticationTimeout = userAuthenticationTimeout
+
+        if (userAuthentication != KeyProtectionPolicy.Disabled) {
+            require(userAuthenticationTimeout >= 0.milliseconds) { "User authentication timeout must be equal or greater than 0" }
+        }
+    }
+
+    /**
+     * Configure the document key creation. `userAuthenticationRequired = true` maps to
+     * [KeyProtectionPolicy.Required], `useStrongBoxForKeys = true` to [KeyProtectionPolicy.IfSupported],
+     * and `false` to [KeyProtectionPolicy.Disabled].
+     *
+     * Use the overload that takes [KeyProtectionPolicy] values instead.
      *
      * @param userAuthenticationRequired whether user authentication is required
      * @param userAuthenticationTimeout  If 0, user authentication is required for every use of the
      * key, otherwise it's required within the given amount of milliseconds
      * @param useStrongBoxForKeys whether to use the strong box for keys
      */
+    @Deprecated(
+        "Use configureDocumentKeyCreation with KeyProtectionPolicy values. userAuthenticationRequired = true " +
+            "maps to KeyProtectionPolicy.Required, useStrongBoxForKeys = true to KeyProtectionPolicy.IfSupported, " +
+            "and false to KeyProtectionPolicy.Disabled."
+    )
     fun configureDocumentKeyCreation(
         userAuthenticationRequired: Boolean = true,
         userAuthenticationTimeout: Duration = 0.milliseconds,
         useStrongBoxForKeys: Boolean = true,
-    ) = apply {
-        this.userAuthenticationRequired = userAuthenticationRequired
-        this.userAuthenticationTimeout = userAuthenticationTimeout
-        this.useStrongBoxForKeys = useStrongBoxForKeys
-
-        if (this.userAuthenticationRequired) {
-            require(this.userAuthenticationTimeout >= 0.milliseconds) { "User authentication timeout must be equal or greater than 0" }
-        }
-    }
+    ) = configureDocumentKeyCreation(
+        userAuthentication = if (userAuthenticationRequired) KeyProtectionPolicy.Required else KeyProtectionPolicy.Disabled,
+        strongBox = if (useStrongBoxForKeys) KeyProtectionPolicy.IfSupported else KeyProtectionPolicy.Disabled,
+        userAuthenticationTimeout = userAuthenticationTimeout,
+    )
 
     var documentStatusResolverClockSkew: Duration = Duration.ZERO
         internal set

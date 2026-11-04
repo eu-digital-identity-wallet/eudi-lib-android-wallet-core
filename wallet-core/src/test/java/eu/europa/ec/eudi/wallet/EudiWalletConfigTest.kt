@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet
 
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
+import eu.europa.ec.eudi.wallet.document.KeyProtectionPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
@@ -35,6 +36,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 class EudiWalletConfigTest {
 
@@ -215,5 +217,25 @@ class EudiWalletConfigTest {
         assertFailsWith<IllegalArgumentException> {
             EudiWalletConfig().configureIssuerRegistrationTrust(listOf(certificate), emptyList())
         }
+    }
+
+    @Suppress("DEPRECATION")
+    @Test
+    fun testDeprecatedConfigureDocumentKeyCreationMapsToKeyProtectionPolicy() {
+        val enabled = EudiWalletConfig()
+            .configureDocumentKeyCreation(userAuthenticationRequired = true, useStrongBoxForKeys = true)
+        assertEquals(KeyProtectionPolicy.Required, enabled.userAuthenticationPolicy)
+        assertEquals(KeyProtectionPolicy.IfSupported, enabled.strongBoxPolicy)
+
+        // a call with only the timeout keeps the defaults
+        val timeoutOnly = EudiWalletConfig()
+            .configureDocumentKeyCreation(userAuthenticationTimeout = 30.seconds)
+        assertEquals(KeyProtectionPolicy.Required, timeoutOnly.userAuthenticationPolicy)
+        assertEquals(KeyProtectionPolicy.IfSupported, timeoutOnly.strongBoxPolicy)
+
+        val disabled = EudiWalletConfig()
+            .configureDocumentKeyCreation(userAuthenticationRequired = false, useStrongBoxForKeys = false)
+        assertEquals(KeyProtectionPolicy.Disabled, disabled.userAuthenticationPolicy)
+        assertEquals(KeyProtectionPolicy.Disabled, disabled.strongBoxPolicy)
     }
 }

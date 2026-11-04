@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet
 import android.content.Context
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.KeyProtectionState
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.registration.RegistrationTrust
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
@@ -43,6 +44,7 @@ import org.multipaz.storage.Storage
  * @property presentationManager the presentation manager
  * @property transferManager the transfer manager
  * @property documentStatusResolver the document status resolver
+ * @property keyProtectionState the protections applied to the document keys
  * @property transactionLogManager the transaction-log funnel
  * @property ktorHttpClientFactory the ktor http client factory for use in the OpenId4VciManager and OpenId4VpManager
  * @property logger the logger
@@ -57,6 +59,7 @@ class EudiWalletImpl internal constructor(
     override val documentStatusResolver: DocumentStatusResolver,
     override val walletProvider: WalletAttestationsProvider?,
     override val walletKeyManager: WalletKeyManager,
+    override val keyProtectionState: KeyProtectionState,
     override val transactionLogManager: TransactionLogManager?,
     override val trustMarkManager: TrustMarkManager?,
     val ktorHttpClientFactory: (() -> HttpClient)?,

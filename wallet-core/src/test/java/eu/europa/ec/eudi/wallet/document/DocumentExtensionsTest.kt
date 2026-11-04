@@ -156,20 +156,23 @@ class DocumentExtensionsTest {
     }
 
     @Test
-    fun `EudiWallet getDefaultCreateDocumentSettings should pass through credentialPolicy and apply config`() {
+    fun `EudiWallet getDefaultCreateDocumentSettings should pass through credentialPolicy and apply key protection state`() {
         val secureArea: AndroidKeystoreSecureArea = mockk {
             every { identifier } returns AndroidKeystoreSecureArea.IDENTIFIER
         }
 
         val eudiWalletConfig = EudiWalletConfig()
             .configureDocumentKeyCreation(
-                userAuthenticationRequired = true,
+                userAuthentication = KeyProtectionPolicy.IfSupported,
+                strongBox = KeyProtectionPolicy.IfSupported,
                 userAuthenticationTimeout = 1000.milliseconds,
-                useStrongBoxForKeys = true,
             )
+        // a device that supports neither protection
+        val state = KeyProtectionState(userAuthenticationRequired = false, useStrongBox = false)
 
         val wallet: EudiWallet = mockk {
             every { config } returns eudiWalletConfig
+            every { keyProtectionState } returns state
             every { secureAreaRepository } returns mockk {
                 coEvery {
                     getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
@@ -189,11 +192,8 @@ class DocumentExtensionsTest {
         assertIs<CreateDocumentSettings.CredentialPolicy.RotatingBatch>(result.credentialPolicy)
         val createKeySettings = result.createKeySettings
         assertIs<AndroidKeystoreCreateKeySettings>(createKeySettings)
-        assertEquals(
-            eudiWalletConfig.userAuthenticationRequired,
-            createKeySettings.userAuthenticationRequired
-        )
-        assertEquals(eudiWalletConfig.useStrongBoxForKeys, createKeySettings.useStrongBox)
+        assertEquals(state.userAuthenticationRequired, createKeySettings.userAuthenticationRequired)
+        assertEquals(state.useStrongBox, createKeySettings.useStrongBox)
         assertEquals(
             eudiWalletConfig.userAuthenticationTimeout,
             createKeySettings.userAuthenticationTimeout
@@ -242,24 +242,27 @@ class DocumentExtensionsTest {
     }
 
     @Test
-    fun `EudiWallet getDefaultCreateKeySettings should return secureAreaIdentifier and key settings from config`() {
+    fun `EudiWallet getDefaultCreateKeySettings should return secureAreaIdentifier and key settings from key protection state`() {
         val eudiWalletConfig = EudiWalletConfig()
             .configureDocumentKeyCreation(
-                userAuthenticationRequired = true,
+                userAuthentication = KeyProtectionPolicy.Required,
+                strongBox = KeyProtectionPolicy.IfSupported,
                 userAuthenticationTimeout = 1000.milliseconds,
-                useStrongBoxForKeys = true,
             )
+        // a device without StrongBox
+        val state = KeyProtectionState(userAuthenticationRequired = true, useStrongBox = false)
 
         val wallet: EudiWallet = mockk {
             every { config } returns eudiWalletConfig
+            every { keyProtectionState } returns state
         }
 
         val (secureAreaId, keySettings) = wallet.getDefaultCreateKeySettings()
 
         assertEquals(AndroidKeystoreSecureArea.IDENTIFIER, secureAreaId)
         assertIs<AndroidKeystoreCreateKeySettings>(keySettings)
-        assertEquals(eudiWalletConfig.userAuthenticationRequired, keySettings.userAuthenticationRequired)
-        assertEquals(eudiWalletConfig.useStrongBoxForKeys, keySettings.useStrongBox)
+        assertEquals(state.userAuthenticationRequired, keySettings.userAuthenticationRequired)
+        assertEquals(state.useStrongBox, keySettings.useStrongBox)
         assertEquals(eudiWalletConfig.userAuthenticationTimeout, keySettings.userAuthenticationTimeout)
     }
 
@@ -267,6 +270,7 @@ class DocumentExtensionsTest {
     fun `EudiWallet getDefaultCreateKeySettings should use provided attestationChallenge`() {
         val wallet: EudiWallet = mockk {
             every { config } returns EudiWalletConfig()
+            every { keyProtectionState } returns KeyProtectionState(userAuthenticationRequired = true, useStrongBox = true)
         }
 
         val attestationChallenge = byteArrayOf(1, 2, 3)
