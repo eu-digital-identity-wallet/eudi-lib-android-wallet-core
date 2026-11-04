@@ -78,7 +78,7 @@ class QrEngagementTest {
             onDisconnected = {},
             onSessionEnded = {},
             onConnecting = {},
-            onNewDeviceRequest = {},
+            onNewDeviceRequest = { _, _ -> },
             onCommunicationError = {},
             onDeviceRetrievalHelperReady = {},
         )
@@ -102,7 +102,7 @@ class QrEngagementTest {
             onDisconnected = {},
             onSessionEnded = {},
             onConnecting = {},
-            onNewDeviceRequest = {},
+            onNewDeviceRequest = { _, _ -> },
             onCommunicationError = {},
             onDeviceRetrievalHelperReady = {},
         )
@@ -123,7 +123,7 @@ class QrEngagementTest {
             onDisconnected = {},
             onSessionEnded = {},
             onConnecting = {},
-            onNewDeviceRequest = {},
+            onNewDeviceRequest = { _, _ -> },
             onCommunicationError = {},
             onDeviceRetrievalHelperReady = {},
         )

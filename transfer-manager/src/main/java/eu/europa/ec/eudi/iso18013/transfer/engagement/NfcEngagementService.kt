@@ -116,7 +116,7 @@ abstract class NfcEngagementService : HostApduService() {
     internal lateinit var isPresentationActive: () -> Boolean
     internal lateinit var onConnecting: () -> Unit
     internal lateinit var onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit
-    internal lateinit var onNewDeviceRequest: (request: ByteArray) -> Unit
+    internal lateinit var onNewDeviceRequest: (deviceRetrievalHelper: DeviceRetrievalHelper, request: ByteArray) -> Unit
     internal lateinit var onDisconnected: (transportSpecificTermination: Boolean) -> Unit
     internal lateinit var onSessionEnded: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit
     internal lateinit var onCommunicationError: (error: Throwable) -> Unit
@@ -245,7 +245,7 @@ abstract class NfcEngagementService : HostApduService() {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onDeviceRequest")
-            onNewDeviceRequest(deviceRequestBytes)
+            onNewDeviceRequest(requireNotNull(deviceRetrievalHelper), deviceRequestBytes)
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {

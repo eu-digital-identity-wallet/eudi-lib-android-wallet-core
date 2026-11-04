@@ -38,7 +38,8 @@ import org.multipaz.crypto.EcPublicKey
  * @property onConnecting callback to notify that a new mdoc verifier is connecting
  * @property onQrEngagementReady callback to notify that a the QR Engagement is ready
  * @property onDeviceRetrievalHelperReady callback to notify that the device retrieval helper is ready
- * @property onNewDeviceRequest callback to notify that a device request has been received
+ * @property onNewDeviceRequest callback to notify that a device request has been received, with the
+ *   device retrieval helper of the connection that received it
  * @property onDisconnected callback to notify that the mdoc verifier has been disconnected
  * @property onSessionEnded callback to notify that the session of the device retrieval helper has
  *   ended, because the mdoc verifier disconnected or the connection failed
@@ -58,7 +59,7 @@ internal class QrEngagement(
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
-    val onNewDeviceRequest: (request: ByteArray) -> Unit,
+    val onNewDeviceRequest: (deviceRetrievalHelper: DeviceRetrievalHelper, request: ByteArray) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onDisconnected: (transportSpecificTermination: Boolean) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
@@ -126,7 +127,7 @@ internal class QrEngagement(
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (QR): OnDeviceRequest")
-            onNewDeviceRequest(deviceRequestBytes)
+            onNewDeviceRequest(requireNotNull(deviceRetrievalHelper), deviceRequestBytes)
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
