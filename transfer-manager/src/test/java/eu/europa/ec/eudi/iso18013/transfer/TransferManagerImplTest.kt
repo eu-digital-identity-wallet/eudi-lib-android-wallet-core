@@ -291,7 +291,7 @@ class TransferManagerImplTest {
     }
 
     @Test
-    fun `startQrEngagement ends an active NFC presentation`() {
+    fun `startQrEngagement fails while a presentation session is active`() {
         mockkConstructor(QrEngagement::class)
         every { anyConstructed<QrEngagement>().configure() } just Runs
         val manager = TransferManagerImpl(
@@ -305,16 +305,12 @@ class TransferManagerImplTest {
 
         manager.startQrEngagement()
 
-        verify(exactly = 1) {
-            nfcDeviceRetrievalHelper.sendDeviceResponse(
-                null,
-                status = SESSION_DATA_STATUS_SESSION_TERMINATION
-            )
-        }
-        verify(exactly = 1) { nfcDeviceRetrievalHelper.disconnect() }
-        assertNull(manager.deviceRetrievalHelper)
-        assertTrue(manager.hasStarted)
-        verify(exactly = 0) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+        verify(exactly = 0) { nfcDeviceRetrievalHelper.sendDeviceResponse(any(), any()) }
+        verify(exactly = 0) { nfcDeviceRetrievalHelper.disconnect() }
+        assertSame(nfcDeviceRetrievalHelper, manager.deviceRetrievalHelper)
+        assertFalse(manager.hasStarted)
+        assertNull(manager.qrEngagement)
+        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
     }
 
     @Test
