@@ -251,11 +251,13 @@ eudiWallet.addTransferEventListener { event ->
             val selection = success.presentmentSelections.single()
             val matches = selection.matches
 
-            // Per-credential unlock data, keyed by `match.credential.identifier`.
-            val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
-                match.credential.identifier to
-                    wallet.getDefaultKeyUnlockData(match.credential.identifier)
-            }
+            // Unlock data for the key of each matched credential, keyed by
+            // `match.credential.identifier`.
+            val keyUnlockData: Map<String, KeyUnlockData> = matches.mapNotNull { match ->
+                val credential = match.credential as SecureAreaBoundCredential
+                getDefaultKeyUnlockData(credential.secureArea, credential.alias)
+                    ?.let { match.credential.identifier to it }
+            }.toMap()
 
             // generate the response
             val response = success.generateResponse(

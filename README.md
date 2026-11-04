@@ -85,39 +85,42 @@ graph TD
 
 The library supports the following features:
 
-| Category                   | Feature                                                                 | Status                                                                                                                                                        |
-|----------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Document Management**    | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                                                             |
-|                            | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                                                            |
-|                            | Multiple Key Management implementations                                 | ✅                                                                                                                                                             |
-|                            | Support for Batch credentials per Document                              | ✅                                                                                                                                                             |
-| **Document Issuance**      | OpenId4VCI v1.0 document issuance                                       |                                                                                                                                                               |
-|                            | Authorization Code Flow                                                 | ✅                                                                                                                                                             |
-|                            | Pre-authorization Code Flow                                             | ✅                                                                                                                                                             |
-|                            | DPoP JWT in authorization                                               | ✅                                                                                                                                                             |
-|                            | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |
-|                            | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                                                                    |
-|                            | Credential batch issuing                                                | ✅                                                                                                                                                             |
-|                            | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                                                          |
-|                            | Deferred issuing                                                        | ✅                                                                                                                                                             |
-|                            | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                                                         |
-|                            | Supported Proof Types                                                   | ✅ Attestation Proof Type <br/> ✅ JWT Proof Type with Key Attestation <br/> ✅ JWT Proof Type without Key Attestation <br/> ✅ No Proof                          |
-|                            | Notify credential issuer                                                | ❌                                                                                                                                                             |
-| **Issuer Trust**           | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |
-|                            | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                                                             |
-|                            | Signed issuer metadata verification                                     | ✅ RequireSigned (default) / PreferSigned / IgnoreSigned                                                                                                       |
-|                            | Custom credential format verifiers                                      | ✅ via CredentialTrustVerifier                                                                                                                                 |
-| **Revocation Status**      | Document status resolution (token status lists)                         | ✅ JWT <br /> ✅ CWT                                                                                                                                            |
-|                            | Status list token signer trust verification (LoTE)                      | ✅                                                                                                                                                             |
-| **Proximity Presentation** | ISO-18013-5 device retrieval                                            |                                                                                                                                                               |
-|                            | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                                                             |
-|                            | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                                                        |
-| **Remote Presentation**    | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                                                               |
-|                            | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                                                               |
-|                            | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |
-|                            | Transaction data                                                        | ✅ SD-JWT VC <br />✅ ISO/IEC 18013-5 mdoc                                                                                                               |
-| **Trust Mark**             | EUDI Wallet Trust Mark (EC TS01 v1.2)                                   | ✅ Static (pre-distribution) <br /> ✅ Dynamic (on-demand via provider)                                                  |
-|                            | Trust Mark resource fetching                                            | ✅                                                                                                                      |
+| Category                     | Feature                                                                 | Status                                                                                                                                                        | Default                                                                                                            |
+|------------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| **Document Management**      | Documents' Key creation and management with Android Keystore by default | ✅                                                                                                                                                             | User authentication `Required`, StrongBox `IfSupported` ([Document Key Protection](#document-key-protection))      |
+|                              | Custom Key Management implementation                                    | ✅ via implementation of SecureArea                                                                                                                            |                                                                                                                    |
+|                              | Multiple Key Management implementations                                 | ✅                                                                                                                                                             |                                                                                                                    |
+|                              | Support for Batch credentials per Document                              | ✅                                                                                                                                                             |                                                                                                                    |
+| **Document Issuance**        | OpenId4VCI v1.0 document issuance                                       |                                                                                                                                                               |                                                                                                                    |
+|                              | Authorization Code Flow                                                 | ✅                                                                                                                                                             |                                                                                                                    |
+|                              | Pre-authorization Code Flow                                             | ✅                                                                                                                                                             |                                                                                                                    |
+|                              | DPoP JWT in authorization                                               | ✅                                                                                                                                                             | Enabled, when the authorization server supports it                                                                 |
+|                              | Credential Formats                                                      | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   |                                                                                                                    |
+|                              | Credential issuance                                                     | ✅ Wallet initiated issuance  <br /> ✅ Via credential Offer                                                                                                    |                                                                                                                    |
+|                              | Credential batch issuing                                                | ✅                                                                                                                                                             |                                                                                                                    |
+|                              | Credential reuse policies (ETSI TS 119 472-3)                           | ✅ once_only, limited_time, rotating_batch <br /> ⚠️ per_relying_party (partial — RP mapping planned)                                                          |                                                                                                                    |
+|                              | Deferred issuing                                                        | ✅                                                                                                                                                             |                                                                                                                    |
+|                              | Wallet Authentication                                                   | ✅ public client, <br/>✅ Attestation-Based Client Authentication (WIA)                                                                                         |                                                                                                                    |
+|                              | Supported Proof Types                                                   | ✅ Attestation Proof Type <br/> ✅ JWT Proof Type with Key Attestation <br/> ✅ JWT Proof Type without Key Attestation <br/> ✅ No Proof                          |                                                                                                                    |
+|                              | Notify credential issuer                                                | ❌                                                                                                                                                             |                                                                                                                    |
+| **Issuer Trust**             | Trust verification during issuance (LoTE)                               | ✅ mso_mdoc format <br /> ✅ sd-jwt-vc format                                                                                                                   | Enabled                                                                                                            |
+|                              | Trust policy (ENFORCE / INFORM)                                         | ✅                                                                                                                                                             | ENFORCE                                                                                                            |
+|                              | Signed issuer metadata verification                                     | ✅ RequireSigned / PreferSigned / IgnoreSigned                                                                                                                 | RequireSigned                                                                                                      |
+|                              | Custom credential format verifiers                                      | ✅ via CredentialTrustVerifier                                                                                                                                 |                                                                                                                    |
+| **Registration Certificate** | Relying party registration certificate (WRPRC, ETSI TS 119 472-2)       | ✅ ISO/IEC 18013-5 <br /> ✅ OpenID4VP <br /> ✅ DC API                                                                                                          | Enabled; requires trust for registration certificates ([REGISTRATION_CERTIFICATE.md](REGISTRATION_CERTIFICATE.md)) |
+|                              | Credential issuer registration certificate (ETSI TS 119 472-3)          | ✅ OpenID4VCI                                                                                                                                                  | Enabled, with signed issuer metadata; requires trust for registration certificates                                 |
+| **Revocation Status**        | Document status resolution (token status lists)                         | ✅ JWT <br /> ✅ CWT                                                                                                                                            | On request (`resolveStatus`)                                                                                       |
+|                              | Status list token signer trust verification (LoTE)                      | ✅                                                                                                                                                             | Disabled; enabled with `configureDocumentStatusResolver { }` and `configureEtsiTrust` or a trust source            |
+| **Proximity Presentation**   | ISO-18013-5 device retrieval                                            |                                                                                                                                                               |                                                                                                                    |
+|                              | Device engagement                                                       | ✅ QR <br /> ✅ NFC                                                                                                                                             |                                                                                                                    |
+|                              | Data transfer                                                           | ✅ BLE <br /> ❌ NFC <br /> ❌ Wifi-Aware                                                                                                                        |                                                                                                                    |
+| **Remote Presentation**      | OpenID for Verifiable Presentations 1.0                                 |                                                                                                                                                               |                                                                                                                    |
+|                              | ClientID scheme                                                         | ✅ preregistered   <br /> ✅ x509_san_dns<br /> ✅ x509_hash <br /> ✅ redirect_uri                                                                               |                                                                                                                    |
+|                              | DCQL                                                                    | ✅ support for credential_sets  <br />✅ support for claim_sets <br />✅ per-query `multiple` flag <br />✅ per-query `require_cryptographic_holder_binding` flag |                                                                                                                    |
+|                              | Transaction data                                                        | ✅ SD-JWT VC <br />✅ ISO/IEC 18013-5 mdoc                                                                                                                      |                                                                                                                    |
+|                              | Digital Credential API                                                  | ✅ ISO mdoc (`org-iso-mdoc`) <br /> ✅ OpenID4VP (`openid4vp-v1-signed`, `openid4vp-v1-unsigned`)                                                               | Disabled ([DIGITAL_CREDENTIAL_API.md](DIGITAL_CREDENTIAL_API.md))                                                  |
+| **Trust Mark**               | EUDI Wallet Trust Mark (EC TS01 v1.2)                                   | ✅ Static (pre-distribution) <br /> ✅ Dynamic (on-demand via provider)                                                                                         |                                                                                                                    |
+|                              | Trust Mark resource fetching                                            | ✅                                                                                                                                                             |                                                                                                                    |
 
 The library is written in Kotlin and is compatible with Java. It is distributed as a Maven package
 and can be included in any Android project that uses Android 8 (API level 26) or higher.
@@ -189,7 +192,29 @@ dependencies {
 }
 ```
 
+To use the Digital Credential API, also add the runtime dependency described in
+[DIGITAL_CREDENTIAL_API.md](DIGITAL_CREDENTIAL_API.md#add-the-runtime-dependency).
+
+To use `configureEtsiTrust`, also add `etsi-119602-consultation` (see [Trusted Lists › Dependencies](#dependencies-1)).
+
 ## How to Use
+
+### Integration checklist
+
+Use this checklist before releasing a wallet that uses the library.
+
+| Area | Required outcome |
+|---|---|
+| Trusted lists | `configureEtsiTrust` uses the production lists of trusted entities (LoTE) for each check: the PID and attestation provider lists for issuer trust, `wrpacProviders` for reader authentication and signed issuer metadata, `wrprcProviders` for registration certificates. The list signers are trusted with `loteSignerTrustAnchors()` or `jwtSignatureVerifier()`; `relaxCertificateProfiles()` and `pkixRevocationPolicy(PkixRevocationPolicy.Disabled)` (or the deprecated `relaxPkixRevocation()`) are not used. See [Centralized Trust Configuration](#centralized-trust-configuration-configureetsitrust). |
+| Issuer trust | Every credential type that the wallet accepts is classified (with `ENFORCE`, types that are not classified are rejected), and issuance managers are created with `wallet.createOpenId4VciManager()`. The signed issuer metadata policy is `RequireSigned` (the default); with `preferSignedMetadata()` or `ignoreSignedMetadata()`, the issuer's registration certificate is not validated. See [Issuer Trust Verification](#issuer-trust-verification), [Creating an OpenId4VciManager](#creating-an-openid4vcimanager) and [Signed Issuer Metadata Verification](#signed-issuer-metadata-verification). |
+| DPoP | `DPopConfig.Disabled` is not used, and the authorization servers that the wallet uses support DPoP. DPoP is used only when the authorization server advertises it; otherwise the access token is issued without DPoP. See [DPoP Support](#dpop-support). |
+| Revocation status | `resolveStatus` is called wherever the status of a document is needed; the wallet does not check revocation on its own. The signature of a status list token is always verified; whether its signer is trusted is checked only when `configureDocumentStatusResolver { }` (the block form) is used, with `configureEtsiTrust` or with a trust source in `configureTrust`. See [Resolving document status](#resolving-document-status) and [Revocation Status Trust Verification](#revocation-status-trust-verification). |
+| Registration certificates | Trust for registration certificates comes from `configureEtsiTrust`, or from `configureWrpRegistrationTrust` and `configureIssuerRegistrationTrust`; without it, building the wallet fails while the registration policies are `Enabled` (the default). The result (`wrpRegistration`, `issuerRegistration`) is shown to the user, who is asked for approval when `requiresExplicitApproval` is true. The result does not block the interaction, with one exception: when the issuer's registration certificate is validated, issuance stops if the signed issuer metadata carries no registration certificate or more than one. See [REGISTRATION_CERTIFICATE.md](REGISTRATION_CERTIFICATE.md). |
+| Document keys | Building the wallet fails with `KeyProtectionUnsupportedException` on a device without a screen lock while user authentication is `Required` (the default), and the app handles it. A policy other than `Required` is chosen deliberately; the protections that apply are in `wallet.keyProtectionState`. See [Document Key Protection](#document-key-protection). |
+| Dependencies | `etsi-119602-consultation` is declared in the app when `configureEtsiTrust` is used (wallet-core does not add it), and `registry-provider-play-services` when the Digital Credential API is enabled. See [Dependencies](#dependencies). |
+
+For a production deployment based on the reference wallet app, see also the
+[EUDI Android Wallet Go-Live Guide](https://github.com/eu-digital-identity-wallet/eudi-app-android-wallet-ui/blob/main/wiki/GO_LIVE.md).
 
 ### Initialize the library
 
@@ -298,7 +323,9 @@ val config = EudiWalletConfig()
         
     }
     // configure document status resolver with 5 minutes clock skew tolerance
-    .configureDocumentStatusResolver(clockSkewInMinutes = 5)
+    .configureDocumentStatusResolver {
+        clockSkew(5)
+    }
 
 // Create the wallet instance with default components
 val wallet = EudiWallet(context, config)
@@ -661,6 +688,9 @@ The `findCredential()` method intelligently selects credentials based on:
 - Validity period (ensuring the credential is currently valid)
 - Availability (excluding deleted or invalidated credentials)
 
+`findCredential()` does not check the revocation status of a credential. To check it, call
+`resolveStatus` (see [Resolving document status](#resolving-document-status)).
+
 #### Deleting documents
 
 To delete a document, use the following code snippet:
@@ -736,9 +766,17 @@ You can configure the default implementation using `EudiWalletConfig`:
 ```kotlin
 val config = EudiWalletConfig()
     // Configure a clock skew allowance (in minutes) for token verification
-    .configureDocumentStatusResolver(clockSkewInMinutes = 5)
+    .configureDocumentStatusResolver {
+        clockSkew(5)
+    }
 // ... other configurations
 ```
+
+The default clock skew is zero (`Duration.ZERO`). The signature of a status list token is always
+verified (`x5c`). Whether its signer is trusted is checked only with the block form, with
+`configureEtsiTrust` or a trust source in `configureTrust` (see
+[Revocation Status Trust Verification](#revocation-status-trust-verification)); the
+`configureDocumentStatusResolver(clockSkewInMinutes)` overload sets only the clock skew.
 
 ###### Custom DocumentStatusResolver Implementation
 
@@ -761,10 +799,10 @@ You can also create your own DocumentStatusResolver using the builder:
 // Create a custom DocumentStatusResolver
 val customResolver = DocumentStatusResolver {
     // Configure verification mechanism
-    withVerifySignature(VerifyStatusListTokenSignature.x5c)
+    withVerifyJwtSignature(VerifyStatusListTokenJwtSignature.x5c)
 
     // Configure clock skew tolerance
-    withAllowedClockSkew(Duration.minutes(5))
+    withAllowedClockSkew(5.minutes)
 
     // Custom HTTP client factory
     withKtorHttpClientFactory {
@@ -817,13 +855,14 @@ so consumers can reference its types directly (`SupportedLists`, `AttestationCla
 
 The `etsi-119602-consultation` module (which provides the `Uri` type used in `configureEtsiTrust`
 DSL) is **not** transitively available due to an upstream packaging issue. Consumers must
-declare it explicitly:
+declare it explicitly, with the version that wallet-core uses (the `eudi-lib-kmp-etsi1196x2`
+version in `gradle/libs.versions.toml`):
 
 ```groovy
 dependencies {
     implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.32.0-SNAPSHOT"
     // Required explicitly — Uri type is not transitive from wallet-core
-    implementation "eu.europa.ec.eudi:eudi-lib-kmp-etsi-119602-consultation:${VERSION}"
+    implementation "eu.europa.ec.eudi:etsi-119602-consultation:0.5.0-alpha.1-SNAPSHOT"
 }
 ```
 
@@ -996,6 +1035,9 @@ for a step-by-step guide covering all trust areas
 #### Issuer Trust Verification
 
 Trust verification runs after the credential is received from the issuer and before it is stored.
+This verification covers the issuer's signature and certificate chain, not the revocation status
+of the credential. The revocation status is checked separately with `resolveStatus` (see
+[Resolving document status](#resolving-document-status)).
 Built-in verifiers handle both MsoMdoc and SD-JWT VC formats, and custom verifiers can be
 registered for additional formats.
 
@@ -1421,6 +1463,12 @@ val openId4VciManagerWithCustomHttpClient = wallet.createOpenId4VciManager(
     }
 )
 ```
+
+The issuer trust, signed metadata and issuer registration settings of `EudiWalletConfig` apply to
+managers created with `createOpenId4VciManager`, also when a custom `OpenId4VciManager.Config` is
+passed. A manager created with `OpenId4VciManager.Builder` or `OpenId4VciManager(context) { }` does
+not use signed issuer metadata, does not verify the issuer against trusted lists, and does not
+validate the issuer's registration certificate.
 
 **NOTE:** When `withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)` is configured, the `EudiWallet` must also be instantiated with a WalletProvider
 
@@ -1966,6 +2014,9 @@ The default configuration automatically:
 - Negotiates the algorithm with the authorization server
 - Requires no user authentication for key usage
 
+DPoP is used when the authorization server supports it, that is, when it advertises
+`dpop_signing_alg_values_supported`; otherwise the access token is issued without DPoP.
+
 ##### Disabling DPoP
 
 If you need to disable DPoP (not recommended for production):
@@ -2361,11 +2412,13 @@ wallet.addTransferEventListener { event ->
             val selection: CredentialSelection = variants[userSelectedIndex]
             val matches = selection.matches
 
-            // Per-credential unlock data, keyed by `match.credential.identifier`.
-            val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
-                match.credential.identifier to
-                    wallet.getDefaultKeyUnlockData(match.credential.identifier)
-            }
+            // Unlock data for the key of each matched credential, keyed by
+            // `match.credential.identifier`.
+            val keyUnlockData: Map<String, KeyUnlockData> = matches.mapNotNull { match ->
+                val credential = match.credential as SecureAreaBoundCredential
+                getDefaultKeyUnlockData(credential.secureArea, credential.alias)
+                    ?.let { match.credential.identifier to it }
+            }.toMap()
 
             // generate the response
             val response = success.generateResponse(
@@ -2656,14 +2709,15 @@ val transferEventListener = TransferEvent.Listener { event ->
             val matches = selection.matches
 
             // If any picked credential requires unlock data (e.g. PIN-locked keys),
-            // build a map keyed by `match.credential.identifier`.
-            val keyUnlockData: Map<String, KeyUnlockData> = matches.associate { match ->
-                val document = wallet.getDocumentById(...) as IssuedDocument
-                val unlockData = document.DefaultKeyUnlockData
+            // build a map for the key of each matched credential, keyed by
+            // `match.credential.identifier`.
+            val keyUnlockData: Map<String, KeyUnlockData> = matches.mapNotNull { match ->
+                val credential = match.credential as SecureAreaBoundCredential
+                val unlockData = getDefaultKeyUnlockData(credential.secureArea, credential.alias)
                 // authenticate the user using unlockData.getCryptoObjectForSigning(...)
                 // if biometric / device-credential gating is required
-                match.credential.identifier to unlockData
-            }
+                unlockData?.let { match.credential.identifier to it }
+            }.toMap()
 
             // generate the response
             val response = success.generateResponse(
