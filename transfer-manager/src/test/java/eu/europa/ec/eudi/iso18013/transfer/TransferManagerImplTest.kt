@@ -487,13 +487,11 @@ class TransferManagerImplTest {
         assertFalse(qrEngagement.isPresentationActive())
         assertFalse(service.isPresentationActive())
 
-        val deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
-        service.deviceRetrievalHelper = deviceRetrievalHelper
-        manager.deviceRetrievalHelper = deviceRetrievalHelper
+        val connectionListener = service.connectNfc(mockk<DeviceRetrievalHelper>())
         assertTrue(qrEngagement.isPresentationActive())
         assertTrue(service.isPresentationActive())
 
-        service.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+        connectionListener.onDeviceDisconnected(false)
         assertFalse(qrEngagement.isPresentationActive())
         assertFalse(service.isPresentationActive())
     }
@@ -515,8 +513,10 @@ class TransferManagerImplTest {
         }
         manager.setupNfcEngagement(service)
 
+        service.buildNfcEngagementHelper = { _, _ -> mockk(relaxed = true) }
+        service.engagement = service.Engagement()
         val transport = mockk<DataTransport>(relaxed = true)
-        service.nfcEngagementListener.onDeviceConnected(transport)
+        service.engagement!!.listener.onDeviceConnected(transport)
 
         assertSame(qrDeviceRetrievalHelper, manager.deviceRetrievalHelper)
         verify(exactly = 0) { listener.onTransferEvent(TransferEvent.Connected) }
@@ -586,7 +586,7 @@ class TransferManagerImplTest {
     }
 
     @Test
-    fun `an NFC session that disconnects or fails releases the presentation`() {
+    fun `an NFC session that disconnects or fails releases the presentation for a new connection`() {
         val manager = TransferManagerImpl(
             context = Context,
             requestProcessor = mockk(),
@@ -596,15 +596,17 @@ class TransferManagerImplTest {
                 get() = manager
         }
         manager.setupNfcEngagement(service)
-        val deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
-        service.deviceRetrievalHelper = deviceRetrievalHelper
 
-        manager.deviceRetrievalHelper = deviceRetrievalHelper
-        service.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+        val firstDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        val firstConnection = service.connectNfc(firstDeviceRetrievalHelper)
+        assertSame(firstDeviceRetrievalHelper, manager.deviceRetrievalHelper)
+        firstConnection.onDeviceDisconnected(false)
         assertNull(manager.deviceRetrievalHelper)
 
-        manager.deviceRetrievalHelper = deviceRetrievalHelper
-        service.deviceRetrievalHelperListener.onError(Throwable())
+        val secondDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        val secondConnection = service.connectNfc(secondDeviceRetrievalHelper)
+        assertSame(secondDeviceRetrievalHelper, manager.deviceRetrievalHelper)
+        secondConnection.onError(Throwable())
         assertNull(manager.deviceRetrievalHelper)
     }
 
@@ -619,11 +621,11 @@ class TransferManagerImplTest {
                 get() = manager
         }
         manager.setupNfcEngagement(service)
-        service.deviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
+        val endedConnection = service.connectNfc(mockk<DeviceRetrievalHelper>())
         val newerDeviceRetrievalHelper = mockk<DeviceRetrievalHelper>()
         manager.deviceRetrievalHelper = newerDeviceRetrievalHelper
 
-        service.deviceRetrievalHelperListener.onDeviceDisconnected(false)
+        endedConnection.onDeviceDisconnected(false)
 
         assertSame(newerDeviceRetrievalHelper, manager.deviceRetrievalHelper)
     }
@@ -670,4 +672,21 @@ class TransferManagerImplTest {
         verify { listener.onTransferEvent(any<TransferEvent.Error>()) }
     }
 
+    /**
+     * Connects an mdoc verifier through a new NFC engagement of this service, with
+     * [deviceRetrievalHelper] as its connection, and returns the listener of that connection.
+     */
+    private fun NfcEngagementService.connectNfc(
+        deviceRetrievalHelper: DeviceRetrievalHelper,
+    ): DeviceRetrievalHelper.Listener {
+        lateinit var connectionListener: DeviceRetrievalHelper.Listener
+        buildNfcEngagementHelper = { _, _ -> mockk(relaxed = true) }
+        buildDeviceRetrievalHelper = { _, _, listener ->
+            connectionListener = listener
+            deviceRetrievalHelper
+        }
+        engagement = Engagement()
+        engagement!!.listener.onDeviceConnected(mockk(relaxed = true))
+        return connectionListener
+    }
 }
