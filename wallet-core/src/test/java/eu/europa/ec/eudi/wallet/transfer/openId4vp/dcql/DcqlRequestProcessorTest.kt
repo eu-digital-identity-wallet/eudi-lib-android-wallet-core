@@ -42,6 +42,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -53,9 +54,13 @@ import org.multipaz.claim.Claim
 import org.multipaz.claim.JsonClaim
 import org.multipaz.claim.MdocClaim
 import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.sdjwt.SdJwt
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import java.net.URI
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -795,6 +800,136 @@ class DcqlRequestProcessorTest {
 
         val success = assertIs<ProcessedDcqlRequest>(processed)
         assertNoMatches(success)
+    }
+
+    /**
+     * `address` is one Disclosure whose claim value has sub-claims that are not selectively
+     * disclosable. `["address", "country"]` cannot be disclosed without the other sub-claims, so
+     * the credential is not offered.
+     */
+    @Test
+    fun `sdjwt sub-claim of a Disclosure with other sub-claims produces no matches`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("country"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("address"),
+                                        ClaimPathElement.Claim("country"),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+        val processor = buildSdJwtProcessorWithAddressDisclosure(vct)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        assertNoMatches(assertIs<ProcessedDcqlRequest>(processed))
+    }
+
+    /**
+     * Same credential, with `claim_sets = [["country"], ["address"]]`. The first option cannot be
+     * disclosed alone, so the processor falls through to the whole `address`.
+     */
+    @Test
+    fun `sdjwt claim_sets skip an option that needs a Disclosure with other claims`(): Unit = runBlocking {
+        val vct = "urn:eudi:pid:1"
+        val dcql = DCQL(
+            credentials = Credentials(
+                listOf(
+                    CredentialQuery.sdJwtVc(
+                        id = QueryId("query_0"),
+                        sdJwtVcMeta = DCQLMetaSdJwtVcExtensions(vctValues = listOf(vct)),
+                        requireCryptographicHolderBinding = false,
+                        claims = listOf(
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("country"),
+                                path = ClaimPath(
+                                    listOf(
+                                        ClaimPathElement.Claim("address"),
+                                        ClaimPathElement.Claim("country"),
+                                    ),
+                                ),
+                            ),
+                            ClaimsQuery.sdJwtVc(
+                                id = ClaimId("address"),
+                                path = ClaimPath(listOf(ClaimPathElement.Claim("address"))),
+                            ),
+                        ),
+                        claimSets = listOf(
+                            ClaimSet(listOf(ClaimId("country"))),
+                            ClaimSet(listOf(ClaimId("address"))),
+                        ),
+                    ),
+                ),
+            ),
+            credentialSets = null,
+        )
+        val processor = buildSdJwtProcessorWithAddressDisclosure(vct)
+
+        val processed = processor.process(buildOpenId4VpRequest(dcql))
+
+        val match = assertIs<ProcessedDcqlRequest>(processed).assertSingleMatch()
+        assertEquals(
+            expected = setOf(JsonArray(listOf(JsonPrimitive("address")))),
+            actual = match.claims.keys.filterIsInstance<JsonRequestedClaim>().map { it.claimPath }.toSet(),
+        )
+    }
+
+    /**
+     * SD-JWT processor whose credential implements [SdJwtVcCredential] and carries `address`
+     * as one Disclosure with the sub-claims `street_address`, `locality` and `country`, which are
+     * not selectively disclosable.
+     */
+    private suspend fun buildSdJwtProcessorWithAddressDisclosure(vct: String): DcqlRequestProcessor {
+        val address = buildJsonObject {
+            put("street_address", JsonPrimitive("Street 1"))
+            put("locality", JsonPrimitive("Athens"))
+            put("country", JsonPrimitive("GR"))
+        }
+        val sdJwt = SdJwt.createFromMetadata(
+            issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256),
+            kbKey = null,
+            claims = buildJsonObject {
+                put("iss", JsonPrimitive("https://issuer.example"))
+                put("vct", JsonPrimitive(vct))
+                put("address", address)
+                put("_sd", buildJsonObject { put("claimNames", JsonArray(listOf(JsonPrimitive("address")))) })
+            },
+        )
+        val credential = mockk<SecureAreaBoundCredential>(
+            moreInterfaces = arrayOf(SdJwtVcCredential::class),
+        )
+        coEvery { credential.getClaims(documentTypeRepository = null) } returns
+            listOf(jsonClaim(vct, claimName = "address", value = address))
+        every { (credential as SdJwtVcCredential).issuerProvidedData } returns
+            ByteString(sdJwt.compactSerialization.encodeToByteArray())
+        val issuedDoc = mockk<IssuedDocument> {
+            every { format } returns SdJwtVcFormat(vct) as DocumentFormat
+            coEvery { findCredential(now = any()) } returns credential
+        }
+        val documentManager = mockk<DocumentManager> {
+            every { getDocuments(predicate = any()) } returns listOf(issuedDoc)
+            every { getDocuments(predicate = null) } returns listOf(issuedDoc)
+        }
+        return DcqlRequestProcessor(
+            documentManager,
+            readerTrustStore = null,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        )
     }
 
     /**

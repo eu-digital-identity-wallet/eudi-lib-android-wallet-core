@@ -2674,6 +2674,16 @@ member of that option, and collects them into a `CredentialSelection`. The
 request (DCQL `claim_sets` first-match per §6.4.1, hard-fail on missing claims) — the UI can
 display it as-is or further narrow it down if the user opts out of specific claims.
 
+For an SD-JWT VC, the claims in the claim value of one Disclosure that are not selectively
+disclosable themselves, for example the sub-claims of an `address` claim with a flat structure
+(RFC 9901 §6.1), can only be disclosed in full. A request, or a `claim_sets` option, that selects
+only some of them is not matched, and if the user opts out of only some of them, generating the
+response fails. For example, if the Issuer discloses `address` as one Disclosure with the
+sub-claims `street_address`, `locality` and `country`, a request for `["address", "country"]` is
+not matched, while a request for `["address"]` is. If the user opts out of `country` only and the
+remaining claims still satisfy a `claim_sets` option, generating the response fails, because the
+`address` Disclosure cannot be sent without `country`.
+
 ##### Requested claim types
 
 Each `match.claims` map is keyed by `RequestedClaim`, which has two concrete subtypes depending
