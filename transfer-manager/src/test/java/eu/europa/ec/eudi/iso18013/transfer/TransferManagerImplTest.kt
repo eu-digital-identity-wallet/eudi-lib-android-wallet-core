@@ -253,6 +253,24 @@ class TransferManagerImplTest {
     }
 
     @Test
+    fun `stopPresentation disconnects even when the session termination message cannot be sent`() {
+        val mockDeviceRetrievalHelper: DeviceRetrievalHelper = mockk(relaxed = true)
+        every {
+            mockDeviceRetrievalHelper.sendDeviceResponse(any(), any())
+        } throws IllegalStateException("send failed")
+        val manager = TransferManagerImpl(
+            context = Context,
+            requestProcessor = mockk(),
+        )
+        manager.deviceRetrievalHelper = mockDeviceRetrievalHelper
+
+        manager.stopPresentation()
+
+        verify(exactly = 1) { mockDeviceRetrievalHelper.disconnect() }
+        assertNull(manager.deviceRetrievalHelper)
+    }
+
+    @Test
     fun `stopPresentation should call DeviceRetrievalHelper disconnect`() {
         val mockDeviceRetrievalHelper: DeviceRetrievalHelper = mockk(relaxed = true)
         val manager = spyk(
