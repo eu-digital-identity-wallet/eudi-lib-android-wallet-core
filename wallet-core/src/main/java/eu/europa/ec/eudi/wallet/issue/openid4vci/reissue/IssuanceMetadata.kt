@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci.reissue
 
+import android.annotation.SuppressLint
 import eu.europa.ec.eudi.wallet.registration.QualifiedIdentifier
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -55,6 +56,7 @@ import org.multipaz.storage.StorageTableSpec
  * @property tokenTimestamp Epoch seconds when the token was issued
  * @property grantType "authorization_code" or "pre-authorized_code"
  */
+@SuppressLint("UnsafeOptInUsageError")
 @Serializable
 data class IssuanceMetadata(
     // Issuer identifiers
