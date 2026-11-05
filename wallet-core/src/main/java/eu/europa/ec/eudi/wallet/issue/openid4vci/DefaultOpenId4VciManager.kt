@@ -46,6 +46,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.storeRefreshedTokens
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.tokenRefreshLock
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -60,6 +62,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
@@ -101,10 +104,10 @@ internal class DefaultOpenId4VciManager(
     private val offerResolver: OfferResolver by lazy {
         OfferResolver(config, httpClientFactory, issuerMetadataPolicy)
     }
-    private val issuerCreator: IssuerCreator by lazy {
+    internal val issuerCreator: IssuerCreator by lazy {
         IssuerCreator(context, config, httpClientFactory, walletProvider, walletAttestationKeyManager, logger, issuerMetadataPolicy, issuerRegistrationEnabled, issuerRegistration)
     }
-    private val issuerAuthorization: IssuerAuthorization by lazy {
+    internal val issuerAuthorization: IssuerAuthorization by lazy {
         val handler = config.authorizationHandler ?: BrowserAuthorizationHandler(context, logger)
         IssuerAuthorization(handler, logger)
     }
@@ -415,9 +418,6 @@ internal class DefaultOpenId4VciManager(
 
                 logger?.d(TAG, "Loaded issuanceMetadata: credentialIssuerId=${issuanceMetadata.credentialIssuerId}")
 
-                //  Reconstruct AuthorizedRequest from stored metadata
-                var authorizedRequest = ReissuanceIssuer().reconstructAuthorizedRequest(issuanceMetadata)
-
                 //  Create Issuer using IssuerCreator (resolves issuer metadata)
                 //  Pass existing DPoP key alias so the same key is reused
                 //  (access token is bound to original key's thumbprint)
@@ -433,11 +433,28 @@ internal class DefaultOpenId4VciManager(
                 //  network failures, and other OAuth error codes are re-thrown — falling
                 //  back to authorization would hit the same broken server or mask
                 //  configuration errors.
-                var updatedAuthorizedRequest = try {
-                    with(issuer) {
-                        authorizedRequest.refresh().getOrThrow()
+                //
+                //  The tokens are read, refreshed and stored under tokenRefreshLock, and stored
+                //  before anything else can fail: documents issued together share the refresh
+                //  token, and a rotated one must replace the old one in all of them.
+                val refreshResult = tokenRefreshLock.withLock {
+                    // Read the tokens again, now under the lock: another re-issuance of a document
+                    // of the same authorization may have rotated them since issuanceMetadata was read.
+                    val metadataWithLatestTokens = loadIssuanceMetadata(documentId)
+                        ?: throw IllegalStateException("No issuance metadata found for document $documentId")
+                    runCatching {
+                        with(issuer) {
+                            ReissuanceIssuer().reconstructAuthorizedRequest(metadataWithLatestTokens).refresh().getOrThrow()
+                        }
+                    }.onSuccess { refreshedRequest ->
+                        metadataWithLatestTokens.refreshToken?.let { oldRefreshToken ->
+                            runCatching { issuanceMetadataStorage.storeRefreshedTokens(oldRefreshToken, refreshedRequest) }
+                                .onSuccess { logger?.d(TAG, "Stored refreshed tokens for documents $it") }
+                                .onFailure { logger?.e(TAG, "Failed to store refreshed tokens", it) }
+                        }
                     }
-                } catch (e: Throwable) {
+                }
+                val updatedAuthorizedRequest = refreshResult.getOrElse { e ->
                     val isInvalidGrant = e is CredentialIssuanceError.AccessTokenRequestFailed
                             && e.error == "invalid_grant"
                     if (!isInvalidGrant) throw e
@@ -475,9 +492,8 @@ internal class DefaultOpenId4VciManager(
                 //  Submit the issuance request using stored AuthorizedRequest
                 //  (skips the authorization flow - uses refresh token instead)
                 val submit = SubmitRequest(walletProvider, issuer, updatedAuthorizedRequest, config.issuanceProofProfile)
-                var response = submit.request(requestMap).also {
-                    authorizedRequest = submit.authorizedRequest
-                }
+                var response = submit.request(requestMap)
+                var authorizedRequest = submit.authorizedRequest
 
                 //  Check for authentication failure (401 / InvalidToken)
                 //    This happens when both stored access token AND refresh token are invalid.

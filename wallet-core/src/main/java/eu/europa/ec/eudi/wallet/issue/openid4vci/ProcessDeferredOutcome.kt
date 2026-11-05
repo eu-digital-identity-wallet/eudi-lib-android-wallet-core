@@ -26,9 +26,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
@@ -99,9 +96,7 @@ internal class ProcessDeferredOutcome(
 
                         // Store issuance metadata so the new document can be re-issued later
                         if (issuanceMetadataStorage != null && deferredContext != null) {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                storeIssuanceMetadata(document.id, deferredContext, keyAliases)
-                            }
+                            storeIssuanceMetadata(document.id, deferredContext, keyAliases)
                         }
 
                         callback(DeferredIssueResult.DocumentIssued(document, trustResult))
