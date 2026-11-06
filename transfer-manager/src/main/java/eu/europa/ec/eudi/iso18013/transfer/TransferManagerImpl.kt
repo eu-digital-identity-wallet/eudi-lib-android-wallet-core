@@ -133,10 +133,11 @@ class TransferManagerImpl @JvmOverloads constructor(
      * Starts the QR Engagement and generates the QR code
      * Once the QR code is ready, the event [TransferEvent.QrEngagementReady] will be triggered
      * If the transfer has already started, an error event will be triggered
-     * with an [IllegalStateException] containing the message "Transfer has already started."
+     * with a [QrEngagementNotStartedException] containing the message "Transfer has already started."
      * If a presentation session is active, for example one started from an NFC engagement,
-     * an error event will be triggered with an [IllegalStateException] containing the message
+     * an error event will be triggered with a [QrEngagementNotStartedException] containing the message
      * "A presentation session is active."; call [stopPresentation] to end it first.
+     * In both cases the active session, if any, is not affected.
      * @see TransferEvent.QrEngagementReady
      * @see TransferEvent.Error
      */
@@ -145,10 +146,10 @@ class TransferManagerImpl @JvmOverloads constructor(
             Log.d(this.TAG, TRANSFER_STARTED_MSG)
             transferEventListeners.onTransferEvent(
                 TransferEvent.Error(
-                    IllegalStateException(
-                        TRANSFER_STARTED_MSG,
-                    ),
-                ),
+                    QrEngagementNotStartedException(
+                        TRANSFER_STARTED_MSG
+                    )
+                )
             )
             return
         }
@@ -158,10 +159,10 @@ class TransferManagerImpl @JvmOverloads constructor(
             Log.d(this.TAG, SESSION_ACTIVE_MSG)
             transferEventListeners.onTransferEvent(
                 TransferEvent.Error(
-                    IllegalStateException(
-                        SESSION_ACTIVE_MSG,
-                    ),
-                ),
+                    QrEngagementNotStartedException(
+                        SESSION_ACTIVE_MSG
+                    )
+                )
             )
             return
         }

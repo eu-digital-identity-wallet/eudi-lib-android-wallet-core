@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation
 
+import eu.europa.ec.eudi.iso18013.transfer.QrEngagementNotStartedException
 import eu.europa.ec.eudi.iso18013.transfer.ResponseNotSentException
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -32,7 +33,8 @@ import kotlin.test.assertEquals
 
 /**
  * Tests that a proximity response is recorded only for the request it was generated for, and that a
- * response that was not sent does not end the transaction of the current request.
+ * refused call (a response that is not sent, a QR engagement that is not started) does not end the
+ * transaction of the current request.
  */
 class PresentationLogListenerResponseTest {
 
@@ -107,6 +109,18 @@ class PresentationLogListenerResponseTest {
         val listener = listenerWithRequest(recorder)
 
         listener.onTransferEvent(TransferEvent.Error(ResponseNotSentException("not sent")))
+        listener.onTransferEvent(TransferEvent.ResponseSent)
+
+        val entry = recorder.entries.last() as TransactionEntry.Presentation
+        assertEquals(TransactionResult.Completed, entry.transactionResult)
+    }
+
+    @Test
+    fun `a QR engagement that is not started does not end the transaction of the current request`() {
+        val recorder = RecordingLogManager()
+        val listener = listenerWithRequest(recorder)
+
+        listener.onTransferEvent(TransferEvent.Error(QrEngagementNotStartedException("not started")))
         listener.onTransferEvent(TransferEvent.ResponseSent)
 
         val entry = recorder.entries.last() as TransactionEntry.Presentation

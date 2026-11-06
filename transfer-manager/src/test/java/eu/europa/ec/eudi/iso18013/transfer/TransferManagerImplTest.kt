@@ -305,7 +305,11 @@ class TransferManagerImplTest {
         manager.startQrEngagement()
         manager.startQrEngagement()
 
-        verify(exactly = 1) { listener.onTransferEvent(any<TransferEvent.Error>()) }
+        verify(exactly = 1) {
+            listener.onTransferEvent(
+                match { it is TransferEvent.Error && it.error is QrEngagementNotStartedException }
+            )
+        }
     }
 
     @Test
@@ -328,7 +332,11 @@ class TransferManagerImplTest {
         assertSame(nfcDeviceRetrievalHelper, manager.deviceRetrievalHelper)
         assertFalse(manager.hasStarted)
         assertNull(manager.qrEngagement)
-        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+        verify(exactly = 1) {
+            listener.onTransferEvent(
+                match { it is TransferEvent.Error && it.error is QrEngagementNotStartedException }
+            )
+        }
     }
 
     @Test
