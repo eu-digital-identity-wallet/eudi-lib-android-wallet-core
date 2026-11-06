@@ -185,7 +185,7 @@ file.
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.32.0-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.32.0"
     // required when using the built-in AndroidKeystoreSecureArea implementation provided by the library
     // for user authentication with biometrics
     implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
@@ -860,9 +860,9 @@ version in `gradle/libs.versions.toml`):
 
 ```groovy
 dependencies {
-    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.32.0-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:eudi-lib-android-wallet-core:0.32.0"
     // Required explicitly — Uri type is not transitive from wallet-core
-    implementation "eu.europa.ec.eudi:etsi-119602-consultation:0.5.0-alpha.1-SNAPSHOT"
+    implementation "eu.europa.ec.eudi:etsi-119602-consultation:0.5.0-alpha.1"
 }
 ```
 
