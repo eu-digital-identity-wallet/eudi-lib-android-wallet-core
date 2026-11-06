@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation
 
+import eu.europa.ec.eudi.iso18013.transfer.ResponseNotSentException
 import eu.europa.ec.eudi.iso18013.transfer.SessionTranscriptBytes
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
@@ -90,15 +91,18 @@ class PresentationLogListener(
      * Records the presented claims of a dispatched response without deciding the result. A later
      * transfer event marks the entry completed or not completed, so the entry is not finalized here.
      *
-     * A proximity response is recorded only for the request it was generated for. A response
-     * generated for another session is not sent, so it is not recorded.
+     * A proximity response is recorded only for the request it was generated for, while its
+     * session has not ended. A response generated for another session, or after the session ended
+     * without a response, is not sent, so it is not recorded.
      *
      * @param response the response that was dispatched.
      */
     fun recordResponse(response: Response) {
-        if (response is DeviceResponse &&
-            !response.sessionTranscriptBytes.contentEquals(sessionTranscript)
-        ) return
+        if (response is DeviceResponse) {
+            val otherSession = !response.sessionTranscriptBytes.contentEquals(sessionTranscript)
+            val sessionEnded = finalized && log.transactionResult is TransactionResult.NotCompleted
+            if (otherSession || sessionEnded) return
+        }
         try {
             log = logBuilder.withPresentedClaims(log, response)
             transactionLogManager.log(log)
@@ -162,6 +166,8 @@ class PresentationLogListener(
             }
 
             is TransferEvent.Error -> {
+                // A response that was not sent does not end the session.
+                if (event.error is ResponseNotSentException) return
                 try {
                     if (!finalized && hasProcessableRequest) {
                         log = logBuilder.withError(log, event.error.toNoncompletionReason(REASON_TRANSFER_ERROR))

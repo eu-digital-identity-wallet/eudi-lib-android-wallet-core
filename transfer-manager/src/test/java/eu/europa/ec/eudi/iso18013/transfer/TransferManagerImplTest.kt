@@ -386,7 +386,11 @@ class TransferManagerImplTest {
 
         verify(exactly = 0) { mockDeviceRetrievalHelper.sendDeviceResponse(any(), any()) }
         verify(exactly = 0) { listener.onTransferEvent(TransferEvent.ResponseSent) }
-        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+        verify(exactly = 1) {
+            listener.onTransferEvent(
+                match { it is TransferEvent.Error && it.error is ResponseNotSentException }
+            )
+        }
     }
 
     @Test
@@ -462,7 +466,11 @@ class TransferManagerImplTest {
         )
 
         verify(exactly = 0) { mockDeviceRetrievalHelper.sendDeviceResponse(any(), any()) }
-        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+        verify(exactly = 1) {
+            listener.onTransferEvent(
+                match { it is TransferEvent.Error && it.error is ResponseNotSentException }
+            )
+        }
     }
 
     @Test
@@ -483,7 +491,11 @@ class TransferManagerImplTest {
         )
 
         verify(exactly = 0) { listener.onTransferEvent(TransferEvent.ResponseSent) }
-        verify(exactly = 1) { listener.onTransferEvent(ofType<TransferEvent.Error>()) }
+        verify(exactly = 1) {
+            listener.onTransferEvent(
+                match { it is TransferEvent.Error && it.error is ResponseNotSentException }
+            )
+        }
     }
 
     @Test

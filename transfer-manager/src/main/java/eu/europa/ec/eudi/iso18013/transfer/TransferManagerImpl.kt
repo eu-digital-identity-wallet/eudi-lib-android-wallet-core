@@ -267,7 +267,8 @@ class TransferManagerImpl @JvmOverloads constructor(
      *
      * The response is sent only to the session of the request it was generated for. When there is
      * no active session, or the response was generated for another session, nothing is sent and
-     * [TransferEvent.Error] is triggered.
+     * [TransferEvent.Error] is triggered with a [ResponseNotSentException]. The active session, if
+     * any, is not affected.
      *
      * After the response is sent, connections from other mdoc verifiers are not accepted until the
      * mdoc verifier disconnects or [stopPresentation] is called.
@@ -279,7 +280,7 @@ class TransferManagerImpl @JvmOverloads constructor(
         val helper = deviceRetrievalHelper
         if (helper == null) {
             transferEventListeners.onTransferEvent(
-                TransferEvent.Error(IllegalStateException("No active presentation session"))
+                TransferEvent.Error(ResponseNotSentException("No active presentation session"))
             )
             return
         }
@@ -287,7 +288,7 @@ class TransferManagerImpl @JvmOverloads constructor(
         if (!sessionTranscript.contentEquals(response.sessionTranscriptBytes)) {
             transferEventListeners.onTransferEvent(
                 TransferEvent.Error(
-                    IllegalStateException("The response was generated for another presentation session")
+                    ResponseNotSentException("The response was generated for another presentation session")
                 )
             )
             return
