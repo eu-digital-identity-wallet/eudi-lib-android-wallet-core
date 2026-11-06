@@ -30,6 +30,7 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.seconds
 
 class ExtensionsTest {
 
@@ -74,10 +75,10 @@ class ExtensionsTest {
         // Convert to DataItem
         val dataItem = policy.toDataItem()
 
-        // Ensure it's a map and has the expected type
+        // Ensure it's a map and has the expected stable type constant
         assertTrue(dataItem is CborMap)
         assertEquals(
-            CreateDocumentSettings.CredentialPolicy.OnceOnly::class.java.name,
+            POLICY_TYPE_ONCE_ONLY,
             (dataItem as CborMap)["type"].asTstr
         )
 
@@ -96,10 +97,10 @@ class ExtensionsTest {
         // Convert to DataItem
         val dataItem = policy.toDataItem()
 
-        // Ensure it's a map and has the expected type
+        // Ensure it's a map and has the expected stable type constant
         assertTrue(dataItem is CborMap)
         assertEquals(
-            CreateDocumentSettings.CredentialPolicy.OnceOnly::class.java.name,
+            POLICY_TYPE_ONCE_ONLY,
             (dataItem as CborMap)["type"].asTstr
         )
 
@@ -120,10 +121,10 @@ class ExtensionsTest {
         // Convert to DataItem
         val dataItem = policy.toDataItem()
 
-        // Ensure it's a map and has the expected type
+        // Ensure it's a map and has the expected stable type constant
         assertTrue(dataItem is CborMap)
         assertEquals(
-            CreateDocumentSettings.CredentialPolicy.RotatingBatch::class.java.name,
+            POLICY_TYPE_ROTATING_BATCH,
             (dataItem as CborMap)["type"].asTstr
         )
 
@@ -135,17 +136,70 @@ class ExtensionsTest {
     }
 
     @Test
-    fun `test CredentialPolicy fromDataItem throws for invalid types`() {
-        // Create a DataItem with an unknown policy type
-        val invalidDataItem = buildCborMap {
-            put("type", "unknown.policy.type")
+    fun `test CredentialPolicy toDataItem and fromDataItem for LimitedTime`() {
+        val policy = CreateDocumentSettings.CredentialPolicy.LimitedTime()
+
+        val dataItem = policy.toDataItem()
+
+        assertTrue(dataItem is CborMap)
+        assertEquals(
+            POLICY_TYPE_LIMITED_TIME,
+            (dataItem as CborMap)["type"].asTstr
+        )
+
+        val reconstructedPolicy = CreateDocumentSettings.CredentialPolicy.fromDataItem(dataItem)
+        assertEquals(policy, reconstructedPolicy)
+        assertIs<CreateDocumentSettings.CredentialPolicy.LimitedTime>(reconstructedPolicy)
+    }
+
+    @Test
+    fun `test CredentialPolicy toDataItem and fromDataItem for LimitedTime with reissueTrigger`() {
+        val policy = CreateDocumentSettings.CredentialPolicy.LimitedTime(
+            reissueTriggerLifetimeLeft = 3600.seconds
+        )
+
+        val dataItem = policy.toDataItem()
+        val reconstructedPolicy = CreateDocumentSettings.CredentialPolicy.fromDataItem(dataItem)
+
+        assertEquals(policy, reconstructedPolicy)
+        assertIs<CreateDocumentSettings.CredentialPolicy.LimitedTime>(reconstructedPolicy)
+        assertEquals(
+            3600.seconds,
+            (reconstructedPolicy as CreateDocumentSettings.CredentialPolicy.LimitedTime).reissueTriggerLifetimeLeft
+        )
+    }
+
+    @Test
+    fun `test CredentialPolicy toDataItem and fromDataItem for RotatingBatch with reissueTrigger`() {
+        val policy = CreateDocumentSettings.CredentialPolicy.RotatingBatch(
+            numberOfCredentials = 5,
+            reissueTriggerLifetimeLeft = 1800.seconds
+        )
+
+        val dataItem = policy.toDataItem()
+        val reconstructedPolicy = CreateDocumentSettings.CredentialPolicy.fromDataItem(dataItem)
+
+        assertEquals(policy, reconstructedPolicy)
+        assertIs<CreateDocumentSettings.CredentialPolicy.RotatingBatch>(reconstructedPolicy)
+        val batch = reconstructedPolicy as CreateDocumentSettings.CredentialPolicy.RotatingBatch
+        assertEquals(5, batch.numberOfCredentials)
+        assertEquals(1800.seconds, batch.reissueTriggerLifetimeLeft)
+    }
+
+    @Test
+    fun `test CredentialPolicy fromDataItem falls back to RotatingBatch for unknown types`() {
+        // Create a DataItem with an unknown policy type (e.g. R8-obfuscated class name)
+        val unknownDataItem = buildCborMap {
+            put("type", "ji.a\$a\$b")
         }
 
-        // Verify it throws an exception
-        assertFailsWith<IllegalArgumentException> {
-            CreateDocumentSettings.CredentialPolicy.fromDataItem(invalidDataItem)
-        }
+        // Should fall back to RotatingBatch instead of throwing
+        val policy = CreateDocumentSettings.CredentialPolicy.fromDataItem(unknownDataItem)
+        assertIs<CreateDocumentSettings.CredentialPolicy.RotatingBatch>(policy)
+    }
 
+    @Test
+    fun `test CredentialPolicy fromDataItem throws for non-CborMap`() {
         // Test with non-map DataItem
         val nonMapDataItem = Tstr("not a map")
         assertFailsWith<IllegalArgumentException> {
