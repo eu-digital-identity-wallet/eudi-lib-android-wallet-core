@@ -20,9 +20,13 @@ import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.Grant
 import eu.europa.ec.eudi.openid4vci.RefreshToken
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.storage.NoRecordStorageException
 import org.multipaz.storage.Storage
+import org.multipaz.storage.StorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.time.Instant
 import kotlin.test.Test
@@ -96,6 +100,35 @@ class RefreshedTokensTest {
 
         assertEquals(listOf("pid"), updated)
         assertEquals("rt-1", storage.load("pid").refreshToken)
+    }
+
+    @Test
+    fun `a record failing to update does not stop the others from being updated`() = runTest {
+        val bytes = ByteString(metadata(refreshToken = "rt-0").toByteArray())
+        val updatedKeys = mutableListOf<String>()
+        val table = mockk<StorageTable> {
+            coEvery { enumerateWithData(any(), any(), any()) } returns listOf(
+                "mdoc" to bytes,
+                "deleted" to bytes,
+                "failing" to bytes,
+                "sd-jwt" to bytes,
+            )
+            coEvery { update(any(), any(), any(), any()) } answers { updatedKeys.add(firstArg<String>()); Unit }
+            coEvery { update("deleted", any(), any(), any()) } throws NoRecordStorageException("deleted meanwhile")
+            coEvery { update("failing", any(), any(), any()) } throws IllegalStateException("write failed")
+        }
+        val storage = mockk<Storage> { coEvery { getTable(any()) } returns table }
+        val failures = mutableListOf<String>()
+
+        val updated = storage.storeRefreshedTokens(
+            "rt-0",
+            refreshed(accessToken = "at-1", refreshToken = "rt-1"),
+        ) { documentId, _ -> failures.add(documentId) }
+
+        assertEquals(listOf("mdoc", "sd-jwt"), updated)
+        assertEquals(listOf("mdoc", "sd-jwt"), updatedKeys)
+        // A deleted record is expected, so only the failed write is reported
+        assertEquals(listOf("failing"), failures)
     }
 
     @Test

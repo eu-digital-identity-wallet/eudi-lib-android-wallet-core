@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.storage.NoRecordStorageException
 import org.multipaz.storage.Storage
 
 /**
@@ -36,11 +37,16 @@ internal val tokenRefreshLock = Mutex()
  * also identifies the authorization. When a refresh rotates it, the old one must be discarded
  * (RFC 6749 §6) for all of these documents, not only the one being re-issued.
  *
+ * Each record is updated on its own, so one that fails does not keep the others on the old
+ * token. A record deleted with its document since the table was read is skipped.
+ *
+ * @param onUpdateFailure called for each record that could not be updated, other than deleted ones
  * @return the ids of the documents whose records were updated
  */
 internal suspend fun Storage.storeRefreshedTokens(
     oldRefreshToken: String,
     refreshedRequest: AuthorizedRequest,
+    onUpdateFailure: (documentId: String, error: Throwable) -> Unit = { _, _ -> },
 ): List<String> {
     val table = getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
     return table.enumerateWithData().mapNotNull { (documentId, bytes) ->
@@ -56,7 +62,9 @@ internal suspend fun Storage.storeRefreshedTokens(
             refreshToken = refreshedRequest.refreshToken?.refreshToken ?: oldRefreshToken,
             tokenTimestamp = refreshedRequest.timestamp.epochSecond,
         )
-        table.update(key = documentId, data = ByteString(updated.toByteArray()))
-        documentId
+        runCatching { table.update(key = documentId, data = ByteString(updated.toByteArray())) }
+            .onFailure { error -> if (error !is NoRecordStorageException) onUpdateFailure(documentId, error) }
+            .map { documentId }
+            .getOrNull()
     }
 }
