@@ -784,7 +784,8 @@ class EudiWalletConfig {
      * when signed metadata is required ([configureIssuerTrust], whose default is
      * `requireSignedMetadata()`); otherwise it is skipped. When it runs, the OpenID4VCI library stops
      * the issuance if the issuer metadata carries no registration certificate, more than one, or one
-     * that is not a string; any other evaluation outcome is reported without stopping the issuance.
+     * that is not a string. The issuance also stops when the certificate fails validation or the
+     * offered attestations are outside its registered scope; nothing is then requested from the issuer.
      *
      * With the policy enabled and signed metadata required, trust for the registration certificate
      * signer must be configured ([configureIssuerRegistrationTrust] or [configureEtsiTrust]); otherwise

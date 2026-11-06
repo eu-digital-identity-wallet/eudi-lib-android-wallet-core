@@ -25,7 +25,10 @@ package eu.europa.ec.eudi.wallet.registration.issuer
  * `requireSignedMetadata()`); otherwise it is skipped.
  */
 enum class IssuerRegistrationPolicy {
-    /** The issuer registration certificate is validated and its outcome surfaced (default). */
+    /**
+     * The issuer registration certificate is validated and its outcome surfaced; the issuance stops when
+     * it fails validation or the offered attestations are outside its registered scope (default).
+     */
     Enabled,
 
     /** The issuer registration certificate is neither validated nor surfaced. */

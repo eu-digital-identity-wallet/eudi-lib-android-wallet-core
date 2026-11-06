@@ -34,8 +34,10 @@ private const val TAG = "IssuerRegistrationCert"
  *
  * The library extracts the serialized registration certificate from the metadata and hands it over
  * without decoding, verifying or establishing trust in it. It is authenticated and evaluated against
- * the offered credential configurations by [resolver]. The result is surfaced as warnings and never
- * denies the issuance.
+ * the offered credential configurations by [resolver]. A failed validation, and offered attestations
+ * outside the registered scope, deny the issuance: the library then does not create the issuer, so no
+ * authorization or credential request is sent and neither the wallet instance attestation nor a key
+ * attestation leaves the wallet.
  *
  * The certificate is evaluated once per issuance: an outcome already available is passed as
  * [resolvedRegistration] and reused, and otherwise the outcome produced here is published through
@@ -73,19 +75,24 @@ internal fun issuerRegistrationCertificatePolicy(
     }
 
 /**
- * Maps a [RegistrationCertificateResult] to the library's [Authorization]. Issuance is always
- * granted; a failed validation and each out-of-scope finding are attached as warnings.
+ * Maps a [RegistrationCertificateResult] to the library's [Authorization]. A failed validation and
+ * offered attestations outside the registered scope deny the issuance (ARF RPRC_22a, RPRC_22b,
+ * RPRC_23, ISSU_24a, ISSU_24b, ISSU_34a, ISSU_34b); over-asked claims are attached as warnings.
  */
-private fun RegistrationCertificateResult.toAuthorization(): Authorization {
-    val warnings = when (this) {
-        is RegistrationCertificateResult.Failed ->
-            listOf(PolicyViolation("issuer registration validation failed: $reason"))
+private fun RegistrationCertificateResult.toAuthorization(): Authorization = when (this) {
+    is RegistrationCertificateResult.Failed ->
+        Authorization.NotGranted(PolicyViolation("issuer registration validation failed: $reason"))
 
-        is RegistrationCertificateResult.Verified ->
-            overAskedClaims.map { PolicyViolation("over-asking ${it.format}:${it.path.joinToString("/")}") } +
-                overProvidedAttestations.map { PolicyViolation("over-providing ${it.format}") }
-    }
-    return Authorization.Granted(warnings)
+    is RegistrationCertificateResult.Verified ->
+        if (overProvidedAttestations.isNotEmpty()) {
+            Authorization.NotGranted(
+                PolicyViolation("over-providing ${overProvidedAttestations.joinToString { it.format }}")
+            )
+        } else {
+            Authorization.Granted(
+                overAskedClaims.map { PolicyViolation("over-asking ${it.format}:${it.path.joinToString("/")}") }
+            )
+        }
 }
 
 private val RegistrationCertificateResult.warningCount: Int

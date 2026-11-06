@@ -429,9 +429,12 @@ issuer metadata (`configureIssuerTrust { requireSignedMetadata() }`); otherwise 
 library stops the issuance, with `IssueEvent.Failure`, when the issuer metadata does not carry exactly
 one registration certificate in string form. Before the issuance, the offer and
 `resolveIssuerRegistration(…)` report this as `Failed(CERTIFICATE_ABSENT)` or `Failed(MALFORMED)`, so
-the application can inform the user. Any other evaluation outcome is reported without stopping the
-issuance, and the application decides whether to proceed; for `ENTITLEMENT_MISSING`, see
-[The entitlement check](#the-entitlement-check).
+the application can inform the user. The issuance also stops, with `IssueEvent.Failure`, on every
+other `Failed` outcome and when the offered attestations are outside the registered
+`provides_attestations` scope (ARF RPRC_22a, RPRC_22b, RPRC_23, ISSU_24a, ISSU_24b, ISSU_34a,
+ISSU_34b). It stops before the authorization request, so neither the wallet instance attestation nor
+a key attestation is sent to the issuer. The offer and `resolveIssuerRegistration(…)` report the same
+outcome before the issuance, so the application can warn the user.
 
 ### Enabling and disabling
 
@@ -449,7 +452,8 @@ val config = EudiWalletConfig()
 ```
 
 - `IssuerRegistrationPolicy.Enabled` (default) — the certificate is validated and its outcome is
-  surfaced to the user, including the absence of a certificate.
+  surfaced to the user, including the absence of a certificate; the issuance stops when the
+  certificate fails validation or the offered attestations are outside its registered scope.
 - `IssuerRegistrationPolicy.Disabled` — the certificate is neither validated nor surfaced.
 
 ### Trust anchors
@@ -533,15 +537,16 @@ val outcome = openId4VciManager.resolveIssuerRegistration(documentId)
 when (val registration = outcome.getOrNull()) {
     is RegistrationCertificateResult.Failed -> {
         // the issuer could not be verified — registration.reason says why
-        // (CERTIFICATE_ABSENT, UNTRUSTED_PROVIDER, EXPIRED, REVOKED, MALFORMED, …); inform the user
-        // and refuse if you choose to
+        // (CERTIFICATE_ABSENT, UNTRUSTED_PROVIDER, EXPIRED, REVOKED, MALFORMED, …); warn the user,
+        // as the issuance would stop
         val reason = registration.reason
     }
     is RegistrationCertificateResult.Verified ->
         if (registration.overProvidedAttestations.isEmpty()) {
             // verified AND within the registered scope — nothing to warn about
         } else {
-            // verified, but the issuer offers attestations beyond its registered scope (over-providing)
+            // verified, but the issuer offers attestations beyond its registered scope (over-providing);
+            // warn the user, as the issuance would stop
             // registration.overProvidedAttestations — the attestation types outside the registered scope
         }
     // null (a failed Result): the policy is Disabled, signed metadata is not required, or the check
@@ -578,9 +583,8 @@ disagree. An attestation identifying no type, and every attestation when no `pid
 classification is configured, counts as non-PID.
 
 A shortfall is a validation failure, `Failed(ENTITLEMENT_MISSING, registration)` — not a finding on a
-verified result. Like the other outcomes of the evaluation, it is reported without stopping the
-issuance. ARF ISSU_24a / ISSU_34a require the wallet to warn the user and not to request the issuance
-in this case, so on this outcome the application should not proceed with the issuance. The parsed
+verified result. ARF ISSU_24a / ISSU_34a require the wallet to warn the user and not to request the
+issuance in this case, so the issuance stops on this outcome, as on every `Failed` outcome. The parsed
 `registration` is still carried, so the provider can be named when the issuance is refused.
 
 An absent or empty `entitlements` claim satisfies nothing: a certificate that does not confirm the
