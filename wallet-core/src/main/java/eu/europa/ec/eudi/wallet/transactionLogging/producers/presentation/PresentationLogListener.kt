@@ -16,6 +16,7 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation
 
+import eu.europa.ec.eudi.iso18013.transfer.QrEngagementNotStartedException
 import eu.europa.ec.eudi.iso18013.transfer.ResponseNotSentException
 import eu.europa.ec.eudi.iso18013.transfer.SessionTranscriptBytes
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
@@ -166,8 +167,10 @@ class PresentationLogListener(
             }
 
             is TransferEvent.Error -> {
-                // A response that was not sent does not end the session.
-                if (event.error is ResponseNotSentException) return
+                // A refused call does not end the session.
+                if (event.error is ResponseNotSentException ||
+                    event.error is QrEngagementNotStartedException
+                ) return
                 try {
                     if (!finalized && hasProcessableRequest) {
                         log = logBuilder.withError(log, event.error.toNoncompletionReason(REASON_TRANSFER_ERROR))
