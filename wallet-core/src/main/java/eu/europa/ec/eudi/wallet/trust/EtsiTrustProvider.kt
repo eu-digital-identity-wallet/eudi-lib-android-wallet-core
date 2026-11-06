@@ -21,14 +21,16 @@ import eu.europa.ec.eudi.etsi119602.consultation.LoadLoTEAndPointers
 import eu.europa.ec.eudi.etsi119602.consultation.LoadSingleLoTEWithFileCache
 import eu.europa.ec.eudi.etsi119602.consultation.LotEMeta
 import eu.europa.ec.eudi.etsi119602.consultation.ProvisionTrustAnchorsFromLoTEs
-import eu.europa.ec.eudi.etsi119602.consultation.VerifyJwtSignature
 import eu.europa.ec.eudi.etsi119602.consultation.eu
 import eu.europa.ec.eudi.etsi119602.consultation.eudiwJvm
 import eu.europa.ec.eudi.etsi1196x2.consultation.DisposableContainer
 import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
+import eu.europa.ec.eudi.etsi1196x2.consultation.NonEmptyList
 import eu.europa.ec.eudi.etsi1196x2.consultation.SupportedLists
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingDirectTrustJvm
 import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingPKIXJvm
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.eudi.etsi1196x2.consultation.or
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.ktor.client.HttpClient
@@ -86,23 +88,7 @@ internal class EtsiTrustProvider(
             fileCacheExpiration = config.fileCacheExpiration,
         )
 
-        // LoTE pointer loading + JWT verification
-        val jwtVerifier = config.customJwtSignatureVerifier
-            ?: LoteJwtVerifier(logger)
-        val loadLoTEAndPointers = LoadLoTEAndPointers(
-            constraints = config.loteConstraints,
-            verifyJwtSignature = jwtVerifier,
-            loadLoTE = loadLoTE,
-        )
-
-        // Trust anchor provisioner
-        val svcTypePerCtx = if (config.relaxCertificateProfiles) {
-            relaxProfiles(SupportedLists.eu())
-        } else {
-            SupportedLists.eu()
-        }
-
-        // Map revocation policy to PKIX validator
+        // PKIX validation, for the LoTE signers and for the trust anchors of the LoTEs
         val pkix = when (config.pkixRevocationPolicy) {
             PkixRevocationPolicy.Disabled -> ValidateCertificateChainUsingPKIXJvm(
                 customization = { isRevocationEnabled = false }
@@ -126,6 +112,25 @@ internal class EtsiTrustProvider(
             PkixRevocationPolicy.OCSPPriority -> ValidateCertificateChainUsingPKIXJvm.withRevocationChecker {
                 // No options = Java default (OCSP first, CRL fallback)
             }
+        }
+
+        // LoTE pointer loading + JWT verification
+        val jwtVerifier = config.customJwtSignatureVerifier ?: LoteJwtVerifier(
+            signerTrustAnchors = NonEmptyList(config.loteSignerTrustAnchors.map { TrustAnchor(it, null) }),
+            validateSigner = ValidateCertificateChainUsingDirectTrustJvm or pkix,
+            logger = logger,
+        )
+        val loadLoTEAndPointers = LoadLoTEAndPointers(
+            constraints = config.loteConstraints,
+            verifyJwtSignature = jwtVerifier,
+            loadLoTE = loadLoTE,
+        )
+
+        // Trust anchor provisioner
+        val svcTypePerCtx = if (config.relaxCertificateProfiles) {
+            relaxProfiles(SupportedLists.eu())
+        } else {
+            SupportedLists.eu()
         }
 
         val provisionTrustAnchors = ProvisionTrustAnchorsFromLoTEs.eudiwJvm(

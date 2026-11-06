@@ -34,6 +34,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import eu.europa.ec.eudi.openid4vp.X509CertificateTrust
 
 /**
  * Tests for [OpenId4VpConfig.EncryptionPolicy] and its Builder wiring.
@@ -284,7 +285,7 @@ class OpenId4VpConfigTest {
         expected.forEach { (policy, upstream) ->
             val config = makeOpenId4VPConfig(
                 config = defaultBuilder().withErrorDispatchPolicy(policy).build(),
-                trust = mockk<OpenId4VpReaderTrust>()
+                trust = mockk<X509CertificateTrust>()
             )
             assertEquals(upstream, config.errorDispatchPolicy)
         }

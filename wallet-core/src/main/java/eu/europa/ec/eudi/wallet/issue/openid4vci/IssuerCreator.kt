@@ -22,7 +22,10 @@ import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataResolver
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestError
+import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestException
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.IssuerMetadataPolicy
 import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
@@ -52,6 +55,7 @@ import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.registration.issuer.issuerRegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
 import io.ktor.client.HttpClient
+import org.jetbrains.annotations.VisibleForTesting
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWK
 import org.multipaz.crypto.Algorithm
@@ -116,17 +120,11 @@ internal class IssuerCreator(
         issuerUrl: String,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
-    ): IssuerCreation {
-
-        val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
-            .map { getIssuerMetadata(it) }
-            .getOrThrow()
-
-        return doCreateIssuer(
-            issuerMetadata, authorizationServerMetadata.first(), credentialConfigurationIdentifiers,
-            existingDpopKeyAlias
-        )
-    }
+    ): IssuerCreation = doCreateIssuer(
+        CredentialIssuerId(issuerUrl).getOrThrow(),
+        credentialConfigurationIdentifiers,
+        existingDpopKeyAlias,
+    )
 
     /**
      * Creates an [Issuer] from the given [DocumentFormat].
@@ -141,23 +139,17 @@ internal class IssuerCreator(
             is MsoMdocFormat -> DocTypeFilter(documentFormat.docType)
             is SdJwtVcFormat -> VctFilter(documentFormat.vct)
         }
-        val (issuerMetadata, authorizationServerMetadata) = CredentialIssuerId(issuerUrl)
-            .map { getIssuerMetadata(it) }
-            .getOrThrow()
+        val credentialIssuerId = CredentialIssuerId(issuerUrl).getOrThrow()
+        val issuerMetadata = ktorHttpClientFactory().use {
+            CredentialIssuerMetadataResolver(it).resolve(credentialIssuerId, issuerMetadataPolicy)
+        }.getOrThrow()
 
         val configurationId = issuerMetadata.credentialConfigurationsSupported
             .filterValues { conf -> formatFilter(conf) }
             .firstNotNullOfOrNull { (confId, _) -> confId }
             ?: throw IllegalStateException("No suitable configuration found")
 
-        return doCreateIssuer(issuerMetadata, authorizationServerMetadata.first(), listOf(configurationId))
-    }
-
-
-    private suspend fun getIssuerMetadata(credentialIssuerId: CredentialIssuerId): Pair<CredentialIssuerMetadata, List<CIAuthorizationServerMetadata>> {
-        return ktorHttpClientFactory().use {
-            Issuer.metaData(it, credentialIssuerId, issuerMetadataPolicy)
-        }
+        return doCreateIssuer(credentialIssuerId, listOf(configurationId))
     }
 
 
@@ -179,27 +171,52 @@ internal class IssuerCreator(
         return IssuerCreation(issuer, resolvedRegistration ?: evaluatedRegistration)
     }
 
+    /**
+     * Creates an [Issuer] for wallet-initiated issuance.
+     *
+     * Performs the two steps of [Issuer.makeWalletInitiated] separately: the credential offer is
+     * resolved first, which fetches the credential issuer and authorization server metadata once,
+     * and the client authentication is then built from the resolved authorization server metadata
+     * before [Issuer.make] is called.
+     *
+     * The http client is closed if creation fails; otherwise the returned issuer keeps using it.
+     * Metadata resolution errors are rethrown as reported by the metadata resolvers, see
+     * [metadataResolutionReasonOrSelf].
+     *
+     * @param credentialIssuerId the credential issuer
+     * @param credentialConfigurationIdentifiers the credential configurations to request
+     * @param existingDpopKeyAlias alias of an existing DPoP key to reuse (for re-issuance)
+     * @return the [Issuer] and the registration outcome evaluated by [Issuer.make]
+     */
     private suspend fun doCreateIssuer(
-        credentialIssuerMetadata: CredentialIssuerMetadata,
-        authorizationServerMetadata: CIAuthorizationServerMetadata,
+        credentialIssuerId: CredentialIssuerId,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
     ): IssuerCreation {
+        val httpClient = ktorHttpClientFactory()
         return try {
             var evaluatedRegistration: RegistrationCertificateResult? = null
-            val issuer = Issuer.makeWalletInitiated(
-                config = config.toOpenId4VCIConfig(
-                    authorizationServerMetadata,
-                    existingDpopKeyAlias,
-                    credentialIssuerMetadata,
-                    onRegistrationEvaluated = { evaluatedRegistration = it },
-                ),
-                credentialIssuerId = credentialIssuerMetadata.credentialIssuerIdentifier,
+            val resolutionConfig = config.toOpenId4VCIConfig(
+                authorizationServerMetadata = null,
+                existingDpopKeyAlias = existingDpopKeyAlias,
+                onRegistrationEvaluated = { evaluatedRegistration = it },
+            )
+            val credentialOffer = CredentialOffer.walletInitiated(
+                httpClient = httpClient,
+                config = resolutionConfig,
+                credentialIssuerId = credentialIssuerId,
                 credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
-                httpClient = ktorHttpClientFactory()
+            ).getOrElse { throw it.metadataResolutionReasonOrSelf() }
+            val auth = credentialOffer.authorizationServerMetadata.toClientAuthentication().getOrThrow()
+            clientAuthentication = auth
+            val issuer = Issuer.make(
+                config = resolutionConfig.copy(clientAuthentication = auth),
+                credentialOffer = credentialOffer,
+                httpClient = httpClient,
             ).getOrThrow().first
             IssuerCreation(issuer, evaluatedRegistration)
         } catch (e: Throwable) {
+            httpClient.close()
             logger?.e(TAG, "Failed to create wallet-initiated issuer", e)
             throw e
         }
@@ -237,17 +254,30 @@ internal class IssuerCreator(
     /**
      * Converts the [OpenId4VciManager.Config] to [OpenId4VCIConfig].
      * @receiver The [OpenId4VciManager.Config].
+     * @param authorizationServerMetadata the metadata the client authentication is built from. When
+     * null, the client authentication is a placeholder: the config can only be used to resolve a
+     * credential offer, which does not read it, and the caller replaces it before [Issuer.make].
      * @return The [OpenId4VCIConfig].
      */
-    private suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
-        authorizationServerMetadata: CIAuthorizationServerMetadata,
+    @VisibleForTesting
+    internal suspend fun OpenId4VciManager.Config.toOpenId4VCIConfig(
+        authorizationServerMetadata: CIAuthorizationServerMetadata?,
         existingDpopKeyAlias: String? = null,
         credentialIssuerMetadata: CredentialIssuerMetadata? = null,
         resolvedRegistration: RegistrationCertificateResult? = null,
         onRegistrationEvaluated: (RegistrationCertificateResult) -> Unit = {},
     ): OpenId4VCIConfig {
-        val auth = authorizationServerMetadata.toClientAuthentication().getOrThrow()
-        clientAuthentication = auth
+        val auth = when (authorizationServerMetadata) {
+            null -> ClientAuthentication.None(
+                when (val type = clientAuthenticationType) {
+                    is OpenId4VciManager.ClientAuthenticationType.None -> type.clientId
+                    is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> type.clientId
+                }
+            )
+            else -> authorizationServerMetadata.toClientAuthentication().getOrThrow().also {
+                clientAuthentication = it
+            }
+        }
         // Resolve DPoP usage
         val dPoPUsage = when (dpopConfig) {
             DPopConfig.Disabled -> DPoPUsage.Never
@@ -336,11 +366,25 @@ internal class IssuerCreator(
                 else -> ParUsage.IfSupported()
             },
             proofs = issuanceProofProfile.toProofsConfig(),
-            issuerMetadataPolicy = if (issuerRegistrationEnabled) issuerMetadataPolicy else IssuerMetadataPolicy.IgnoreSigned,
+            issuerMetadataPolicy = issuerMetadataPolicy,
             registrationCertificatePolicy = registrationCertificatePolicy,
         )
     }
 }
+
+/**
+ * Unwraps the credential issuer and authorization server metadata resolution errors that
+ * [CredentialOffer.walletInitiated] wraps in a [CredentialOfferRequestException], which carries
+ * neither a message nor a cause. The unwrapped errors are the ones [Issuer.metaData] throws, so
+ * callers and the transaction log see the same failure as when the metadata was fetched up front.
+ * Any other error is returned unchanged.
+ */
+private fun Throwable.metadataResolutionReasonOrSelf(): Throwable =
+    when (val error = (this as? CredentialOfferRequestException)?.error) {
+        is CredentialOfferRequestError.UnableToResolveCredentialIssuerMetadata -> error.reason
+        is CredentialOfferRequestError.UnableToResolveAuthorizationServerMetadata -> error.reason
+        else -> this
+    }
 
 private fun OpenId4VciManager.IssuanceProofProfile.toProofsConfig(): ProofsConfig {
     val byType = preferenceOrder.associateBy { it.proofType }

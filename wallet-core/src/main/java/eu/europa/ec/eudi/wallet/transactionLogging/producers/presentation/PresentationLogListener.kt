@@ -16,8 +16,13 @@
 
 package eu.europa.ec.eudi.wallet.transactionLogging.producers.presentation
 
+import eu.europa.ec.eudi.iso18013.transfer.QrEngagementNotStartedException
+import eu.europa.ec.eudi.iso18013.transfer.ResponseNotSentException
+import eu.europa.ec.eudi.iso18013.transfer.SessionTranscriptBytes
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.Response
+import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
+import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceResponse
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.toNoncompletionReason
@@ -59,6 +64,12 @@ class PresentationLogListener(
     internal var hasProcessableRequest: Boolean = false
 
     /**
+     * The session transcript of the current proximity request, or null when the current request is
+     * not a proximity request.
+     */
+    private var sessionTranscript: SessionTranscriptBytes? = null
+
+    /**
      * Records the response after it is sent to the relying party.
      *
      * @param response the response that was sent.
@@ -81,9 +92,18 @@ class PresentationLogListener(
      * Records the presented claims of a dispatched response without deciding the result. A later
      * transfer event marks the entry completed or not completed, so the entry is not finalized here.
      *
+     * A proximity response is recorded only for the request it was generated for, while its
+     * session has not ended. A response generated for another session, or after the session ended
+     * without a response, is not sent, so it is not recorded.
+     *
      * @param response the response that was dispatched.
      */
     fun recordResponse(response: Response) {
+        if (response is DeviceResponse) {
+            val otherSession = !response.sessionTranscriptBytes.contentEquals(sessionTranscript)
+            val sessionEnded = finalized && log.transactionResult is TransactionResult.NotCompleted
+            if (otherSession || sessionEnded) return
+        }
         try {
             log = logBuilder.withPresentedClaims(log, response)
             transactionLogManager.log(log)
@@ -123,12 +143,14 @@ class PresentationLogListener(
                 log = logBuilder.createEmptyPresentationLog()
                 finalized = false
                 hasProcessableRequest = false
+                sessionTranscript = null
             }
 
             is TransferEvent.RequestReceived -> {
                 try {
                     log = logBuilder.createEmptyPresentationLog()
                     finalized = false
+                    sessionTranscript = (event.request as? DeviceRequest)?.sessionTranscriptBytes
                     // A transaction exists only if the request could be processed; otherwise it is a
                     // wrong-type or garbage scan that should not be logged.
                     hasProcessableRequest = event.processedRequest.getOrNull() != null
@@ -145,6 +167,10 @@ class PresentationLogListener(
             }
 
             is TransferEvent.Error -> {
+                // A refused call does not end the session.
+                if (event.error is ResponseNotSentException ||
+                    event.error is QrEngagementNotStartedException
+                ) return
                 try {
                     if (!finalized && hasProcessableRequest) {
                         log = logBuilder.withError(log, event.error.toNoncompletionReason(REASON_TRANSFER_ERROR))

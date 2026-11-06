@@ -157,6 +157,33 @@ class ProcessDeferredOutcomeTrustTest {
     }
 
     @Test
+    fun rejectsDeferredBatchWithEnforceWhenALaterCredentialIsNotTrusted() = runTest {
+        coEvery { verifier.verify("first-credential", any()) } returns
+            CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { verifier.verify("second-credential", any()) } returns
+            CertificationChainValidation.NotTrusted(IllegalStateException("not trusted"))
+        setupStoreIssuedDocument()
+
+        val outcome = mockk<DeferredCredentialQueryOutcome.Issued> {
+            every { credentials } returns listOf(
+                IssuedCredential.string("first-credential"),
+                IssuedCredential.string("second-credential")
+            )
+        }
+        var capturedResult: DeferredIssueResult? = null
+        val callback = OpenId4VciManager.OnResult<DeferredIssueResult> { capturedResult = it }
+        val config = createConfig(TrustPolicy.Action.ENFORCE)
+
+        createProcessDeferredOutcome(callback, config)
+            .process(deferredDocument, listOf("key-alias-1", "key-alias-2"), outcome)
+
+        assertTrue("Expected DocumentFailed but got $capturedResult",
+            capturedResult is DeferredIssueResult.DocumentFailed)
+        assertTrue((capturedResult as DeferredIssueResult.DocumentFailed).cause is IssuerNotTrustedException)
+        verify(exactly = 0) { documentManager.storeIssuedDocument(any(), any()) }
+    }
+
+    @Test
     fun storesDeferredWithInformAndNotTrusted() = runTest {
         val cause = IllegalStateException("not trusted")
         val notTrusted = CertificationChainValidation.NotTrusted(cause)

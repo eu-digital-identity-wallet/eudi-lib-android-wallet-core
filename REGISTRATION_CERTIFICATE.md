@@ -183,18 +183,21 @@ validated only when signed metadata is required; otherwise it is skipped
 
 ### Examples
 
-**A complete configuration without the ETSI Trusted Lists.** Access certificates and relying-party
-registration certificates have their own trust. Without `configureIssuerTrust` no signed issuer
-metadata is required, so issuer registration certificates are not validated and need no trust; with
-it, see *The same registrar for both paths* below:
+**A complete configuration without the ETSI Trusted Lists.** Access certificates, credential issuers
+and registration certificates have their own trust; the same registrar issues the registration
+certificates of relying parties and issuers:
 
 ```kotlin
 val config = EudiWalletConfig()
     .configureReaderAuthentication {
         trustedCertificates(accessCertificateCa)           // access certificates (WRPAC)
     }
+    .configureIssuerTrust {                                 // signed issuer metadata, required by default
+        trustSource(issuerChainTrust)
+        classifications(issuerClassifications)
+    }
     .configureWrpRegistrationTrust(listOf(registrarCa))    // relying-party registration certificates
-// ... rest of the configuration, without configureIssuerTrust
+    .configureIssuerRegistrationTrust(listOf(registrarCa)) // issuer registration certificates
 ```
 
 The examples that start from `config.` show only the registration-certificate trust; `config` is
@@ -207,19 +210,6 @@ config.configureWrpRegistrationTrust(
     trustedCertificates = listOf(registrarCa),
     trustedStatusListCertificates = listOf(statusListCa),
 )
-```
-
-**The same registrar for both paths,** with signed issuer metadata so that issuer registration
-certificates are validated:
-
-```kotlin
-val config = EudiWalletConfig()
-    .configureReaderAuthentication {
-        trustedCertificates(accessCertificateCa)
-    }
-    .configureIssuerTrust { /* … */ }                       // signed issuer metadata, required by default
-    .configureWrpRegistrationTrust(listOf(registrarCa))
-    .configureIssuerRegistrationTrust(listOf(registrarCa))
 ```
 
 **Selected registrars, with the ETSI Trusted Lists for everything else:**
@@ -451,8 +441,8 @@ metadata requirement:
 ```kotlin
 val config = EudiWalletConfig()
     .configureIssuerTrust {
-        // requireSignedMetadata() is the default inside this block, but the block itself
-        // must be present for the registration certificate to be validated.
+        // requireSignedMetadata() is the default, also when this block is omitted
+        // (with configureEtsiTrust as the trust source).
     }
     // Enabled by default; call this only to turn handling off:
     .configureIssuerRegistrationPolicy(IssuerRegistrationPolicy.Disabled)

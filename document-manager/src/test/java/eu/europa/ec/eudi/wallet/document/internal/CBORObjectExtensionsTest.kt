@@ -23,6 +23,7 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -162,5 +163,38 @@ class CBORObjectExtensionsTest {
                 "key2" to mapOf("nestedKey" to "nestedValue")
             ), result
         )
+    }
+
+    @Test
+    fun `to Object with a value inside 64 nested arrays returns the value`() {
+        var value = CBORObject.FromObject(1)
+        var expected: Any = 1
+        repeat(64) {
+            value = CBORObject.NewArray().Add(value)
+            expected = listOf(expected)
+        }
+
+        assertEquals(expected, value.EncodeToBytes().toObject())
+    }
+
+    @Test
+    fun `to Object with 65 nested arrays or maps throws when the innermost is empty`() {
+        var array = CBORObject.NewArray()
+        var map = CBORObject.NewMap()
+        repeat(64) {
+            array = CBORObject.NewArray().Add(array)
+            map = CBORObject.NewMap().Add("key", map)
+        }
+
+        assertFailsWith<IllegalArgumentException> { array.EncodeToBytes().toObject() }
+        assertFailsWith<IllegalArgumentException> { map.EncodeToBytes().toObject() }
+    }
+
+    @Test
+    fun `to Object with a value inside 65 values embedded with tag 24 throws`() {
+        var value = CBORObject.FromObject(1)
+        repeat(65) { value = CBORObject.FromObjectAndTag(value.EncodeToBytes(), 24) }
+
+        assertFailsWith<IllegalArgumentException> { value.EncodeToBytes().toObject() }
     }
 }

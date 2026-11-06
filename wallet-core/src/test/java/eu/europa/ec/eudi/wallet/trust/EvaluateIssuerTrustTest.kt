@@ -53,7 +53,7 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = null,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
@@ -76,7 +76,7 @@ class EvaluateIssuerTrustTest {
         evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
     }
@@ -96,7 +96,7 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
@@ -119,7 +119,7 @@ class EvaluateIssuerTrustTest {
         evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
     }
@@ -140,7 +140,7 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
@@ -165,7 +165,7 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
@@ -190,7 +190,7 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
@@ -215,7 +215,7 @@ class EvaluateIssuerTrustTest {
         evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
     }
@@ -244,7 +244,7 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
@@ -279,10 +279,51 @@ class EvaluateIssuerTrustTest {
         val result = evaluateIssuerTrust(
             issuerTrustConfig = config,
             document = document,
-            credential = credential,
+            credentials = listOf(credential),
             logger = logger,
         )
 
         assertEquals(notTrusted, result)
     }
+
+    @Test
+    fun batchReturnsNotTrustedOfALaterCredentialWithInformPolicy() = runTest {
+        every { document.format } returns SdJwtVcFormat("test.vct")
+        val notTrusted = CertificationChainValidation.NotTrusted(IllegalStateException("not trusted"))
+        coEvery { verifier.verify("first", any()) } returns CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { verifier.verify("second", any()) } returns notTrusted
+
+        val result = evaluateIssuerTrust(
+            issuerTrustConfig = informSdJwtVcConfig(),
+            document = document,
+            credentials = listOf(Credential.Str("first"), Credential.Str("second")),
+            logger = logger,
+        )
+
+        assertEquals(notTrusted, result)
+    }
+
+    @Test
+    fun batchReturnsNullWhenALaterCredentialIsNotEvaluatedWithInformPolicy() = runTest {
+        every { document.format } returns SdJwtVcFormat("test.vct")
+        coEvery { verifier.verify("first", any()) } returns CertificationChainValidation.Trusted(trustAnchor)
+        coEvery { verifier.verify("second", any()) } returns null
+
+        val result = evaluateIssuerTrust(
+            issuerTrustConfig = informSdJwtVcConfig(),
+            document = document,
+            credentials = listOf(Credential.Str("first"), Credential.Str("second")),
+            logger = logger,
+        )
+
+        assertNull(result)
+    }
+
+    private fun informSdJwtVcConfig() = IssuerTrustConfig(
+        isChainTrustedForAttestation = mockk(),
+        classifications = null,
+        trustPolicy = TrustPolicy.uniform(TrustPolicy.Action.INFORM),
+        credentialTrustVerifiers = mapOf(SdJwtVcFormat::class to verifier),
+        issuerMetadataPolicy = IssuerMetadataPolicy.IgnoreSigned,
+    )
 }

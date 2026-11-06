@@ -33,9 +33,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistratio
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 import kotlinx.coroutines.runBlocking
@@ -125,7 +122,7 @@ internal class ProcessResponse(
                 val trustResult = evaluateIssuerTrust(
                     issuerTrustConfig = issuerTrustConfig,
                     document = unsignedDocument,
-                    credential = credentials.first().first,
+                    credentials = credentials.map { it.first },
                     logger = logger,
                 )
 
@@ -137,15 +134,13 @@ internal class ProcessResponse(
             }.onSuccess { (document, trustResult) ->
                 issuedDocumentIds.add(document.id)
                 listener(IssueEvent.DocumentIssued(document, trustResult))
-                // Store issuance metadata in background coroutine
-                CoroutineScope(Dispatchers.IO).launch {
-                    storeIssuanceMetadata(
-                        document.id,
-                        unsignedDocument,
-                        keyAliases,
-                        (outcome as? SubmissionOutcome.Success)?.selectedCredentialReusePolicy,
-                    )
-                }
+                // Stored before returning, so a re-issuance started right after finds the tokens
+                storeIssuanceMetadata(
+                    document.id,
+                    unsignedDocument,
+                    keyAliases,
+                    outcome.selectedCredentialReusePolicy,
+                )
             }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)
                 listener(IssueEvent.DocumentFailed(unsignedDocument, error))

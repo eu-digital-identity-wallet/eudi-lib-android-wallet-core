@@ -35,10 +35,9 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderAuth
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.QesApprovalRequest
 import io.mockk.coEvery
@@ -251,14 +250,9 @@ class DcqlRequestProcessorTransactionDataTest {
             every { getDocuments(predicate = any()) } returns listOf(issuedDoc)
             every { getDocuments(predicate = null) } returns listOf(issuedDoc)
         }
-        val trust = mockk<OpenId4VpReaderTrust> {
-            every { result } returns ReaderTrustResult.Pending
-            every { readerTrustStore } returns null
-            every { readerTrustStore = any() } returns Unit
-        }
         return DcqlRequestProcessor(
             documentManager = documentManager,
-            openid4VpX509CertificateTrust = trust,
+            readerTrustStore = null,
             readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
             transactionDataTypes = accepts
         )
@@ -273,7 +267,10 @@ class DcqlRequestProcessorTransactionDataTest {
             every { this@mockk.transactionData } returns transactionData
             every { client } returns Client.RedirectUri(URI.create("https://verifier.example"))
         }
-        return mockk { every { resolvedRequestObject } returns resolved }
+        return mockk {
+            every { resolvedRequestObject } returns resolved
+            every { readerAuthentication } returns OpenId4VpReaderAuth.Absent
+        }
     }
 
     private fun jsonClaim(claimName: String, value: JsonElement): JsonClaim = JsonClaim(

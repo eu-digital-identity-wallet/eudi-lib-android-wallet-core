@@ -346,6 +346,12 @@ interface OpenId4VciManager {
 
     /**
      * Builder to create an instance of [OpenId4VciManager]
+     *
+     * A manager created with this builder does not use signed issuer metadata, does not verify the
+     * issuer against trusted lists, and does not validate the issuer's registration certificate. To
+     * apply the issuer trust settings of [eu.europa.ec.eudi.wallet.EudiWalletConfig], use
+     * [eu.europa.ec.eudi.wallet.EudiWallet.createOpenId4VciManager].
+     *
      * @param context the context
      * @property config the [Config] to use
      * @property documentManager the [DocumentManager] to use
@@ -480,6 +486,9 @@ interface OpenId4VciManager {
 
         /**
          * Create an instance of [OpenId4VciManager]
+         *
+         * The manager does not use signed issuer metadata, does not verify the issuer against
+         * trusted lists, and does not validate the issuer's registration certificate (see [Builder]).
          */
         operator fun invoke(context: Context, block: Builder.() -> Unit) =
             Builder(context).apply(block).build()

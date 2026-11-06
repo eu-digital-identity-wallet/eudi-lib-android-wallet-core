@@ -16,81 +16,175 @@
 
 package eu.europa.ec.eudi.iso18013.transfer.engagement
 
+import android.nfc.cardemulation.HostApduService
+import android.os.Looper
+import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
+import com.android.identity.android.mdoc.transport.DataTransport
 import eu.europa.ec.eudi.iso18013.transfer.TransferManager
-import io.mockk.every
+import eu.europa.ec.eudi.iso18013.transfer.TransferManagerImpl
 import io.mockk.mockk
-import io.mockk.mockkConstructor
-import io.mockk.unmockkAll
-import kotlinx.coroutines.runBlocking
+import io.mockk.verify
 import org.junit.runner.RunWith
-import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.EcCurve
-import org.multipaz.crypto.EcPrivateKey
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import kotlin.test.AfterTest
+import java.time.Duration
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertContentEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
+import kotlin.test.assertNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class NfcEngagementServiceTest {
 
-    class TestNfcEngagementService : NfcEngagementService() {
-        override val transferManager: TransferManager = mockk(relaxed = true)
-    }
+    private val selectApdu = byteArrayOf(0x00, 0xA4.toByte(), 0x04, 0x00)
+
+    private lateinit var manager: TransferManagerImpl
+    private lateinit var service: NfcEngagementService
+    private val deviceRetrievalHelpers = mutableListOf<DeviceRetrievalHelper>()
+    private val connectionListeners = mutableListOf<DeviceRetrievalHelper.Listener>()
 
     @BeforeTest
     fun setUp() {
-        mockkConstructor(
-            com.android.identity.android.mdoc.engagement.NfcEngagementHelper.Builder::class,
+        manager = TransferManagerImpl(
+            context = RuntimeEnvironment.getApplication(),
+            requestProcessor = mockk(),
         )
-        every { anyConstructed<com.android.identity.android.mdoc.engagement.NfcEngagementHelper.Builder>().useStaticHandover(any()) } returns mockk(relaxed = true)
+        service = object : NfcEngagementService() {
+            override val transferManager: TransferManager
+                get() = manager
+        }
+        manager.setupNfcEngagement(service)
+        service.buildNfcEngagementHelper = { _, _ -> mockk(relaxed = true) }
+        service.buildDeviceRetrievalHelper = { _, _, listener ->
+            connectionListeners += listener
+            mockk<DeviceRetrievalHelper>(relaxed = true).also { deviceRetrievalHelpers += it }
+        }
     }
 
-    @AfterTest
-    fun tearDown() {
-        unmockkAll()
-    }
-
-    private fun getEDevicePrivateKey(service: NfcEngagementService): EcPrivateKey {
-        val field = NfcEngagementService::class.java.getDeclaredField("eDevicePrivateKey")
-        field.isAccessible = true
-        return field.get(service) as EcPrivateKey
-    }
-
-    private fun simulateSessionStart(service: NfcEngagementService) {
-        // Simulate what onCreate() does for key generation: generate a fresh key
-        val field = NfcEngagementService::class.java.getDeclaredField("eDevicePrivateKey")
-        field.isAccessible = true
-        field.set(service, runBlocking { Crypto.createEcPrivateKey(EcCurve.P256) })
+    private fun idleFor(seconds: Long) {
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(seconds))
     }
 
     @Test
-    fun `eDevicePrivateKey should generate a fresh key for each engagement session`() {
-        val service = TestNfcEngagementService()
+    fun `each NFC tap creates a new engagement with a new ephemeral device key`() {
+        service.processCommandApdu(selectApdu, null)
+        val firstTap = assertNotNull(service.engagement)
+        service.processCommandApdu(selectApdu, null)
+        assertSame(firstTap, service.engagement)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
 
-        // First session: simulate onCreate generating a key
-        simulateSessionStart(service)
-        val firstSessionKey = getEDevicePrivateKey(service)
+        service.processCommandApdu(selectApdu, null)
+        val secondTap = assertNotNull(service.engagement)
 
-        // Key must remain stable within the same session
-        assertEquals(
-            firstSessionKey,
-            getEDevicePrivateKey(service),
-            "eDevicePrivateKey must remain stable within the same session"
+        assertNotSame(firstTap, secondTap)
+        assertNotEquals(firstTap.eDevicePrivateKey, secondTap.eDevicePrivateKey)
+        verify { firstTap.helper.close() }
+    }
+
+    @Test
+    fun `the delayed close of a tap does not close the engagement of a newer tap`() {
+        service.processCommandApdu(selectApdu, null)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+        idleFor(1)
+        service.processCommandApdu(selectApdu, null)
+        val secondTap = assertNotNull(service.engagement)
+
+        idleFor(15)
+
+        assertSame(secondTap, service.engagement)
+        verify(exactly = 0) { secondTap.helper.close() }
+
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+        idleFor(15)
+
+        assertNull(service.engagement)
+        verify { secondTap.helper.close() }
+    }
+
+    @Test
+    fun `a connection through the engagement of an earlier tap is ignored`() {
+        service.processCommandApdu(selectApdu, null)
+        val firstTap = assertNotNull(service.engagement)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+        service.processCommandApdu(selectApdu, null)
+
+        val transport = mockk<DataTransport>(relaxed = true)
+        firstTap.listener.onDeviceConnected(transport)
+
+        verify { transport.close() }
+        assertTrue(deviceRetrievalHelpers.isEmpty())
+        assertNull(manager.deviceRetrievalHelper)
+    }
+
+    @Test
+    fun `a new NFC presentation can start after stopPresentation`() {
+        service.processCommandApdu(selectApdu, null)
+        assertNotNull(service.engagement).listener.onDeviceConnected(mockk(relaxed = true))
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+        assertSame(deviceRetrievalHelpers[0], manager.deviceRetrievalHelper)
+
+        manager.stopPresentation(
+            sendSessionTerminationMessage = true,
+            useTransportSpecificSessionTermination = false,
         )
+        assertNull(manager.deviceRetrievalHelper)
 
-        // Second session: simulate another onCreate generating a new key
-        simulateSessionStart(service)
-        val secondSessionKey = getEDevicePrivateKey(service)
+        service.processCommandApdu(selectApdu, null)
+        assertNotNull(service.engagement).listener.onDeviceConnected(mockk(relaxed = true))
 
-        assertNotEquals(
-            firstSessionKey,
-            secondSessionKey,
-            "eDevicePrivateKey must be a fresh ephemeral key per engagement"
-        )
+        assertSame(deviceRetrievalHelpers[1], manager.deviceRetrievalHelper)
+    }
+
+    @Test
+    fun `a new NFC presentation can start on the same service after the verifier disconnects`() {
+        service.processCommandApdu(selectApdu, null)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+        assertNotNull(service.engagement).listener.onDeviceConnected(mockk(relaxed = true))
+        assertSame(deviceRetrievalHelpers[0], manager.deviceRetrievalHelper)
+
+        connectionListeners[0].onDeviceDisconnected(false)
+        assertNull(manager.deviceRetrievalHelper)
+        idleFor(15)
+
+        service.processCommandApdu(selectApdu, null)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+        assertNotNull(service.engagement).listener.onDeviceConnected(mockk(relaxed = true))
+
+        assertSame(deviceRetrievalHelpers[1], manager.deviceRetrievalHelper)
+    }
+
+    @Test
+    fun `a tap refused during an active session leaves the pending engagement of an earlier tap`() {
+        service.processCommandApdu(selectApdu, null)
+        val pending = assertNotNull(service.engagement)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+
+        manager.deviceRetrievalHelper = mockk()
+        val response = service.processCommandApdu(selectApdu, null)
+        service.onDeactivated(HostApduService.DEACTIVATION_LINK_LOSS)
+
+        assertContentEquals(byteArrayOf(0x6A, 0x82.toByte()), response)
+        assertSame(pending, service.engagement)
+        verify(exactly = 0) { pending.helper.close() }
+    }
+
+    @Test
+    fun `the rest of a tap is refused after a verifier connected during it`() {
+        service.processCommandApdu(selectApdu, null)
+        assertNotNull(service.engagement).listener.onDeviceConnected(mockk(relaxed = true))
+        connectionListeners[0].onDeviceDisconnected(false)
+
+        val response = service.processCommandApdu(selectApdu, null)
+
+        assertContentEquals(byteArrayOf(0x6A, 0x82.toByte()), response)
+        assertNull(service.engagement)
     }
 }

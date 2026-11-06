@@ -26,9 +26,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
@@ -64,7 +61,7 @@ internal class ProcessDeferredOutcome(
                         val contextToStore = ctx.toBytes()
                         documentManager.storeDeferredDocument(deferredDocument, contextToStore)
                             .kotlinResult.onSuccess { document ->
-                                callback(DeferredIssueResult.DocumentNotReady(document))
+                                callback(DeferredIssueResult.DocumentNotReady(document, outcome.interval))
                             }.onFailure { error ->
                                 documentManager.deleteDocumentById(deferredDocument.id)
                                 callback(
@@ -75,7 +72,7 @@ internal class ProcessDeferredOutcome(
                                 )
                             }
                     } ?: callback(
-                        DeferredIssueResult.DocumentNotReady(deferredDocument)
+                        DeferredIssueResult.DocumentNotReady(deferredDocument, outcome.interval)
                     )
                 }
 
@@ -84,7 +81,7 @@ internal class ProcessDeferredOutcome(
                     val trustResult = evaluateIssuerTrust(
                         issuerTrustConfig = issuerTrustConfig,
                         document = deferredDocument,
-                        credential = credentials.first().first,
+                        credentials = credentials.map { it.first },
                         logger = logger,
                     )
                     documentManager.storeIssuedDocument(deferredDocument, credentials) {
@@ -99,9 +96,7 @@ internal class ProcessDeferredOutcome(
 
                         // Store issuance metadata so the new document can be re-issued later
                         if (issuanceMetadataStorage != null && deferredContext != null) {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                storeIssuanceMetadata(document.id, deferredContext, keyAliases)
-                            }
+                            storeIssuanceMetadata(document.id, deferredContext, keyAliases)
                         }
 
                         callback(DeferredIssueResult.DocumentIssued(document, trustResult))

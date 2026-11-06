@@ -33,11 +33,16 @@ import org.multipaz.crypto.EcPublicKey
  * Qr engagement
  *
  * @property context context instance
+ * @property isPresentationActive tells whether a presentation session is already active; a
+ *   connection made while one is active is ignored
  * @property onConnecting callback to notify that a new mdoc verifier is connecting
  * @property onQrEngagementReady callback to notify that a the QR Engagement is ready
  * @property onDeviceRetrievalHelperReady callback to notify that the device retrieval helper is ready
- * @property onNewDeviceRequest callback to notify that a device request has been received
+ * @property onNewDeviceRequest callback to notify that a device request has been received, with the
+ *   device retrieval helper of the connection that received it
  * @property onDisconnected callback to notify that the mdoc verifier has been disconnected
+ * @property onSessionEnded callback to notify that the session of the device retrieval helper has
+ *   ended, because the mdoc verifier disconnected or the connection failed
  * @property onCommunicationError callback to notify that an error has been occurred
  * @constructor Create empty Qr engagement
  */
@@ -46,15 +51,19 @@ internal class QrEngagement(
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val retrievalMethods: List<DeviceRetrievalMethod>,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
+    val isPresentationActive: () -> Boolean,
+    @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onConnecting: () -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onQrEngagementReady: (qrCode: QrCode) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
-    val onNewDeviceRequest: (request: ByteArray) -> Unit,
+    val onNewDeviceRequest: (deviceRetrievalHelper: DeviceRetrievalHelper, request: ByteArray) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onDisconnected: (transportSpecificTermination: Boolean) -> Unit,
+    @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
+    val onSessionEnded: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit,
     @JvmSynthetic @get:VisibleForTesting(otherwise = VisibleForTesting.Companion.PRIVATE)
     val onCommunicationError: (error: Throwable) -> Unit,
 ) {
@@ -77,11 +86,13 @@ internal class QrEngagement(
         }
 
         override fun onDeviceConnected(transport: DataTransport) {
-            if (deviceRetrievalHelper != null) {
+            if (deviceRetrievalHelper != null || isPresentationActive()) {
                 Log.d(
                     this.TAG,
                     "OnDeviceConnected for QR engagement -> ignoring due to active presentation"
                 )
+                // The transport of the ignored mdoc verifier is closed, as no one else closes it
+                transport.close()
                 return
             }
 
@@ -118,16 +129,18 @@ internal class QrEngagement(
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (QR): OnDeviceRequest")
-            onNewDeviceRequest(deviceRequestBytes)
+            onNewDeviceRequest(requireNotNull(deviceRetrievalHelper), deviceRequestBytes)
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (QR): onDeviceDisconnected")
+            deviceRetrievalHelper?.let(onSessionEnded)
             onDisconnected(transportSpecificTermination)
         }
 
         override fun onError(error: Throwable) {
             Log.d(this.TAG, "DeviceRetrievalHelper Listener (QR): onError -> ${error.message}")
+            deviceRetrievalHelper?.let(onSessionEnded)
             onCommunicationError(error)
         }
     }

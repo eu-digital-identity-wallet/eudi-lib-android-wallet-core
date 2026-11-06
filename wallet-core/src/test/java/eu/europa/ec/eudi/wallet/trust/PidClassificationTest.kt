@@ -63,6 +63,7 @@ class PidClassificationTest {
         val config = EudiWalletConfig {
             configureEtsiTrust {
                 loteLocations(mockk())
+                loteSignerTrustAnchors(mockk(relaxed = true))
                 classifications(AttestationClassifications(pids = AttestationIdentifierPredicate.any(setOf(mdl))))
             }
         }
@@ -83,6 +84,7 @@ class PidClassificationTest {
         val config = EudiWalletConfig {
             configureEtsiTrust {
                 loteLocations(mockk())
+                loteSignerTrustAnchors(mockk(relaxed = true))
                 classifications(AttestationClassifications(pids = AttestationIdentifierPredicate.any(setOf(pid))))
             }
         }

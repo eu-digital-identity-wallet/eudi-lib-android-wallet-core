@@ -22,6 +22,7 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest
 import eu.europa.ec.eudi.wallet.transactionLogging.model.ClaimPath
 import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionResult
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderAuth
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.serialization.json.JsonArray
@@ -91,7 +92,7 @@ class PresentationLogBuilderRequestedClaimsTest {
                 ),
             ),
         )
-        val request = OpenId4VpRequest(mockk(relaxed = true))
+        val request = OpenId4VpRequest(mockk(relaxed = true), OpenId4VpReaderAuth.Absent)
 
         val log = builder.withRequest(builder.createEmptyPresentationLog(), request, success(treeOf(match)))
 

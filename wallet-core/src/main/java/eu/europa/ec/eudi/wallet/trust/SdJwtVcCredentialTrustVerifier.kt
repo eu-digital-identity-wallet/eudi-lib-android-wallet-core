@@ -39,6 +39,9 @@ import java.security.cert.X509Certificate
  * chain is extracted from the JWT header by the sd-jwt-vc library during
  * verification; the trust callback captures the evaluation result.
  *
+ * A credential that fails verification, for example because its signature does not verify,
+ * is [CertificationChainValidation.NotTrusted] even when its certificate chain is trusted.
+ *
  * @param isChainTrusted the ETSI trust source for validating certificate chains
  */
 internal class SdJwtVcCredentialTrustVerifier(
@@ -89,11 +92,15 @@ internal class SdJwtVcCredentialTrustVerifier(
             checkStatus = null
         )
 
-        verifier.verify(credentialValue)
-            .onFailure { e ->
-                logger?.e(TAG, "SD-JWT VC credential trust verification failed", e)
+        val failure = verifier.verify(credentialValue).exceptionOrNull()
+        if (failure != null) {
+            logger?.e(TAG, "SD-JWT VC credential trust verification failed", failure)
+            // The trust callback runs before the signature is verified, so a trusted chain
+            // does not make a credential that fails verification trusted
+            if (result is CertificationChainValidation.Trusted) {
+                return CertificationChainValidation.NotTrusted(failure)
             }
-            .getOrNull()
+        }
         return result
     }
 

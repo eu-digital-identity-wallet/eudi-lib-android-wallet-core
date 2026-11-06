@@ -63,6 +63,11 @@ val wallet = EudiWallet(context, walletConfig) {
 }
 ```
 
+`configureDocumentKeyCreation` applies only to keys in `AndroidKeystoreSecureArea`. The device support
+is checked when the wallet is built, also for a wallet that uses only custom secure areas: with the
+defaults, building fails on a device without a screen lock. See
+[Document Key Protection](README.md#document-key-protection).
+
 For detailed information on EudiWallet configuration, please refer to
 the [EudiWallet documentation](https://github.com/eu-digital-identity-wallet/eudi-lib-android-wallet-core?tab=readme-ov-file#initialize-the-library)
 
@@ -186,7 +191,7 @@ fun showRequestedDocuments() {
         selection.matches.forEach { match ->
             // get document if needed to show more information such as document's
             // name and docType
-            val document = wallet.getDocumentById(match.credential.identifier)
+            val document = wallet.getDocumentById(match.credential.document.identifier)
                 as? IssuedDocument
             val documentName = document?.name
             val docType = (document?.format as? MsoMdocFormat)?.docType
@@ -229,15 +234,13 @@ suspend fun discloseDocuments(
 
             // should block until the user has unlocked the key to sign the response
 
-            // One can use information from the document to determine how to create the
-            // MyKeyUnlockData object, such as:
+            // One can use information from the matched credential to determine how to
+            // create the MyKeyUnlockData object, such as:
 
-            val document = wallet.getDocumentById(match.credential.identifier)
-                as IssuedDocument
-            val credential = document.findCredential()!!
+            val credential = match.credential as SecureAreaBoundCredential
             val secureArea = credential.secureArea as MySecureArea
             val keyAlias = credential.alias
-            val keyInfo = credential.secureArea.getKeyInfo(credential.alias) as MyKeyInfo
+            val keyInfo = secureArea.getKeyInfo(keyAlias) as MyKeyInfo
 
             //
             // --> show prompt if needed to unlock the key <--

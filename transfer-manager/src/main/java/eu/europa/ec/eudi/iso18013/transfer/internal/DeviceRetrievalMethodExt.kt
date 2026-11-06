@@ -21,6 +21,7 @@ import eu.europa.ec.eudi.iso18013.transfer.engagement.DeviceRetrievalMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.UUID
+import org.multipaz.util.fromJavaUuid
 
 internal val DeviceRetrievalMethod.connectionMethod: List<MdocConnectionMethod>
     get() = when (this) {
@@ -28,7 +29,7 @@ internal val DeviceRetrievalMethod.connectionMethod: List<MdocConnectionMethod>
             if (!peripheralServerMode && !centralClientMode) emptyList()
             else {
                 mutableListOf<MdocConnectionMethod>().apply {
-                    val randomUUID = UUID.randomUUID()
+                    val randomUUID = UUID.fromJavaUuid(java.util.UUID.randomUUID())
                     add(
                         MdocConnectionMethodBle(
                             peripheralServerMode,

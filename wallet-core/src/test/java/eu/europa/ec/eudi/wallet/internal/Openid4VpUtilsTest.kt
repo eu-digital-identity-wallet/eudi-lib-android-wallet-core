@@ -34,9 +34,7 @@ package eu.europa.ec.eudi.wallet.internal
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.JwsAlgorithm
 //import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
-//import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import com.nimbusds.jose.jwk.JWK
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrustImpl
 import org.bouncycastle.util.encoders.Hex
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -96,8 +94,6 @@ class Openid4VpUtilsTest {
 
     @Test
     fun testToOpenId4VPConfig() {
-        val trust = OpenId4VpReaderTrustImpl(null) // Assuming a default constructor or mock
-
 //        val openId4VpConfig = OpenId4VpConfig.Builder()
 //            .withEncryptionAlgorithms(listOf(EncryptionAlgorithm.ECDH_ES))
 //            .withEncryptionMethods(listOf(EncryptionMethod.A256GCM))

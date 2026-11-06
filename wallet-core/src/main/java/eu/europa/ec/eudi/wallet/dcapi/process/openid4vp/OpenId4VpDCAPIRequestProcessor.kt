@@ -38,6 +38,7 @@ import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestException
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequestReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
 import io.ktor.client.HttpClient
@@ -76,16 +77,6 @@ class OpenId4VpDCAPIRequestProcessor(
      */
     internal var resolvedRegistration: ResolvedWrpRegistration? = null
 
-    private val openId4Vp: OpenId4Vp.OverDcAPI by lazy {
-        OpenId4Vp.overDcApi(
-            openId4VPConfig = makeOpenId4VPConfig(
-                openId4VpConfig,
-                dcqlRequestProcessor.openid4VpX509CertificateTrust,
-                registrationCertificatePolicy
-            )
-        )
-    }
-
     override suspend fun process(request: Request): RequestProcessor.ProcessedRequest {
         require(request is DCAPIRequest) { "Request must be a DCAPIRequest" }
         logger?.d(TAG, "Processing OpenID4VP DC API request")
@@ -95,6 +86,15 @@ class OpenId4VpDCAPIRequestProcessor(
         val origin = credRequest.resolveOrigin(privilegedAllowlist)
         val (protocol, requestData) = credRequest.toOpenId4VpRequestData()
         logger?.d(TAG, "Resolved origin=$origin, protocol=$protocol")
+
+        val readerTrust = OpenId4VpRequestReaderTrust(dcqlRequestProcessor.readerTrustStore)
+        val openId4Vp = OpenId4Vp.overDcApi(
+            openId4VPConfig = makeOpenId4VPConfig(
+                openId4VpConfig,
+                readerTrust,
+                registrationCertificatePolicy
+            )
+        )
 
         return when (val resolution = openId4Vp.resolveRequestObject(protocol, origin, requestData)) {
             is Resolution.Invalid -> {
@@ -111,10 +111,20 @@ class OpenId4VpDCAPIRequestProcessor(
                     return RequestProcessor.ProcessedRequest.Failure(e)
                 }
 
+                // Fails the request when the wallet cannot confirm which certificate chain
+                // authenticated the verifier.
+                val readerAuthentication = try {
+                    readerTrust.authenticationOf(resolution.requestObject.client)
+                } catch (e: IllegalStateException) {
+                    logger?.e(TAG, "No reader trust verdict for the DC-API request", e)
+                    return RequestProcessor.ProcessedRequest.Failure(e)
+                }
+
                 logger?.d(TAG, "Resolved OpenID4VP DC API request (protocol=$protocol); delegating to DCQL processor")
                 // The resolved request carries a DCQL query — reuse the shared DCQL processor.
-                val processed =
-                    dcqlRequestProcessor.process(OpenId4VpRequest(resolution.requestObject))
+                val processed = dcqlRequestProcessor.process(
+                    OpenId4VpRequest(resolution.requestObject, readerAuthentication)
+                )
                 val dcql = processed as? ProcessedDcqlRequest ?: return processed
 
                 val selectedIds = credRequest.selectedDocumentIds()

@@ -31,6 +31,7 @@ import eu.europa.ec.eudi.openid4vp.RegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.registration.relyingparty.ResolvedWrpRegistration
 import eu.europa.ec.eudi.openid4vp.Resolution
 import eu.europa.ec.eudi.openid4vp.ResolvedRequestObject
+import eu.europa.ec.eudi.openid4vp.X509CertificateTrust
 import eu.europa.ec.eudi.openid4vp.asException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
@@ -78,22 +79,29 @@ class OpenId4VpManager(
 ) : TransferEvent.Listenable {
 
     /**
-     * Lazy initialization of the OpenID4VP protocol handler with logging and content negotiation.
-     * Uses the configuration and trust anchor from the request processor.
+     * The HTTP client of the OpenID4VP protocol handlers, with logging and content negotiation.
      */
-    private val openId4Vp by lazy {
-        OpenId4Vp.overRedirects(
-            openId4VPConfig = makeOpenId4VPConfig(
-                config,
-                requestProcessor.openid4VpX509CertificateTrust,
-                registrationCertificatePolicy
-            ),
-            httpClient = (ktorHttpClientFactory ?: DefaultHttpClientFactory)
-                .wrappedWithLogging(logger)
-                .wrappedWithContentNegotiation()
-                .invoke()
-        )
+    private val httpClient by lazy {
+        (ktorHttpClientFactory ?: DefaultHttpClientFactory)
+            .wrappedWithLogging(logger)
+            .wrappedWithContentNegotiation()
+            .invoke()
     }
+
+    /**
+     * The OpenID4VP protocol handler that dispatches responses. It trusts no certificate chain.
+     */
+    private val openId4Vp by lazy { createOpenId4Vp(X509CertificateTrust { false }) }
+
+    /**
+     * Creates an OpenID4VP protocol handler that validates the verifier's certificate chain with
+     * [trust].
+     */
+    private fun createOpenId4Vp(trust: X509CertificateTrust): OpenId4Vp.OverRedirects =
+        OpenId4Vp.overRedirects(
+            openId4VPConfig = makeOpenId4VPConfig(config, trust, registrationCertificatePolicy),
+            httpClient = httpClient,
+        )
 
     /**
      * Caches the currently active [ResolvedRequestObject] during a remote presentation flow.
@@ -168,7 +176,8 @@ class OpenId4VpManager(
                 require(config.schemes.contains(Uri.parse(uri).scheme)) {
                     "Not supported scheme for OpenId4Vp"
                 }
-                when (val resolution = openId4Vp.resolveRequestUri(uri)) {
+                val readerTrust = OpenId4VpRequestReaderTrust(requestProcessor.readerTrustStore)
+                when (val resolution = createOpenId4Vp(readerTrust).resolveRequestUri(uri)) {
                     is Resolution.Invalid -> {
 
                         val error = resolution.error
@@ -195,6 +204,9 @@ class OpenId4VpManager(
                                 )
                             }
                         val resolvedRequest = resolution.requestObject
+                        // Fails the request, with no error response to the verifier, when the
+                        // wallet cannot confirm which certificate chain authenticated the verifier.
+                        val readerAuthentication = readerTrust.authenticationOf(resolvedRequest.client)
                         activeRequestObject = resolvedRequest
                         logger?.i(TAG, "${resolvedRequest::class.simpleName} received")
                         try {
@@ -204,7 +216,7 @@ class OpenId4VpManager(
                             transferEventListeners.onTransferEvent(TransferEvent.Error(e))
                             return@launch
                         }
-                        val request = OpenId4VpRequest(resolvedRequest)
+                        val request = OpenId4VpRequest(resolvedRequest, readerAuthentication)
                         val processedRequest = requestProcessor.process(request)
                         processedRequest.rejectedWith()?.let { error ->
                             dispatchErrorResponse(error, resolvedRequest.errorDispatchDetails())
@@ -304,31 +316,38 @@ class OpenId4VpManager(
                     return@launch
                 }
 
-                val wrapper = OpenId4VpRequest(request)
-                val encParams = wrapper.responseEncryptionParameters
+                val encParams = request.responseEncryptionParameters()
 
                 logger?.d(TAG, "User rejected the request. Dispatching error.")
 
                 // Dispatch openid4vp NegativeConsensus case
-                val outcome = openId4Vp.dispatch(
+                when (val outcome = openId4Vp.dispatch(
                     request = request,
                     consensus = Consensus.NegativeConsensus,
                     encryptionParameters = encParams
-                )
+                )) {
+                    is DispatchOutcome.VerifierResponse.Accepted -> {
+                        logger?.d(TAG, "Rejection accepted by verifier.")
 
-                if (outcome is DispatchOutcome.VerifierResponse.Accepted) {
-                    logger?.d(TAG, "Rejection accepted by verifier.")
+                        val redirectUri = outcome.redirectURI
+                        if (redirectUri != null) {
+                            // Verifier wants us to redirect
+                            transferEventListeners.onTransferEvent(TransferEvent.Redirect(redirectUri))
+                        } else {
+                            // Verifier just said OK
+                            transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
+                        }
+                    }
 
-                    val redirectUri = outcome.redirectURI
-                    if (redirectUri != null) {
-                        // Verifier wants us to redirect
-                        transferEventListeners.onTransferEvent(TransferEvent.Redirect(redirectUri))
-                    } else {
-                        // Verifier just said OK
+                    is DispatchOutcome.VerifierResponse.Rejected -> {
+                        logger?.e(TAG, "Verifier rejected the rejection response")
+                        transferEventListeners.onTransferEvent(TransferEvent.Rejected(outcome.redirectURI))
+                    }
+
+                    is DispatchOutcome.RedirectURI -> {
+                        logger?.d(TAG, "Verifier respond with RedirectURI: ${outcome.value}")
                         transferEventListeners.onTransferEvent(TransferEvent.ResponseSent)
                     }
-                } else {
-                    logger?.d(TAG, "Outcome is $outcome")
                 }
 
                 activeRequestObject = null

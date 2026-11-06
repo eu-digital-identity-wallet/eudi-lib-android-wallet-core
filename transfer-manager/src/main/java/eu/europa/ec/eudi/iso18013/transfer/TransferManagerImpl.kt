@@ -61,6 +61,7 @@ class TransferManagerImpl @JvmOverloads constructor(
      */
     @JvmSynthetic
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    @Volatile
     internal var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     /**
@@ -132,7 +133,11 @@ class TransferManagerImpl @JvmOverloads constructor(
      * Starts the QR Engagement and generates the QR code
      * Once the QR code is ready, the event [TransferEvent.QrEngagementReady] will be triggered
      * If the transfer has already started, an error event will be triggered
-     * with an [IllegalStateException] containing the message "Transfer has already started."
+     * with a [QrEngagementNotStartedException] containing the message "Transfer has already started."
+     * If a presentation session is active, for example one started from an NFC engagement,
+     * an error event will be triggered with a [QrEngagementNotStartedException] containing the message
+     * "A presentation session is active."; call [stopPresentation] to end it first.
+     * In both cases the active session, if any, is not affected.
      * @see TransferEvent.QrEngagementReady
      * @see TransferEvent.Error
      */
@@ -141,16 +146,30 @@ class TransferManagerImpl @JvmOverloads constructor(
             Log.d(this.TAG, TRANSFER_STARTED_MSG)
             transferEventListeners.onTransferEvent(
                 TransferEvent.Error(
-                    IllegalStateException(
-                        TRANSFER_STARTED_MSG,
-                    ),
-                ),
+                    QrEngagementNotStartedException(
+                        TRANSFER_STARTED_MSG
+                    )
+                )
+            )
+            return
+        }
+        // A connection is not accepted while a session is active, so a QR engagement would be
+        // unusable. The session must be stopped first.
+        if (deviceRetrievalHelper != null) {
+            Log.d(this.TAG, SESSION_ACTIVE_MSG)
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(
+                    QrEngagementNotStartedException(
+                        SESSION_ACTIVE_MSG
+                    )
+                )
             )
             return
         }
         qrEngagement = QrEngagement(
             context = context,
             retrievalMethods = retrievalMethods,
+            isPresentationActive = { deviceRetrievalHelper != null },
             onQrEngagementReady = { qrCode ->
                 transferEventListeners.onTransferEvent(
                     TransferEvent.QrEngagementReady(qrCode),
@@ -163,10 +182,11 @@ class TransferManagerImpl @JvmOverloads constructor(
                 this.deviceRetrievalHelper = deviceRetrievalHelper
                 transferEventListeners.onTransferEvent(TransferEvent.Connected)
             },
-            onNewDeviceRequest = { deviceRequestBytes ->
+            onNewDeviceRequest = { deviceRetrievalHelper, deviceRequestBytes ->
+                // The session transcript of the connection that received the request
                 val deviceRequest = DeviceRequest(
                     deviceRequestBytes,
-                    deviceRetrievalHelper?.sessionTranscript!!
+                    deviceRetrievalHelper.sessionTranscript
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(
@@ -180,6 +200,7 @@ class TransferManagerImpl @JvmOverloads constructor(
             onDisconnected = {
                 transferEventListeners.onTransferEvent(TransferEvent.Disconnected)
             },
+            onSessionEnded = { deviceRetrievalHelper -> endSession(deviceRetrievalHelper) },
             onCommunicationError = { error ->
                 Log.d(this.TAG, "onError: ${error.message}")
                 transferEventListeners.onTransferEvent(TransferEvent.Error(error))
@@ -197,6 +218,7 @@ class TransferManagerImpl @JvmOverloads constructor(
     override fun setupNfcEngagement(service: NfcEngagementService) = apply {
         service.apply {
             retrievalMethods = this@TransferManagerImpl.retrievalMethods
+            isPresentationActive = { this@TransferManagerImpl.deviceRetrievalHelper != null }
             onConnecting = {
                 transferEventListeners.onTransferEvent(TransferEvent.Connecting)
             }
@@ -204,10 +226,11 @@ class TransferManagerImpl @JvmOverloads constructor(
                 this@TransferManagerImpl.deviceRetrievalHelper = deviceRetrievalHelper
                 transferEventListeners.onTransferEvent(TransferEvent.Connected)
             }
-            onNewDeviceRequest = { deviceRequestBytes ->
+            onNewDeviceRequest = { deviceRetrievalHelper, deviceRequestBytes ->
+                // The session transcript of the connection that received the request
                 val deviceRequest = DeviceRequest(
                     deviceRequestBytes,
-                    deviceRetrievalHelper?.sessionTranscript!!
+                    deviceRetrievalHelper.sessionTranscript
                 )
                 transferEventListeners.onTransferEvent(
                     TransferEvent.RequestReceived(
@@ -220,6 +243,9 @@ class TransferManagerImpl @JvmOverloads constructor(
             }
             onDisconnected = {
                 transferEventListeners.onTransferEvent(TransferEvent.Disconnected)
+            }
+            onSessionEnded = { deviceRetrievalHelper ->
+                this@TransferManagerImpl.endSession(deviceRetrievalHelper)
             }
             onCommunicationError = { error ->
                 Log.d(this.TAG, "onError: ${error.message}")
@@ -239,12 +265,36 @@ class TransferManagerImpl @JvmOverloads constructor(
      *
      * To generate the response, use the [eu.europa.ec.eudi.iso18013.transfer.response.device.ProcessedDeviceRequest.generateResponse]
      * that is provided by the [eu.europa.ec.eudi.iso18013.transfer.TransferEvent.RequestReceived] event.
+     *
+     * The response is sent only to the session of the request it was generated for. When there is
+     * no active session, or the response was generated for another session, nothing is sent and
+     * [TransferEvent.Error] is triggered with a [ResponseNotSentException]. The active session, if
+     * any, is not affected.
+     *
+     * After the response is sent, connections from other mdoc verifiers are not accepted until the
+     * mdoc verifier disconnects or [stopPresentation] is called.
      * @param response the response to send
      * @throws IllegalArgumentException if the response is not a [DeviceResponse]
      */
     override fun sendResponse(response: Response) {
         require(response is DeviceResponse) { "Response must be a DeviceResponse" }
-        deviceRetrievalHelper?.sendDeviceResponse(
+        val helper = deviceRetrievalHelper
+        if (helper == null) {
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(ResponseNotSentException("No active presentation session"))
+            )
+            return
+        }
+        val sessionTranscript = runCatching { helper.sessionTranscript }.getOrNull()
+        if (!sessionTranscript.contentEquals(response.sessionTranscriptBytes)) {
+            transferEventListeners.onTransferEvent(
+                TransferEvent.Error(
+                    ResponseNotSentException("The response was generated for another presentation session")
+                )
+            )
+            return
+        }
+        helper.sendDeviceResponse(
             response.deviceResponseBytes,
             Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
         )
@@ -270,6 +320,16 @@ class TransferManagerImpl @JvmOverloads constructor(
     }
 
     /**
+     * Releases the active session when [deviceRetrievalHelper] is its connection, so that a new
+     * connection can be accepted. The connection of an earlier session does not release a newer one.
+     */
+    private fun endSession(deviceRetrievalHelper: DeviceRetrievalHelper) {
+        if (this.deviceRetrievalHelper === deviceRetrievalHelper) {
+            this.deviceRetrievalHelper = null
+        }
+    }
+
+    /**
      * Disconnects the current session and clears the engagement objects
      */
     private fun disconnect() {
@@ -291,6 +351,7 @@ class TransferManagerImpl @JvmOverloads constructor(
      */
     companion object {
         private const val TRANSFER_STARTED_MSG = "Transfer has already started."
+        private const val SESSION_ACTIVE_MSG = "A presentation session is active."
 
         /**
          * Extension function to trigger transfer events for each listener in the collection

@@ -52,8 +52,9 @@ fun interface TrustPolicy {
         ENFORCE,
 
         /**
-         * Informational only: always store the document regardless of trust result,
-         * and attach the trust verification result to the `DocumentIssued` event.
+         * Informational only: store the document regardless of the trust result, and attach
+         * the trust verification result to the `DocumentIssued` event. A credential whose issuer
+         * signature does not verify is not stored.
          */
         INFORM
     }

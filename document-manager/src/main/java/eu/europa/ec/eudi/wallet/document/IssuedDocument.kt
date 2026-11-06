@@ -152,7 +152,8 @@ class IssuedDocument(
      * Finds the most appropriate credential for the current time or a specified time.
      *
      * This method selects a valid credential based on the following criteria:
-     * 1. The credential must be valid at the specified time (now by default)
+     * 1. The credential must be valid at the specified time (now by default). Only the validity
+     *    period is checked, not the revocation status.
      * 2. Among valid credentials, the one with the lowest usage count is selected
      *
      * This approach ensures optimal credential rotation when using the RotatingBatch policy

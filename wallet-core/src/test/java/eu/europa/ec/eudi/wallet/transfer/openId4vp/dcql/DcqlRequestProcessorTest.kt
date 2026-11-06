@@ -36,9 +36,8 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderTrust
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpRequest
-import eu.europa.ec.eudi.wallet.transfer.openId4vp.ReaderTrustResult
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpReaderAuth
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -837,9 +836,8 @@ class DcqlRequestProcessorTest {
 
     /**
      * Assemble a [DcqlRequestProcessor] backed by a single mocked [IssuedDocument] whose
-     * credential exposes [credentialClaims]. The trust source is wired to a relaxed
-     * `OpenId4VpReaderTrust` returning [ReaderTrustResult.Pending] — sufficient for the
-     * matching code path, which doesn't depend on trust verdict.
+     * credential exposes [credentialClaims]. The processor has no reader trust store —
+     * sufficient for the matching code path, which doesn't depend on trust verdict.
      */
     private fun buildProcessor(
         credentialFormat: MsoMdocFormat,
@@ -856,12 +854,11 @@ class DcqlRequestProcessorTest {
             every { getDocuments(predicate = any()) } returns listOf(issuedDoc)
             every { getDocuments(predicate = null) } returns listOf(issuedDoc)
         }
-        val trust = mockk<OpenId4VpReaderTrust> {
-            every { result } returns ReaderTrustResult.Pending
-            every { readerTrustStore } returns null
-            every { readerTrustStore = any() } returns Unit
-        }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(
+            documentManager,
+            readerTrustStore = null,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        )
     }
 
     /**
@@ -875,7 +872,10 @@ class DcqlRequestProcessorTest {
             every { transactionData } returns null
             every { client } returns Client.RedirectUri(URI.create("https://verifier.example"))
         }
-        return mockk { every { resolvedRequestObject } returns resolved }
+        return mockk {
+            every { resolvedRequestObject } returns resolved
+            every { readerAuthentication } returns OpenId4VpReaderAuth.Absent
+        }
     }
 
     /**
@@ -942,12 +942,11 @@ class DcqlRequestProcessorTest {
             every { getDocuments(predicate = any()) } returns listOf(issuedDoc)
             every { getDocuments(predicate = null) } returns listOf(issuedDoc)
         }
-        val trust = mockk<OpenId4VpReaderTrust> {
-            every { result } returns ReaderTrustResult.Pending
-            every { readerTrustStore } returns null
-            every { readerTrustStore = any() } returns Unit
-        }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(
+            documentManager,
+            readerTrustStore = null,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        )
     }
 
     /**
@@ -972,12 +971,11 @@ class DcqlRequestProcessorTest {
             every { getDocuments(predicate = any()) } returns issuedDocs
             every { getDocuments(predicate = null) } returns issuedDocs
         }
-        val trust = mockk<OpenId4VpReaderTrust> {
-            every { result } returns ReaderTrustResult.Pending
-            every { readerTrustStore } returns null
-            every { readerTrustStore = any() } returns Unit
-        }
-        return DcqlRequestProcessor(documentManager, trust, ReaderAuthPolicy.DoNotEnforce)
+        return DcqlRequestProcessor(
+            documentManager,
+            readerTrustStore = null,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+        )
     }
 
     /**

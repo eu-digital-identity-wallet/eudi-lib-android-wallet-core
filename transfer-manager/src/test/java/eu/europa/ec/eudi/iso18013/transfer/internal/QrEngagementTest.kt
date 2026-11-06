@@ -73,10 +73,12 @@ class QrEngagementTest {
         val qrEngagement = QrEngagement(
             context = context,
             retrievalMethods = retrievalMethods,
+            isPresentationActive = { false },
             onQrEngagementReady = onQrEngementReady,
             onDisconnected = {},
+            onSessionEnded = {},
             onConnecting = {},
-            onNewDeviceRequest = {},
+            onNewDeviceRequest = { _, _ -> },
             onCommunicationError = {},
             onDeviceRetrievalHelperReady = {},
         )
@@ -95,10 +97,12 @@ class QrEngagementTest {
         val qrEngagement = QrEngagement(
             context = context,
             retrievalMethods = retrievalMethods,
+            isPresentationActive = { false },
             onQrEngagementReady = { },
             onDisconnected = {},
+            onSessionEnded = {},
             onConnecting = {},
-            onNewDeviceRequest = {},
+            onNewDeviceRequest = { _, _ -> },
             onCommunicationError = {},
             onDeviceRetrievalHelperReady = {},
         )
@@ -114,10 +118,12 @@ class QrEngagementTest {
         val qrEngagement = QrEngagement(
             context = context,
             retrievalMethods = retrievalMethods,
+            isPresentationActive = { false },
             onQrEngagementReady = { },
             onDisconnected = {},
+            onSessionEnded = {},
             onConnecting = {},
-            onNewDeviceRequest = {},
+            onNewDeviceRequest = { _, _ -> },
             onCommunicationError = {},
             onDeviceRetrievalHelperReady = {},
         )

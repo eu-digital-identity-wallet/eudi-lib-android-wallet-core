@@ -24,6 +24,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.annotation.VisibleForTesting
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
@@ -37,6 +38,8 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
+import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.ResponseApdu
 
 /**
  * Abstract Nfc engagement service.
@@ -110,17 +113,62 @@ abstract class NfcEngagementService : HostApduService() {
     abstract val transferManager: TransferManager
 
     internal lateinit var retrievalMethods: List<DeviceRetrievalMethod>
+    internal lateinit var isPresentationActive: () -> Boolean
     internal lateinit var onConnecting: () -> Unit
     internal lateinit var onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit
-    internal lateinit var onNewDeviceRequest: (request: ByteArray) -> Unit
+    internal lateinit var onNewDeviceRequest: (deviceRetrievalHelper: DeviceRetrievalHelper, request: ByteArray) -> Unit
     internal lateinit var onDisconnected: (transportSpecificTermination: Boolean) -> Unit
+    internal lateinit var onSessionEnded: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit
     internal lateinit var onCommunicationError: (error: Throwable) -> Unit
 
-    private lateinit var nfcEngagement: NfcEngagementHelper
+    /**
+     * The engagement of the current NFC tap, or of the last tap while an mdoc verifier may still
+     * connect to it; null when there is none.
+     */
+    @JvmSynthetic
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal var engagement: Engagement? = null
 
-    private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
+    /** Whether an NFC tap is in progress, from its first command until [onDeactivated]. */
+    private var isTapActive = false
 
-    private lateinit var eDevicePrivateKey: EcPrivateKey
+    /** Builds the NFC engagement helper of an [Engagement]. */
+    @JvmSynthetic
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal var buildNfcEngagementHelper: (
+        eDevicePrivateKey: EcPrivateKey,
+        listener: NfcEngagementHelper.Listener,
+    ) -> NfcEngagementHelper = { eDevicePrivateKey, listener ->
+        NfcEngagementHelper.Builder(
+            applicationContext,
+            eDevicePrivateKey.publicKey,
+            retrievalMethods.transportOptions,
+            listener,
+            applicationContext.mainExecutor(),
+        ).apply {
+            useStaticHandover(retrievalMethods.connectionMethods)
+        }.build()
+    }
+
+    /** Builds the device retrieval helper of a connection made through an [Engagement]. */
+    @JvmSynthetic
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal var buildDeviceRetrievalHelper: (
+        engagement: Engagement,
+        transport: DataTransport,
+        listener: DeviceRetrievalHelper.Listener,
+    ) -> DeviceRetrievalHelper = { engagement, transport, listener ->
+        DeviceRetrievalHelper.Builder(
+            applicationContext,
+            listener,
+            application.mainExecutor(),
+            engagement.eDevicePrivateKey,
+        ).useForwardEngagement(
+            transport,
+            engagement.helper.deviceEngagement,
+            engagement.helper.handover,
+        ).build()
+    }
 
     companion object {
 
@@ -179,101 +227,142 @@ abstract class NfcEngagementService : HostApduService() {
         }
     }
 
-    private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
-        override fun onTwoWayEngagementDetected() {
-            Log.d(this.TAG, "Engagement Listener: Two Way Engagement Detected.")
+    /**
+     * The device engagement of one NFC tap, with its own ephemeral device key.
+     */
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal inner class Engagement {
+
+        val eDevicePrivateKey: EcPrivateKey = runBlocking {
+            Crypto.createEcPrivateKey(EcCurve.P256)
         }
 
-        override fun onDeviceConnecting() {
-            Log.d(this.TAG, "NFC Engagement: Device Connecting")
-            onConnecting()
-        }
-
-        override fun onDeviceConnected(transport: DataTransport) {
-            if (deviceRetrievalHelper != null) {
-                Log.d(
-                    TAG,
-                    "Engagement Listener: Device Connected -> ignored due to active presentation",
-                )
-                return
+        @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+        internal val listener = object : NfcEngagementHelper.Listener {
+            override fun onTwoWayEngagementDetected() {
+                Log.d(this.TAG, "Engagement Listener: Two Way Engagement Detected.")
             }
 
-            Log.d(this.TAG, "onDeviceConnected via NFC: nfcEngagement=$nfcEngagement")
+            override fun onDeviceConnecting() {
+                Log.d(this.TAG, "NFC Engagement: Device Connecting")
+                onConnecting()
+            }
 
-            val builder = DeviceRetrievalHelper.Builder(
-                applicationContext,
-                deviceRetrievalHelperListener,
-                application.mainExecutor(),
-                eDevicePrivateKey,
-            )
-            builder.useForwardEngagement(
-                transport,
-                nfcEngagement.deviceEngagement,
-                nfcEngagement.handover,
-            )
-            deviceRetrievalHelper = builder.build()
-            nfcEngagement.close()
-            onDeviceRetrievalHelperReady(requireNotNull(deviceRetrievalHelper))
+            override fun onDeviceConnected(transport: DataTransport) {
+                connect(this@Engagement, transport)
+            }
+
+            override fun onError(error: Throwable) {
+                Log.d(this.TAG, "NFC onError: ${error.message}")
+                onCommunicationError(error)
+            }
+
+            override fun onHandoverSelectMessageSent() {
+                Log.d(this.TAG, "NFC Engagement: Handover Select Message Sent")
+                Log.d(this.TAG, "NFC Engagement: NegotiatedHandover not supported yet")
+            }
         }
 
-        override fun onError(error: Throwable) {
-            Log.d(this.TAG, "NFC onError: ${error.message}")
-            onCommunicationError(error)
-        }
+        val helper: NfcEngagementHelper = buildNfcEngagementHelper(eDevicePrivateKey, listener)
 
-        override fun onHandoverSelectMessageSent() {
-            Log.d(this.TAG, "NFC Engagement: Handover Select Message Sent")
-            Log.d(this.TAG, "NFC Engagement: NegotiatedHandover not supported yet")
+        /**
+         * Closes the engagement. When it is the current one, the next tap creates a new one.
+         */
+        fun close() {
+            helper.close()
+            if (this@NfcEngagementService.engagement === this) {
+                this@NfcEngagementService.engagement = null
+            }
         }
     }
 
-    private val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
-        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
-            Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onEReaderKeyReceived")
+    /**
+     * Starts the presentation session of an mdoc verifier that connected through [engagement].
+     * The connection is ignored while a presentation is active, or when [engagement] is not the
+     * current one.
+     */
+    private fun connect(engagement: Engagement, transport: DataTransport) {
+        if (isPresentationActive() || engagement !== this.engagement) {
+            Log.d(
+                TAG,
+                "Engagement Listener: Device Connected -> ignored due to active presentation or ended engagement",
+            )
+            // The transport of the ignored mdoc verifier is closed, as no one else closes it
+            transport.close()
+            return
         }
 
-        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-            Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onDeviceRequest")
-            onNewDeviceRequest(deviceRequestBytes)
-        }
+        Log.d(this.TAG, "onDeviceConnected via NFC")
 
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onDeviceDisconnected")
-            onDisconnected(transportSpecificTermination)
-        }
+        // The listener is bound to its own device retrieval helper, so that callbacks of an ended
+        // session cannot act on a newer one
+        lateinit var deviceRetrievalHelper: DeviceRetrievalHelper
+        val listener = object : DeviceRetrievalHelper.Listener {
+            override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
+                Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onEReaderKeyReceived")
+            }
 
-        override fun onError(error: Throwable) {
-            Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onError -> ${error.message}")
-            onCommunicationError(error)
+            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onDeviceRequest")
+                onNewDeviceRequest(deviceRetrievalHelper, deviceRequestBytes)
+            }
+
+            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onDeviceDisconnected")
+                onSessionEnded(deviceRetrievalHelper)
+                onDisconnected(transportSpecificTermination)
+            }
+
+            override fun onError(error: Throwable) {
+                Log.d(this.TAG, "DeviceRetrievalHelper Listener (NFC): onError -> ${error.message}")
+                onSessionEnded(deviceRetrievalHelper)
+                onCommunicationError(error)
+            }
         }
+        deviceRetrievalHelper = buildDeviceRetrievalHelper(engagement, transport, listener)
+        // The engagement is used; the next tap creates a new one with a new device key
+        engagement.close()
+        onDeviceRetrievalHelperReady(deviceRetrievalHelper)
     }
 
     override fun onCreate() {
         super.onCreate()
-        eDevicePrivateKey = runBlocking {
-            Crypto.createEcPrivateKey(EcCurve.P256)
-        }
         transferManager.setupNfcEngagement(this)
-        nfcEngagement = NfcEngagementHelper.Builder(
-            applicationContext,
-            eDevicePrivateKey.publicKey,
-            retrievalMethods.transportOptions,
-            nfcEngagementListener,
-            applicationContext.mainExecutor(),
-        ).apply {
-            useStaticHandover(retrievalMethods.connectionMethods)
-        }.build()
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray {
-        return nfcEngagement.nfcProcessCommandApdu(commandApdu)
+        // While a presentation is active, the engagement is refused before it sets up a
+        // data transport for another reader
+        if (isPresentationActive()) {
+            Log.d(TAG, "NFC engagement refused due to active presentation")
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND).encode()
+        }
+        // The first command of a tap starts a new engagement with a new ephemeral device key. The
+        // engagement of an earlier tap that no mdoc verifier connected to is closed.
+        if (!isTapActive) {
+            isTapActive = true
+            engagement?.close()
+            engagement = Engagement()
+        }
+        val current = engagement
+        if (current == null) {
+            Log.d(TAG, "NFC engagement refused: the engagement of this tap has ended")
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND).encode()
+        }
+        return current.helper.nfcProcessCommandApdu(commandApdu)
     }
 
     override fun onDeactivated(reason: Int) {
-        nfcEngagement.nfcOnDeactivated(reason)
+        val wasTapActive = isTapActive
+        isTapActive = false
+        if (!wasTapActive) return
+        val current = engagement ?: return
+        current.helper.nfcOnDeactivated(reason)
+        // An mdoc verifier can still connect after the tap; the engagement is closed when none has
+        // connected within the timeout. A newer engagement is not affected.
         val timeoutSeconds = 15
         Handler(Looper.getMainLooper()).postDelayed({
-            nfcEngagement.close()
+            current.close()
         }, timeoutSeconds * 1000L)
     }
 }

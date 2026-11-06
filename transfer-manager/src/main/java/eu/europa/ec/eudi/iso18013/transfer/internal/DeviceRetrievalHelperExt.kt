@@ -24,17 +24,20 @@ internal fun DeviceRetrievalHelper.stopPresentation(
     useTransportSpecificSessionTermination: Boolean,
 ) {
     try {
-        if (sendSessionTerminationMessage) {
-            if (useTransportSpecificSessionTermination) {
-                sendTransportSpecificTermination()
-            } else {
-                sendDeviceResponse(
-                    null,
-                    Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
-                )
+        try {
+            if (sendSessionTerminationMessage) {
+                if (useTransportSpecificSessionTermination) {
+                    sendTransportSpecificTermination()
+                } else {
+                    sendDeviceResponse(
+                        null,
+                        Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                    )
+                }
             }
+        } finally {
+            disconnect()
         }
-        disconnect()
     } catch (e: Exception) {
         Log.e(this.TAG, "Error ignored.", e)
     }
