@@ -21,7 +21,9 @@ import android.content.Context
 import androidx.annotation.RawRes
 import eu.europa.ec.eudi.iso18013.transfer.engagement.NfcEngagementService
 import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.CrlCache
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.zkp.ZkResponsePolicy
@@ -662,6 +664,58 @@ class EudiWalletConfig {
      */
     var revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail
         private set
+
+    /**
+     * The upper bound for a reader authentication trust path validation, including the CRL
+     * downloads needed for revocation checking. A validation that takes longer fails.
+     *
+     * This applies to the trust stores built from static trusted certificates: reader
+     * authentication ([configureReaderAuthentication]) and registration certificates
+     * ([configureWrpRegistrationTrust], [configureIssuerRegistrationTrust]). The default is
+     * [ReaderTrustStoreImpl.DEFAULT_REVOCATION_CHECK_TIMEOUT].
+     *
+     * @see configureRevocationCheckTimeout
+     */
+    var revocationCheckTimeout: Duration = ReaderTrustStoreImpl.DEFAULT_REVOCATION_CHECK_TIMEOUT
+        private set
+
+    /**
+     * Configure [revocationCheckTimeout].
+     *
+     * @param timeout the upper bound for a trust path validation, must be positive
+     * @return the [EudiWalletConfig] instance
+     */
+    fun configureRevocationCheckTimeout(timeout: Duration) = apply {
+        require(timeout.isPositive()) { "revocationCheckTimeout must be positive" }
+        this.revocationCheckTimeout = timeout
+    }
+
+    /**
+     * The cache that keeps the CRLs downloaded for revocation checking between trust path
+     * validations, or `null` (the default) to download them for every validation.
+     *
+     * Like [revocationCheckTimeout], this applies to the trust stores built from static trusted
+     * certificates, for reader authentication and for the registration certificate and status list
+     * signer chains.
+     *
+     * @see configureCrlCache
+     */
+    var crlCache: CrlCache? = null
+        private set
+
+    /**
+     * Configure [crlCache].
+     *
+     * ```
+     * configureCrlCache(CrlCache.inCacheDirectory(context, refreshInterval = 1.hours, httpClientFactory = { httpClient }))
+     * ```
+     *
+     * @param crlCache the cache to use, or `null` to download the CRLs for every validation
+     * @return the [EudiWalletConfig] instance
+     */
+    fun configureCrlCache(crlCache: CrlCache?) = apply {
+        this.crlCache = crlCache
+    }
 
     /**
      * The policy for handling the relying party's registration certificate during presentation

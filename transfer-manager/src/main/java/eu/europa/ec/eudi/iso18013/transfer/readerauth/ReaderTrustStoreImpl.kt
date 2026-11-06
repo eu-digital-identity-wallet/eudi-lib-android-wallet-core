@@ -21,6 +21,8 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.profile.ProfileValidation
 import org.bouncycastle.asn1.x500.X500Name
 import java.security.InvalidAlgorithmParameterException
 import java.security.NoSuchAlgorithmException
+import java.security.cert.CRLException
+import java.security.cert.CertPath
 import java.security.cert.CertPathValidator
 import java.security.cert.CertPathValidatorException
 import java.security.cert.CertStore
@@ -31,8 +33,15 @@ import java.security.cert.PKIXCertPathValidatorResult
 import java.security.cert.PKIXParameters
 import java.security.cert.PKIXRevocationChecker
 import java.security.cert.TrustAnchor
+import java.security.cert.X509CRL
 import java.security.cert.X509Certificate
 import java.util.Date
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 class ReaderTrustStoreImpl(
     private val trustedCertificates: List<X509Certificate>,
@@ -41,6 +50,8 @@ class ReaderTrustStoreImpl(
         Log.d(tag, message, cause)
     },
     private val revocationPolicy: RevocationPolicy = RevocationPolicy.HardFail,
+    private val revocationCheckTimeout: Duration = DEFAULT_REVOCATION_CHECK_TIMEOUT,
+    private val crlCache: CrlCache? = null,
 ) : ReaderTrustStore {
 
     private val trustedCertMap: Map<X500Name, X509Certificate> by lazy {
@@ -76,49 +87,31 @@ class ReaderTrustStoreImpl(
             firstTrustedIndex?.let { chainToDocumentSigner.take(it) } ?: chainToDocumentSigner
 
         return try {
-            val certStore = CertStore.getInstance(
-                "Collection",
-                CollectionCertStoreParameters(trustedCertificates),
-            )
-            val trustAnchors = trustedCertificates.map {
-                TrustAnchor(it, null)
-            }.toSet()
-
             val validator = CertPathValidator.getInstance("PKIX")
-            val params = PKIXParameters(trustAnchors).apply {
-                addCertStore(certStore)
-                date = Date()
-
-                when (revocationPolicy) {
-                    is RevocationPolicy.NoCheck -> {
-                        isRevocationEnabled = false
-                    }
-                    is RevocationPolicy.HardFail -> {
-                        isRevocationEnabled = true
-                        val checker = validator.revocationChecker as PKIXRevocationChecker
-                        checker.options = setOf(
-                            PKIXRevocationChecker.Option.PREFER_CRLS,
-                            PKIXRevocationChecker.Option.NO_FALLBACK,
-                        )
-                        addCertPathChecker(checker)
-                    }
-                    is RevocationPolicy.SoftFail -> {
-                        isRevocationEnabled = true
-                        val checker = validator.revocationChecker as PKIXRevocationChecker
-                        checker.options = setOf(
-                            PKIXRevocationChecker.Option.PREFER_CRLS,
-                            PKIXRevocationChecker.Option.NO_FALLBACK,
-                            PKIXRevocationChecker.Option.SOFT_FAIL,
-                        )
-                        addCertPathChecker(checker)
-                    }
-                }
-            }
-
+            val checker = revocationChecker(validator, revocationPolicy)
             val certPath = CertificateFactory.getInstance("X.509")
                 .generateCertPath(certificationPath)
-            val certPathValidationResult = validator
-                .validate(certPath, params) as PKIXCertPathValidatorResult
+            // The platform fetches CRLs without a timeout, so bound the path validation.
+            val validation = validationExecutor.submit<PKIXCertPathValidatorResult> {
+                val crls = if (checker == null) emptyList() else crlCache?.crlsFor(chainToDocumentSigner).orEmpty()
+                validator.validate(certPath, pkixParameters(checker, crls)) as PKIXCertPathValidatorResult
+            }
+            val certPathValidationResult = try {
+                validation.get(revocationCheckTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+                    .also { checker?.softFailExceptions?.forEach { errorLogger(TAG, "CERTIFICATE_PATH_REVOCATION_SOFT_FAIL", it) } }
+            } catch (e: ExecutionException) {
+                val cause = e.cause ?: e
+                if (revocationPolicy !is RevocationPolicy.SoftFail || !cause.isUnreadableCrl()) throw cause
+                // The platform treats only network errors as soft; an unreadable CRL is unavailability too.
+                errorLogger(TAG, "CERTIFICATE_PATH_CRL_UNREADABLE_SOFT_FAIL", cause)
+                validateOffline(certPath)
+            } catch (e: TimeoutException) {
+                validation.cancel(true)
+                if (revocationPolicy !is RevocationPolicy.SoftFail) throw e
+                // A stalled CRL download is unavailability, which SoftFail tolerates.
+                errorLogger(TAG, "CERTIFICATE_PATH_TIMEOUT_SOFT_FAIL", e)
+                validateOffline(certPath)
+            }
             val trustedRootCA = certPathValidationResult.trustAnchor.trustedCert
 
             profileValidation.validate(certificationPath, trustedRootCA)
@@ -129,13 +122,83 @@ class ReaderTrustStoreImpl(
                 is NoSuchAlgorithmException -> errorLogger(TAG, "NO_SUCH_ALGORITHM", e)
                 is CertificateException -> errorLogger(TAG, "CERTIFICATE_ERROR", e)
                 is CertPathValidatorException -> errorLogger(TAG, "CERTIFICATE_PATH_ERROR", e)
+                is TimeoutException -> errorLogger(TAG, "CERTIFICATE_PATH_TIMEOUT", e)
                 else -> errorLogger(TAG, "UNKNOWN_ERROR", e)
             }
             false
         }
     }
 
+    private fun validateOffline(certPath: CertPath): PKIXCertPathValidatorResult {
+        val result = CertPathValidator.getInstance("PKIX")
+            .validate(certPath, pkixParameters(null, emptyList())) as PKIXCertPathValidatorResult
+        crlCache?.let { checkCachedCrls(certPath, result.trustAnchor.trustedCert, it) }
+        return result
+    }
+
+    // PKIX would download the CRLs that are not cached, so the cached ones are checked here.
+    private fun checkCachedCrls(certPath: CertPath, anchor: X509Certificate, cache: CrlCache) {
+        val certificates = certPath.certificates.map { it as X509Certificate }
+        certificates.forEachIndexed { index, certificate ->
+            val issuer = certificates.getOrNull(index + 1) ?: anchor
+            val revoked = cache.cachedCrlsFor(listOf(certificate)).any { crl ->
+                crl.issuerX500Principal == certificate.issuerX500Principal &&
+                    runCatching { crl.verify(issuer.publicKey) }.isSuccess &&
+                    crl.isRevoked(certificate)
+            }
+            if (revoked) {
+                throw CertPathValidatorException(
+                    "Certificate is revoked by a cached CRL", null, certPath, index,
+                    CertPathValidatorException.BasicReason.REVOKED,
+                )
+            }
+        }
+    }
+
+    private fun pkixParameters(revocationChecker: PKIXRevocationChecker?, crls: List<X509CRL>): PKIXParameters {
+        val certStore = CertStore.getInstance(
+            "Collection",
+            CollectionCertStoreParameters(trustedCertificates + crls),
+        )
+        val trustAnchors = trustedCertificates.map {
+            TrustAnchor(it, null)
+        }.toSet()
+
+        return PKIXParameters(trustAnchors).apply {
+            addCertStore(certStore)
+            date = Date()
+            isRevocationEnabled = revocationChecker != null
+            revocationChecker?.let { addCertPathChecker(it) }
+        }
+    }
+
+    private fun revocationChecker(validator: CertPathValidator, policy: RevocationPolicy): PKIXRevocationChecker? {
+        val options = when (policy) {
+            is RevocationPolicy.NoCheck -> return null
+            is RevocationPolicy.HardFail -> setOf(
+                PKIXRevocationChecker.Option.PREFER_CRLS,
+                PKIXRevocationChecker.Option.NO_FALLBACK,
+            )
+            is RevocationPolicy.SoftFail -> setOf(
+                PKIXRevocationChecker.Option.PREFER_CRLS,
+                PKIXRevocationChecker.Option.NO_FALLBACK,
+                PKIXRevocationChecker.Option.SOFT_FAIL,
+            )
+        }
+        return (validator.revocationChecker as PKIXRevocationChecker).apply { this.options = options }
+    }
+
+    private fun Throwable.isUnreadableCrl(): Boolean =
+        generateSequence(this) { it.cause }.any { it is CRLException }
+
     companion object {
         private const val TAG = "ReaderTrustStoreImpl"
+
+        /** Upper bound for the PKIX path validation, including any CRL download. */
+        val DEFAULT_REVOCATION_CHECK_TIMEOUT: Duration = 10.seconds
+
+        private val validationExecutor = Executors.newCachedThreadPool { runnable ->
+            Thread(runnable, "ReaderTrustStore-validation").apply { isDaemon = true }
+        }
     }
 }

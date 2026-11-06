@@ -21,13 +21,17 @@ import eu.europa.ec.eudi.iso18013.transfer.mockAndroidLog
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.profile.ProfileValidation
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.mockito.MockedStatic
+import java.io.IOException
 import java.security.Security
+import java.security.cert.CRLException
 import java.security.cert.CertPathValidator
 import java.security.cert.CertPathValidatorException
 import java.security.cert.CertStore
@@ -36,20 +40,31 @@ import java.security.cert.CollectionCertStoreParameters
 import java.security.cert.PKIXParameters
 import java.security.cert.PKIXRevocationChecker
 import java.security.cert.TrustAnchor
+import java.security.cert.X509CRL
 import java.security.cert.X509Certificate
+import java.time.Instant
 import java.util.Date
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class ReaderTrustStoreImplTest {
 
     private lateinit var mockLog: MockedStatic<Log>
     private lateinit var rootCertificate: X509Certificate
     private lateinit var leafCertificate: X509Certificate
+    private val offline = CrlCache(fetch = { throw IOException("offline") })
 
     @Before
     fun setup() {
+        // Other tests in this JVM insert BouncyCastle first, whose PKIX ignores SOFT_FAIL.
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
         mockLog = mockAndroidLog()
         rootCertificate = trustedCertificate
@@ -212,7 +227,8 @@ class ReaderTrustStoreImplTest {
         val trustStore = ReaderTrustStoreImpl(
             trustedCertificates = listOf(rootCertificate),
             profileValidation = profileValidation,
-            errorLogger = { _, _, _ -> }
+            errorLogger = { _, _, _ -> },
+            crlCache = offline,
         )
 
         // With HardFail, validation should fail because the leaf cert has
@@ -233,7 +249,8 @@ class ReaderTrustStoreImplTest {
             trustedCertificates = listOf(rootCertificate),
             profileValidation = profileValidation,
             revocationPolicy = RevocationPolicy.HardFail,
-            errorLogger = { _, _, _ -> }
+            errorLogger = { _, _, _ -> },
+            crlCache = offline,
         )
 
         // HardFail should fail because the CRL at https://example.com/crl.pem is unreachable
@@ -253,13 +270,44 @@ class ReaderTrustStoreImplTest {
             trustedCertificates = listOf(rootCertificate),
             profileValidation = profileValidation,
             revocationPolicy = RevocationPolicy.SoftFail,
-            errorLogger = { _, _, _ -> }
+            errorLogger = { _, _, _ -> },
+            crlCache = offline,
         )
 
         // SoftFail should succeed because CRL unavailability is tolerated
         val result = trustStore.validateCertificationTrustPath(certificateChain)
 
         assertTrue(result, "SoftFail policy should succeed when CRL is unavailable")
+    }
+
+    @Test
+    fun testCertificateListedByItsDistributionPointsCrlIsRejected() {
+        for (policy in listOf(RevocationPolicy.SoftFail, RevocationPolicy.HardFail)) {
+            assertFalse(validateWithCrl(policy, revokedCertificateCRL), "$policy should reject a revoked certificate")
+        }
+    }
+
+    @Test
+    fun testCertificateMissingFromItsDistributionPointsCrlIsTrusted() {
+        assertTrue(validateWithCrl(RevocationPolicy.HardFail, emptyCRL))
+    }
+
+    @Test
+    fun testCrlWithAForgedSignatureIsNotUsed() {
+        assertFalse(validateWithCrl(RevocationPolicy.HardFail, forgedEmptyCRL))
+    }
+
+    private fun validateWithCrl(policy: RevocationPolicy, crl: X509CRL): Boolean {
+        val profileValidation = mockk<ProfileValidation>()
+        every { profileValidation.validate(any(), any()) } returns true
+        val trustStore = ReaderTrustStoreImpl(
+            trustedCertificates = listOf(rootCertificate),
+            profileValidation = profileValidation,
+            errorLogger = { _, _, _ -> },
+            revocationPolicy = policy,
+            crlCache = CrlCache(fetch = { crl }),
+        )
+        return trustStore.validateCertificationTrustPath(listOf(leafCertificate, rootCertificate))
     }
 
     @Test
@@ -292,6 +340,163 @@ class ReaderTrustStoreImplTest {
         // PKIXRevocationChecker should reject the certificate because it's in the CRL
         assertFailsWith<CertPathValidatorException> {
             validator.validate(certPath, params)
+        }
+    }
+
+    @Test
+    fun testValidationFailsWhenItExceedsTheTimeout() {
+        // Stands in for a CRL download that never completes, which the JVM PKIX provider
+        // does not attempt by default.
+        val hangingValidator = mockk<CertPathValidator>()
+        every { hangingValidator.validate(any(), any()) } answers {
+            Thread.sleep(10_000)
+            error("unreachable")
+        }
+        mockkStatic(CertPathValidator::class)
+        every { CertPathValidator.getInstance("PKIX") } returns hangingValidator
+        try {
+            val logged = mutableListOf<String>()
+            val trustStore = ReaderTrustStoreImpl(
+                trustedCertificates = listOf(rootCertificate),
+                profileValidation = mockk(),
+                errorLogger = { _, message, _ -> logged += message },
+                revocationPolicy = RevocationPolicy.NoCheck,
+                revocationCheckTimeout = 500.milliseconds,
+            )
+
+            val start = System.nanoTime()
+            val result = trustStore.validateCertificationTrustPath(listOf(leafCertificate, rootCertificate))
+            val elapsed = (System.nanoTime() - start).nanoseconds
+
+            assertFalse(result, "Validation should fail once the timeout elapses")
+            assertTrue(elapsed < 5.seconds, "validation took $elapsed")
+            assertEquals(listOf("CERTIFICATE_PATH_TIMEOUT"), logged)
+        } finally {
+            unmockkStatic(CertPathValidator::class)
+        }
+    }
+
+    @Test
+    fun testSoftFailValidatesWithoutRevocationWhenItExceedsTheTimeout() {
+        val logged = mutableListOf<String>()
+        val start = System.nanoTime()
+        val result = validateWithStalledRevocationCheck(crlCache = null, logged)
+        val elapsed = (System.nanoTime() - start).nanoseconds
+
+        assertTrue(result, "SoftFail should tolerate a stalled revocation check")
+        assertTrue(elapsed < 5.seconds, "validation took $elapsed")
+        assertEquals(listOf("CERTIFICATE_PATH_TIMEOUT_SOFT_FAIL"), logged)
+    }
+
+    @Test
+    fun testSoftFailRejectsACertificateListedByACachedCrlWhenItExceedsTheTimeout() {
+        val logged = mutableListOf<String>()
+
+        assertFalse(validateWithStalledRevocationCheck(cacheHolding(revokedCertificateCRL), logged))
+        assertEquals(listOf("CERTIFICATE_PATH_TIMEOUT_SOFT_FAIL", "CERTIFICATE_PATH_ERROR"), logged)
+    }
+
+    @Test
+    fun testSoftFailIgnoresAnExpiredCachedCrlWhenItExceedsTheTimeout() {
+        var now = Instant.now()
+        var available = true
+        val cache = CrlCache(clock = { now }, fetch = { if (available) revokedCertificateCRL else throw IOException("offline") })
+        cache.crlsFor(listOf(leafCertificate))
+        available = false
+        now += 31.days.toJavaDuration()
+
+        assertTrue(validateWithStalledRevocationCheck(cache, mutableListOf()))
+    }
+
+    @Test
+    fun testSoftFailIgnoresACachedCrlWithAForgedSignatureWhenItExceedsTheTimeout() {
+        assertTrue(validateWithStalledRevocationCheck(cacheHolding(forgedRevokedCertificateCRL), mutableListOf()))
+    }
+
+    // The cache is filled before the validation, which then finds it fresh and does not download.
+    private fun cacheHolding(crl: X509CRL): CrlCache =
+        CrlCache(fetch = { crl }).also { it.crlsFor(listOf(leafCertificate)) }
+
+    private fun validateWithStalledRevocationCheck(crlCache: CrlCache?, logged: MutableList<String>): Boolean {
+        val offlineValidator = CertPathValidator.getInstance("PKIX")
+        val hangingValidator = mockk<CertPathValidator>()
+        every { hangingValidator.revocationChecker } returns offlineValidator.revocationChecker
+        every { hangingValidator.validate(any(), any()) } answers {
+            Thread.sleep(10_000)
+            error("unreachable")
+        }
+        mockkStatic(CertPathValidator::class)
+        every { CertPathValidator.getInstance("PKIX") } returnsMany listOf(hangingValidator, offlineValidator)
+        try {
+            val profileValidation = mockk<ProfileValidation>()
+            every { profileValidation.validate(any(), any()) } returns true
+            val trustStore = ReaderTrustStoreImpl(
+                trustedCertificates = listOf(rootCertificate),
+                profileValidation = profileValidation,
+                errorLogger = { _, message, _ -> logged += message },
+                revocationPolicy = RevocationPolicy.SoftFail,
+                revocationCheckTimeout = 500.milliseconds,
+                crlCache = crlCache,
+            )
+            return trustStore.validateCertificationTrustPath(listOf(leafCertificate, rootCertificate))
+        } finally {
+            unmockkStatic(CertPathValidator::class)
+        }
+    }
+
+    @Test
+    fun testSoftFailRejectsACertificateListedByACachedCrlWhenTheCrlIsUnreadable() {
+        assertFalse(
+            validateWithUnreadableCrl(
+                RevocationPolicy.SoftFail,
+                expectedLog = listOf("CERTIFICATE_PATH_CRL_UNREADABLE_SOFT_FAIL", "CERTIFICATE_PATH_ERROR"),
+                crlCache = cacheHolding(revokedCertificateCRL),
+            ),
+        )
+    }
+
+    @Test
+    fun testSoftFailValidatesWithoutRevocationWhenTheCrlIsUnreadable() {
+        assertTrue(validateWithUnreadableCrl(RevocationPolicy.SoftFail, expectedLog = listOf("CERTIFICATE_PATH_CRL_UNREADABLE_SOFT_FAIL")))
+    }
+
+    @Test
+    fun testHardFailRejectsAnUnreadableCrl() {
+        assertFalse(validateWithUnreadableCrl(RevocationPolicy.HardFail, expectedLog = listOf("CERTIFICATE_PATH_ERROR")))
+    }
+
+    // Stands in for a distribution point that serves an HTML page, which the platform reports as a
+    // CRLException rather than a network error.
+    private fun validateWithUnreadableCrl(
+        policy: RevocationPolicy,
+        expectedLog: List<String>,
+        crlCache: CrlCache? = null,
+    ): Boolean {
+        val offlineValidator = CertPathValidator.getInstance("PKIX")
+        val crlValidator = mockk<CertPathValidator>()
+        every { crlValidator.revocationChecker } returns offlineValidator.revocationChecker
+        every { crlValidator.validate(any(), any()) } throws
+            CertPathValidatorException(CRLException("No certificate found"))
+        mockkStatic(CertPathValidator::class)
+        every { CertPathValidator.getInstance("PKIX") } returnsMany listOf(crlValidator, offlineValidator)
+        try {
+            val logged = mutableListOf<String>()
+            val profileValidation = mockk<ProfileValidation>()
+            every { profileValidation.validate(any(), any()) } returns true
+            val trustStore = ReaderTrustStoreImpl(
+                trustedCertificates = listOf(rootCertificate),
+                profileValidation = profileValidation,
+                errorLogger = { _, message, _ -> logged += message },
+                revocationPolicy = policy,
+                crlCache = crlCache,
+            )
+
+            val result = trustStore.validateCertificationTrustPath(listOf(leafCertificate, rootCertificate))
+
+            assertEquals(expectedLog, logged)
+            return result
+        } finally {
+            unmockkStatic(CertPathValidator::class)
         }
     }
 
