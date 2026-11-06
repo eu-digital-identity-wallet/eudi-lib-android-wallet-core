@@ -20,6 +20,7 @@ import android.net.Uri
 import eu.europa.ec.eudi.openid4vci.AuthorizationCode
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.Nonce
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
@@ -50,7 +51,11 @@ internal class IssuerAuthorization(
                     val prepareAuthorizationCodeRequest = prepareAuthorizationRequest().getOrThrow()
                     val authorizationUrl = prepareAuthorizationCodeRequest.authorizationCodeURL.value.toString()
                     val authResponse = authorizationHandler.authorize(authorizationUrl).getOrThrow()
-                    prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
+                    val preparedRequest = authResponse.dpopNonce
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { prepareAuthorizationCodeRequest.copy(dpopNonce = Nonce(it)) }
+                        ?: prepareAuthorizationCodeRequest
+                    preparedRequest.authorizeWithAuthorizationCode(
                         AuthorizationCode(authResponse.authorizationCode),
                         authResponse.serverState
                     )

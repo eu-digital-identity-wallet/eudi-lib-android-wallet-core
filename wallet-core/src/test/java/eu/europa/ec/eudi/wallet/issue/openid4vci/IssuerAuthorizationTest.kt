@@ -23,6 +23,8 @@ import eu.europa.ec.eudi.openid4vci.AuthorizationRequestPrepared
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.HttpsUrl
 import eu.europa.ec.eudi.openid4vci.Issuer
+import eu.europa.ec.eudi.openid4vci.Nonce
+import eu.europa.ec.eudi.openid4vci.PKCEVerifier
 import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.mockk.coEvery
@@ -31,6 +33,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
+import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -120,6 +123,63 @@ class IssuerAuthorizationTest {
             issuer.prepareAuthorizationRequest()
             mockHandler.authorize(any())
         }
+    }
+
+    @Test
+    fun `authorize uses the dpop nonce from the authorization response for the token request`() {
+        val tokenRequest = authorizeWith(parNonce = Nonce("par_nonce"), responseNonce = "redirect_nonce")
+
+        assertEquals(Nonce("redirect_nonce"), tokenRequest.dpopNonce)
+    }
+
+    @Test
+    fun `authorize uses the dpop nonce from the authorization response when the authorization request got none`() {
+        val tokenRequest = authorizeWith(parNonce = null, responseNonce = "redirect_nonce")
+
+        assertEquals(Nonce("redirect_nonce"), tokenRequest.dpopNonce)
+    }
+
+    @Test
+    fun `authorize keeps the authorization request dpop nonce when the authorization response has none`() {
+        val tokenRequest = authorizeWith(parNonce = Nonce("par_nonce"), responseNonce = null)
+
+        assertEquals(Nonce("par_nonce"), tokenRequest.dpopNonce)
+    }
+
+    @Test
+    fun `authorize keeps the authorization request dpop nonce when the authorization response nonce is blank`() {
+        val tokenRequest = authorizeWith(parNonce = Nonce("par_nonce"), responseNonce = " ")
+
+        assertEquals(Nonce("par_nonce"), tokenRequest.dpopNonce)
+    }
+
+    /** Authorizes through the authorization code flow and returns the request the token was asked with. */
+    private fun authorizeWith(parNonce: Nonce?, responseNonce: String?): AuthorizationRequestPrepared {
+        every { issuer.credentialOffer } returns mockk(relaxed = true) {
+            every { grants } returns mockk(relaxed = true) {
+                every { preAuthorizedCode() } returns null
+            }
+        }
+        coEvery { issuer.prepareAuthorizationRequest() } returns Result.success(
+            AuthorizationRequestPrepared(
+                authorizationCodeURL = HttpsUrl("https://test.com").getOrThrow(),
+                pkceVerifier = PKCEVerifier("verifier", "S256"),
+                state = "test_state",
+                identifiersSentAsAuthDetails = emptyList(),
+                dpopNonce = parNonce,
+            )
+        )
+        val tokenRequest = slot<AuthorizationRequestPrepared>()
+        coEvery {
+            with(issuer) { capture(tokenRequest).authorizeWithAuthorizationCode(any(), any()) }
+        } returns Result.success(authorizedRequest)
+        val handler = AuthorizationHandler {
+            Result.success(AuthorizationResponse("test_code", "test_state", responseNonce))
+        }
+
+        runTest { IssuerAuthorization(handler, logger).authorize(issuer, null) }
+
+        return tokenRequest.captured
     }
 
     @Test
