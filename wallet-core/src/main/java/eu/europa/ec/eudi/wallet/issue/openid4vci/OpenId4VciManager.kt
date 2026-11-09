@@ -588,22 +588,34 @@ interface OpenId4VciManager {
         val preferenceOrder: List<ProofTypeConfig>
 
         /**
+         * Whether a proof that contains a key attestation is sent only with a `c_nonce` from the
+         * Nonce Endpoint of the Credential Issuer. When `true` and the Credential Issuer has no
+         * Nonce Endpoint, the key attestation is not requested and the issuance fails.
+         */
+        val requireNonceForKeyAttestation: Boolean
+
+        /**
          * ETSI TS 119 472-3 / EUDI Wallet profile.
          *
          * Prefers attestation-backed proofs. Does not fall back to plain JWT proofs.
          * Requires a [WalletAttestationsProvider] to be configured.
+         * A key attestation is sent only with a `c_nonce` from the Nonce Endpoint of the Credential
+         * Issuer (ETSI TS 119 472-3, CRED-REQ-4.6.1.2-02 and CRED-REQ-4.6.1.3-02).
          */
         data object Etsi : IssuanceProofProfile {
             override val preferenceOrder = listOf(
                 ProofTypeConfig(ProofType.ATTESTATION),
                 ProofTypeConfig(ProofType.JWT_WITH_KEY_ATTESTATION),
             )
+            override val requireNonceForKeyAttestation = true
         }
 
         /**
          * Standard OpenID4VCI without ETSI profiling.
          *
          * Accepts plain JWT proofs. Key attestation is used when available but not required.
+         * A key attestation contains a `c_nonce` when the Credential Issuer has a Nonce Endpoint
+         * (OpenID4VCI 1.0, Appendix F.1 and F.3).
          */
         data object Standard : IssuanceProofProfile {
             override val preferenceOrder = listOf(
@@ -612,14 +624,20 @@ interface OpenId4VciManager {
                 ProofTypeConfig(ProofType.ATTESTATION),
                 ProofTypeConfig(ProofType.NO_PROOF),
             )
+            override val requireNonceForKeyAttestation = false
         }
 
         /**
          * Custom negotiation order defined by the integrator.
          *
          * @property preferenceOrder ordered list of proof type configurations, highest priority first
+         * @property requireNonceForKeyAttestation whether a key attestation is sent only with a
+         * `c_nonce` from the Nonce Endpoint of the Credential Issuer
          */
-        data class Custom(override val preferenceOrder: List<ProofTypeConfig>) : IssuanceProofProfile
+        data class Custom @JvmOverloads constructor(
+            override val preferenceOrder: List<ProofTypeConfig>,
+            override val requireNonceForKeyAttestation: Boolean = true,
+        ) : IssuanceProofProfile
     }
 
     /**

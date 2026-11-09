@@ -2121,6 +2121,12 @@ proof type that is both supported by the issuer and can be fulfilled by the wall
 | `IssuanceProofProfile.Etsi` **(default)** | Attestation, JWT with key attestation | ETSI TS 119 472-3 / EUDI Wallet. Requires `WalletAttestationsProvider`. |
 | `IssuanceProofProfile.Standard` | JWT without key attestation, JWT with key attestation, Attestation, No proof | Base OpenID4VCI without ETSI profiling. |
 
+With `IssuanceProofProfile.Etsi`, a proof that contains a key attestation is sent only with a
+`c_nonce` from the Nonce Endpoint of the Credential Issuer (ETSI TS 119 472-3); when the Credential
+Issuer has no Nonce Endpoint, the issuance fails. With `IssuanceProofProfile.Standard`, the key
+attestation contains a `c_nonce` when the Credential Issuer has a Nonce Endpoint, as in OpenID4VCI.
+`IssuanceProofProfile.Custom` takes `requireNonceForKeyAttestation`, `true` by default.
+
 ##### Configuration
 
 ```kotlin

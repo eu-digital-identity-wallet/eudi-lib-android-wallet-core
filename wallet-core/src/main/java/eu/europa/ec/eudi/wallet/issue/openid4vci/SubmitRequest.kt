@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.KeyAttestationJWT
+import eu.europa.ec.eudi.openid4vci.Nonce
 import eu.europa.ec.eudi.openid4vci.ProofSpecification
 import eu.europa.ec.eudi.openid4vci.ProofType
 import eu.europa.ec.eudi.openid4vci.ProofTypeMeta
@@ -148,6 +149,7 @@ internal class SubmitRequest(
             "WalletKeyAttestationProvider is required for attestation proof"
         }
         val proofsSpecification = ProofSpecification.AttestationProof { nonce, _ ->
+            checkKeyAttestationNonce(nonce)
             walletKeyAttestationProvider.getKeyAttestation(
                 signers.map { it.getKeyInfo() },
                 nonce
@@ -156,6 +158,18 @@ internal class SubmitRequest(
                 .getOrThrow()
         }
         return authorizedRequest.requestWithAttestationProof(payload, proofsSpecification)
+    }
+
+    /**
+     * Checks that [nonce], the `c_nonce` for a proof that contains a key attestation, is present
+     * when [IssuanceProofProfile.requireNonceForKeyAttestation] is `true`. The library passes no
+     * `c_nonce` when the Credential Issuer has no Nonce Endpoint.
+     */
+    private fun checkKeyAttestationNonce(nonce: Nonce?) {
+        check(nonce != null || !issuanceProofProfile.requireNonceForKeyAttestation) {
+            "The Credential Issuer has no Nonce Endpoint, and the issuance proof profile sends " +
+                "a proof that contains a key attestation only with a c_nonce"
+        }
     }
 
     class Response(map: Map<UnsignedDocument, ResponseResult<Result<SubmissionOutcome>>>) :
@@ -187,6 +201,7 @@ internal class SubmitRequest(
         var proofSigner: KeyAttestationSigner? = null
         val proofsSpecification = ProofSpecification.JwtProofWithKeyAttestation(
             proofSignerProvider = { nonce, _ ->
+                checkKeyAttestationNonce(nonce)
                 val factory = KeyAttestationSigner.Factory(
                     signers, walletKeyAttestationProvider, keyUnlockData
                 )
