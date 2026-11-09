@@ -34,8 +34,8 @@ sealed interface RegistrationCertificateResult : WrpRegistrationInfo {
      *   presentation (relying-party) path; the user is to be warned about these before sharing
      *   (WRP-OVERASKING-02)
      * @property overProvidedAttestations the offered attestation types outside the issuer's
-     *   registered scope, on the issuance path; the user is to be warned about these before issuance.
-     *   Attestation-level, since `provides_attestations` has no claims (ETSI TS 119 472-3)
+     *   registered scope, on the issuance path; the user is to be warned about these, and the issuance
+     *   stops (ARF RPRC_23). Attestation-level, since `provides_attestations` has no claims (ETSI TS 119 472-3)
      */
     data class Verified(
         val registration: RegistrationCertificate,
