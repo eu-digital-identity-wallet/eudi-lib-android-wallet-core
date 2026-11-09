@@ -716,7 +716,9 @@ internal suspend fun SdJwt.filterToRequestedPaths(requestPaths: List<JsonArray>)
 
 /**
  * Returns `true` when every claim in [claimValue], the claim value at [path], is selected by a
- * claims path pointer in [requestPaths]. Embedded digests are not claims.
+ * claims path pointer in [requestPaths]. A claim that no claims path pointer selects or leads to
+ * is not selected, whatever its value, including an empty object or array and an object or array
+ * with only embedded digests. Embedded digests are not claims.
  */
 private fun hasOnlyRequestedClaims(
     claimValue: JsonElement,
@@ -724,6 +726,7 @@ private fun hasOnlyRequestedClaims(
     requestPaths: List<JsonArray>,
 ): Boolean {
     if (requestPaths.any { requestPath -> selects(requestPath, path) }) return true
+    if (requestPaths.none { requestPath -> leadsTo(requestPath, path) }) return false
     return when (claimValue) {
         is JsonObject -> claimValue.all { (key, member) ->
             key == "_sd" || key == "_sd_alg" ||
@@ -746,6 +749,14 @@ private fun hasOnlyRequestedClaims(
 private fun selects(requestPath: JsonArray, path: List<JsonElement>): Boolean =
     requestPath.size <= path.size &&
         requestPath.indices.all { i -> elementMatches(requestPath[i], path[i]) }
+
+/**
+ * Returns `true` when [requestPath] points to a claim inside [path], that is, [path] is an
+ * ancestor of the requested claim.
+ */
+private fun leadsTo(requestPath: JsonArray, path: List<JsonElement>): Boolean =
+    requestPath.size > path.size &&
+        path.indices.all { i -> elementMatches(requestPath[i], path[i]) }
 
 private fun JsonElement.isArrayElementDigest(): Boolean =
     this is JsonObject && size == 1 && containsKey("...")

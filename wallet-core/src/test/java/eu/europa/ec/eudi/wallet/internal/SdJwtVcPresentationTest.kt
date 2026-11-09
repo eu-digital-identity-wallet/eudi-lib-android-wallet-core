@@ -463,6 +463,44 @@ class SdJwtVcPresentationTest {
     }
 
     /**
+     * `profile` is one Disclosure whose claim value has `country` and a claim that is not requested
+     * whose value is an empty array, an empty object or an object with only embedded digests. A
+     * request for `["profile", "country"]` would also send that claim, so it is not presented.
+     */
+    @Test
+    fun `claim with an empty or digest-only value in a Disclosure is not presented`(): Unit = runBlocking {
+        val otherClaims = listOf(
+            """"nicknames":[]""",
+            """"nicknames":{}""",
+            """"details":{"note":"x","_sd":{"claimNames":["note"]}}""",
+        )
+        for (otherClaim in otherClaims) {
+            val sdJwt = SdJwt.createFromMetadata(
+                issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256),
+                kbKey = null,
+                claims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1",""" +
+                    """"profile":{"country":"GR",$otherClaim},"_sd":{"claimNames":["profile"]}}""",
+            )
+            val (match, documentManager) = matchForRequest(
+                issuerCompact = sdJwt.compactSerialization,
+                requestPath = buildJsonArray {
+                    add("profile")
+                    add("country")
+                },
+            )
+
+            assertFailsWith<IllegalStateException>(otherClaim) {
+                verifiablePresentationForSdJwtVc(
+                    resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+                    match = match,
+                    documentManager = documentManager,
+                    keyUnlockData = null,
+                )
+            }
+        }
+    }
+
+    /**
      * `nationalities` is one Disclosure whose claim value has array elements that are not
      * selectively disclosable. A request for `["nationalities", 0]` would send every element, so
      * it is not presented.
