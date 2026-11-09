@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
+import eu.europa.ec.eudi.openid4vci.CredentialIssuanceEvent
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DocumentId
@@ -39,6 +40,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(
@@ -133,6 +135,12 @@ internal class ProcessResponse(
                 issuedDocument to trustResult
             }.onSuccess { (document, trustResult) ->
                 issuedDocumentIds.add(document.id)
+
+                // Notify before the listener: a throwing listener must not skip the acceptance notification
+                outcome.notificationId?.let { notifId ->
+                    notifyIssuerAsync(CredentialIssuanceEvent.Accepted(id = notifId, description = null))
+                }
+
                 listener(IssueEvent.DocumentIssued(document, trustResult))
                 // Stored before returning, so a re-issuance started right after finds the tokens
                 storeIssuanceMetadata(
@@ -142,6 +150,11 @@ internal class ProcessResponse(
                     outcome.selectedCredentialReusePolicy,
                 )
             }.onFailure { error ->
+                // Notify before cleanup and listener: neither should be able to skip the failure notification
+                outcome.notificationId?.let { notifId ->
+                    notifyIssuerAsync(CredentialIssuanceEvent.Failed(id = notifId, description = error.message))
+                }
+
                 documentManager.deleteDocumentById(unsignedDocument.id)
                 listener(IssueEvent.DocumentFailed(unsignedDocument, error))
             }
@@ -180,6 +193,17 @@ internal class ProcessResponse(
             }.onFailure { error ->
                 documentManager.deleteDocumentById(unsignedDocument.id)
                 listener(IssueEvent.DocumentFailed(unsignedDocument, error))
+            }
+        }
+    }
+
+    private fun notifyIssuerAsync(event: CredentialIssuanceEvent) {
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                with(issuer) { authorizedRequest.notify(event) }.getOrThrow()
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                logger?.d(TAG, "Failed to notify issuer for notification ${event.id.value}: ${error.message}")
             }
         }
     }
