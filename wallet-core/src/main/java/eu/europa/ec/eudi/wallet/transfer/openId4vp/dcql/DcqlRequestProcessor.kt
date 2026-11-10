@@ -37,6 +37,7 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
+import eu.europa.ec.eudi.wallet.internal.filterToRequestedPaths
 import eu.europa.ec.eudi.wallet.internal.generateJarmNonce
 import eu.europa.ec.eudi.wallet.internal.toRequesterAndTrust
 import eu.europa.ec.eudi.wallet.logging.Logger
@@ -270,10 +271,19 @@ class DcqlRequestProcessor(
                 secureCred.getClaims(documentTypeRepository = null)
             }.getOrElse { return@mapNotNull null }
 
+            val sdJwt: SdJwt? = (secureCred as? SdJwtVcCredential)?.let { sdJwtVcCredential ->
+                runCatching {
+                    SdJwt.fromCompactSerialization(sdJwtVcCredential.issuerProvidedData.decodeToString())
+                }.getOrElse { e ->
+                    logger?.e(TAG, "SD-JWT VC cannot be parsed", e)
+                    return@mapNotNull null
+                }
+            }
+
             // Resolve which subset of the verifier's `claims` this credential must
             // disclose, honouring `claim_sets` first-match semantics (§6.4.1).
             val matchedClaims: Map<RequestedClaim, Claim> =
-                resolveClaimsToDisclose(dcqlQuery, credClaims) ?: return@mapNotNull null
+                resolveClaimsToDisclose(dcqlQuery, credClaims, sdJwt) ?: return@mapNotNull null
 
             CredentialPresentmentSetOptionMemberMatch(
                 credential = secureCred,
@@ -376,11 +386,16 @@ class DcqlRequestProcessor(
      *  - Without `claim_sets`: require every entry of `claims` to resolve. The returned
      *    map contains all of them.
      *
+     * For an SD-JWT VC, [sdJwt] is its issuer-provided SD-JWT. The claims of `claims`, or of a
+     * `claim_sets` option, are returned only when they can be disclosed without disclosing
+     * another claim (see [filterToRequestedPaths]).
+     *
      * Per-claim resolution is delegated to [matchClaim].
      */
-    private fun resolveClaimsToDisclose(
+    private suspend fun resolveClaimsToDisclose(
         dcqlQuery: DcqlCredentialQuery,
         credClaims: List<Claim>,
+        sdJwt: SdJwt?,
     ): Map<RequestedClaim, Claim>? {
         if (dcqlQuery.claimSets.isEmpty()) {
             // No alternatives — every claim must be present.
@@ -389,7 +404,7 @@ class DcqlRequestProcessor(
                 val matched = matchClaim(req, credClaims) ?: return null
                 all[req] = matched
             }
-            return all
+            return if (sdJwt.disclosesOnly(all.keys)) all else null
         }
 
         // First-match over claim_sets. A set is satisfied iff every claimId it references
@@ -417,10 +432,19 @@ class DcqlRequestProcessor(
                 }
                 resolved[requested] = matched
             }
-            if (satisfied) return resolved
+            if (satisfied && sdJwt.disclosesOnly(resolved.keys)) return resolved
         }
         return null
     }
+
+    /**
+     * Returns `true` when this SD-JWT can disclose [claims] without disclosing another claim,
+     * or when there is no SD-JWT.
+     */
+    private suspend fun SdJwt?.disclosesOnly(claims: Collection<RequestedClaim>): Boolean =
+        this == null || filterToRequestedPaths(
+            claims.filterIsInstance<JsonRequestedClaim>().map { it.claimPath }
+        ) != null
 
     /**
      * Resolves a single [RequestedClaim] against the credential's claims.

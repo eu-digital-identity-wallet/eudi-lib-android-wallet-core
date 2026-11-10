@@ -61,6 +61,7 @@ import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.mdoc.response.DeviceResponseGenerator
@@ -539,6 +540,9 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
  * disclosure paths through [pathMatches], honouring OpenID4VP §7.1 semantics for
  * string keys, integer array indices, and `null` wildcards. Parent disclosures
  * required to reconstruct a selected child are pulled in automatically.
+ * A disclosure is sent with its whole claim value, so [IllegalStateException] is thrown
+ * when the claim value of a disclosure to be sent has a claim that no request path selects
+ * (see [filterToRequestedPaths]).
  *
  * Key Binding JWT is emitted whenever the issuer-signed JWT carries a `cnf` claim,
  * regardless of the verifier's `require_cryptographic_holder_binding` flag.
@@ -576,9 +580,11 @@ internal suspend fun verifiablePresentationForSdJwtVc(
             .filterIsInstance<JsonRequestedClaim>()
             .map { it.claimPath }
 
-        val filteredSdJwt = sdJwt.filter { emittedPath, _ ->
-            requestPaths.any { requestPath -> pathMatches(requestPath, emittedPath) }
-        }
+        val filteredSdJwt = sdJwt.filterToRequestedPaths(requestPaths)
+            ?: throw IllegalStateException(
+                "Credential ${this.identifier} cannot disclose the requested claims " +
+                    "without disclosing claims that were not requested"
+            )
 
         val serialized = if (filteredSdJwt.kbKey != null) {
             val signingKey = AsymmetricKey.anonymous(
@@ -660,8 +666,9 @@ internal suspend fun verifiablePresentationForMsoMdoc(
  *    `["addresses", 0, "city"]`).
  *  - Shorter than the request → ancestor disclosure; required because SD-JWT
  *    array-element disclosures cannot be reconstructed by the verifier without
- *    their parent-array disclosure. Ancestor envelopes carry only child digests
- *    and no extra data beyond what the request already authorises.
+ *    their parent-array disclosure. An ancestor disclosure is sent with its whole
+ *    claim value, so [filterToRequestedPaths] checks that this value has no claim
+ *    that the request does not select.
  */
 private fun pathMatches(request: JsonArray, emittedPath: JsonArray): Boolean {
     val requestElements = request.toList()
@@ -684,3 +691,72 @@ private fun elementMatches(request: JsonElement, emitted: JsonElement): Boolean 
 
         else -> false
     }
+
+/**
+ * Filters this SD-JWT to the disclosures selected by the claims path pointers in
+ * [requestPaths] (OpenID4VP §7), matched with [pathMatches].
+ *
+ * A disclosure is sent with its whole claim value. Returns `null` when the claim value of a
+ * disclosure to be sent has a claim that no claims path pointer in [requestPaths] selects.
+ * Embedded digests in that value (`_sd` entries and `{"...": digest}` array elements,
+ * RFC 9901 §7.1) are not claims.
+ */
+internal suspend fun SdJwt.filterToRequestedPaths(requestPaths: List<JsonArray>): SdJwt? {
+    val disclosuresToSend = mutableListOf<Pair<JsonArray, JsonElement>>()
+    val filtered = filter { path, claimValue ->
+        val include = requestPaths.any { requestPath -> pathMatches(requestPath, path) }
+        if (include) disclosuresToSend += path to claimValue
+        include
+    }
+    val sendsOnlyRequestedClaims = disclosuresToSend.all { (path, claimValue) ->
+        hasOnlyRequestedClaims(claimValue, path, requestPaths)
+    }
+    return if (sendsOnlyRequestedClaims) filtered else null
+}
+
+/**
+ * Returns `true` when every claim in [claimValue], the claim value at [path], is selected by a
+ * claims path pointer in [requestPaths]. A claim that no claims path pointer selects or leads to
+ * is not selected, whatever its value, including an empty object or array and an object or array
+ * with only embedded digests. Embedded digests are not claims.
+ */
+private fun hasOnlyRequestedClaims(
+    claimValue: JsonElement,
+    path: List<JsonElement>,
+    requestPaths: List<JsonArray>,
+): Boolean {
+    if (requestPaths.any { requestPath -> selects(requestPath, path) }) return true
+    if (requestPaths.none { requestPath -> leadsTo(requestPath, path) }) return false
+    return when (claimValue) {
+        is JsonObject -> claimValue.all { (key, member) ->
+            key == "_sd" || key == "_sd_alg" ||
+                hasOnlyRequestedClaims(member, path + JsonPrimitive(key), requestPaths)
+        }
+
+        is JsonArray -> claimValue.withIndex().all { (index, element) ->
+            element.isArrayElementDigest() ||
+                hasOnlyRequestedClaims(element, path + JsonPrimitive(index), requestPaths)
+        }
+
+        else -> false
+    }
+}
+
+/**
+ * Returns `true` when [requestPath] matches [path] or one of its ancestors. Unlike
+ * [pathMatches], a claims path pointer to a claim inside [path] does not select [path].
+ */
+private fun selects(requestPath: JsonArray, path: List<JsonElement>): Boolean =
+    requestPath.size <= path.size &&
+        requestPath.indices.all { i -> elementMatches(requestPath[i], path[i]) }
+
+/**
+ * Returns `true` when [requestPath] points to a claim inside [path], that is, [path] is an
+ * ancestor of the requested claim.
+ */
+private fun leadsTo(requestPath: JsonArray, path: List<JsonElement>): Boolean =
+    requestPath.size > path.size &&
+        path.indices.all { i -> elementMatches(requestPath[i], path[i]) }
+
+private fun JsonElement.isArrayElementDigest(): Boolean =
+    this is JsonObject && size == 1 && containsKey("...")

@@ -399,6 +399,175 @@ class SdJwtVcPresentationTest {
     }
 
     /**
+     * `address` is one Disclosure whose claim value has sub-claims that are not selectively
+     * disclosable (flat structure, RFC 9901 §6.1). A request for `["address", "country"]` would
+     * send the whole address, so it is not presented.
+     */
+    @Test
+    fun `sub-claim of a Disclosure with other sub-claims is not presented`(): Unit = runBlocking {
+        val sdJwt = SdJwt.createFromMetadata(
+            issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256),
+            kbKey = null,
+            claims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1",""" +
+                """"address":{"street_address":"Street 1","locality":"Athens","country":"GR"},""" +
+                """"_sd":{"claimNames":["address"]}}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = sdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("address")
+                add("country")
+            },
+        )
+
+        assertFailsWith<IllegalStateException> {
+            verifiablePresentationForSdJwtVc(
+                resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+                match = match,
+                documentManager = documentManager,
+                keyUnlockData = null,
+            )
+        }
+    }
+
+    /**
+     * `address` is one Disclosure whose claim value has the selectively disclosable sub-claim
+     * `country` and the sub-claims `street_address` and `locality` in plaintext. A request for
+     * `["address", "country"]` would also send the plaintext sub-claims, so it is not presented.
+     */
+    @Test
+    fun `selectively disclosable sub-claim of a Disclosure with plaintext sub-claims is not presented`(): Unit = runBlocking {
+        val sdJwt = SdJwt.createFromMetadata(
+            issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256),
+            kbKey = null,
+            claims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1",""" +
+                """"address":{"street_address":"Street 1","locality":"Athens","country":"GR",""" +
+                """"_sd":{"claimNames":["country"]}},"_sd":{"claimNames":["address"]}}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = sdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("address")
+                add("country")
+            },
+        )
+
+        assertFailsWith<IllegalStateException> {
+            verifiablePresentationForSdJwtVc(
+                resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+                match = match,
+                documentManager = documentManager,
+                keyUnlockData = null,
+            )
+        }
+    }
+
+    /**
+     * `profile` is one Disclosure whose claim value has `country` and a claim that is not requested
+     * whose value is an empty array, an empty object or an object with only embedded digests. A
+     * request for `["profile", "country"]` would also send that claim, so it is not presented.
+     */
+    @Test
+    fun `claim with an empty or digest-only value in a Disclosure is not presented`(): Unit = runBlocking {
+        val otherClaims = listOf(
+            """"nicknames":[]""",
+            """"nicknames":{}""",
+            """"details":{"note":"x","_sd":{"claimNames":["note"]}}""",
+        )
+        for (otherClaim in otherClaims) {
+            val sdJwt = SdJwt.createFromMetadata(
+                issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256),
+                kbKey = null,
+                claims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1",""" +
+                    """"profile":{"country":"GR",$otherClaim},"_sd":{"claimNames":["profile"]}}""",
+            )
+            val (match, documentManager) = matchForRequest(
+                issuerCompact = sdJwt.compactSerialization,
+                requestPath = buildJsonArray {
+                    add("profile")
+                    add("country")
+                },
+            )
+
+            assertFailsWith<IllegalStateException>(otherClaim) {
+                verifiablePresentationForSdJwtVc(
+                    resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+                    match = match,
+                    documentManager = documentManager,
+                    keyUnlockData = null,
+                )
+            }
+        }
+    }
+
+    /**
+     * `nationalities` is one Disclosure whose claim value has array elements that are not
+     * selectively disclosable. A request for `["nationalities", 0]` would send every element, so
+     * it is not presented.
+     */
+    @Test
+    fun `array element of a Disclosure with other array elements is not presented`(): Unit = runBlocking {
+        val sdJwt = SdJwt.createFromMetadata(
+            issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256),
+            kbKey = null,
+            claims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1",""" +
+                """"nationalities":["GR","DE"],"_sd":{"claimNames":["nationalities"]}}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = sdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("nationalities")
+                add(JsonPrimitive(0))
+            },
+        )
+
+        assertFailsWith<IllegalStateException> {
+            verifiablePresentationForSdJwtVc(
+                resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+                match = match,
+                documentManager = documentManager,
+                keyUnlockData = null,
+            )
+        }
+    }
+
+    /**
+     * `nationalities` is one Disclosure whose claim value has array elements that are not
+     * selectively disclosable. A request for `["nationalities", null]` selects every element, so
+     * the Disclosure is presented.
+     */
+    @Test
+    fun `Disclosure is presented when all claims in its claim value are selected`(): Unit = runBlocking {
+        val issuerKey = AsymmetricKey.ephemeral(Algorithm.ESP256)
+        val sdJwt = SdJwt.createFromMetadata(
+            issuerKey = issuerKey,
+            kbKey = null,
+            claims = """{"iss":"https://issuer.example","vct":"urn:eudi:pid:1",""" +
+                """"nationalities":["GR","DE"],"_sd":{"claimNames":["nationalities"]}}""",
+        )
+        val (match, documentManager) = matchForRequest(
+            issuerCompact = sdJwt.compactSerialization,
+            requestPath = buildJsonArray {
+                add("nationalities")
+                add(JsonNull)
+            },
+        )
+
+        val result = verifiablePresentationForSdJwtVc(
+            resolvedRequestObject = mockk<ResolvedRequestObject>(relaxed = true),
+            match = match,
+            documentManager = documentManager,
+            keyUnlockData = null,
+        )
+
+        val disclosed = SdJwt.fromCompactSerialization(result.value).verify(issuerKey.publicKey)
+        assertEquals(
+            JsonArray(listOf(JsonPrimitive("GR"), JsonPrimitive("DE"))),
+            disclosed["nationalities"],
+        )
+    }
+
+    /**
      * Builds a synthetic [CredentialPresentmentSetOptionMemberMatch] with a single
      * [JsonRequestedClaim] keyed by [requestPath], together with the
      * [DocumentManager] needed to dereference it.
