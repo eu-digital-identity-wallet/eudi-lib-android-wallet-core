@@ -20,6 +20,7 @@ import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.CredentialReusePolicy
+import eu.europa.ec.eudi.openid4vci.IssuanceRequestPayload
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DocumentManager
@@ -29,12 +30,15 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.logging.Logger
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 
 class DocumentCreatorTest {
 
@@ -99,5 +103,62 @@ class DocumentCreatorTest {
 
         val unsignedDocumentResult = creator.createDocument(offeredDocument)
         assertEquals(unsignedDocument, unsignedDocumentResult)
+    }
+
+    @Test
+    fun `deletes the documents already created when creating a later document fails`() = runTest {
+        val createSettings = mockk<CreateDocumentSettings>()
+        val createdDocument = mockk<UnsignedDocument>(relaxed = true) {
+            every { id } returns "created"
+        }
+        val failure = IllegalStateException("Key creation failed")
+        val documentManager = mockk<DocumentManager> {
+            every { createDocument(MsoMdocFormat("first"), createSettings, any()) } returns
+                Outcome.success(createdDocument)
+            every { createDocument(MsoMdocFormat("second"), createSettings, any()) } returns
+                Outcome.failure(failure)
+            every { deleteDocumentById("created") } returns Outcome.success(null)
+        }
+        val listener = OpenId4VciManager.OnResult<IssueEvent> { event ->
+            if (event is IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy) {
+                CoroutineScope(Dispatchers.Default).launch { event.resume(createSettings) }
+            }
+        }
+        val creator = DocumentCreator(documentManager = documentManager, listener = listener)
+
+        val thrown = assertFailsWith<IllegalStateException> {
+            creator.createDocuments(
+                listOf(
+                    offeredDocument("first") to mockk<IssuanceRequestPayload>(),
+                    offeredDocument("second") to mockk<IssuanceRequestPayload>(),
+                )
+            )
+        }
+
+        assertSame(failure, thrown)
+        verify(exactly = 1) { documentManager.deleteDocumentById("created") }
+    }
+
+    private fun offeredDocument(type: String): Offer.OfferedDocument {
+        val configuration = mockk<MsoMdocCredential> {
+            every { docType } returns type
+            every { credentialMetadata } returns mockk {
+                every { claims } returns emptyList()
+                every { display } returns emptyList()
+            }
+        }
+        val credentialOffer = mockk<CredentialOffer>(relaxed = true) {
+            every { credentialIssuerIdentifier } returns
+                CredentialIssuerId("https://issuer.example.com").getOrThrow()
+        }
+        return mockk {
+            every { offer } returns mockk(relaxed = true) {
+                every { this@mockk.credentialOffer } returns credentialOffer
+            }
+            every { configurationIdentifier } returns CredentialConfigurationIdentifier(type)
+            every { this@mockk.configuration } returns configuration
+            every { credentialReusePolicy } returns CredentialReusePolicy.None
+            every { documentFormat } answers { callOriginal() }
+        }
     }
 }
