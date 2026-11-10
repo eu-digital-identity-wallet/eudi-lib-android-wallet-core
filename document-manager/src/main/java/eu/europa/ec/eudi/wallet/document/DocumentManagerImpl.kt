@@ -194,6 +194,7 @@ class DocumentManagerImpl(
                         credentialPolicy = createSettings.credentialPolicy,
                     )
                 )
+                documentId = identityDocument.identifier
 
                 val factory = CredentialFactory(domain = domain, format = format)
                 val (_, keyAttestation) = factory.createCredentials(
@@ -210,11 +211,16 @@ class DocumentManagerImpl(
                     }
                 }
 
-                documentId = identityDocument.identifier
-
                 Outcome.success(identityDocument.toDocument())
             } catch (e: Throwable) {
-                documentId?.let { documentStore.deleteDocument(it) }
+                // Deleting the document also deletes the keys of its credentials
+                documentId?.let {
+                    try {
+                        documentStore.deleteDocument(it)
+                    } catch (deleteError: Throwable) {
+                        e.addSuppressed(deleteError)
+                    }
+                }
                 Outcome.failure(e)
             }
         }

@@ -47,6 +47,8 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.document.AbstractDocumentMetadata
+import org.multipaz.securearea.BatchCreateKeyResult
+import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
@@ -546,6 +548,43 @@ class DocumentManagerImplTest {
         assertIs<IllegalArgumentException>(result.exceptionOrNull())
         val stored = assertNotNull(managerOver("owner", sharedStorage).getDocumentById(document.id))
         assertFalse(stored is DeferredDocument)
+    }
+
+    @Test
+    fun `should delete the document when creating its keys fails`() {
+        for (format in listOf(MsoMdocFormat(docType = PID_DOC_TYPE), SdJwtVcFormat(vct = SD_JWT_VCT))) {
+            val failingSecureArea = FailingSecureArea(runBlocking { SoftwareSecureArea.create(EphemeralStorage()) })
+            val manager = DocumentManagerImpl(
+                identifier = "document_manager",
+                storage = EphemeralStorage(),
+                secureAreaRepository = runBlocking {
+                    SecureAreaRepository.Builder().apply { add(failingSecureArea) }.build()
+                },
+            )
+
+            val result = manager.createDocument(
+                format = format,
+                createSettings = CreateDocumentSettings(
+                    secureAreaIdentifier = failingSecureArea.identifier,
+                    createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+                ),
+            )
+
+            assertEquals(FailingSecureArea.FAILURE_MESSAGE, result.exceptionOrNull()?.message)
+            assertTrue(runBlocking { manager.documentStore.listDocumentIds() }.isEmpty())
+        }
+    }
+
+    /** A [SecureArea] whose [batchCreateKey] fails. */
+    private class FailingSecureArea(delegate: SecureArea) : SecureArea by delegate {
+        override suspend fun batchCreateKey(
+            numKeys: Int,
+            createKeySettings: CreateKeySettings,
+        ): BatchCreateKeyResult = error(FAILURE_MESSAGE)
+
+        companion object {
+            const val FAILURE_MESSAGE = "Key creation failed"
+        }
     }
 
     private fun managerOver(identifier: String, storage: Storage) = DocumentManagerImpl(

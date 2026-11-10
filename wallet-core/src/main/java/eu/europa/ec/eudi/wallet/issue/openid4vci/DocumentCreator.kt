@@ -35,12 +35,36 @@ internal class DocumentCreator(
 ) {
 
     suspend fun createDocuments(offer: Offer): Map<UnsignedDocument, Offer.OfferedDocument> =
-        offer.offeredDocuments.associateBy { createDocument(it) }
+        createDocuments(offer.offeredDocuments) { it }
 
     suspend fun createDocuments(
         items: List<Pair<Offer.OfferedDocument, IssuanceRequestPayload>>,
     ): Map<UnsignedDocument, Pair<Offer.OfferedDocument, IssuanceRequestPayload>> =
-        items.associateBy { createDocument(it.first) }
+        createDocuments(items) { it.first }
+
+    /**
+     * Creates a document for each item. If creating a document fails or is cancelled, the
+     * documents already created are deleted, with their keys, and the failure is thrown.
+     */
+    private suspend fun <T> createDocuments(
+        items: List<T>,
+        offeredDocument: (T) -> Offer.OfferedDocument,
+    ): Map<UnsignedDocument, T> {
+        val documents = LinkedHashMap<UnsignedDocument, T>()
+        try {
+            for (item in items) {
+                documents[createDocument(offeredDocument(item))] = item
+            }
+        } catch (e: Throwable) {
+            documents.keys.forEach { document ->
+                documentManager.deleteDocumentById(document.id)
+                    .exceptionOrNull()
+                    ?.let { e.addSuppressed(it) }
+            }
+            throw e
+        }
+        return documents
+    }
 
     suspend fun createDocument(offeredDocument: Offer.OfferedDocument): UnsignedDocument {
         val resolvedPolicy = resolveReusePolicy(

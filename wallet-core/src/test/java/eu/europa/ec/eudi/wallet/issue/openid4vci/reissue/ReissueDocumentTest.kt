@@ -65,6 +65,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import java.io.IOException
 import java.net.URI
 import java.time.Instant
 import java.util.Collections
@@ -99,7 +100,7 @@ class ReissueDocumentTest {
         every { id } returns DEFERRED_DOCUMENT
     }
     private val unsignedDocument = mockk<UnsignedDocument>(relaxed = true) {
-        every { id } returns "unsigned"
+        every { id } returns UNSIGNED_DOCUMENT
         every { format } returns SdJwtVcFormat(VCT)
         // Credentials are paired with key aliases, so the document needs a signer to get one
         coEvery { getPoPSigners() } returns ProofOfPossessionSigners(
@@ -188,6 +189,31 @@ class ReissueDocumentTest {
     }
 
     @Test
+    fun `a successful re-issuance keeps the document it issued`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
+        // The issued document keeps the identifier of the unsigned document
+        every { documentManager.getDocumentById(UNSIGNED_DOCUMENT) } returns newDocument
+
+        assertIs<IssueEvent.Finished>(reissue(PID_SD_JWT).end)
+
+        verify(exactly = 0) { documentManager.deleteDocumentById(UNSIGNED_DOCUMENT) }
+    }
+
+    @Test
+    fun `a deferred re-issuance keeps the deferred document`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
+        credentialEndpoint = { Result.success(SubmissionOutcome.Deferred(TransactionId("tx-1"), 5.seconds)) }
+        mockkStatic(DeferredContext::toBytes)
+        every { any<DeferredContext>().toBytes() } returns byteArrayOf(1)
+        // The deferred document keeps the identifier of the unsigned document
+        every { documentManager.getDocumentById(UNSIGNED_DOCUMENT) } returns deferredDocument
+
+        assertIs<IssueEvent.Finished>(reissue(PID_SD_JWT).end)
+
+        verify(exactly = 0) { documentManager.deleteDocumentById(UNSIGNED_DOCUMENT) }
+    }
+
+    @Test
     fun `a rejected access token falls back to a new authorization when the user started the re-issuance`() =
         runBlocking {
             storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
@@ -217,6 +243,30 @@ class ReissueDocumentTest {
 
         assertIs<ReissuanceAuthorizationException>(assertIs<IssueEvent.Failure>(reissuance.end).cause)
         coVerify(exactly = 0) { issuerAuthorization.authorize(any(), any()) }
+        verify(exactly = 0) { documentManager.deleteDocumentById(PID_SD_JWT) }
+    }
+
+    @Test
+    fun `a background re-issuance with rejected tokens deletes the document it created`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
+        credentialEndpoint = { Result.failure(CredentialIssuanceError.InvalidToken()) }
+        every { documentManager.getDocumentById(UNSIGNED_DOCUMENT) } returns unsignedDocument
+
+        reissue(PID_SD_JWT, allowAuthorizationFallback = false)
+
+        verify(timeout = 5_000) { documentManager.deleteDocumentById(UNSIGNED_DOCUMENT) }
+    }
+
+    @Test
+    fun `a re-issuance whose credential request fails deletes the document it created`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
+        credentialEndpoint = { Result.failure(IOException("Connection reset")) }
+        every { documentManager.getDocumentById(UNSIGNED_DOCUMENT) } returns unsignedDocument
+
+        val reissuance = reissue(PID_SD_JWT)
+
+        assertIs<IssueEvent.Failure>(reissuance.end)
+        verify(timeout = 5_000) { documentManager.deleteDocumentById(UNSIGNED_DOCUMENT) }
         verify(exactly = 0) { documentManager.deleteDocumentById(PID_SD_JWT) }
     }
 
@@ -378,5 +428,6 @@ class ReissueDocumentTest {
         const val NEW_DOCUMENT = "new-pid-sd-jwt"
         const val DEFERRED_DOCUMENT = "deferred-pid-sd-jwt"
         const val NEW_KEY_ALIAS = "new-pid-key"
+        const val UNSIGNED_DOCUMENT = "unsigned"
     }
 }
