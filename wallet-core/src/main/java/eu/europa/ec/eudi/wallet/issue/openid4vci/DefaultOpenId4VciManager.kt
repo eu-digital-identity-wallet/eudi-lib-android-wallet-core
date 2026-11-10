@@ -33,6 +33,8 @@ import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.internal.d
@@ -493,53 +495,57 @@ internal class DefaultOpenId4VciManager(
 
                 listener(IssueEvent.Started(requestMap.size))
 
-                //  Submit the issuance request using stored AuthorizedRequest
-                //  (skips the authorization flow - uses refresh token instead)
-                val submit = SubmitRequest(walletProvider, issuer, updatedAuthorizedRequest, config.issuanceProofProfile)
-                var response = submit.request(requestMap)
-                var authorizedRequest = submit.authorizedRequest
-
-                //  Check for authentication failure (401 / InvalidToken)
-                //    This happens when both stored access token AND refresh token are invalid.
-                //    Fall back to full OAuth authorization flow and retry with fresh tokens.
-                if (isAuthenticationFailure(response)) {
-                    if (!allowAuthorizationFallback) {
-                        throw ReissuanceAuthorizationException(
-                            "Re-issuance of document $documentId requires user authorization (tokens expired)"
-                        )
-                    }
-                    logger?.d(TAG, "Re-issuance token expired for $documentId, falling back to full authorization")
-                    authorizedRequest = issuerAuthorization.authorize(issuer, null)
-                    val retrySubmit = SubmitRequest(walletProvider, issuer, authorizedRequest, config.issuanceProofProfile)
-                    response = retrySubmit.request(requestMap).also {
-                        authorizedRequest = retrySubmit.authorizedRequest
-                    }
-                }
-
-                //  Process the response: store new document, then delete old one
                 val issuedDocumentIds = mutableListOf<DocumentId>()
                 val deferredDocumentIds = mutableListOf<DocumentId>()
-                ProcessResponse(
-                    documentManager = documentManager,
-                    deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
-                    clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
-                    listener = listener,
-                    issuedDocumentIds = issuedDocumentIds,
-                    deferredDocumentIds = deferredDocumentIds,
-                    logger = logger,
-                    authorizedRequest = authorizedRequest,
-                    issuer = issuer,
-                    documentToConfigurationMap = requestMap,
-                    dpopKeyAlias = issuerCreator.dpopKeyAlias,
-                    issuanceMetadataStorage = issuanceMetadataStorage,
-                    clientAuthentication = issuerCreator.clientAuthentication,
-                    replacesDocumentId = documentId,
-                    issuerTrustConfig = issuerTrustConfig,
-                    interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
-                    // A re-issuance the User asked for allows falling back to a full authorization;
-                    // a background one does not.
-                    isUserTriggered = allowAuthorizationFallback,
-                ).process(response)
+                try {
+                    //  Submit the issuance request using stored AuthorizedRequest
+                    //  (skips the authorization flow - uses refresh token instead)
+                    val submit = SubmitRequest(walletProvider, issuer, updatedAuthorizedRequest, config.issuanceProofProfile)
+                    var response = submit.request(requestMap)
+                    var authorizedRequest = submit.authorizedRequest
+
+                    //  Check for authentication failure (401 / InvalidToken)
+                    //    This happens when both stored access token AND refresh token are invalid.
+                    //    Fall back to full OAuth authorization flow and retry with fresh tokens.
+                    if (isAuthenticationFailure(response)) {
+                        if (!allowAuthorizationFallback) {
+                            throw ReissuanceAuthorizationException(
+                                "Re-issuance of document $documentId requires user authorization (tokens expired)"
+                            )
+                        }
+                        logger?.d(TAG, "Re-issuance token expired for $documentId, falling back to full authorization")
+                        authorizedRequest = issuerAuthorization.authorize(issuer, null)
+                        val retrySubmit = SubmitRequest(walletProvider, issuer, authorizedRequest, config.issuanceProofProfile)
+                        response = retrySubmit.request(requestMap).also {
+                            authorizedRequest = retrySubmit.authorizedRequest
+                        }
+                    }
+
+                    //  Process the response: store new document, then delete old one
+                    ProcessResponse(
+                        documentManager = documentManager,
+                        deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
+                        clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
+                        listener = listener,
+                        issuedDocumentIds = issuedDocumentIds,
+                        deferredDocumentIds = deferredDocumentIds,
+                        logger = logger,
+                        authorizedRequest = authorizedRequest,
+                        issuer = issuer,
+                        documentToConfigurationMap = requestMap,
+                        dpopKeyAlias = issuerCreator.dpopKeyAlias,
+                        issuanceMetadataStorage = issuanceMetadataStorage,
+                        clientAuthentication = issuerCreator.clientAuthentication,
+                        replacesDocumentId = documentId,
+                        issuerTrustConfig = issuerTrustConfig,
+                        interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
+                        // A re-issuance the User asked for allows falling back to a full authorization;
+                        // a background one does not.
+                        isUserTriggered = allowAuthorizationFallback,
+                    ).process(response)
+                } finally {
+                    deleteUnissuedDocuments(requestMap.keys)
+                }
 
                 //  If new document(s) issued successfully, delete the old document.
                 //  If the outcome was deferred, the old document stays alive — the
@@ -625,29 +631,48 @@ internal class DefaultOpenId4VciManager(
         )
         val requestMap = documentCreator.createDocuments(issuancePayloads)
 
-        val submit = SubmitRequest(walletProvider, issuer, authorizedRequest, config.issuanceProofProfile)
-        val response = submit.request(requestMap).also {
-            authorizedRequest = submit.authorizedRequest
+        try {
+            val submit = SubmitRequest(walletProvider, issuer, authorizedRequest, config.issuanceProofProfile)
+            val response = submit.request(requestMap).also {
+                authorizedRequest = submit.authorizedRequest
+            }
+            ProcessResponse(
+                documentManager = documentManager,
+                deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
+                clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
+                listener = listener,
+                issuedDocumentIds = issuedDocumentIds,
+                deferredDocumentIds = deferredDocumentIds,
+                logger = logger,
+                issuerTrustConfig = issuerTrustConfig,
+                authorizedRequest = authorizedRequest,
+                issuer = issuer,
+                documentToConfigurationMap = requestMap,
+                dpopKeyAlias = issuerCreator.dpopKeyAlias,
+                issuanceMetadataStorage = issuanceMetadataStorage,
+                clientAuthentication = issuerCreator.clientAuthentication,
+                interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
+                isUserTriggered = userTriggered,
+            ).process(response)
+        } finally {
+            deleteUnissuedDocuments(requestMap.keys)
         }
-        ProcessResponse(
-            documentManager = documentManager,
-            deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
-            clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
-            listener = listener,
-            issuedDocumentIds = issuedDocumentIds,
-            deferredDocumentIds = deferredDocumentIds,
-            logger = logger,
-            issuerTrustConfig = issuerTrustConfig,
-            authorizedRequest = authorizedRequest,
-            issuer = issuer,
-            documentToConfigurationMap = requestMap,
-            dpopKeyAlias = issuerCreator.dpopKeyAlias,
-            issuanceMetadataStorage = issuanceMetadataStorage,
-            clientAuthentication = issuerCreator.clientAuthentication,
-            interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
-            isUserTriggered = userTriggered,
-        ).process(response)
         listener(IssueEvent.Finished(issuedDocumentIds + deferredDocumentIds))
+    }
+
+    /**
+     * Deletes each of [documents], created for an issuance, that was stored neither as an
+     * [IssuedDocument] nor as a [DeferredDocument], with its keys.
+     */
+    private fun deleteUnissuedDocuments(documents: Collection<UnsignedDocument>) {
+        for (document in documents) {
+            val stored = documentManager.getDocumentById(document.id)
+            if (stored is UnsignedDocument && stored !is DeferredDocument) {
+                documentManager.deleteDocumentById(document.id)
+                    .exceptionOrNull()
+                    ?.let { logger?.e(TAG, "Failed to delete document ${document.id} of a failed issuance", it) }
+            }
+        }
     }
 
     /**
