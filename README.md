@@ -459,12 +459,11 @@ val config = EudiWalletConfig {
 > `enforceIfPresent()` or `alwaysRequire()`. For ISO/IEC 18013-5 presentations (proximity and
 > DC API `org-iso-mdoc`), `doNotEnforce()` allows disclosure regardless of trust status.
 
-> **Important:** For **OpenID4VP signed requests** (including DC API), trust evaluation is
-> mandated by the protocol — the verifier's certificate chain must be validated before the
-> request is accepted. `doNotEnforce()` controls only whether the trust result gates document
-> disclosure; it does not bypass protocol-level authentication. Trust material (ETSI or static
-> certificates) must still be configured when accepting signed OpenID4VP requests, even with
-> `doNotEnforce()`.
+> **Important:** Signed OpenID4VP requests (`x509_san_dns`, `x509_hash`), including over the
+> DC API, are rejected when the verifier's certificate chain is not trusted, with every policy.
+> Outside the DC API, OpenID4VP 1.0 clause 5.9.3 requires this validation. `doNotEnforce()`
+> controls only whether the trust result gates document disclosure, so trust material (ETSI or
+> static certificates) must still be configured to accept signed OpenID4VP requests.
 
 > **Note:** The reader authentication trust is not used for relying-party registration
 > certificates. Without `configureEtsiTrust`, call `configureWrpRegistrationTrust(...)` or

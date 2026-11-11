@@ -40,8 +40,8 @@ sealed interface ReaderAuthPolicy {
      *
      * Trust evaluation may still be performed (e.g. for OpenID4VP signed requests)
      * when a [readerTrustStore] is provided, but the result never gates document disclosure.
-     * Signed OpenID4VP requests still need a trusted certificate chain (OpenID4VP 1.0
-     * clause 5.9.3), so without a [readerTrustStore] they are rejected.
+     * Signed OpenID4VP requests are rejected without a trusted certificate chain; outside the
+     * DC API, OpenID4VP 1.0 clause 5.9.3 requires this for `x509_san_dns` and `x509_hash`.
      */
     data class DoNotEnforce(
         override val readerTrustStore: ReaderTrustStore? = null,
