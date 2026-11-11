@@ -534,10 +534,10 @@ class EudiWalletConfig {
      * - [ReaderAuthPolicy.DoNotEnforce]: Reader trust is evaluated when a trust source is
      *   configured, but never blocks document disclosure. This was the default behavior before
      *   version 0.27.0.
-     * - [ReaderAuthPolicy.EnforceIfPresent]: Documents are excluded from the response when
-     *   reader authentication is present but fails verification (default).
-     * - [ReaderAuthPolicy.AlwaysRequire]: Documents are excluded unless reader authentication
-     *   is present and verified.
+     * - [ReaderAuthPolicy.EnforceIfPresent]: The request is rejected when a reader's certificate
+     *   is not trusted (default).
+     * - [ReaderAuthPolicy.AlwaysRequire]: The request is rejected unless reader authentication
+     *   is present and trusted.
      *
      * The default is [ReaderAuthPolicy.EnforceIfPresent].
      *

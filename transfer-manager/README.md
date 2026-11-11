@@ -565,13 +565,17 @@ An ISO 18013-5 request is authenticated in one of two ways:
   `readerAuth` of each `DocRequest` is then only checked to verify.
 - **`readerAuth` on each `DocRequest`**: each signature covers only its own `DocRequest`. The
   request is trust-verified only when every `DocRequest` is signed, every signature verifies and
-  every signer is trusted. Reader authentication fails when a signature does not verify or a
-  signer is not trusted, wherever that `DocRequest` is in the request.
+  every signer is trusted. Reader authentication fails when a signer is not trusted, wherever that
+  `DocRequest` is in the request.
+
+Every reader signature must verify: when one does not, `process()` returns
+`ProcessedRequest.Failure` with `SignatureVerificationException`, under every policy.
 
 `trustMetadata != null` means that the request is trust-verified. `requester.requesterIdentities`
 contains one identity for each `readerAuthAll` signature or, without `readerAuthAll`, one for each
-distinct `DocRequest` signer. When a signature does not verify, it is empty. See
-[READER_AUTHENTICATION.md](../READER_AUTHENTICATION.md) for examples.
+distinct `DocRequest` signer. The registration certificate is checked against the access
+certificate of a trusted reader that signs the whole request; without one, it is not bound to the
+requester. See [READER_AUTHENTICATION.md](../READER_AUTHENTICATION.md) for examples.
 
 Three policies are available:
 

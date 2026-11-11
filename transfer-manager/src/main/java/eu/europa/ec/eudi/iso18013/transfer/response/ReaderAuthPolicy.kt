@@ -49,8 +49,8 @@ sealed interface ReaderAuthPolicy {
 
     /**
      * Enforce reader authentication when present.
-     * The request is rejected and no document is shared when a reader signature does not
-     * verify or its certificate chain fails trust validation against the [readerTrustStore].
+     * The request is rejected and no document is shared when a reader's certificate chain fails
+     * trust validation against the [readerTrustStore].
      * Requests with no certificate chain (e.g. unsigned OpenID4VP requests)
      * are still allowed through.
      *

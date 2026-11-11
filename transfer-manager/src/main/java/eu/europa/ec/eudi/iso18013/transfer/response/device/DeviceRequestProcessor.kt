@@ -99,12 +99,9 @@ class DeviceRequestProcessor(
             parsedRequest.verifyReaderAuthentication(sessionTranscriptDataItem)
 
             val readerAuthentication = authenticateReader(parsedRequest)
-            // The display name and the registration-certificate access chain come from the first
-            // trusted identity. With nothing trusted we still report the first identity, so that
-            // the access chain remains visible to the registration validator.
+            // The display name comes from the first trusted identity.
             val readerCertChain =
-                (readerAuthentication.trustedIdentity ?: readerAuthentication.identities.firstOrNull())
-                    ?.certChain?.javaX509Certificates ?: emptyList()
+                readerAuthentication.trustedIdentity?.certChain?.javaX509Certificates ?: emptyList()
 
             val requester = Requester(requesterIdentities = readerAuthentication.identities)
             val trustMetadata = if (readerAuthentication.verified) {
@@ -118,7 +115,9 @@ class DeviceRequestProcessor(
             // Validate the relying party registration certificate carried in the request, when a
             // validator is configured. It is repeated in each ItemsRequest.requestInfo (ETSI TS 119
             // 472-2 clause 5.3.2), so identical copies collapse to one; two different certificates
-            // are ambiguous and rejected.
+            // are ambiguous and rejected. The certificate is checked against the access certificate
+            // of the trusted reader that signs the whole request. Without one, the access chain is
+            // empty and the certificate is not bound to the requester.
             val wrpRegistration = wrpRegistrationValidator?.let { validator ->
                 val certificates = parsedRequest.docRequests
                     .mapNotNull { it.docRequestInfo?.otherInfo?.get(EU_WRPRC_REQUEST_INFO_KEY) }
@@ -129,7 +128,8 @@ class DeviceRequestProcessor(
                 }
                 validator.validate(
                     registrationCertificate = certificates.firstOrNull(),
-                    readerAccessChain = readerCertChain,
+                    readerAccessChain = readerAuthentication.accessIdentity
+                        ?.certChain?.javaX509Certificates ?: emptyList(),
                     requestedDocuments = parsedRequest.docRequests.map { it.toRequestedDocument() },
                 )
             }
@@ -177,6 +177,7 @@ class DeviceRequestProcessor(
             return ReaderAuthentication(
                 identities = identities,
                 trustedIdentity = trustedIdentity,
+                accessIdentity = trustedIdentity,
                 verified = trustedIdentity != null,
                 failed = trustedIdentity == null,
             )
@@ -193,10 +194,12 @@ class DeviceRequestProcessor(
             .map { Iso18013RequesterIdentity(certChain = it) }
         val trustedIdentities = identities.filter { isTrusted(it) }
         val allSignersTrusted = trustedIdentities.size == identities.size
+        val verified = identities.isNotEmpty() && signerChains.all { it != null } && allSignersTrusted
         return ReaderAuthentication(
             identities = identities,
             trustedIdentity = trustedIdentities.firstOrNull(),
-            verified = identities.isNotEmpty() && signerChains.all { it != null } && allSignersTrusted,
+            accessIdentity = if (verified) identities.singleOrNull() else null,
+            verified = verified,
             failed = !allSignersTrusted,
         )
     }
@@ -211,12 +214,16 @@ class DeviceRequestProcessor(
  *
  * @property identities the reader identities, one for each distinct signer
  * @property trustedIdentity the first identity that is trusted, if any
+ * @property accessIdentity the identity whose access certificate the registration certificate is
+ *   checked against: the first trusted `readerAuthAll` identity or, without `readerAuthAll`, the
+ *   trusted reader that signs every DocRequest; null otherwise
  * @property verified whether the whole request is covered by trusted reader authentication
  * @property failed whether a signer is not trusted
  */
 private class ReaderAuthentication(
     val identities: List<RequesterIdentity>,
     val trustedIdentity: RequesterIdentity?,
+    val accessIdentity: RequesterIdentity?,
     val verified: Boolean,
     val failed: Boolean,
 )

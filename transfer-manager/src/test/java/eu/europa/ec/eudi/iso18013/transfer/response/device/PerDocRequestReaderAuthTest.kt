@@ -23,6 +23,8 @@ import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.response.ResponseResult
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationInfo
+import eu.europa.ec.eudi.iso18013.transfer.response.WrpRegistrationValidator
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
@@ -53,6 +55,7 @@ import org.multipaz.util.Constants
 import java.security.cert.X509Certificate
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -65,7 +68,8 @@ import eu.europa.ec.eudi.iso18013.transfer.response.device.DeviceRequest as Tran
  *
  * Each `readerAuth` covers only its own DocRequest, so a request is trusted only when every
  * DocRequest is signed and every signer is trusted, and reader authentication fails when any
- * signer is not trusted.
+ * signer is not trusted. The registration certificate is checked only against a trusted reader that
+ * signs the whole request.
  */
 @OptIn(ExperimentalTime::class)
 class PerDocRequestReaderAuthTest {
@@ -234,6 +238,56 @@ class PerDocRequestReaderAuthTest {
         assertEquals(listOf(MDL, PID), outcome.sharedDocTypes)
     }
 
+    @Test
+    fun `the registration certificate is checked against the trusted reader that signs the whole request`() =
+        runBlocking {
+            val trusted = reader(TRUSTED_A)
+            val untrusted = reader(UNTRUSTED_X)
+
+            assertEquals(
+                TRUSTED_A,
+                registrationAccessCertificate(request(listOf(MDL to trusted, PID to trusted)), enforceIfPresent()),
+            )
+            assertEquals(
+                TRUSTED_A,
+                registrationAccessCertificate(
+                    request(listOf(MDL to untrusted, PID to null), readerAuthAll = trusted),
+                    enforceIfPresent(),
+                ),
+            )
+        }
+
+    @Test
+    fun `the registration certificate is checked against no reader when no trusted reader signs the whole request`() =
+        runBlocking {
+            val trustedA = reader(TRUSTED_A)
+            val trustedB = reader(TRUSTED_B)
+            val untrusted = reader(UNTRUSTED_X)
+
+            // An unsigned DocRequest.
+            assertNull(
+                registrationAccessCertificate(request(listOf(MDL to trustedA, PID to null)), enforceIfPresent())
+            )
+            // DocRequests signed by different readers.
+            assertNull(
+                registrationAccessCertificate(request(listOf(MDL to trustedA, PID to trustedB)), enforceIfPresent())
+            )
+            // A readerAuthAll signer that is not trusted.
+            assertNull(
+                registrationAccessCertificate(
+                    request(listOf(MDL to null, PID to null), readerAuthAll = untrusted),
+                    enforceIfPresent(),
+                )
+            )
+            // DoNotEnforce without a trust source evaluates no trust.
+            assertNull(
+                registrationAccessCertificate(
+                    request(listOf(MDL to trustedA, PID to trustedA)),
+                    ReaderAuthPolicy.DoNotEnforce(),
+                )
+            )
+        }
+
     private suspend fun assertSignatureFailure(request: TransferDeviceRequest, policy: ReaderAuthPolicy) {
         val processor = DeviceRequestProcessor(createDocumentManager(keyLockPassphrase = null), policy)
         val failure = assertIs<RequestProcessor.ProcessedRequest.Failure>(processor.process(request))
@@ -267,6 +321,28 @@ class PerDocRequestReaderAuthTest {
             status = parsed.status,
             sharedDocTypes = parsed.documents.map { it.docType },
         )
+    }
+
+    /**
+     * Processes [request] and returns the common name of the access certificate that the
+     * registration certificate is checked against, or null when the access chain is empty.
+     */
+    private suspend fun registrationAccessCertificate(
+        request: TransferDeviceRequest,
+        policy: ReaderAuthPolicy,
+    ): String? {
+        var accessChain: List<X509Certificate>? = null
+        val validator = WrpRegistrationValidator { _, readerAccessChain, _ ->
+            accessChain = readerAccessChain
+            object : WrpRegistrationInfo {}
+        }
+        val processor = DeviceRequestProcessor(
+            documentManager = createDocumentManager(keyLockPassphrase = null),
+            readerAuthPolicy = policy,
+            wrpRegistrationValidator = validator,
+        )
+        assertIs<ProcessedDeviceRequest>(processor.process(request))
+        return assertNotNull(accessChain).firstOrNull()?.commonName()
     }
 
     /**

@@ -14,15 +14,19 @@ reader:
 | Value | Meaning |
 |---|---|
 | `trustMetadata` | Not `null` only when the request is **trust-verified**. `displayName` is the reader's name: for ISO/IEC 18013-5, the common name of the first trusted reader certificate; for OpenID4VP, the verifier's legal name. |
-| `requester.requesterIdentities` | One identity for each reader signature, with its certificate chain. Empty when the request carries no reader signature, or when a signature does not verify. |
+| `requester.requesterIdentities` | The reader identities, each with its certificate chain. Empty when the request carries no reader signature. |
+| `wrpRegistration` | The result of the registration certificate validation, when a registration validator is configured. See [Registration certificate](#registration-certificate). |
 
 ## Policies
 
 | Policy | The request is rejected when |
 |---|---|
 | `DoNotEnforce` | never |
-| `EnforceIfPresent` (default) | a reader signature does not verify, or a signer's certificate is not trusted |
+| `EnforceIfPresent` (default) | a signer's certificate is not trusted |
 | `AlwaysRequire` | the request is not trust-verified |
+
+`DoNotEnforce` evaluates trust only when a trust source is configured; without one, `trustMetadata`
+is always `null`.
 
 When the request is rejected, no document is shared:
 
@@ -43,9 +47,10 @@ ISO/IEC 18013-5 has two ways to sign a request:
 
 ### Rules
 
-1. **Every signature must verify**, of both kinds. When a signature does not verify, reader
-   authentication fails and no identity is reported. The wallet does not fall back to the other
-   signatures of the request.
+1. **Every signature must verify**, of both kinds. When a signature does not verify, processing of
+   the request fails with `SignatureVerificationException` under every policy, including
+   `DoNotEnforce`: the application receives `RequestProcessor.ProcessedRequest.Failure`. The wallet
+   does not fall back to the other signatures of the request.
 2. **With `readerAuthAll`**, only the `readerAuthAll` signatures decide trust. The request is
    trust-verified when at least one of them is trusted, since each one covers the whole request.
    Several `readerAuthAll` signatures are expected to be identities of the same reader, for example
@@ -67,33 +72,36 @@ A and B are trusted readers, X is a reader whose certificate is not trusted.
 | A signs one DocRequest, another is unsigned | `null` | A | shared | rejected |
 | A signs one DocRequest, X signs another, in any order | `null` | A, X | rejected | rejected |
 | No DocRequest is signed | `null` | none | shared | rejected |
-| A signature does not verify | `null` | none | rejected | rejected |
+| A signature does not verify | - | - | processing fails | processing fails |
 | `readerAuthAll` by A, with or without `readerAuth` on DocRequests | A | A | shared | shared |
 | `readerAuthAll` by X only | `null` | X | rejected | rejected |
 
-With `DoNotEnforce`, every request is shared after the user's consent.
-
-### Which reader signed which document
+With `DoNotEnforce`, a request whose signatures verify is shared after the user's consent.
 
 `trustMetadata.displayName` names one reader. When different trusted readers sign different
-DocRequests, it is the first of them. To show which reader signed which document, the application
-can read the signature of the DocRequest that each document answers:
+DocRequests, it is the first of them, and `requesterIdentities` lists every signer.
 
-```kotlin
-val docRequest = (match.source as? CredentialMatchSourceIso18013)?.docRequest
-val signerChain: X509CertChain? = docRequest?.readerAuth?.let { readerAuth ->
-    (readerAuth.protectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
-        ?: readerAuth.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel])?.asX509CertChain
-}
-// signerChain is null when the DocRequest is not signed. Otherwise it is one of the
-// certificate chains in requesterIdentities.
-```
+### Registration certificate
 
-With `readerAuthAll`, every signature covers every document, so there is no signer per document.
+The registration certificate is carried in the `requestInfo` of each DocRequest (ETSI TS 119 472-2
+clause 5.3.2), and it must be bound to the access certificate of the relying party that signed the
+request. The wallet checks it against the access certificate of a trusted reader that signs the
+whole request:
+
+- with `readerAuthAll`, the first trusted `readerAuthAll` signer;
+- without `readerAuthAll`, the reader that signs every DocRequest, when it is trusted.
+
+Otherwise the registration certificate is reported as not bound to the requester
+(`NOT_BOUND_TO_REQUESTER`): when a DocRequest is not signed, when different readers sign the
+DocRequests, when no signer is trusted, and always with `DoNotEnforce` without a trust source, which
+evaluates no trust.
 
 ## OpenID4VP requests
 
-An OpenID4VP request object carries one signature. The request is trust-verified when that
-signature verifies and its certificate is trusted, and `requesterIdentities` contains that one
-identity. An unsigned request has no identity. Multi-signed requests (JWS JSON Serialization,
+An OpenID4VP request object carries one signature. The OpenID4VP library rejects a request object
+whose signature does not verify, or whose `x5c` certificate chain is not trusted, when it resolves
+the request: the application receives an error instead of a request to consent to. A request that
+is resolved with an `x5c` certificate chain is trust-verified, and `requesterIdentities` contains
+that one identity.
+An unsigned request has no identity. Multi-signed requests (JWS JSON Serialization,
 `openid4vp-v1-multisigned`) are not supported.

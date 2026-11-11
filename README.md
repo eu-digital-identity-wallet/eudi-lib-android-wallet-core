@@ -419,8 +419,10 @@ happens based on the verification result:
 | Policy | Behavior |
 |---|---|
 | `doNotEnforce()` | Reader trust is evaluated when a trust source is configured, but never blocks document disclosure. Documents are always included in the response. |
-| `enforceIfPresent()` | **(Default)** The request is rejected when a reader signature does not verify or its certificate is not trusted. Requests without reader authentication are allowed, and their requester is not reported as trusted. |
+| `enforceIfPresent()` | **(Default)** The request is rejected when a reader's certificate is not trusted. Requests without reader authentication are allowed, and their requester is not reported as trusted. |
 | `alwaysRequire()` | The request is rejected unless reader authentication is present, verifies and is trusted. |
+
+With every policy, a request whose reader signature does not verify is not processed.
 
 When the request is rejected, no document is shared. For ISO/IEC 18013-5 requests (proximity and
 DC API `org-iso-mdoc`), the wallet returns a DeviceResponse with status 10 (General Error). For
