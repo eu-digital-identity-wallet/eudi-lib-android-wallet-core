@@ -32,7 +32,8 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.claim.Claim
 import org.multipaz.claim.findMatchingClaim
-import org.multipaz.crypto.SignatureVerificationException
+import org.multipaz.cose.Cose
+import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.javaX509Certificates
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.request.DocRequest
@@ -43,9 +44,11 @@ import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.request.Iso18013RequesterIdentity
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim
 import org.multipaz.request.Requester
+import org.multipaz.request.RequesterIdentity
 import org.multipaz.trustmanagement.TrustMetadata
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -90,45 +93,21 @@ class DeviceRequestProcessor(
             val sessionTranscriptDataItem: DataItem = Cbor.decode(request.sessionTranscriptBytes)
             val parsedRequest = MultipazDeviceRequest.fromDataItem(deviceRequestDataItem)
 
-            // Verify reader signature.
-            val signatureValid = try {
-                parsedRequest.verifyReaderAuthentication(sessionTranscriptDataItem)
-                true
-            } catch (_: SignatureVerificationException) {
-                false
-            }
+            // Verify every reader signature. A signature that does not verify fails processing with
+            // its SignatureVerificationException: no information from the request's reader
+            // authentication is used, and there is no fallback to its other signatures.
+            parsedRequest.verifyReaderAuthentication(sessionTranscriptDataItem)
 
-            // A request may carry several reader signatures (18013-5 2nd ed. `readerAuthAll`),
-            // each one a separate identity of the *same* reader — typically one per trust
-            // framework it is registered in. Trust is therefore disjunctive: the first identity
-            // that validates against our trust store wins, and everything downstream (display
-            // name, registration-certificate access chain) uses that same one. Requiring every
-            // signature to be trusted would reject legitimate cross-framework requests, since a
-            // wallet only holds the anchors of the frameworks it participates in.
-            //
-            // Signature *validity*, by contrast, is conjunctive: verifyReaderAuthentication above
-            // checks every signature and fails the lot if any one is broken.
-            //
-            // Note: 18013-5 clause 12.5.4 puts the use of reader information explicitly out of
-            // scope, so the disjunctive rule is our profile decision. It follows the rationale
-            // OpenID4VP 1.0 Appendix A.3.2.2 gives for the equivalent JWS JSON construct
-            // ("multiple Client Identifiers ... different trust frameworks") and matches how
-            // Multipaz's own reference PresentmentSource resolves trust.
-            val readerIdentities = parsedRequest.getRequesterIdentities()
-            val trustedIdentity = readerIdentities.firstOrNull { identity ->
-                readerAuthPolicy.readerTrustStore
-                    ?.validateCertificationTrustPath(identity.certChain.javaX509Certificates) == true
-            }
-            // With nothing trusted we still report the first identity, so that reader-auth
-            // presence and the access chain remain visible to the policy and the registration
-            // validator; only the trust verdict is negative.
+            val readerAuthentication = authenticateReader(parsedRequest)
+            // The display name and the registration-certificate access chain come from the first
+            // trusted identity. With nothing trusted we still report the first identity, so that
+            // the access chain remains visible to the registration validator.
             val readerCertChain =
-                (trustedIdentity ?: readerIdentities.firstOrNull())
+                (readerAuthentication.trustedIdentity ?: readerAuthentication.identities.firstOrNull())
                     ?.certChain?.javaX509Certificates ?: emptyList()
-            val isTrusted = trustedIdentity != null && signatureValid
 
-            val requester = Requester(requesterIdentities = readerIdentities)
-            val trustMetadata = if (isTrusted) {
+            val requester = Requester(requesterIdentities = readerAuthentication.identities)
+            val trustMetadata = if (readerAuthentication.verified) {
                 TrustMetadata(displayName = readerCertChain.cn.takeIf { it.isNotBlank() })
             } else null
 
@@ -163,6 +142,7 @@ class DeviceRequestProcessor(
                 trustMetadata = trustMetadata,
                 zkSystemRepository = zkSystemRepository,
                 readerAuthPolicy = readerAuthPolicy,
+                readerAuthFailed = readerAuthentication.failed,
                 zkResponsePolicy = zkResponsePolicy,
                 wrpRegistration = wrpRegistration
             )
@@ -172,7 +152,74 @@ class DeviceRequestProcessor(
             RequestProcessor.ProcessedRequest.Failure(e)
         }
     }
+
+    /**
+     * Resolves the reader identities of [request] and whether its reader authentication is
+     * verified or failed.
+     *
+     * - With `readerAuthAll`, each signature covers the whole request, so the request is verified
+     *   when at least one of these signatures is trusted. The `readerAuth` of each DocRequest is
+     *   then only checked for validity.
+     * - Without `readerAuthAll`, each `readerAuth` covers only its own DocRequest, so the request is
+     *   verified only when every DocRequest is signed and every signer is trusted. Reader
+     *   authentication fails when any signer is not trusted.
+     *
+     * @param request the parsed request, after all its reader signatures verified
+     */
+    private fun authenticateReader(request: MultipazDeviceRequest): ReaderAuthentication {
+        if (request.readerAuthAll.isNotEmpty()) {
+            // Several readerAuthAll signatures are identities of the same reader, typically one per
+            // trust framework it is registered in, so one trusted signature is enough. This follows
+            // the rationale of OpenID4VP 1.0 Appendix A.3.2.2 for the equivalent JWS JSON
+            // Serialization ("multiple Client Identifiers ... different trust frameworks").
+            val identities = request.getRequesterIdentities()
+            val trustedIdentity = identities.firstOrNull { isTrusted(it) }
+            return ReaderAuthentication(
+                identities = identities,
+                trustedIdentity = trustedIdentity,
+                verified = trustedIdentity != null,
+                failed = trustedIdentity == null,
+            )
+        }
+        val signerChains = request.docRequests.map { docRequest ->
+            docRequest.readerAuth?.let { readerAuth ->
+                requireNotNull(
+                    readerAuth.protectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
+                        ?: readerAuth.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
+                ) { "DocRequest readerAuth without x5chain" }.asX509CertChain
+            }
+        }
+        val identities = signerChains.filterNotNull().distinct()
+            .map { Iso18013RequesterIdentity(certChain = it) }
+        val trustedIdentities = identities.filter { isTrusted(it) }
+        val allSignersTrusted = trustedIdentities.size == identities.size
+        return ReaderAuthentication(
+            identities = identities,
+            trustedIdentity = trustedIdentities.firstOrNull(),
+            verified = identities.isNotEmpty() && signerChains.all { it != null } && allSignersTrusted,
+            failed = !allSignersTrusted,
+        )
+    }
+
+    private fun isTrusted(identity: RequesterIdentity): Boolean =
+        readerAuthPolicy.readerTrustStore
+            ?.validateCertificationTrustPath(identity.certChain.javaX509Certificates) == true
 }
+
+/**
+ * Outcome of reader authentication for one request.
+ *
+ * @property identities the reader identities, one for each distinct signer
+ * @property trustedIdentity the first identity that is trusted, if any
+ * @property verified whether the whole request is covered by trusted reader authentication
+ * @property failed whether a signer is not trusted
+ */
+private class ReaderAuthentication(
+    val identities: List<RequesterIdentity>,
+    val trustedIdentity: RequesterIdentity?,
+    val verified: Boolean,
+    val failed: Boolean,
+)
 
 /**
  * Projects a single ISO 18013-5 [DocRequest] onto the [RequestedDocument] used to check the request

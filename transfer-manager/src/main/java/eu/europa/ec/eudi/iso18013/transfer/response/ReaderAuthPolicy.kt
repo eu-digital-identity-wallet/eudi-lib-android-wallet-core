@@ -49,10 +49,14 @@ sealed interface ReaderAuthPolicy {
 
     /**
      * Enforce reader authentication when present.
-     * Documents are skipped when a verifier certificate chain is present but
-     * fails trust validation against the [readerTrustStore].
+     * The request is rejected and no document is shared when a reader signature does not
+     * verify or its certificate chain fails trust validation against the [readerTrustStore].
      * Requests with no certificate chain (e.g. unsigned OpenID4VP requests)
      * are still allowed through.
+     *
+     * For an ISO 18013-5 request without `readerAuthAll`, the `readerAuth` of every DocRequest is
+     * checked. A request in which only some DocRequests are signed is allowed through, but its
+     * requester is not reported as trusted.
      */
     data class EnforceIfPresent(
         override val readerTrustStore: ReaderTrustStore
@@ -60,8 +64,11 @@ sealed interface ReaderAuthPolicy {
 
     /**
      * Always require verified reader authentication.
-     * Documents are skipped unless the verifier's certificate chain is present
-     * and successfully validated against the [readerTrustStore].
+     * The request is rejected and no document is shared unless the verifier's certificate chain
+     * is present and successfully validated against the [readerTrustStore].
+     *
+     * For an ISO 18013-5 request without `readerAuthAll`, every DocRequest must carry a
+     * `readerAuth` whose certificate chain is trusted.
      */
     data class AlwaysRequire(
         override val readerTrustStore: ReaderTrustStore

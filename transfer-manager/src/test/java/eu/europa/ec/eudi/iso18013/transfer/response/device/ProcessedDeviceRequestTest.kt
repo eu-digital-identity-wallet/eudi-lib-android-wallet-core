@@ -100,13 +100,14 @@ class ProcessedDeviceRequestTest {
     // ── ReaderAuthPolicy.EnforceIfPresent ──────────────────────────────────────
 
     @Test
-    fun `EnforceIfPresent returns STATUS_GENERAL_ERROR when readerAuth is present but not trust-verified`() = runBlocking {
-        // The verifier presented a cert chain but it's not in the trust store (or signature
-        // failed). EnforceIfPresent must skip.
+    fun `EnforceIfPresent returns STATUS_GENERAL_ERROR when reader authentication failed`() = runBlocking {
+        // A reader signature did not verify or its cert chain is not in the trust store.
+        // EnforceIfPresent must skip.
         val processed = buildProcessedRequest(
             trustMetadata = null,
             requester = Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(mockk<X509CertChain>()))),
             readerAuthPolicy = ReaderAuthPolicy.EnforceIfPresent(mockk<ReaderTrustStore>()),
+            readerAuthFailed = true,
         )
 
         val response = processed.generateEmptyResponse()
@@ -148,11 +149,12 @@ class ProcessedDeviceRequestTest {
 
     @Test
     fun `DoNotEnforce produces STATUS_OK response regardless of trust state`() = runBlocking {
-        // Cert chain present, no trust, no enforcement → still pass.
+        // Cert chain present, reader auth failed, no enforcement → still pass.
         val processed = buildProcessedRequest(
             trustMetadata = null,
             requester = Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(mockk<X509CertChain>()))),
             readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
+            readerAuthFailed = true,
         )
 
         val response = processed.generateEmptyResponse()
@@ -213,6 +215,7 @@ class ProcessedDeviceRequestTest {
             // Trusted + DoNotEnforce so the policy gate doesn't short-circuit before the loop.
             trustMetadata = TrustMetadata(displayName = "Trusted"),
             readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
+            readerAuthFailed = false,
         )
 
         val thrown = assertFailsWith<CancellationException> {
@@ -373,6 +376,7 @@ class ProcessedDeviceRequestTest {
         trustMetadata: TrustMetadata?,
         requester: Requester = Requester(requesterIdentities = emptyList()),
         readerAuthPolicy: ReaderAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
+        readerAuthFailed: Boolean = false,
         presentmentData: CredentialQueryResult = CredentialQueryResult(emptyList()),
     ): ProcessedDeviceRequest = ProcessedDeviceRequest(
         documentManager = mockk<DocumentManager>(relaxed = true),
@@ -381,6 +385,7 @@ class ProcessedDeviceRequestTest {
         requester = requester,
         trustMetadata = trustMetadata,
         readerAuthPolicy = readerAuthPolicy,
+        readerAuthFailed = readerAuthFailed,
     )
 
     /** Mock a [CredentialPresentmentSetOptionMemberMatch] with no behaviour — used as an

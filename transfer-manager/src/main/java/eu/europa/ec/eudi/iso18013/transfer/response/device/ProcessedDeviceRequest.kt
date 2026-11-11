@@ -52,15 +52,18 @@ import org.multipaz.util.Constants
  * resolved [Requester] and optional [TrustMetadata] — and produces a signed `DeviceResponse`
  * for the user-confirmed [CredentialSelection] via [generateResponse].
  *
- * `trustMetadata != null` means that the requester is trusted.
+ * `trustMetadata != null` means that the whole request is covered by trusted reader
+ * authentication: a trusted `readerAuthAll` signature, or a trusted `readerAuth` on every
+ * DocRequest.
  *
  * @property documentManager document manager used to resolve the [IssuedDocument] for
  *   each selected match (see [requireIssuedDocument]).
  * @property sessionTranscript the session transcript bytes from the engagement; threaded
  *   through to per-document signing and returned in the final [DeviceResponse].
  * @property readerAuthPolicy decides whether [generateResponse] short-circuits to an empty
- *   `STATUS_GENERAL_ERROR` response when the reader isn't trust-verified. See
- *   [ReaderAuthPolicy] for the individual modes.
+ *   `STATUS_GENERAL_ERROR` response. See [ReaderAuthPolicy] for the individual modes.
+ * @property readerAuthFailed whether a reader of the request is not trusted.
+ *   [ReaderAuthPolicy.EnforceIfPresent] rejects the request when it is `true`.
  * @property zkSystemRepository optional ZKP system repository — when set, the response
  *   generation will attempt to produce a ZK proof for any [CredentialMatchSourceIso18013]
  *   carrying a `zkRequest` on its [docRequest][CredentialMatchSourceIso18013.docRequest].
@@ -76,6 +79,7 @@ class ProcessedDeviceRequest(
     requester: Requester,
     trustMetadata: TrustMetadata?,
     private val readerAuthPolicy: ReaderAuthPolicy,
+    private val readerAuthFailed: Boolean,
     private val zkSystemRepository: ZkSystemRepository? = null,
     private val zkResponsePolicy: ZkResponsePolicy = ZkResponsePolicy.Strict,
     wrpRegistration: WrpRegistrationInfo? = null
@@ -125,12 +129,10 @@ class ProcessedDeviceRequest(
     ): ResponseResult {
         return try {
 
-            val isReaderTrustVerified = trustMetadata != null
-            val readerAuthPresent = requester.requesterIdentities.isNotEmpty()
             val skipAllByPolicy = when (readerAuthPolicy) {
                 is ReaderAuthPolicy.DoNotEnforce -> false
-                is ReaderAuthPolicy.EnforceIfPresent -> readerAuthPresent && !isReaderTrustVerified
-                is ReaderAuthPolicy.AlwaysRequire -> !isReaderTrustVerified
+                is ReaderAuthPolicy.EnforceIfPresent -> readerAuthFailed
+                is ReaderAuthPolicy.AlwaysRequire -> trustMetadata == null
             }
 
             if (skipAllByPolicy) {
