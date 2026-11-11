@@ -250,7 +250,7 @@ class DcqlRequestProcessorHolderBindingTest {
         return DcqlRequestProcessor(
             documentManager,
             readerTrustStore = null,
-            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce,
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(),
         )
     }
 

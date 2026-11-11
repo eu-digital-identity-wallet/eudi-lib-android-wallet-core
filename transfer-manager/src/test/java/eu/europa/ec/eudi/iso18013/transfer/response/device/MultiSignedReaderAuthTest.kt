@@ -195,6 +195,22 @@ class MultiSignedReaderAuthTest {
     }
 
     @Test
+    fun `DoNotEnforce with a trust store still reports the trusted identity`() = runBlocking {
+        val untrusted = ReaderIdentityFixture("Untrusted Reader").build()
+        val trusted = ReaderIdentityFixture("Trusted Reader").build()
+        val processor = DeviceRequestProcessor(
+            documentManager = createDocumentManager(keyLockPassphrase = null),
+            readerAuthPolicy = ReaderAuthPolicy.DoNotEnforce(trustStoreAccepting("Trusted Reader"))
+        )
+
+        val processed = assertIs<ProcessedDeviceRequest>(
+            processor.process(deviceRequestSignedBy(untrusted, trusted))
+        )
+
+        assertEquals("Trusted Reader", assertNotNull(processed.trustMetadata).displayName)
+    }
+
+    @Test
     fun `reports untrusted when no identity validates, while still carrying them all`() =
         runBlocking {
             val one = ReaderIdentityFixture("Reader One").build()

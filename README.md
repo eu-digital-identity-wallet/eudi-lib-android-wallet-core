@@ -418,7 +418,7 @@ happens based on the verification result:
 
 | Policy | Behavior |
 |---|---|
-| `doNotEnforce()` | Reader authentication is evaluated but never blocks document disclosure. Documents are always included in the response. |
+| `doNotEnforce()` | Reader trust is evaluated when a trust source is configured, but never blocks document disclosure. Documents are always included in the response. |
 | `enforceIfPresent()` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
 | `alwaysRequire()` | Documents are excluded unless reader authentication is present and verified successfully. |
 
@@ -451,12 +451,19 @@ val config = EudiWalletConfig {
 
 > **Note:** `enforceIfPresent()` and `alwaysRequire()` require trust sources. If no trust
 > source is configured (and no central ETSI trust source is available), an
-> `IllegalArgumentException` is thrown at build time. Call `doNotEnforce()` to explicitly opt out.
+> `IllegalArgumentException` is thrown at build time. Call `doNotEnforce()` to explicitly opt out
+> of enforcement.
 
 > **Note:** If a verifier includes reader authentication in its request but its certificate is not in
 > the configured trust store, the document will be excluded from the response when using
-> `enforceIfPresent()` or `alwaysRequire()`. To allow presentations to verifiers whose
-> certificates are not in the trust store, use `doNotEnforce()`.
+> `enforceIfPresent()` or `alwaysRequire()`. For ISO/IEC 18013-5 presentations (proximity and
+> DC API `org-iso-mdoc`), `doNotEnforce()` allows disclosure regardless of trust status.
+
+> **Important:** Signed OpenID4VP requests (`x509_san_dns`, `x509_hash`), including over the
+> DC API, are rejected when the verifier's certificate chain is not trusted, with every policy.
+> Outside the DC API, OpenID4VP 1.0 clause 5.9.3 requires this validation. `doNotEnforce()`
+> controls only whether the trust result gates document disclosure, so trust material (ETSI or
+> static certificates) must still be configured to accept signed OpenID4VP requests.
 
 > **Note:** The reader authentication trust is not used for relying-party registration
 > certificates. Without `configureEtsiTrust`, call `configureWrpRegistrationTrust(...)` or
