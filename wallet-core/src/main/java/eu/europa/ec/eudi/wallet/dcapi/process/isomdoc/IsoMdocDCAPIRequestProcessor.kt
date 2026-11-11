@@ -83,7 +83,10 @@ class IsoMdocDCAPIRequestProcessor(
             ?: run {
                 logger?.e(TAG, "DeviceRequestProcessor did not return ProcessedDeviceRequest: $processed")
                 return RequestProcessor.ProcessedRequest.Failure(
-                    DCAPIException("DeviceRequestProcessor failed: $processed"),
+                    DCAPIException(
+                        message = "DeviceRequestProcessor failed: $processed",
+                        cause = (processed as? RequestProcessor.ProcessedRequest.Failure)?.error,
+                    ),
                 )
             }
 
