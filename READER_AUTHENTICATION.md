@@ -52,8 +52,8 @@ ISO/IEC 18013-5 has two ways to sign a request:
    the request fails under every policy, including `DoNotEnforce`: the application receives
    `RequestProcessor.ProcessedRequest.Failure`, and no DeviceResponse is generated. For proximity
    requests its error is the `SignatureVerificationException`; for DC API `org-iso-mdoc` requests it
-   is a `DCAPIException` whose message contains it. The wallet does not fall back to the other
-   signatures of the request.
+   is a `DCAPIException` whose cause is the `SignatureVerificationException`. The wallet does not
+   fall back to the other signatures of the request.
 2. **With `readerAuthAll`**, only the `readerAuthAll` signatures decide trust. The request is
    trust-verified when at least one of them is trusted, since each one covers the whole request.
    Several `readerAuthAll` signatures are expected to be identities of the same reader, for example
