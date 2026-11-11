@@ -8,7 +8,7 @@ when a request is rejected. For the configuration itself, see
 
 ## What the application receives
 
-A processed request (`RequestProcessor.ProcessedRequest.Success`) carries two values about the
+A processed request (`RequestProcessor.ProcessedRequest.Success`) carries these values about the
 reader:
 
 | Value | Meaning |
@@ -22,11 +22,12 @@ reader:
 | Policy | The request is rejected when |
 |---|---|
 | `DoNotEnforce` | never |
-| `EnforceIfPresent` (default) | a signer's certificate is not trusted |
+| `EnforceIfPresent` (default) | reader authentication is present but not trusted (see the rules below) |
 | `AlwaysRequire` | the request is not trust-verified |
 
 `DoNotEnforce` evaluates trust only when a trust source is configured; without one, `trustMetadata`
-is always `null`.
+is always `null`. For OpenID4VP, a request object whose certificate chain is not trusted is rejected
+with every policy, see [OpenID4VP requests](#openid4vp-requests).
 
 When the request is rejected, no document is shared:
 
@@ -48,9 +49,11 @@ ISO/IEC 18013-5 has two ways to sign a request:
 ### Rules
 
 1. **Every signature must verify**, of both kinds. When a signature does not verify, processing of
-   the request fails with `SignatureVerificationException` under every policy, including
-   `DoNotEnforce`: the application receives `RequestProcessor.ProcessedRequest.Failure`. The wallet
-   does not fall back to the other signatures of the request.
+   the request fails under every policy, including `DoNotEnforce`: the application receives
+   `RequestProcessor.ProcessedRequest.Failure`, and no DeviceResponse is generated. For proximity
+   requests its error is the `SignatureVerificationException`; for DC API `org-iso-mdoc` requests it
+   is a `DCAPIException` whose message contains it. The wallet does not fall back to the other
+   signatures of the request.
 2. **With `readerAuthAll`**, only the `readerAuthAll` signatures decide trust. The request is
    trust-verified when at least one of them is trusted, since each one covers the whole request.
    Several `readerAuthAll` signatures are expected to be identities of the same reader, for example
@@ -59,7 +62,9 @@ ISO/IEC 18013-5 has two ways to sign a request:
 3. **Without `readerAuthAll`**, the request is trust-verified only when **every** DocRequest is
    signed and **every** signer is trusted. Reader authentication fails when a signer is not
    trusted, wherever its DocRequest is in the request. `requesterIdentities` contains one identity
-   for each distinct signer, in the order of the DocRequests.
+   for each distinct signer, in the order of the DocRequests. Signers are compared by their
+   certificate chain: a relying party that signs DocRequests with different certificate chains
+   counts as different readers.
 
 ### Examples
 
@@ -70,10 +75,11 @@ A and B are trusted readers, X is a reader whose certificate is not trusted.
 | A signs every DocRequest | A | A | shared | shared |
 | A signs one DocRequest, B signs another | A | A, B | shared | shared |
 | A signs one DocRequest, another is unsigned | `null` | A | shared | rejected |
-| A signs one DocRequest, X signs another, in any order | `null` | A, X | rejected | rejected |
+| A signs one DocRequest, X signs another, in any order | `null` | A and X, in DocRequest order | rejected | rejected |
 | No DocRequest is signed | `null` | none | shared | rejected |
 | A signature does not verify | - | - | processing fails | processing fails |
 | `readerAuthAll` by A, with or without `readerAuth` on DocRequests | A | A | shared | shared |
+| `readerAuthAll` by X and by A, in any order | A | X and A, in signature order | shared | shared |
 | `readerAuthAll` by X only | `null` | X | rejected | rejected |
 
 With `DoNotEnforce`, a request whose signatures verify is shared after the user's consent.
@@ -89,7 +95,8 @@ request. The wallet checks it against the access certificate of a trusted reader
 whole request:
 
 - with `readerAuthAll`, the first trusted `readerAuthAll` signer;
-- without `readerAuthAll`, the reader that signs every DocRequest, when it is trusted.
+- without `readerAuthAll`, the reader that signs every DocRequest with the same certificate chain,
+  when it is trusted.
 
 Otherwise the registration certificate is reported as not bound to the requester
 (`NOT_BOUND_TO_REQUESTER`): when a DocRequest is not signed, when different readers sign the

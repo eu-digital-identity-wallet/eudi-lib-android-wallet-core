@@ -419,7 +419,7 @@ happens based on the verification result:
 | Policy | Behavior |
 |---|---|
 | `doNotEnforce()` | Reader trust is evaluated when a trust source is configured, but never blocks document disclosure. Documents are always included in the response. |
-| `enforceIfPresent()` | **(Default)** The request is rejected when a reader's certificate is not trusted. Requests without reader authentication are allowed, and their requester is not reported as trusted. |
+| `enforceIfPresent()` | **(Default)** The request is rejected when reader authentication is present but not trusted. Requests without reader authentication are allowed, and their requester is not reported as trusted. |
 | `alwaysRequire()` | The request is rejected unless reader authentication is present, verifies and is trusted. |
 
 With every policy, a request whose reader signature does not verify is not processed.

@@ -62,7 +62,7 @@ import org.multipaz.util.Constants
  *   through to per-document signing and returned in the final [DeviceResponse].
  * @property readerAuthPolicy decides whether [generateResponse] short-circuits to an empty
  *   `STATUS_GENERAL_ERROR` response. See [ReaderAuthPolicy] for the individual modes.
- * @property readerAuthFailed whether a reader of the request is not trusted.
+ * @property readerAuthFailed whether reader authentication is present but not trusted.
  *   [ReaderAuthPolicy.EnforceIfPresent] rejects the request when it is `true`.
  * @property zkSystemRepository optional ZKP system repository — when set, the response
  *   generation will attempt to produce a ZK proof for any [CredentialMatchSourceIso18013]

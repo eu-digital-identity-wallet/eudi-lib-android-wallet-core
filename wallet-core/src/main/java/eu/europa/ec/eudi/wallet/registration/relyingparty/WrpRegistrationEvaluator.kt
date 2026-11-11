@@ -36,7 +36,8 @@ fun interface WrpRegistrationEvaluator {
      * Evaluates an authenticated [registration] against the request.
      *
      * @param registration the registration described by the authenticated certificate
-     * @param accessCertificate the leaf access certificate that signed the request; null when absent
+     * @param accessCertificate the leaf access certificate of the trusted reader that signed the whole
+     *   request; null when there is none
      * @param requestedAttestations the attestations and claims requested
      * @return the registration result, verified when every check passes and validation-failed with a
      *   [RegistrationFailureReason] otherwise

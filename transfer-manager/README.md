@@ -582,7 +582,7 @@ Three policies are available:
 | Policy | Behavior |
 |---|---|
 | `ReaderAuthPolicy.DoNotEnforce()` | The response is always produced regardless of reader-auth state. An optional `ReaderTrustStore` can be provided for trust evaluation without gating disclosure. |
-| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** When reader authentication fails, an empty `STATUS_GENERAL_ERROR` response is returned. Requests without any reader auth, or with only some `DocRequest`s signed by trusted readers, are allowed through with `trustMetadata == null`. |
+| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** When reader authentication is present but not trusted, an empty `STATUS_GENERAL_ERROR` response is returned. Requests without any reader auth, or with only some `DocRequest`s signed by trusted readers, are allowed through with `trustMetadata == null`. |
 | `ReaderAuthPolicy.AlwaysRequire` | The request must be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. |
 
 The policy is configured when creating the `TransferManager`:

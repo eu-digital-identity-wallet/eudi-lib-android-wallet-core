@@ -45,7 +45,7 @@ class ReaderTrustConfigBuilder {
      * during proximity and DCAPI presentations.
      *
      * - [ReaderAuthPolicy.DoNotEnforce]: Reader trust is evaluated when a trust source is configured, but never blocks disclosure.
-     * - [ReaderAuthPolicy.EnforceIfPresent]: The request is rejected when a reader's certificate is not trusted (default).
+     * - [ReaderAuthPolicy.EnforceIfPresent]: The request is rejected when reader auth is present but not trusted (default).
      * - [ReaderAuthPolicy.AlwaysRequire]: The request is rejected unless reader auth is present and trusted.
      *
      * @param policy the reader authentication enforcement policy

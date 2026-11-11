@@ -214,7 +214,7 @@ class PerDocRequestReaderAuthTest {
     fun `EnforceIfPresent rejects a request whose readerAuthAll signer is not trusted`() = runBlocking {
         val untrusted = reader(UNTRUSTED_X)
 
-        val outcome = present(request(listOf(MDL to null, PID to null), readerAuthAll = untrusted), enforceIfPresent())
+        val outcome = present(request(listOf(MDL to null, PID to null), readerAuthAll = listOf(untrusted)), enforceIfPresent())
 
         assertNull(outcome.trustedName)
         assertEquals(listOf(UNTRUSTED_X), outcome.identities)
@@ -228,7 +228,7 @@ class PerDocRequestReaderAuthTest {
         val untrusted = reader(UNTRUSTED_X)
 
         val outcome = present(
-            request(listOf(MDL to untrusted, PID to null), readerAuthAll = trusted),
+            request(listOf(MDL to untrusted, PID to null), readerAuthAll = listOf(trusted)),
             enforceIfPresent(),
         )
 
@@ -236,6 +236,21 @@ class PerDocRequestReaderAuthTest {
         assertEquals(listOf(TRUSTED_A), outcome.identities)
         assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, outcome.status)
         assertEquals(listOf(MDL, PID), outcome.sharedDocTypes)
+    }
+
+    @Test
+    fun `with readerAuthAll one trusted signature is enough wherever it is`() = runBlocking {
+        val trusted = reader(TRUSTED_A)
+        val untrusted = reader(UNTRUSTED_X)
+        val request = request(listOf(MDL to null, PID to null), readerAuthAll = listOf(untrusted, trusted))
+
+        val outcome = present(request, enforceIfPresent())
+
+        assertEquals(TRUSTED_A, outcome.trustedName)
+        assertEquals(listOf(UNTRUSTED_X, TRUSTED_A), outcome.identities)
+        assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, outcome.status)
+        assertEquals(listOf(MDL, PID), outcome.sharedDocTypes)
+        assertEquals(TRUSTED_A, registrationAccessCertificate(request, enforceIfPresent()))
     }
 
     @Test
@@ -251,7 +266,7 @@ class PerDocRequestReaderAuthTest {
             assertEquals(
                 TRUSTED_A,
                 registrationAccessCertificate(
-                    request(listOf(MDL to untrusted, PID to null), readerAuthAll = trusted),
+                    request(listOf(MDL to untrusted, PID to null), readerAuthAll = listOf(trusted)),
                     enforceIfPresent(),
                 ),
             )
@@ -275,7 +290,7 @@ class PerDocRequestReaderAuthTest {
             // A readerAuthAll signer that is not trusted.
             assertNull(
                 registrationAccessCertificate(
-                    request(listOf(MDL to null, PID to null), readerAuthAll = untrusted),
+                    request(listOf(MDL to null, PID to null), readerAuthAll = listOf(untrusted)),
                     enforceIfPresent(),
                 )
             )
@@ -347,18 +362,19 @@ class PerDocRequestReaderAuthTest {
 
     /**
      * Builds a request with one DocRequest per entry of [parts], each signed by its reader or
-     * unsigned when the reader is null, optionally followed by a `readerAuthAll` signature.
+     * unsigned when the reader is null, followed by one `readerAuthAll` signature for each of
+     * [readerAuthAll].
      */
     private suspend fun request(
         parts: List<Pair<String, AsymmetricKey.X509CertifiedExplicit?>>,
-        readerAuthAll: AsymmetricKey.X509CertifiedExplicit? = null,
+        readerAuthAll: List<AsymmetricKey.X509CertifiedExplicit> = emptyList(),
         signedTranscript: DataItem = SESSION_TRANSCRIPT,
     ): TransferDeviceRequest {
         val deviceRequest = buildDeviceRequest(sessionTranscript = signedTranscript) {
             for ((docType, signer) in parts) {
                 addDocRequest(docType = docType, nameSpaces = nameSpaces(docType), readerKey = signer)
             }
-            readerAuthAll?.let { addReaderAuthAll(it) }
+            readerAuthAll.forEach { addReaderAuthAll(it) }
         }
         return TransferDeviceRequest(
             deviceRequestBytes = Cbor.encode(deviceRequest.toDataItem()),

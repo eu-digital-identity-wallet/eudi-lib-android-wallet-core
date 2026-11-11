@@ -42,6 +42,8 @@ sealed interface ReaderAuthPolicy {
      * when a [readerTrustStore] is provided, but the result never gates document disclosure.
      * Signed OpenID4VP requests are rejected without a trusted certificate chain; outside the
      * DC API, OpenID4VP 1.0 clause 5.9.3 requires this for `x509_san_dns` and `x509_hash`.
+     * Without a [readerTrustStore] no reader is trusted, so the registration certificate of an
+     * ISO 18013-5 request is not bound to the requester.
      */
     data class DoNotEnforce(
         override val readerTrustStore: ReaderTrustStore? = null,
@@ -49,14 +51,15 @@ sealed interface ReaderAuthPolicy {
 
     /**
      * Enforce reader authentication when present.
-     * The request is rejected and no document is shared when a reader's certificate chain fails
-     * trust validation against the [readerTrustStore].
+     * The request is rejected and no document is shared when reader authentication is present but
+     * not trusted against the [readerTrustStore].
      * Requests with no certificate chain (e.g. unsigned OpenID4VP requests)
      * are still allowed through.
      *
-     * For an ISO 18013-5 request without `readerAuthAll`, the `readerAuth` of every DocRequest is
-     * checked. A request in which only some DocRequests are signed is allowed through, but its
-     * requester is not reported as trusted.
+     * For an ISO 18013-5 request with `readerAuthAll`, one trusted `readerAuthAll` signature is
+     * enough. Without `readerAuthAll`, the `readerAuth` of every DocRequest is checked, and the
+     * request is rejected when a signer is not trusted. A request in which only some DocRequests are
+     * signed is allowed through, but its requester is not reported as trusted.
      */
     data class EnforceIfPresent(
         override val readerTrustStore: ReaderTrustStore
