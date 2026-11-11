@@ -29,7 +29,7 @@ sealed interface ReaderAuthPolicy {
 
     /**
      * The trust store used to validate verifier certificate chains.
-     * Null only for [DoNotEnforce], which performs no trust evaluation.
+     * Null only for [DoNotEnforce] without a trust source, which performs no trust evaluation.
      */
     val readerTrustStore: ReaderTrustStore?
         get() = null
@@ -40,6 +40,8 @@ sealed interface ReaderAuthPolicy {
      *
      * Trust evaluation may still be performed (e.g. for OpenID4VP signed requests)
      * when a [readerTrustStore] is provided, but the result never gates document disclosure.
+     * Signed OpenID4VP requests still need a trusted certificate chain (OpenID4VP 1.0
+     * clause 5.9.3), so without a [readerTrustStore] they are rejected.
      */
     data class DoNotEnforce(
         override val readerTrustStore: ReaderTrustStore? = null,

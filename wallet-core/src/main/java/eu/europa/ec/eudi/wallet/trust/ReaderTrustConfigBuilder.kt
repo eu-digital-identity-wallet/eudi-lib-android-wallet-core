@@ -44,7 +44,7 @@ class ReaderTrustConfigBuilder {
      * This controls how reader authentication results affect document disclosure
      * during proximity and DCAPI presentations.
      *
-     * - [ReaderAuthPolicy.DoNotEnforce]: Reader authentication is evaluated but never blocks disclosure.
+     * - [ReaderAuthPolicy.DoNotEnforce]: Reader trust is evaluated when a trust source is configured, but never blocks disclosure.
      * - [ReaderAuthPolicy.EnforceIfPresent]: Documents are excluded when reader auth is present but fails (default).
      * - [ReaderAuthPolicy.AlwaysRequire]: Documents are excluded unless reader auth is present and verified.
      *

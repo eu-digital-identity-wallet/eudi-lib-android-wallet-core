@@ -418,7 +418,7 @@ happens based on the verification result:
 
 | Policy | Behavior |
 |---|---|
-| `doNotEnforce()` | Reader authentication is evaluated but never blocks document disclosure. Documents are always included in the response. |
+| `doNotEnforce()` | Reader trust is evaluated when a trust source is configured, but never blocks document disclosure. Documents are always included in the response. |
 | `enforceIfPresent()` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
 | `alwaysRequire()` | Documents are excluded unless reader authentication is present and verified successfully. |
 
@@ -456,8 +456,8 @@ val config = EudiWalletConfig {
 
 > **Note:** If a verifier includes reader authentication in its request but its certificate is not in
 > the configured trust store, the document will be excluded from the response when using
-> `enforceIfPresent()` or `alwaysRequire()`. For **proximity** presentations,
-> `doNotEnforce()` allows disclosure regardless of trust status.
+> `enforceIfPresent()` or `alwaysRequire()`. For ISO/IEC 18013-5 presentations (proximity and
+> DC API `org-iso-mdoc`), `doNotEnforce()` allows disclosure regardless of trust status.
 
 > **Important:** For **OpenID4VP signed requests** (including DC API), trust evaluation is
 > mandated by the protocol — the verifier's certificate chain must be validated before the
