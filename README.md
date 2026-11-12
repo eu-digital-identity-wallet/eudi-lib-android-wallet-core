@@ -419,11 +419,18 @@ happens based on the verification result:
 | Policy | Behavior |
 |---|---|
 | `doNotEnforce()` | Reader trust is evaluated when a trust source is configured, but never blocks document disclosure. Documents are always included in the response. |
-| `enforceIfPresent()` | **(Default)** Documents are excluded from the response when reader authentication is present but fails verification. Documents without reader authentication are included normally. |
-| `alwaysRequire()` | Documents are excluded unless reader authentication is present and verified successfully. |
+| `enforceIfPresent()` | **(Default)** The request is rejected when reader authentication is present but not trusted. Requests without reader authentication are allowed, and their requester is not reported as trusted. |
+| `alwaysRequire()` | The request is rejected unless reader authentication is present, verifies and is trusted. |
 
-Per ISO 18013-5, when all documents are excluded due to reader authentication failure, the wallet
-returns a DeviceResponse with status 10 (General Error) instead of an empty success response.
+With every policy, a request whose reader signature does not verify is not processed.
+
+When the request is rejected, no document is shared. For ISO/IEC 18013-5 requests (proximity and
+DC API `org-iso-mdoc`), the wallet returns a DeviceResponse with status 10 (General Error). For
+OpenID4VP requests, generating the response fails with `ReaderAuthPolicyException`.
+
+An ISO/IEC 18013-5 request is authenticated either by `readerAuthAll` signatures over the whole
+request or by a `readerAuth` signature on each DocRequest. See
+[READER_AUTHENTICATION.md](READER_AUTHENTICATION.md) for how each case is evaluated.
 
 **With ETSI trust** (trust source inherited from `configureEtsiTrust`):
 
@@ -455,9 +462,9 @@ val config = EudiWalletConfig {
 > of enforcement.
 
 > **Note:** If a verifier includes reader authentication in its request but its certificate is not in
-> the configured trust store, the document will be excluded from the response when using
-> `enforceIfPresent()` or `alwaysRequire()`. For ISO/IEC 18013-5 presentations (proximity and
-> DC API `org-iso-mdoc`), `doNotEnforce()` allows disclosure regardless of trust status.
+> the configured trust store, the request is rejected when using `enforceIfPresent()` or
+> `alwaysRequire()`. For ISO/IEC 18013-5 presentations (proximity and DC API `org-iso-mdoc`),
+> `doNotEnforce()` allows disclosure regardless of trust status.
 
 > **Important:** Signed OpenID4VP requests (`x509_san_dns`, `x509_hash`), including over the
 > DC API, are rejected when the verifier's certificate chain is not trusted, with every policy.

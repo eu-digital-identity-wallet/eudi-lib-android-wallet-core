@@ -554,17 +554,35 @@ val readerTrustStore = ReaderTrustStore.getDefault(
 #### Reader Authentication Enforcement Policy
 
 The `ReaderAuthPolicy` controls how reader-authentication results gate response generation in
-`ProcessedDeviceRequest.generateResponse()`. Reader auth in ISO 18013-5 is signed at the
-`DeviceRequest` level (one signature for all `DocRequest`s), so the verdict is **all-or-nothing
-per request** — when a policy is violated, the response is an empty `DeviceResponse` with status
-`STATUS_GENERAL_ERROR` and no signed documents.
+`ProcessedDeviceRequest.generateResponse()`. The verdict is **all-or-nothing per request**: when a
+policy is violated, the response is an empty `DeviceResponse` with status `STATUS_GENERAL_ERROR`
+and no signed documents.
+
+An ISO 18013-5 request is authenticated in one of two ways:
+
+- **`readerAuthAll`** (2nd edition): one or more signatures, each covering the whole request. The
+  request is trust-verified when every signature verifies and at least one of them is trusted. The
+  `readerAuth` of each `DocRequest` is then only checked to verify.
+- **`readerAuth` on each `DocRequest`**: each signature covers only its own `DocRequest`. The
+  request is trust-verified only when every `DocRequest` is signed, every signature verifies and
+  every signer is trusted. Reader authentication fails when a signer is not trusted, wherever that
+  `DocRequest` is in the request.
+
+Every reader signature must verify: when one does not, `process()` returns
+`ProcessedRequest.Failure` with `SignatureVerificationException`, under every policy.
+
+`trustMetadata != null` means that the request is trust-verified. `requester.requesterIdentities`
+contains one identity for each `readerAuthAll` signature or, without `readerAuthAll`, one for each
+distinct `DocRequest` signer. The registration certificate is checked against the access
+certificate of a trusted reader that signs the whole request; without one, it is not bound to the
+requester. See [READER_AUTHENTICATION.md](../READER_AUTHENTICATION.md) for examples.
 
 Three policies are available:
 
 | Policy | Behavior |
 |---|---|
 | `ReaderAuthPolicy.DoNotEnforce()` | The response is always produced regardless of reader-auth state. An optional `ReaderTrustStore` can be provided for trust evaluation without gating disclosure. |
-| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** If the verifier supplied a reader cert chain, that chain **must** also be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. Requests without any reader auth are allowed through. |
+| `ReaderAuthPolicy.EnforceIfPresent` | **(Default)** When reader authentication is present but not trusted, an empty `STATUS_GENERAL_ERROR` response is returned. Requests without any reader auth, or with only some `DocRequest`s signed by trusted readers, are allowed through with `trustMetadata == null`. |
 | `ReaderAuthPolicy.AlwaysRequire` | The request must be trust-verified (`trustMetadata != null`); otherwise an empty `STATUS_GENERAL_ERROR` response is returned. |
 
 The policy is configured when creating the `TransferManager`:
