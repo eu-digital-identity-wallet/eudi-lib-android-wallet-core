@@ -1066,9 +1066,9 @@ configureIssuerTrust {
 }
 ```
 
-A credential is then checked only for its integrity (issuer signature, binding to the device key
-and, for mdoc, the digests and `docType`); the issuer's certificate chain is not verified, only
-unsigned issuer metadata is used, and `issuerTrustResult` is `null`.
+A credential is then checked only for its integrity (issuer signature, binding to the device key,
+for mdoc the digests and `docType`, and for SD-JWT VC the `vct`); the issuer's certificate chain is
+not verified, only unsigned issuer metadata is used, and `issuerTrustResult` is `null`.
 
 Configure issuer trust verification via the `configureIssuerTrust` DSL on `EudiWalletConfig`.
 When `configureEtsiTrust` is also used, `trustSource()` and `classifications()` are inherited
