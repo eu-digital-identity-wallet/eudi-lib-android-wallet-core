@@ -108,6 +108,9 @@ class ReissueDocumentTest {
         )
     }
     private val documentManager = mockk<DocumentManager>(relaxed = true) {
+        every { getDocumentById(PID_SD_JWT) } returns mockk<IssuedDocument>(relaxed = true) {
+            every { format } returns SdJwtVcFormat(VCT)
+        }
         every { createDocument(any(), any(), any()) } returns Outcome.success(unsignedDocument)
         every { storeIssuedDocument(any(), any()) } returns Outcome.success(newDocument)
         every { storeDeferredDocument(any(), any()) } returns Outcome.success(deferredDocument)
@@ -288,6 +291,26 @@ class ReissueDocumentTest {
         }
 
     @Test
+    fun `a credential configuration of another type fails the re-issuance before the refresh and keeps the document`() =
+        runBlocking {
+            storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
+            // Issued before the issuer changed the vct of the configuration
+            every { documentManager.getDocumentById(PID_SD_JWT) } returns mockk<IssuedDocument>(relaxed = true) {
+                every { format } returns SdJwtVcFormat(PREVIOUS_VCT)
+            }
+
+            val reissuance = reissue(PID_SD_JWT, allowAuthorizationFallback = true)
+
+            val error = assertIs<ReissuanceFormatMismatchException>(assertIs<IssueEvent.Failure>(reissuance.end).cause)
+            assertEquals(SdJwtVcFormat(PREVIOUS_VCT), error.documentFormat)
+            assertEquals(SdJwtVcFormat(VCT), error.configurationFormat)
+            coVerify(exactly = 0) { with(issuer) { any<AuthorizedRequest>().refresh() } }
+            coVerify(exactly = 0) { issuerAuthorization.authorize(any(), any()) }
+            verify(exactly = 0) { documentManager.createDocument(any(), any(), any()) }
+            verify(exactly = 0) { documentManager.deleteDocumentById(PID_SD_JWT) }
+        }
+
+    @Test
     fun `re-issuing a document without stored metadata fails`() = runBlocking {
         val reissuance = reissue("unknown-document")
 
@@ -423,6 +446,7 @@ class ReissueDocumentTest {
         const val ISSUER = "https://issuer.example.com"
         const val CONFIGURATION_ID = "eu.europa.ec.eudi.pid_vc_sd_jwt"
         const val VCT = "urn:eudi:pid:1"
+        const val PREVIOUS_VCT = "urn:eu.europa.ec.eudi:pid:1"
         const val PID_SD_JWT = "pid-sd-jwt"
         const val PID_MDOC = "pid-mdoc"
         const val NEW_DOCUMENT = "new-pid-sd-jwt"

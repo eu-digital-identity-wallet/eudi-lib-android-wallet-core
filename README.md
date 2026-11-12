@@ -1128,6 +1128,10 @@ A `TrustPolicy` determines the action taken when an issuer is not trusted:
 A credential whose issuer signature does not verify with its certificate is rejected under both
 policies.
 
+Under `INFORM`, a re-issued credential replaces the document whatever the trust result. To keep the
+document when the issuer is not trusted, use `ENFORCE` for that type (see
+[Credential Re-Issuance](#credential-re-issuance)).
+
 The default policy is `ENFORCE` for all credentials. Use the `policy` DSL to override per
 verification context or per attestation type. Resolution order (highest priority first):
 
@@ -1937,6 +1941,19 @@ The library supports re-issuing previously issued credentials without requiring 
 through the full authorization flow again. After a credential is successfully issued, the library
 automatically stores the authorization context. This metadata
 enables subsequent re-issuance using the stored refresh token.
+
+The re-issued credential replaces the document: the document is deleted once the new one is stored.
+The document is kept when:
+
+- The credential configuration of the document no longer has the format of the document, with the
+  same docType or vct. This is checked before the tokens are refreshed: the re-issuance fails with a
+  `ReissuanceFormatMismatchException` via `IssueEvent.Failure`, and no token and no credential is
+  requested. A credential of the new format can be obtained with a new issuance. A deferred
+  re-issuance started before this check existed is checked when its credential is issued, and fails
+  via `DeferredIssueResult.DocumentFailed`.
+- The re-issued credential is rejected, for example under the `ENFORCE` trust policy when its issuer
+  is not trusted. Under `INFORM`, the credential replaces the document whatever the trust result
+  (see [Trust Policies](#trust-policies)).
 
 ##### Interactive Re-Issuance (User-Triggered)
 

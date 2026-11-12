@@ -47,6 +47,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceFormatMismatchException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.storeRefreshedTokens
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.tokenRefreshLock
@@ -420,6 +421,9 @@ internal class DefaultOpenId4VciManager(
 
                 logger?.d(TAG, "Loaded issuanceMetadata: credentialIssuerId=${issuanceMetadata.credentialIssuerId}")
 
+                val documentFormat = documentManager.getDocumentById(documentId)?.format
+                    ?: throw IllegalStateException("Document $documentId not found")
+
                 //  Create Issuer using IssuerCreator (resolves issuer metadata)
                 //  Pass existing DPoP key alias so the same key is reused
                 //  (access token is bound to original key's thumbprint)
@@ -428,6 +432,16 @@ internal class DefaultOpenId4VciManager(
                     listOf(CredentialConfigurationIdentifier(issuanceMetadata.credentialConfigurationIdentifier)),
                     existingDpopKeyAlias = issuanceMetadata.dPoPKeyAlias
                 )
+
+                val offer = Offer(issuer.credentialOffer, issuerRegistration)
+
+                //  The credential configuration must still have the format of the document, with
+                //  the same docType or vct. This is checked before the tokens are refreshed, the
+                //  document keys are created and the credential is requested.
+                val configurationFormat = offer.offeredDocuments.single().documentFormat
+                if (configurationFormat != documentFormat) {
+                    throw ReissuanceFormatMismatchException(documentFormat, configurationFormat)
+                }
 
                 //  Refresh the access token using the stored refresh token.
                 //  Only fall back to full OAuth authorization on 400 invalid_grant
@@ -473,8 +487,6 @@ internal class DefaultOpenId4VciManager(
                     logger?.d(TAG, "Refresh token expired for $documentId, falling back to full authorization")
                     issuerAuthorization.authorize(issuer, null)
                 }
-
-                val offer = Offer(issuer.credentialOffer, issuerRegistration)
 
                 //  Resolve issuance request payloads based on credential identifiers
                 //  from the token response (one IdentifierBased payload per credential
