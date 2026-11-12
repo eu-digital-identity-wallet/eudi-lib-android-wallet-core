@@ -211,6 +211,71 @@ class PerDocRequestReaderAuthTest {
         }
 
     @Test
+    fun `a DocRequest signature that does not verify fails processing even with a trusted readerAuthAll`() =
+        runBlocking {
+            val trusted = reader(TRUSTED_A)
+            val valid = Cbor.decode(request(listOf(MDL to trusted), readerAuthAll = listOf(trusted)).deviceRequestBytes)
+            val invalid = Cbor.decode(
+                request(listOf(MDL to trusted), signedTranscript = sessionTranscript(byteArrayOf(9, 9, 9)))
+                    .deviceRequestBytes
+            )
+            // Both DocRequests have the same ItemsRequest, so the readerAuthAll signature still verifies.
+            assertEquals(
+                valid["docRequests"].asArray.single()["itemsRequest"],
+                invalid["docRequests"].asArray.single()["itemsRequest"],
+            )
+            // The readerAuthAll signature is for this session, the DocRequest's readerAuth for another one.
+            val mixed = buildCborMap {
+                put("version", valid["version"])
+                put("docRequests", invalid["docRequests"])
+                put("readerAuthAll", valid["readerAuthAll"])
+            }
+
+            for (policy in listOf(ReaderAuthPolicy.DoNotEnforce(), enforceIfPresent(), alwaysRequire())) {
+                assertSignatureFailure(
+                    TransferDeviceRequest(
+                        deviceRequestBytes = Cbor.encode(mixed),
+                        sessionTranscriptBytes = Cbor.encode(SESSION_TRANSCRIPT),
+                    ),
+                    policy,
+                )
+            }
+        }
+
+    @Test
+    fun `a readerAuthAll signature that does not verify fails processing even when another one is trusted`() =
+        runBlocking {
+            val trusted = reader(TRUSTED_A)
+            val valid = Cbor.decode(request(listOf(MDL to null), readerAuthAll = listOf(trusted)).deviceRequestBytes)
+            val invalid = Cbor.decode(
+                request(
+                    listOf(MDL to null),
+                    readerAuthAll = listOf(trusted),
+                    signedTranscript = sessionTranscript(byteArrayOf(9, 9, 9)),
+                ).deviceRequestBytes
+            )
+            // The first readerAuthAll signature is for this session, the second for another one.
+            val mixed = buildCborMap {
+                put("version", valid["version"])
+                put("docRequests", valid["docRequests"])
+                putCborArray("readerAuthAll") {
+                    add(valid["readerAuthAll"].asArray.single())
+                    add(invalid["readerAuthAll"].asArray.single())
+                }
+            }
+
+            for (policy in listOf(ReaderAuthPolicy.DoNotEnforce(), enforceIfPresent(), alwaysRequire())) {
+                assertSignatureFailure(
+                    TransferDeviceRequest(
+                        deviceRequestBytes = Cbor.encode(mixed),
+                        sessionTranscriptBytes = Cbor.encode(SESSION_TRANSCRIPT),
+                    ),
+                    policy,
+                )
+            }
+        }
+
+    @Test
     fun `EnforceIfPresent rejects a request whose readerAuthAll signer is not trusted`() = runBlocking {
         val untrusted = reader(UNTRUSTED_X)
 
