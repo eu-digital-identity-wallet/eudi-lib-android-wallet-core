@@ -22,6 +22,7 @@ import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier
 import org.bouncycastle.asn1.x509.BasicConstraints
 import org.bouncycastle.asn1.x509.CRLDistPoint
+import org.bouncycastle.asn1.x509.CRLNumber
 import org.bouncycastle.asn1.x509.CRLReason
 import org.bouncycastle.asn1.x509.DistributionPoint
 import org.bouncycastle.asn1.x509.DistributionPointName
@@ -29,7 +30,9 @@ import org.bouncycastle.asn1.x509.ExtendedKeyUsage
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.asn1.x509.GeneralName
 import org.bouncycastle.asn1.x509.GeneralNames
+import org.bouncycastle.asn1.x509.IssuingDistributionPoint
 import org.bouncycastle.asn1.x509.KeyUsage
+import org.bouncycastle.asn1.x509.ReasonFlags
 import org.bouncycastle.cert.X509v2CRLBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CRLConverter
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
@@ -144,13 +147,7 @@ val validCertificate: X509Certificate by lazy {
         )
 
         // Add CRL Distribution Points
-        val crlDp = GeneralName(
-            GeneralName.uniformResourceIdentifier,
-            "https://example.com/crl.pem"
-        )
-        val generalNames = GeneralNames(crlDp)
-        val distPointName = DistributionPointName(generalNames)
-        val distPoint = DistributionPoint(distPointName, null, null)
+        val distPoint = DistributionPoint(fullName(VALID_CERTIFICATE_CRL_URI), null, null)
         addExtension(
             Extension.cRLDistributionPoints,
             false,
@@ -314,28 +311,90 @@ private fun buildThreeCertChain(tamperIntermediateAki: Boolean): List<X509Certif
     return listOf(leaf, intermediate, root)
 }
 
-val revokedCertificateCRL: java.security.cert.X509CRL by lazy {
-    val issuerName = X500Name(trustedCertificate.subjectX500Principal.name)
-    val now = Date()
-    val nextUpdate = Date(now.time + 30 * 86400000L)
+val revokedCertificateCRL: java.security.cert.X509CRL by lazy { buildCrl(revoked = listOf(validCertificate)) }
 
-    val crlBuilder = X509v2CRLBuilder(issuerName, now).apply {
-        addCRLEntry(validCertificate.serialNumber, now, CRLReason.unspecified)
-        setNextUpdate(nextUpdate)
+val emptyCRL: java.security.cert.X509CRL by lazy { buildCrl(revoked = emptyList()) }
+
+private val forgerKeyPair: KeyPair by lazy {
+    KeyPairGenerator.getInstance("EC").apply {
+        initialize(ECGenParameterSpec("secp256r1"))
+    }.generateKeyPair()
+}
+
+/** Names the trusted root as its issuer but is signed by another key. */
+val forgedEmptyCRL: java.security.cert.X509CRL by lazy { buildCrl(revoked = emptyList(), signingKey = forgerKeyPair) }
+
+/** Lists [validCertificate] and names the trusted root as its issuer but is signed by another key. */
+val forgedRevokedCertificateCRL: java.security.cert.X509CRL by lazy {
+    buildCrl(revoked = listOf(validCertificate), signingKey = forgerKeyPair)
+}
+
+/** An empty CRL that covers only some reasons, through an issuing distribution point. */
+val partitionedEmptyCRL: java.security.cert.X509CRL by lazy {
+    buildCrl(revoked = emptyList()) {
+        addExtension(
+            Extension.issuingDistributionPoint,
+            true,
+            IssuingDistributionPoint(null, false, false, ReasonFlags(ReasonFlags.keyCompromise), false, false),
+        )
+    }
+}
+
+/** An empty delta CRL. */
+val deltaEmptyCRL: java.security.cert.X509CRL by lazy {
+    buildCrl(revoked = emptyList()) {
+        addExtension(Extension.deltaCRLIndicator, true, CRLNumber(BigInteger.ONE))
+    }
+}
+
+const val VALID_CERTIFICATE_CRL_URI = "https://example.com/crl.pem"
+
+fun fullName(uri: String) = DistributionPointName(GeneralNames(GeneralName(GeneralName.uniformResourceIdentifier, uri)))
+
+/** A CRL limited by the issuing distribution point [scope]. */
+fun scopedCrl(scope: IssuingDistributionPoint, revoked: List<X509Certificate> = emptyList()): java.security.cert.X509CRL =
+    buildCrl(revoked) { addExtension(Extension.issuingDistributionPoint, true, scope) }
+
+val emptyCRLWithoutNextUpdate: java.security.cert.X509CRL by lazy { buildCrl(revoked = emptyList(), withNextUpdate = false) }
+
+/** A CRL issued at [thisUpdate], valid for 30 days, that lists [revoked] as revoked from [revokedAt]. */
+fun crlIssuedAt(
+    thisUpdate: Date,
+    revoked: List<X509Certificate> = emptyList(),
+    revokedAt: Date = thisUpdate,
+): java.security.cert.X509CRL = buildCrl(revoked, thisUpdate = thisUpdate, revokedAt = revokedAt)
+
+private fun buildCrl(
+    revoked: List<X509Certificate>,
+    signingKey: KeyPair = trustedKeyPair,
+    withNextUpdate: Boolean = true,
+    // A minute ago, so that a CRL built lazily is already current for a clock read earlier.
+    thisUpdate: Date = Date(System.currentTimeMillis() - 60_000),
+    revokedAt: Date = thisUpdate,
+    extensions: X509v2CRLBuilder.() -> Unit = {},
+): java.security.cert.X509CRL {
+    val issuerName = X500Name(trustedCertificate.subjectX500Principal.name)
+    val nextUpdate = Date(thisUpdate.time + 30 * 86400000L)
+
+    val crlBuilder = X509v2CRLBuilder(issuerName, thisUpdate).apply {
+        revoked.forEach { addCRLEntry(it.serialNumber, revokedAt, CRLReason.unspecified) }
+        if (withNextUpdate) setNextUpdate(nextUpdate)
         addExtension(
             Extension.authorityKeyIdentifier,
             false,
             extUtils.createAuthorityKeyIdentifier(trustedKeyPair.public)
         )
+        extensions()
     }
 
-    val signer = JcaContentSignerBuilder(signatureAlgorithm).build(trustedKeyPair.private)
-    JcaX509CRLConverter().getCRL(crlBuilder.build(signer))
+    val signer = JcaContentSignerBuilder(signatureAlgorithm).build(signingKey.private)
+    return JcaX509CRLConverter().getCRL(crlBuilder.build(signer))
 }
 
 private fun buildLeafCertificateWithValidity(
     notBefore: Date,
     notAfter: Date,
+    distributionPoints: List<String> = emptyList(),
 ): X509Certificate {
     val keyPair = KeyPairGenerator.getInstance("EC").apply {
         initialize(ECGenParameterSpec("secp256r1"))
@@ -351,8 +410,35 @@ private fun buildLeafCertificateWithValidity(
         subject,
         keyPair.public,
     )
+    if (distributionPoints.isNotEmpty()) {
+        val names = distributionPoints.map { GeneralName(GeneralName.uniformResourceIdentifier, it) }
+        builder.addExtension(
+            Extension.cRLDistributionPoints,
+            false,
+            CRLDistPoint(arrayOf(DistributionPoint(DistributionPointName(GeneralNames(names.toTypedArray())), null, null))),
+        )
+    }
     val signer = JcaContentSignerBuilder(signatureAlgorithm).build(trustedKeyPair.private)
     return JcaX509CertificateConverter().getCertificate(builder.build(signer))
+}
+
+/** Names a malformed URI before the distribution point of [validCertificate]. */
+val certificateWithAMalformedDistributionPoint: X509Certificate by lazy {
+    val notBefore = Date()
+    buildLeafCertificateWithValidity(
+        notBefore,
+        Date(notBefore.time + 30 * 86400000L),
+        distributionPoints = listOf("https://exa mple.com/crl.pem", "https://example.com/crl.pem"),
+    )
+}
+
+val certificateWithTwoDistributionPoints: X509Certificate by lazy {
+    val notBefore = Date()
+    buildLeafCertificateWithValidity(
+        notBefore,
+        Date(notBefore.time + 30 * 86400000L),
+        distributionPoints = listOf("https://example.com/crl.pem", "https://mirror.example.com/crl.pem"),
+    )
 }
 
 val notYetValidCertificate: X509Certificate by lazy {
