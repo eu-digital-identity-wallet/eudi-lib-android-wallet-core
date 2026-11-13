@@ -23,9 +23,11 @@ import eu.europa.ec.eudi.wallet.document.internal.sdJwtVcString
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.javaPublicKey
 import org.multipaz.sdjwt.SdJwt
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
 
 /**
  * Certifies SD-JWT VC credentials by parsing the SD-JWT, verifying the device public key binding,
@@ -40,6 +42,7 @@ import org.multipaz.sdjwt.SdJwt
  * - The issuer signature: the issuer-signed JWT verifies with the public key of the first
  *   certificate of its `x5c` header
  * - Valid SD-JWT VC structure (parseable by the SD-JWT library)
+ * - The `vct` claim is the vct of the document
  * - Presence of the `cnf` (confirmation) claim with a `jwk` key
  * - Device public key binding: the key in the `cnf` claim must match the credential's key
  * - Extraction of validity period from `nbf`/`iat` and `exp` claims
@@ -58,6 +61,10 @@ class SdJwtVcCredentialCertifier : CredentialCertification {
         }
 
         val (_, claims) = sdJwt.jwt
+
+        require(credential is SdJwtVcCredential) { "Credential is not an SD-JWT VC credential" }
+        val vct = (claims["vct"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        require(vct == credential.vct) { "vct in SD-JWT VC does not match the one in the request" }
 
         val cnf = claims["cnf"]
             ?: throw IllegalArgumentException("SD-JWT VC is missing required 'cnf' claim for key binding")

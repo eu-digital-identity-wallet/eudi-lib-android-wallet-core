@@ -54,7 +54,8 @@ fun interface TrustPolicy {
         /**
          * Informational only: store the document regardless of the trust result, and attach
          * the trust verification result to the `DocumentIssued` event. A credential whose issuer
-         * signature does not verify is not stored.
+         * signature does not verify is not stored. In a re-issuance, the new document replaces
+         * the document whatever the trust result.
          */
         INFORM
     }

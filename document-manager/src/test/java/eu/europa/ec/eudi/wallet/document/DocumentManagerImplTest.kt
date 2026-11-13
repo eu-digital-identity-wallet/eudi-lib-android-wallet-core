@@ -255,13 +255,41 @@ class DocumentManagerImplTest {
         }
     }
 
+    @Test
+    fun `should return failure result when the vct of the sd-jwt vc does not match the document`() {
+        val unsignedDocument = createSdJwtVcDocument()
+
+        val storeDocumentResult = documentManager.storeIssuedDocument(
+            unsignedDocument,
+            sdJwtVcCredentials(unsignedDocument, signingKey = issuerPrivateKey, vct = "urn:eudi:pid:2"),
+        )
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "vct in SD-JWT VC")
+    }
+
+    @Test
+    fun `should return failure result when the sd-jwt vc has no vct`() {
+        val unsignedDocument = createSdJwtVcDocument()
+
+        val storeDocumentResult = documentManager.storeIssuedDocument(
+            unsignedDocument,
+            sdJwtVcCredentials(unsignedDocument, signingKey = issuerPrivateKey, vct = null),
+        )
+
+        assertTrue(storeDocumentResult.isFailure)
+        assertContains(storeDocumentResult.exceptionOrNull()?.message.orEmpty(), "vct in SD-JWT VC")
+    }
+
     /**
-     * Builds issuer-provided SD-JWT VCs bound to the keys of [unsignedDocument], signed with
-     * [signingKey] and carrying the sample issuer certificate in their x5c header.
+     * Builds issuer-provided SD-JWT VCs of type [vct], or without `vct` when null, bound to the
+     * keys of [unsignedDocument], signed with [signingKey] and carrying the sample issuer
+     * certificate in their x5c header.
      */
     private fun sdJwtVcCredentials(
         unsignedDocument: UnsignedDocument,
         signingKey: PrivateKey,
+        vct: String? = SD_JWT_VCT,
     ): List<IssuerProvidedCredential> = runBlocking {
         unsignedDocument.getPoPSigners().map { signer ->
             val keyInfo = signer.getKeyInfo()
@@ -271,7 +299,7 @@ class DocumentManagerImplTest {
                 .build()
             val claims = JWTClaimsSet.Builder()
                 .issuer("https://issuer.example")
-                .claim("vct", SD_JWT_VCT)
+                .apply { if (vct != null) claim("vct", vct) }
                 .claim("cnf", mapOf("jwk" to JWK.parse(keyInfo.publicKey.toJwk().toString()).toJSONObject()))
                 .build()
             val jwt = SignedJWT(header, claims).apply { sign(ECDSASigner(signingKey as ECPrivateKey)) }

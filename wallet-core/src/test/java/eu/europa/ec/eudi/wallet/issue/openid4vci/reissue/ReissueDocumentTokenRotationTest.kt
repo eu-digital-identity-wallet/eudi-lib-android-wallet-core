@@ -16,11 +16,22 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci.reissue
 
+import com.nimbusds.oauth2.sdk.`as`.ReadOnlyAuthorizationServerMetadata
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
+import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuanceError
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerEndpoint
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerId
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.openid4vci.Issuer
 import eu.europa.ec.eudi.openid4vci.RefreshToken
+import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
+import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.Outcome
+import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreation
@@ -41,19 +52,22 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import java.net.URI
 import java.time.Instant
 import java.util.Collections
 import java.util.concurrent.Executor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import com.nimbusds.oauth2.sdk.id.Issuer as AuthorizationServerId
 
 /**
  * Documents issued under one authorization (e.g. the PID as mso_mdoc and as SD-JWT VC) share its
  * refresh token. These tests check that a refresh rotating it, during the re-issuance of one of
  * them, leaves none of them holding the discarded token.
  *
- * The mocked issuer has no credential offer, so every re-issuance fails right after the refresh.
+ * The mocked document manager cannot create documents, so every re-issuance fails right after the
+ * refresh.
  * That is the case where the rotated token used to be lost.
  */
 class ReissueDocumentTokenRotationTest {
@@ -158,7 +172,16 @@ class ReissueDocumentTokenRotationTest {
         assertEquals("rt-0", load("mdoc").refreshToken)
     }
 
+    private val documentManager = mockk<DocumentManager>(relaxed = true) {
+        every { getDocumentById(any()) } returns mockk<IssuedDocument>(relaxed = true) {
+            every { format } returns SdJwtVcFormat(VCT)
+        }
+        every { createDocument(any(), any(), any()) } returns
+            Outcome.failure(IllegalStateException("No document is created in these tests"))
+    }
+
     private fun manager(issuer: Issuer): DefaultOpenId4VciManager {
+        every { issuer.credentialOffer } returns credentialOffer()
         val issuerCreator = mockk<IssuerCreator>(relaxed = true) {
             coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
                 issuer,
@@ -168,7 +191,7 @@ class ReissueDocumentTokenRotationTest {
         return spyk(
             DefaultOpenId4VciManager(
                 context = mockk(relaxed = true),
-                documentManager = mockk(relaxed = true),
+                documentManager = documentManager,
                 walletAttestationKeyManager = mockk(),
                 config = OpenId4VciManager.Config(
                     clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.None("client"),
@@ -189,6 +212,7 @@ class ReissueDocumentTokenRotationTest {
     ): IssueEvent {
         val end = CompletableDeferred<IssueEvent>()
         reissueDocument(documentId, allowAuthorizationFallback, Executor { it.run() }) { event ->
+            if (event is IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy) event.resume(mockk(relaxed = true))
             if (event is IssueEvent.Failure || event is IssueEvent.Finished) end.complete(event)
         }
         return withTimeout(10_000) { end.await() }
@@ -216,4 +240,31 @@ class ReissueDocumentTokenRotationTest {
     private suspend fun load(documentId: String): IssuanceMetadata = IssuanceMetadata.fromByteArray(
         storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!.toByteArray()
     )
+
+    /** An offer of one SD-JWT VC configuration of type [VCT], the type of the stored documents. */
+    private fun credentialOffer(): CredentialOffer {
+        val issuerId = CredentialIssuerId("https://issuer.example.com").getOrThrow()
+        val configurationId = CredentialConfigurationIdentifier("eu.europa.ec.eudi.pid_vc_sd_jwt")
+        return mockk {
+            every { credentialIssuerIdentifier } returns issuerId
+            every { credentialConfigurationIdentifiers } returns listOf(configurationId)
+            every { grants } returns null
+            every { credentialIssuerMetadata } returns CredentialIssuerMetadata(
+                credentialIssuerIdentifier = issuerId,
+                credentialEndpoint = CredentialIssuerEndpoint("https://issuer.example.com/credential").getOrThrow(),
+                credentialConfigurationsSupported = mapOf(
+                    configurationId to SdJwtVcCredential(credentialMetadata = null, type = VCT),
+                ),
+                issuerInfo = null,
+            )
+            every { authorizationServerMetadata } returns mockk<ReadOnlyAuthorizationServerMetadata> {
+                every { issuer } returns AuthorizationServerId("https://auth.example.com")
+                every { tokenEndpointURI } returns URI("https://auth.example.com/token")
+            }
+        }
+    }
+
+    private companion object {
+        const val VCT = "urn:eudi:pid:1"
+    }
 }

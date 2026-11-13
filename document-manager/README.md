@@ -23,8 +23,8 @@ Key features include:
 
 **Note on credential trust and verification:** Before storing a credential, this library verifies
 its integrity: the issuer signature with the certificate carried in the credential (`x5chain` for
-mdoc, `x5c` for SD-JWT VC), the binding to the device key, and for mdoc the data element digests
-and the `docType`. It does **not** perform issuer trust verification (e.g., X.509 certificate path
+mdoc, `x5c` for SD-JWT VC), the binding to the device key, for mdoc the data element digests
+and the `docType`, and for SD-JWT VC the `vct`. It does **not** perform issuer trust verification (e.g., X.509 certificate path
 validation against trusted issuer lists, or issuer metadata resolution). Issuer trust verification
 is the responsibility of the integrating layer, which has access to trusted issuer lists and
 certificate trust stores.

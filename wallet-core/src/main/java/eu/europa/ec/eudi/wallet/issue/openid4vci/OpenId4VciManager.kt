@@ -216,7 +216,7 @@ interface OpenId4VciManager {
      *
      * This method allows re-issuing a credential without requiring the user to go through
      * the full authorization flow again. It uses the stored refresh token to obtain a new
-     * access token if needed, and issues a new credential with the same keys.
+     * access token if needed, and issues a new credential bound to new keys.
      *
      * **Prerequisites:**
      * - The document must have been issued successfully with a refresh token
@@ -225,8 +225,18 @@ interface OpenId4VciManager {
      *
      * **Use Cases:**
      * - Credential renewal/refresh before expiration
-     * - Updating credential data while maintaining the same keys
+     * - Updating credential data
      * - Re-issuing after credential revocation
+     *
+     * The document and its keys are deleted once the new document is stored. It is kept when the
+     * credential configuration no longer has the format of the document, for example another
+     * docType or vct: a
+     * [eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceFormatMismatchException] is
+     * then delivered via [IssueEvent.Failure], and no token and no credential is requested. It is
+     * also kept when the new credential is rejected, for example under
+     * [eu.europa.ec.eudi.wallet.trust.TrustPolicy.Action.ENFORCE] when its issuer is not trusted.
+     * Under [eu.europa.ec.eudi.wallet.trust.TrustPolicy.Action.INFORM], the new document replaces
+     * the document whatever the trust result.
      *
      * @param documentId the ID of the document to re-issue
      * @param allowAuthorizationFallback if `true` (default), falls back to a full OAuth authorization

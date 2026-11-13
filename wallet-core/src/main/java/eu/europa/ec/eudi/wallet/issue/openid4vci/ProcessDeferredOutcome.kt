@@ -23,6 +23,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceFormatMismatchException
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
@@ -77,6 +78,15 @@ internal class ProcessDeferredOutcome(
                 }
 
                 is DeferredCredentialQueryOutcome.Issued -> {
+                    // A deferred re-issuance started before reissueDocument checked the format
+                    // of the document is checked here, before the document is replaced
+                    deferredContext?.replacesDocumentId
+                        ?.let { documentManager.getDocumentById(it)?.format }
+                        ?.let { documentFormat ->
+                            if (documentFormat != deferredDocument.format) {
+                                throw ReissuanceFormatMismatchException(documentFormat, deferredDocument.format)
+                            }
+                        }
                     val credentials = outcome.credentials.map { it.credential }.zip(keyAliases)
                     val trustResult = evaluateIssuerTrust(
                         issuerTrustConfig = issuerTrustConfig,
