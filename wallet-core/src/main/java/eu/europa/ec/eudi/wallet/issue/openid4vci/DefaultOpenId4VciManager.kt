@@ -506,7 +506,11 @@ internal class DefaultOpenId4VciManager(
                         }
                         metadataWithLatestTokens.refreshToken?.let { oldRefreshToken ->
                             runCatching {
-                                issuanceMetadataStore.storeRefreshedTokens(oldRefreshToken, refreshedRequest) { failedId, error ->
+                                issuanceMetadataStore.storeRefreshedTokens(
+                                    oldRefreshToken,
+                                    refreshedRequest,
+                                    recordReadBeforeRefresh = documentId to metadataWithLatestTokens,
+                                ) { failedId, error ->
                                     logger?.e(TAG, "Failed to store refreshed tokens for document $failedId", error)
                                 }
                             }

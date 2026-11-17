@@ -101,6 +101,9 @@ internal class IssuanceMetadataStore(
      * record that cannot be decoded or whose tokens can never be decrypted. A record that cannot be
      * read for a reason that may be temporary is reported, since it may hold the old refresh token.
      *
+     * @param recordReadBeforeRefresh the id and the record of the document whose tokens were refreshed,
+     * as read before the refresh. This record is updated without being decrypted again, so a decryption
+     * failure cannot keep it on the old refresh token.
      * @param onUpdateFailure called for each record that could not be read or updated, other than
      * deleted ones and ones that can never be read
      * @return the ids of the documents whose records were updated
@@ -108,13 +111,14 @@ internal class IssuanceMetadataStore(
     suspend fun storeRefreshedTokens(
         oldRefreshToken: String,
         refreshedRequest: AuthorizedRequest,
+        recordReadBeforeRefresh: Pair<String, IssuanceMetadata>? = null,
         onUpdateFailure: (documentId: String, error: Throwable) -> Unit = { _, _ -> },
     ): List<String> {
         encryptLegacyRecords()
         return recordUpdateLock.withLock {
             val table = table()
             table.enumerateWithData().mapNotNull { (documentId, bytes) ->
-                val metadata = try {
+                val metadata = recordReadBeforeRefresh?.takeIf { it.first == documentId }?.second ?: try {
                     bytes.toIssuanceMetadata(documentId)
                 } catch (e: SealedDataUnreadableException) {
                     null

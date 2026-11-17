@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.AeadCipher
 import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
 import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager
@@ -56,6 +57,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.net.URI
+import java.security.ProviderException
 import java.time.Instant
 import java.util.Collections
 import java.util.concurrent.Executor
@@ -114,6 +116,25 @@ class ReissueDocumentTokenRotationTest {
             assertEquals("rt-1", load("sd-jwt").refreshToken)
             assertEquals("at-1", load("sd-jwt").accessToken)
             assertEquals("rt-100", load("mdl").refreshToken)
+        }
+
+    @Test
+    fun `a rotated refresh token is stored for the re-issued document when its record cannot be decrypted again`() =
+        runBlocking {
+            store("mdoc", refreshToken = "rt-0")
+            // Once the refresh was sent, the Keystore fails to decrypt for a reason that may be temporary
+            val keystore = object : AeadCipher {
+                override fun encrypt(plaintext: ByteArray, associatedData: ByteArray) =
+                    tokenCipher.encrypt(plaintext, associatedData)
+                override fun decrypt(ivAndCiphertext: ByteArray, associatedData: ByteArray): ByteArray {
+                    if (sentRefreshTokens.isNotEmpty()) throw ProviderException("Keystore operation failed")
+                    return tokenCipher.decrypt(ivAndCiphertext, associatedData)
+                }
+            }
+
+            assertIs<IssueEvent.Failure>(manager(rotatingIssuer, keystore).reissue("mdoc"))
+
+            assertEquals("rt-1", load("mdoc").refreshToken)
         }
 
     @Test
@@ -185,7 +206,7 @@ class ReissueDocumentTokenRotationTest {
             Outcome.failure(IllegalStateException("No document is created in these tests"))
     }
 
-    private fun manager(issuer: Issuer): DefaultOpenId4VciManager {
+    private fun manager(issuer: Issuer, tokenCipher: AeadCipher = this.tokenCipher): DefaultOpenId4VciManager {
         every { issuer.credentialOffer } returns credentialOffer()
         val issuerCreator = mockk<IssuerCreator>(relaxed = true) {
             coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
