@@ -195,17 +195,12 @@ internal data class ResolvedDcApiRequest(val protocol: String, val index: Int)
 
 /**
  * Resolves which entry of the request's `requests[]` array the wallet will process, returned as a
- * [ResolvedDcApiRequest] (the chosen protocol and its index). A Digital Credential API request may
- * offer the same exchange under several alternative protocols; this picks the one to honour:
- *  1. The protocol the OS picker selected ([selectedProtocol]), when it is in [supportedProtocols].
- *  2. Otherwise, the first offered protocol that is in [supportedProtocols]. This covers the case
- *     where the picker selected a protocol the wallet does not support but a supported alternative
- *     is offered for the same request. The consent screen and the per-document filter remain the
- *     disclosure gate, so the wrong data is never released.
+ * [ResolvedDcApiRequest] (the chosen protocol and its index): the entry whose protocol the OS
+ * picker selected ([selectedProtocol]).
  *
  * @throws IllegalStateException when nothing was selected, the request has no
- *   `GetDigitalCredentialOption` or no `requests[]` array, or no offered protocol is in
- *   [supportedProtocols].
+ *   `GetDigitalCredentialOption` or no `requests[]` array, or the selected protocol is not in
+ *   [supportedProtocols] or not in `requests[]`.
  */
 @OptIn(ExperimentalDigitalCredentialApi::class)
 internal fun ProviderGetCredentialRequest.resolveDcApiRequest(
@@ -221,17 +216,10 @@ internal fun ProviderGetCredentialRequest.resolveDcApiRequest(
     // Boundary: compare the on-the-wire protocol strings against the supported set's identifiers.
     val supportedIds = supportedProtocols.map { it.identifier }
 
-    // 1. Selected protocol, if we support it and it is present in requests[].
-    if (chosen in supportedIds) {
-        val index = protocols.indexOf(chosen)
-        if (index >= 0) return ResolvedDcApiRequest(chosen, index)
-    }
-    // 2. Fallback: first offered protocol we support (alternatives, per the DC API spec).
-    protocols.indexOfFirst { it in supportedIds }
-        .takeIf { it >= 0 }
-        ?.let { return ResolvedDcApiRequest(protocols[it], it) }
-    // 3. No supported alternatives.
-    error("Selected protocol '$chosen' is not supported and requests[] offers no supported alternative: $protocols")
+    check(chosen in supportedIds) { "Selected protocol '$chosen' is not supported" }
+    val index = protocols.indexOf(chosen)
+    check(index >= 0) { "Selected protocol '$chosen' is not in requests[]: $protocols" }
+    return ResolvedDcApiRequest(chosen, index)
 }
 
 /**
