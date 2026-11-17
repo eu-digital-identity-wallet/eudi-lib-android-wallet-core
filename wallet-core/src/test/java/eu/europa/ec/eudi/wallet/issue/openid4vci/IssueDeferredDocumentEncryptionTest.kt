@@ -39,6 +39,7 @@ import kotlinx.coroutines.withTimeout
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.util.concurrent.Executor
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
@@ -62,13 +63,15 @@ class IssueDeferredDocumentEncryptionTest {
         val requestSentWhenStored = mutableListOf<Boolean>()
         every { documentManager.storeDeferredDocument(any(), capture(stored)) } answers {
             requestSentWhenStored += requestSent
-            Outcome.success(deferredDocument)
+            Outcome.success(deferredDocument(stored.captured))
         }
 
         // The issuer answers with an error, so the deferred issuance fails after the request
-        assertIs<DeferredIssueResult.DocumentFailed>(issueDeferred(deferredDocument))
+        val result = assertIs<DeferredIssueResult.DocumentFailed>(issueDeferred(deferredDocument))
 
         assertEquals(listOf(false), requestSentWhenStored)
+        // The result has the document as stored, so it can be issued again
+        assertContentEquals(stored.captured, assertIs<DeferredDocument>(result.document).relatedData)
         val storedText = stored.captured.toString(Charsets.UTF_8)
         listOf("tx-secret", "at-secret", "rt-secret").forEach { assertFalse(it in storedText) }
         val transaction = readContext(stored.captured).issuanceContext.authorizedTransaction

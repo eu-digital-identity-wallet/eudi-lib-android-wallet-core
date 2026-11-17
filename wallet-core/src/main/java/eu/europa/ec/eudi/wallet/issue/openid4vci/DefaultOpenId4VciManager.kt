@@ -274,6 +274,7 @@ internal class DefaultOpenId4VciManager(
         onIssueResult: OpenId4VciManager.OnDeferredIssueResult,
     ) {
         launch(executor, onIssueResult) { coroutineScope, callback ->
+            var storedDocument = deferredDocument
             try {
                 issuanceMetadataStore.encryptLegacyRecords()
 
@@ -294,12 +295,12 @@ internal class DefaultOpenId4VciManager(
                     logger = logger,
                 )
                 if (DeferredContext.isStoredInPlainText(deferredDocument.relatedData)) {
-                    storeEncrypted(deferredDocument, deferredContext)
+                    storedDocument = storeEncrypted(deferredDocument, deferredContext)
                 }
                 val clientAttestationPopKeyId = deferredContext.clientAttestationPopKeyId
                 when {
                     deferredContext.issuanceContext.hasExpired -> callback(
-                        DeferredIssueResult.DocumentExpired(deferredDocument)
+                        DeferredIssueResult.DocumentExpired(storedDocument)
                     )
 
                     else -> {
@@ -331,11 +332,11 @@ internal class DefaultOpenId4VciManager(
                             logger = logger,
                             issuerTrustConfig = issuerTrustConfig,
                             issuanceMetadataStore = issuanceMetadataStore
-                        ).process(deferredDocument, deferredContext.keyAliases, outcome)
+                        ).process(storedDocument, deferredContext.keyAliases, outcome)
                     }
                 }
             } catch (e: Throwable) {
-                callback(DeferredIssueResult.DocumentFailed(deferredDocument, e))
+                callback(DeferredIssueResult.DocumentFailed(storedDocument, e))
                 coroutineScope.cancel("issueDeferredDocument failed", e)
             }
         }
@@ -658,11 +659,15 @@ internal class DefaultOpenId4VciManager(
      * Stores [deferredContext], encrypted, as the context of [deferredDocument], whose context was
      * stored in plain text.
      *
+     * @return the document as stored, with the encrypted context
      * @throws IllegalStateException when the stored context has changed, or the document was deleted,
      * since [deferredDocument] was read
      */
-    private suspend fun storeEncrypted(deferredDocument: DeferredDocument, deferredContext: DeferredContext) {
-        deferredContextWriteLock.withLock {
+    private suspend fun storeEncrypted(
+        deferredDocument: DeferredDocument,
+        deferredContext: DeferredContext,
+    ): DeferredDocument {
+        val encrypted = deferredContextWriteLock.withLock {
             val stored = documentManager.getDocumentById(deferredDocument.id) as? DeferredDocument
             check(stored?.relatedData?.contentEquals(deferredDocument.relatedData) == true) {
                 "The deferred context of document ${deferredDocument.id} changed or was deleted since it was read"
@@ -673,6 +678,7 @@ internal class DefaultOpenId4VciManager(
             ).getOrThrow()
         }
         logger?.d(TAG, "Stored the deferred context of document ${deferredDocument.id} encrypted")
+        return encrypted
     }
 
     /**
