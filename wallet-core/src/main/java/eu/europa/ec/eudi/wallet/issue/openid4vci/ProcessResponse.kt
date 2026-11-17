@@ -25,11 +25,13 @@ import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistration
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
@@ -37,8 +39,6 @@ import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.io.bytestring.ByteString
-import org.multipaz.storage.Storage
 import kotlin.coroutines.resume
 
 internal class ProcessResponse(
@@ -53,7 +53,8 @@ internal class ProcessResponse(
     val issuer: Issuer,
     val documentToConfigurationMap: Map<UnsignedDocument, Pair<Offer.OfferedDocument, IssuanceRequestPayload>>,
     val dpopKeyAlias: String?,
-    val issuanceMetadataStorage: Storage,
+    val issuanceMetadataStore: IssuanceMetadataStore,
+    val tokenSealer: DataSealer,
     val clientAuthentication: ClientAuthentication,
     val replacesDocumentId: DocumentId? = null,
     val issuerTrustConfig: IssuerTrustConfig? = null,
@@ -172,7 +173,7 @@ internal class ProcessResponse(
 
                 documentManager.storeDeferredDocument(
                     unsignedDocument = unsignedDocument,
-                    relatedData = deferredContext.toBytes()
+                    relatedData = deferredContext.toBytes(unsignedDocument.id, tokenSealer)
                 ).getOrThrow()
             }.onSuccess { document ->
                 deferredDocumentIds.add(document.id)
@@ -252,10 +253,7 @@ internal class ProcessResponse(
                 issuerName = interactingParty?.toRegistrationCertificate()?.interactingPartyName()
             )
 
-            val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-
-            val bytes = ByteString(issuanceMetadata.toByteArray())
-            table.insert(key = documentId, data = bytes)
+            issuanceMetadataStore.insert(documentId, issuanceMetadata)
 
             logger?.d(TAG, "Stored issuance metadata for document $documentId")
         }.onFailure { error ->

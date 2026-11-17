@@ -35,21 +35,29 @@ import eu.europa.ec.eudi.openid4vci.SignOperation
 import eu.europa.ec.eudi.openid4vci.Signer
 import eu.europa.ec.eudi.openid4vci.SubmissionOutcome
 import eu.europa.ec.eudi.openid4vci.TransactionId
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.SecureAreaDpopSigner
+import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.DeferredTokens
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredDeferredContext
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.StoredIssuerRegistration
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.TokenRecord
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.UndecodableTokenRecordException
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.boundValues
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.decodeTokenRecord
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.tokenRecordJson
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
 import eu.europa.ec.eudi.openid4vci.DPoPConfig as VciDPoPConfig
 import eu.europa.ec.eudi.openid4vci.ProvisionDPoPSigner as VciProvisionDPoPSigner
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 
 /**
  * Factory for creating [DeferredContext] instances from key aliases and deferred submission outcomes.
@@ -115,14 +123,59 @@ internal data class DeferredContext(
     companion object
 }
 
+/**
+ * Reads the stored context of the deferred document [documentId] and decrypts its transaction id and
+ * tokens with [tokenSealer]. The tokens are bound to the fields of the context as they are stored,
+ * except the [StoredDeferredContext.UNBOUND_FIELDS].
+ *
+ * @throws eu.europa.ec.eudi.wallet.internal.crypto.SealedDataUnreadableException when the tokens
+ * can never be decrypted
+ * @throws UndecodableTokenRecordException when the context cannot be decoded
+ */
+internal fun readStoredDeferredContext(
+    bytes: ByteArray,
+    documentId: String,
+    tokenSealer: DataSealer,
+): Pair<StoredDeferredContext, DeferredTokens> {
+    val fields = decodeTokenRecord(documentId) { tokenRecordJson.parseToJsonElement(String(bytes, Charsets.UTF_8)).jsonObject }
+    val dto = decodeTokenRecord(documentId) {
+        tokenRecordJson.decodeFromJsonElement(StoredDeferredContext.serializer(), fields)
+    }
+    val tokens = dto.sealedTokens?.let { sealedTokens ->
+        if (dto.transactionId != null || dto.accessToken != null || dto.refreshToken != null) {
+            throw UndecodableTokenRecordException("The deferred context of document $documentId has both encrypted and plain tokens")
+        }
+        val boundFields = decodeTokenRecord(documentId) { boundValues(fields, StoredDeferredContext.UNBOUND_FIELDS) }
+        val opened = tokenSealer.open(TokenRecord.DEFERRED_CONTEXT, documentId, boundFields, sealedTokens)
+        decodeTokenRecord(documentId) { tokenRecordJson.decodeFromString<DeferredTokens>(opened.toString(Charsets.UTF_8)) }
+    } ?: DeferredTokens( // A context written before the tokens were encrypted
+        transactionId = dto.transactionId
+            ?: throw UndecodableTokenRecordException("The deferred context of document $documentId has no transaction id"),
+        accessToken = dto.accessToken
+            ?: throw UndecodableTokenRecordException("The deferred context of document $documentId has no access token"),
+        refreshToken = dto.refreshToken,
+    )
+    return dto to tokens
+}
+
+/**
+ * Reads the context stored with the deferred document [documentId], decrypting its transaction id
+ * and tokens with [tokenSealer].
+ *
+ * @throws eu.europa.ec.eudi.wallet.internal.crypto.SealedDataUnreadableException when
+ * they can never be decrypted
+ * @throws UndecodableTokenRecordException when the context cannot be decoded
+ */
 internal fun DeferredContext.Companion.fromBytes(
     bytes: ByteArray,
+    documentId: String,
+    tokenSealer: DataSealer,
     walletKeyManager: WalletKeyManager,
     walletInstanceAttestationProvider: WalletInstanceAttestationProvider?,
     dpopConfig: DPopConfig.Custom? = null,
     logger: Logger? = null,
 ): DeferredContext {
-    val dto = Json.decodeFromString<StoredDeferredContext>(String(bytes, Charsets.UTF_8))
+    val (dto, tokens) = readStoredDeferredContext(bytes, documentId, tokenSealer)
 
     // Recreate client authentication
     val clientAuthentication =
@@ -190,22 +243,22 @@ internal fun DeferredContext.Companion.fromBytes(
 
     // Build transaction
     val accessToken = if (dto.accessTokenType == "DPoP") {
-        AccessToken.DPoP(dto.accessToken, null)
+        AccessToken.DPoP(tokens.accessToken, null)
     } else {
-        AccessToken.Bearer(dto.accessToken, null)
+        AccessToken.Bearer(tokens.accessToken, null)
     }
 
     val transaction = AuthorizedTransaction(
         authorizedRequest = AuthorizedRequest(
             accessToken = accessToken,
-            refreshToken = dto.refreshToken?.let { RefreshToken(it) },
+            refreshToken = tokens.refreshToken?.let { RefreshToken(it) },
             credentialIdentifiers = emptyMap(),
             timestamp = Instant.now(),
             grant = Grant.AuthorizationCode,
             authorizationServerDpopNonce = null,
             resourceServerDpopNonce = null,
         ),
-        transactionId = TransactionId(dto.transactionId)
+        transactionId = TransactionId(tokens.transactionId)
     )
 
     return DeferredContext(
@@ -221,9 +274,26 @@ internal fun DeferredContext.Companion.fromBytes(
     )
 }
 
-internal fun DeferredContext.toBytes(): ByteArray {
+/**
+ * Whether [bytes] is a deferred context stored before its transaction id and tokens were encrypted.
+ */
+internal fun DeferredContext.Companion.isStoredInPlainText(bytes: ByteArray): Boolean =
+    decodeTokenRecord("a deferred document") {
+        tokenRecordJson.decodeFromString<StoredDeferredContext>(String(bytes, Charsets.UTF_8))
+    }.sealedTokens == null
+
+/**
+ * Serializes this context to be stored with the deferred document [documentId]. Its transaction id
+ * and tokens are encrypted with [tokenSealer].
+ */
+internal fun DeferredContext.toBytes(documentId: String, tokenSealer: DataSealer): ByteArray {
     val tx = issuanceContext.authorizedTransaction
     val cfg = issuanceContext.config
+    val tokens = DeferredTokens(
+        transactionId = tx.transactionId.value,
+        accessToken = tx.authorizedRequest.accessToken.accessToken,
+        refreshToken = tx.authorizedRequest.refreshToken?.refreshToken,
+    )
 
     val dto = StoredDeferredContext(
         credentialIssuerId = cfg.credentialIssuerId.toString(),
@@ -236,10 +306,7 @@ internal fun DeferredContext.toBytes(): ByteArray {
         dPoPKeyAlias = dPoPKeyAlias,
         clientAttestationPopKeyId = clientAttestationPopKeyId,
         clientAttestationJwt = null,
-        transactionId = tx.transactionId.value,
-        accessToken = tx.authorizedRequest.accessToken.accessToken,
         accessTokenType = if (tx.authorizedRequest.accessToken is AccessToken.DPoP) "DPoP" else "Bearer",
-        refreshToken = tx.authorizedRequest.refreshToken?.refreshToken,
         requestEncryptionKeyJwk = cfg.requestEncryptionSpec?.recipientKey?.toJSONString(),
         requestEncryptionMethod = cfg.requestEncryptionSpec?.encryptionMethod?.name,
         responseEncryptionMethod = cfg.responseEncryptionParams?.first?.name,
@@ -250,5 +317,13 @@ internal fun DeferredContext.toBytes(): ByteArray {
         isUserTriggered = isUserTriggered
     )
 
-    return Json.encodeToString(dto).toByteArray(Charsets.UTF_8)
+    val fields = tokenRecordJson.encodeToJsonElement(StoredDeferredContext.serializer(), dto).jsonObject
+    val sealedTokens = tokenSealer.seal(
+        TokenRecord.DEFERRED_CONTEXT,
+        documentId,
+        boundValues(fields, StoredDeferredContext.UNBOUND_FIELDS),
+        tokenRecordJson.encodeToString(DeferredTokens.serializer(), tokens).toByteArray(Charsets.UTF_8)
+    )
+    val record = JsonObject(fields + ("sealedTokens" to JsonPrimitive(sealedTokens)))
+    return tokenRecordJson.encodeToString(JsonObject.serializer(), record).toByteArray(Charsets.UTF_8)
 }

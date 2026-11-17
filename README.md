@@ -1942,6 +1942,9 @@ through the full authorization flow again. After a credential is successfully is
 automatically stores the authorization context. This metadata
 enables subsequent re-issuance using the stored refresh token.
 
+The access and refresh tokens are stored encrypted; see
+[Encryption of Stored Tokens](#encryption-of-stored-tokens).
+
 The re-issued credential replaces the document: the document is deleted once the new one is stored.
 The document is kept when:
 
@@ -1990,7 +1993,7 @@ openId4VciManager.reissueDocument(documentId) { event ->
 ##### Background Re-Issuance
 
 For performing re-issuance in the background, pass `allowAuthorizationFallback = false` to `reissueDocument()` if you want
-to prevent the library from triggering the authorization flow if the refresh token is no longer valid (default implementation is opening a browser). In this scenario a `ReissuanceAuthorizationException` is delivered via
+to prevent the library from triggering the authorization flow if the refresh token is no longer valid or the stored tokens can never be decrypted (default implementation is opening a browser). In this scenario a `ReissuanceAuthorizationException` is delivered via
 `IssueEvent.Failure`:
 
 ```kotlin
@@ -2013,6 +2016,21 @@ openId4VciManager.reissueDocument(
     }
 }
 ```
+
+#### Encryption of Stored Tokens
+
+The access and refresh tokens kept for re-issuance, and the transaction id and tokens kept with a
+deferred document, are stored encrypted with AES-GCM, with a 256-bit key in the Android Keystore.
+The key needs no user authentication, so re-issuance also works in the background. This also
+applies to a `Storage` set with `withIssuanceMetadataStorage`. An app that needs user
+authentication for the stored data can set its own `Storage` with `withIssuanceMetadataStorage`,
+for example one encrypted with a key bound to user authentication.
+
+Tokens stored in plain text by earlier versions are encrypted when an issuance, a re-issuance or a
+deferred issuance starts; the context of a deferred document, when its deferred issuance starts.
+
+When the stored tokens can never be decrypted, a re-issuance needs a new authorization, as for an
+expired refresh token, and `issueDeferredDocument` returns `DeferredIssueResult.DocumentFailed`.
 
 #### DPoP Support
 

@@ -40,6 +40,7 @@ import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.internal.wrappedWithContentNegotiation
 import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.getIssuanceMetadataWithoutTokens
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.presentation.PresentationManagerImpl
@@ -71,7 +72,6 @@ import eu.europa.ec.eudi.wallet.transfer.openId4vp.OpenId4VpManager
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.DcqlRequestProcessor
 import eu.europa.ec.eudi.wallet.trustmark.TrustMarkManager
 import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import org.multipaz.context.initializeApplication
@@ -871,9 +871,7 @@ interface EudiWallet : DocumentManager, PresentationManager, DocumentStatusResol
                     logger = loggerObj,
                     registeredIssuerResolver = { documentId ->
                         runBlocking {
-                            issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-                                .get(documentId)
-                                ?.let { IssuanceMetadata.fromByteArray(it.toByteArray()) }
+                            issuanceMetadataStorage.getIssuanceMetadataWithoutTokens(documentId)
                                 ?.let { RegisteredIssuer(it.issuerIdentifier, it.issuerName) }
                         }
                     },

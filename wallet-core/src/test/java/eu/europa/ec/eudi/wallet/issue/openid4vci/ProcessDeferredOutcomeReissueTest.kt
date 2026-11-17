@@ -22,6 +22,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceFormatMismatchException
 import io.mockk.every
 import io.mockk.mockk
@@ -70,6 +72,7 @@ class ProcessDeferredOutcomeReissueTest {
             documentManager = documentManager,
             callback = { result = it },
             deferredContext = reissuance,
+            tokenSealer = DataSealer(SoftwareAeadCipher()),
         ).process(deferredDocument, listOf("key-alias"), issued)
         return result
     }

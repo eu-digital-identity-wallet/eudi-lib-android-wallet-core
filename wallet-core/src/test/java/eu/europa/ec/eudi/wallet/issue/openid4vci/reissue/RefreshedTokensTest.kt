@@ -20,8 +20,13 @@ import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.Grant
 import eu.europa.ec.eudi.openid4vci.RefreshToken
+import eu.europa.ec.eudi.wallet.internal.crypto.AeadCipher
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.security.ProviderException
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.NoRecordStorageException
@@ -31,9 +36,15 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RefreshedTokensTest {
+
+    private val cipher = SoftwareAeadCipher()
+    private val sealer = DataSealer(cipher)
+
+    private fun Storage.store() = IssuanceMetadataStore(this, sealer)
 
     @Test
     fun `refreshed tokens replace the old ones in every document holding the old refresh token`() = runTest {
@@ -41,10 +52,13 @@ class RefreshedTokensTest {
         storage.put("mdoc", metadata(refreshToken = "rt-0"))
         storage.put("sd-jwt", metadata(refreshToken = "rt-0"))
 
-        val updated = storage.storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
+        val updated = storage.store().storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
 
         assertEquals(listOf("mdoc", "sd-jwt"), updated.sorted())
         listOf("mdoc", "sd-jwt").forEach { documentId ->
+            val record = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!
+                .toByteArray().toString(Charsets.UTF_8)
+            assertFalse("at-1" in record || "rt-1" in record, "The refreshed tokens are stored in plain text")
             val stored = storage.load(documentId)
             assertEquals("at-1", stored.accessToken)
             assertEquals("rt-1", stored.refreshToken)
@@ -58,7 +72,7 @@ class RefreshedTokensTest {
         storage.put("pid", metadata(refreshToken = "rt-0"))
         storage.put("mdl", metadata(refreshToken = "other-rt"))
 
-        val updated = storage.storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
+        val updated = storage.store().storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
 
         assertEquals(listOf("pid"), updated)
         assertEquals(metadata(refreshToken = "other-rt"), storage.load("mdl"))
@@ -69,7 +83,7 @@ class RefreshedTokensTest {
         val storage = EphemeralStorage()
         storage.put("pid", metadata(refreshToken = "rt-0"))
 
-        storage.storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = null))
+        storage.store().storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = null))
 
         val stored = storage.load("pid")
         assertEquals("at-1", stored.accessToken)
@@ -81,7 +95,7 @@ class RefreshedTokensTest {
         val storage = EphemeralStorage()
         storage.put("pid", metadata(refreshToken = "rt-0"))
 
-        storage.storeRefreshedTokens(
+        storage.store().storeRefreshedTokens(
             "rt-0",
             refreshed(accessToken = "at-1", refreshToken = "rt-1", bearer = true),
         )
@@ -96,7 +110,7 @@ class RefreshedTokensTest {
             .insert(key = "broken", data = ByteString("not json".toByteArray()))
         storage.put("pid", metadata(refreshToken = "rt-0"))
 
-        val updated = storage.storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
+        val updated = storage.store().storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
 
         assertEquals(listOf("pid"), updated)
         assertEquals("rt-1", storage.load("pid").refreshToken)
@@ -104,15 +118,10 @@ class RefreshedTokensTest {
 
     @Test
     fun `a record failing to update does not stop the others from being updated`() = runTest {
-        val bytes = ByteString(metadata(refreshToken = "rt-0").toByteArray())
         val updatedKeys = mutableListOf<String>()
         val table = mockk<StorageTable> {
-            coEvery { enumerateWithData(any(), any(), any()) } returns listOf(
-                "mdoc" to bytes,
-                "deleted" to bytes,
-                "failing" to bytes,
-                "sd-jwt" to bytes,
-            )
+            coEvery { enumerateWithData(any(), any(), any()) } returns
+                listOf("mdoc", "deleted", "failing", "sd-jwt").map { it to storedRecord(it, metadata(refreshToken = "rt-0")) }
             coEvery { update(any(), any(), any(), any()) } answers { updatedKeys.add(firstArg<String>()); Unit }
             coEvery { update("deleted", any(), any(), any()) } throws NoRecordStorageException("deleted meanwhile")
             coEvery { update("failing", any(), any(), any()) } throws IllegalStateException("write failed")
@@ -120,7 +129,7 @@ class RefreshedTokensTest {
         val storage = mockk<Storage> { coEvery { getTable(any()) } returns table }
         val failures = mutableListOf<String>()
 
-        val updated = storage.storeRefreshedTokens(
+        val updated = storage.store().storeRefreshedTokens(
             "rt-0",
             refreshed(accessToken = "at-1", refreshToken = "rt-1"),
         ) { documentId, _ -> failures.add(documentId) }
@@ -136,20 +145,53 @@ class RefreshedTokensTest {
         val storage = EphemeralStorage()
         storage.put("pid", metadata(refreshToken = "other-rt"))
 
-        val updated = storage.storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
+        val updated = storage.store().storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1"))
 
         assertTrue(updated.isEmpty())
     }
 
-    private suspend fun Storage.put(documentId: String, metadata: IssuanceMetadata) {
-        getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-            .insert(key = documentId, data = ByteString(metadata.toByteArray()))
+    @Test
+    fun `a record that cannot be read for a reason that may be temporary is reported, and one that can never be read is skipped`() = runTest {
+        val storage = EphemeralStorage()
+        storage.put("doc", metadata(refreshToken = "rt-0"))
+        storage.put("busy", metadata(refreshToken = "rt-0"))
+        storage.put("stuck", metadata(refreshToken = "rt-0"))
+        // Encrypted with another key
+        IssuanceMetadataStore(storage, DataSealer(SoftwareAeadCipher())).insert("other-key", metadata(refreshToken = "rt-0"))
+        // The Keystore fails to decrypt the records of "busy" and "stuck", for a reason that may be temporary. The
+        // failure of "stuck" is an IllegalStateException, like the error of a record that cannot be decoded,
+        // and is reported all the same
+        val busyKeystore = object : AeadCipher {
+            override fun encrypt(plaintext: ByteArray, associatedData: ByteArray) = cipher.encrypt(plaintext, associatedData)
+            override fun decrypt(ivAndCiphertext: ByteArray, associatedData: ByteArray): ByteArray {
+                val record = associatedData.toString(Charsets.UTF_8)
+                if ("busy" in record) throw ProviderException("Keystore operation failed")
+                if ("stuck" in record) throw IllegalStateException("Keystore operation failed")
+                return cipher.decrypt(ivAndCiphertext, associatedData)
+            }
+        }
+        val failures = mutableListOf<String>()
+
+        val updated = IssuanceMetadataStore(storage, DataSealer(busyKeystore))
+            .storeRefreshedTokens("rt-0", refreshed(accessToken = "at-1", refreshToken = "rt-1")) { documentId, _ ->
+                failures += documentId
+            }
+
+        assertEquals(listOf("doc"), updated)
+        assertEquals(listOf("busy", "stuck"), failures.sorted())
     }
 
-    private suspend fun Storage.load(documentId: String): IssuanceMetadata =
-        IssuanceMetadata.fromByteArray(
-            getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!.toByteArray()
-        )
+    private suspend fun Storage.put(documentId: String, metadata: IssuanceMetadata) =
+        store().insert(documentId, metadata)
+
+    private suspend fun Storage.load(documentId: String): IssuanceMetadata = store().get(documentId)!!
+
+    /** The bytes the store writes for [metadata] as the record of [documentId]. */
+    private suspend fun storedRecord(documentId: String, metadata: IssuanceMetadata): ByteString {
+        val storage = EphemeralStorage()
+        storage.put(documentId, metadata)
+        return storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!
+    }
 
     private fun metadata(refreshToken: String?) = IssuanceMetadata(
         credentialIssuerId = "https://issuer.example.com",

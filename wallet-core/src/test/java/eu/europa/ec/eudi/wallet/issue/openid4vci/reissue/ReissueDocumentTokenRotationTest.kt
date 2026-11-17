@@ -32,6 +32,9 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.AeadCipher
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreation
@@ -40,6 +43,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -53,6 +57,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.net.URI
+import java.security.ProviderException
 import java.time.Instant
 import java.util.Collections
 import java.util.concurrent.Executor
@@ -73,6 +78,8 @@ import com.nimbusds.oauth2.sdk.id.Issuer as AuthorizationServerId
 class ReissueDocumentTokenRotationTest {
 
     private val storage = EphemeralStorage()
+    private val tokenCipher = SoftwareAeadCipher()
+    private val metadataStore = IssuanceMetadataStore(storage, DataSealer(tokenCipher))
 
     /** Refresh tokens sent to the token endpoint, in order. */
     private val sentRefreshTokens = Collections.synchronizedList(mutableListOf<String>())
@@ -109,6 +116,25 @@ class ReissueDocumentTokenRotationTest {
             assertEquals("rt-1", load("sd-jwt").refreshToken)
             assertEquals("at-1", load("sd-jwt").accessToken)
             assertEquals("rt-100", load("mdl").refreshToken)
+        }
+
+    @Test
+    fun `a rotated refresh token is stored for the re-issued document when its record cannot be decrypted again`() =
+        runBlocking {
+            store("mdoc", refreshToken = "rt-0")
+            // Once the refresh was sent, the Keystore fails to decrypt for a reason that may be temporary
+            val keystore = object : AeadCipher {
+                override fun encrypt(plaintext: ByteArray, associatedData: ByteArray) =
+                    tokenCipher.encrypt(plaintext, associatedData)
+                override fun decrypt(ivAndCiphertext: ByteArray, associatedData: ByteArray): ByteArray {
+                    if (sentRefreshTokens.isNotEmpty()) throw ProviderException("Keystore operation failed")
+                    return tokenCipher.decrypt(ivAndCiphertext, associatedData)
+                }
+            }
+
+            assertIs<IssueEvent.Failure>(manager(rotatingIssuer, keystore).reissue("mdoc"))
+
+            assertEquals("rt-1", load("mdoc").refreshToken)
         }
 
     @Test
@@ -180,7 +206,7 @@ class ReissueDocumentTokenRotationTest {
             Outcome.failure(IllegalStateException("No document is created in these tests"))
     }
 
-    private fun manager(issuer: Issuer): DefaultOpenId4VciManager {
+    private fun manager(issuer: Issuer, tokenCipher: AeadCipher = this.tokenCipher): DefaultOpenId4VciManager {
         every { issuer.credentialOffer } returns credentialOffer()
         val issuerCreator = mockk<IssuerCreator>(relaxed = true) {
             coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
@@ -199,6 +225,7 @@ class ReissueDocumentTokenRotationTest {
                     dpopConfig = DPopConfig.Disabled,
                     issuanceMetadataStorage = storage,
                 ),
+                tokenCipher = tokenCipher,
             )
         ) {
             every { this@spyk.issuerCreator } returns issuerCreator
@@ -233,13 +260,10 @@ class ReissueDocumentTokenRotationTest {
             tokenTimestamp = 1700000000L,
             grantType = "authorization_code",
         )
-        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-            .insert(key = documentId, data = ByteString(metadata.toByteArray()))
+        metadataStore.insert(documentId, metadata)
     }
 
-    private suspend fun load(documentId: String): IssuanceMetadata = IssuanceMetadata.fromByteArray(
-        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!.toByteArray()
-    )
+    private suspend fun load(documentId: String): IssuanceMetadata = metadataStore.get(documentId)!!
 
     /** An offer of one SD-JWT VC configuration of type [VCT], the type of the stored documents. */
     private fun credentialOffer(): CredentialOffer {

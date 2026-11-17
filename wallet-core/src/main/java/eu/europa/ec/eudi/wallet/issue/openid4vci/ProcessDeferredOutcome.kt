@@ -20,24 +20,27 @@ import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.DeferredCredentialQueryOutcome
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceFormatMismatchException
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.deferredContextWriteLock
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.structuredIdentifier
 import eu.europa.ec.eudi.wallet.transactionLogging.producers.interactingPartyName
-import kotlinx.io.bytestring.ByteString
-import org.multipaz.storage.Storage
 import eu.europa.ec.eudi.wallet.trust.IssuerTrustConfig
 import eu.europa.ec.eudi.wallet.trust.evaluateIssuerTrust
+import kotlinx.coroutines.sync.withLock
 
 internal class ProcessDeferredOutcome(
     val documentManager: DocumentManager,
     val callback: OpenId4VciManager.OnResult<DeferredIssueResult>,
     val deferredContext: DeferredContext?,
+    val tokenSealer: DataSealer,
     val logger: Logger? = null,
-    val issuanceMetadataStorage: Storage? = null,
+    val issuanceMetadataStore: IssuanceMetadataStore? = null,
     val issuerTrustConfig: IssuerTrustConfig? = null
 ) {
 
@@ -59,9 +62,10 @@ internal class ProcessDeferredOutcome(
 
                 is DeferredCredentialQueryOutcome.IssuancePending -> {
                     deferredContext?.let { ctx ->
-                        val contextToStore = ctx.toBytes()
-                        documentManager.storeDeferredDocument(deferredDocument, contextToStore)
-                            .kotlinResult.onSuccess { document ->
+                        val contextToStore = ctx.toBytes(deferredDocument.id, tokenSealer)
+                        deferredContextWriteLock.withLock {
+                            documentManager.storeDeferredDocument(deferredDocument, contextToStore)
+                        }.kotlinResult.onSuccess { document ->
                                 callback(DeferredIssueResult.DocumentNotReady(document, outcome.interval))
                             }.onFailure { error ->
                                 documentManager.deleteDocumentById(deferredDocument.id)
@@ -105,7 +109,7 @@ internal class ProcessDeferredOutcome(
                         }
 
                         // Store issuance metadata so the new document can be re-issued later
-                        if (issuanceMetadataStorage != null && deferredContext != null) {
+                        if (issuanceMetadataStore != null && deferredContext != null) {
                             storeIssuanceMetadata(document.id, deferredContext, keyAliases)
                         }
 
@@ -131,7 +135,7 @@ internal class ProcessDeferredOutcome(
         deferredContext: DeferredContext,
         keyAliases: List<String>,
     ) {
-        val storage = issuanceMetadataStorage ?: return
+        val store = issuanceMetadataStore ?: return
         val credentialConfigId = deferredContext.credentialConfigurationIdentifier ?: return
         val credentialEndpoint = deferredContext.credentialEndpoint ?: return
 
@@ -172,8 +176,7 @@ internal class ProcessDeferredOutcome(
                     ?.interactingPartyName()
             )
 
-            val table = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-            table.insert(key = documentId, data = ByteString(issuanceMetadata.toByteArray()))
+            store.insert(documentId, issuanceMetadata)
 
             logger?.d(TAG, "Stored issuance metadata for deferred document $documentId")
         }.onFailure { error ->

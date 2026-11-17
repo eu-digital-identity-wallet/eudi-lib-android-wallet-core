@@ -25,6 +25,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DeferredIssueResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProcessDeferredOutcome
@@ -91,6 +93,7 @@ class ProcessDeferredOutcomeTrustTest {
         documentManager = documentManager,
         callback = callback,
         deferredContext = null,
+        tokenSealer = DataSealer(SoftwareAeadCipher()),
         logger = null,
         issuerTrustConfig = config,
     )
