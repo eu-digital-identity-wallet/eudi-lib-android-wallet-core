@@ -157,9 +157,8 @@ internal class IssuanceMetadataStore(
         if (legacyRecordsEncrypted) return
         recordUpdateLock.withLock {
             if (legacyRecordsEncrypted) return
-            val table = table()
-            val records = try {
-                table.enumerateWithData()
+            val (table, records) = try {
+                table().let { it to it.enumerateWithData() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

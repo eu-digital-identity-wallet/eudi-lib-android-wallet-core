@@ -252,6 +252,25 @@ class IssuanceMetadataStoreTest {
         assertNoPlainTokens("doc")
     }
 
+    @Test
+    fun `records in plain text are encrypted at a later call when the table could not be opened`() = runTest {
+        storePlain("doc", metadata)
+        val table = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+        var tableAvailable = false
+        val unavailableStorage = mockk<Storage> {
+            coEvery { getTable(any()) } coAnswers {
+                if (tableAvailable) table else throw IllegalStateException("Storage not available")
+            }
+        }
+        val storeWithStorage = IssuanceMetadataStore(unavailableStorage, DataSealer(cipher))
+
+        storeWithStorage.encryptLegacyRecords()
+        tableAvailable = true
+        storeWithStorage.encryptLegacyRecords()
+
+        assertNoPlainTokens("doc")
+    }
+
     private fun refreshedRequest() = AuthorizedRequest(
         accessToken = AccessToken.DPoP("at-1", null),
         refreshToken = RefreshToken("rt-1"),
