@@ -77,14 +77,16 @@ class IssueDeferredDocumentEncryptionTest {
     }
 
     @Test
-    fun `a context stored in plain text is not replaced when it changed since it was read`() = runBlocking {
+    fun `a deferred issuance stops when the context stored in plain text changed since it was read`() = runBlocking {
         val deferredDocument = deferredDocument(plainContext)
         every { documentManager.getDocumentById(DOCUMENT_ID) } returns
             deferredDocument("""{"changed":true}""".toByteArray())
 
-        issueDeferred(deferredDocument)
+        val result = issueDeferred(deferredDocument)
 
+        assertIs<IllegalStateException>(assertIs<DeferredIssueResult.DocumentFailed>(result).cause)
         verify(exactly = 0) { documentManager.storeDeferredDocument(any(), any()) }
+        assertFalse(requestSent)
     }
 
     @Test

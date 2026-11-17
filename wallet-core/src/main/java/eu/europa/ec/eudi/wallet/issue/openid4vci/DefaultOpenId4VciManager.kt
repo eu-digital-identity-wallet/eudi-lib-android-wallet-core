@@ -652,13 +652,17 @@ internal class DefaultOpenId4VciManager(
 
     /**
      * Stores [deferredContext], encrypted, as the context of [deferredDocument], whose context was
-     * stored in plain text. Nothing is stored when the stored context has changed since
-     * [deferredDocument] was read.
+     * stored in plain text.
+     *
+     * @throws IllegalStateException when the stored context has changed, or the document was deleted,
+     * since [deferredDocument] was read
      */
     private suspend fun storeEncrypted(deferredDocument: DeferredDocument, deferredContext: DeferredContext) {
         deferredContextWriteLock.withLock {
             val stored = documentManager.getDocumentById(deferredDocument.id) as? DeferredDocument
-            if (stored?.relatedData?.contentEquals(deferredDocument.relatedData) != true) return
+            check(stored?.relatedData?.contentEquals(deferredDocument.relatedData) == true) {
+                "The deferred context of document ${deferredDocument.id} changed or was deleted since it was read"
+            }
             documentManager.storeDeferredDocument(
                 deferredDocument,
                 deferredContext.toBytes(deferredDocument.id, tokenSealer)
