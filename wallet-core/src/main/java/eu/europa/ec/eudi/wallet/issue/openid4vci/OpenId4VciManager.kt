@@ -946,7 +946,7 @@ interface OpenId4VciManager {
              * the user to go through the full authorization flow again.
              *
              * The metadata includes:
-             * - Access token and refresh token
+             * - Access token and refresh token, stored encrypted with a key in the Android Keystore
              * - Token endpoint and credential endpoint URLs
              * - Key aliases used for proof-of-possession
              * - DPoP key alias (if DPoP was used)

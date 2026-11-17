@@ -19,11 +19,13 @@ internal data class StoredDeferredContext(
     val clientAttestationPopKeyId: String? = null,
     val clientAttestationJwt: String? = null,
 
-    // Transaction State
-    val transactionId: String,
-    val accessToken: String,
+    // Transaction State. The transaction id and the tokens are stored encrypted in sealedTokens
+    // (a DeferredTokens); contexts written before they were encrypted have them in plain text.
+    val transactionId: String? = null,
+    val accessToken: String? = null,
     val accessTokenType: String = "DPoP",
     val refreshToken: String? = null,
+    val sealedTokens: String? = null,
 
     // Encryption Specs
     val requestEncryptionKeyJwk: String? = null,
@@ -40,6 +42,27 @@ internal data class StoredDeferredContext(
     // Kept at deferral so the transaction log still has them when the credential resolves (TS10 §3.5).
     val interactingParty: StoredIssuerRegistration? = null,
     val isUserTriggered: Boolean? = null,
+) {
+    companion object {
+        /**
+         * The fields to which the encrypted tokens are not bound: the transaction id and the tokens, in
+         * plain text or encrypted, and the fields kept for the transaction log. The tokens are bound to
+         * every other field of a context.
+         */
+        val UNBOUND_FIELDS = setOf(
+            "transactionId", "accessToken", "refreshToken", "sealedTokens", "interactingParty", "isUserTriggered",
+        )
+    }
+}
+
+/**
+ * The fields of a [StoredDeferredContext] that are stored encrypted.
+ */
+@Serializable
+internal data class DeferredTokens(
+    val transactionId: String,
+    val accessToken: String,
+    val refreshToken: String? = null,
 )
 
 /**

@@ -37,6 +37,10 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.AeadCipher
+import eu.europa.ec.eudi.wallet.internal.crypto.AndroidKeystoreAeadCipher
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SealedDataUnreadableException
 import eu.europa.ec.eudi.wallet.internal.d
 import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.internal.mainExecutor
@@ -45,12 +49,13 @@ import eu.europa.ec.eudi.wallet.internal.wrappedWithLogging
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent.Companion.failure
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager.Companion.TAG
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceFormatMismatchException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceIssuer
-import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.storeRefreshedTokens
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.tokenRefreshLock
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.TOKEN_KEY_ALIAS
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.deferredContextWriteLock
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletAttestationsProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
@@ -93,7 +98,8 @@ internal class DefaultOpenId4VciManager(
     var ktorHttpClientFactory: (() -> HttpClient)? = null,
     val issuerTrustConfig: IssuerTrustConfig? = null,
     val issuerRegistrationEnabled: Boolean = false,
-    val issuerRegistration: IssuerRegistrationResolver? = null
+    val issuerRegistration: IssuerRegistrationResolver? = null,
+    tokenCipher: AeadCipher = AndroidKeystoreAeadCipher(TOKEN_KEY_ALIAS),
 ) : OpenId4VciManager {
 
     internal val httpClientFactory
@@ -127,6 +133,13 @@ internal class DefaultOpenId4VciManager(
             ).absolutePath
             AndroidStorage(storagePath)
         }
+    }
+
+    /** Encrypts and decrypts the tokens stored for re-issuance and deferred issuance. */
+    private val tokenSealer = DataSealer(tokenCipher)
+
+    private val issuanceMetadataStore: IssuanceMetadataStore by lazy {
+        IssuanceMetadataStore(issuanceMetadataStorage, tokenSealer, logger)
     }
 
     override suspend fun getIssuerMetadata(issuerUrl: String): Result<CredentialIssuerMetadata> {
@@ -164,6 +177,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
+                issuanceMetadataStore.encryptLegacyRecords()
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(
                     issuerUrl,
                     credentialConfigurationIds.map{ id -> CredentialConfigurationIdentifier(id) }
@@ -186,6 +200,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
+                issuanceMetadataStore.encryptLegacyRecords()
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(issuerUrl, format)
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
                 doIssue(issuer, offer, txCode, listener, userTriggered = true)
@@ -223,6 +238,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
+                issuanceMetadataStore.encryptLegacyRecords()
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
                 doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
             } catch (e: Throwable) {
@@ -241,6 +257,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
+                issuanceMetadataStore.encryptLegacyRecords()
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
                 val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
                 doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
@@ -258,6 +275,7 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueResult) { coroutineScope, callback ->
             try {
+                issuanceMetadataStore.encryptLegacyRecords()
 
                 // Resolve DPopConfig so DeferredContext can recreate the DPoP signer
                 val resolvedDpopConfig = when (val cfg = config.dpopConfig) {
@@ -268,11 +286,16 @@ internal class DefaultOpenId4VciManager(
 
                 val deferredContext = DeferredContext.fromBytes(
                     deferredDocument.relatedData,
-                    walletAttestationKeyManager,
+                    documentId = deferredDocument.id,
+                    tokenSealer = tokenSealer,
+                    walletKeyManager = walletAttestationKeyManager,
                     walletInstanceAttestationProvider = walletProvider,
                     dpopConfig = resolvedDpopConfig,
                     logger = logger,
                 )
+                if (DeferredContext.isStoredInPlainText(deferredDocument.relatedData)) {
+                    storeEncrypted(deferredDocument, deferredContext)
+                }
                 val clientAttestationPopKeyId = deferredContext.clientAttestationPopKeyId
                 when {
                     deferredContext.issuanceContext.hasExpired -> callback(
@@ -280,6 +303,9 @@ internal class DefaultOpenId4VciManager(
                     )
 
                     else -> {
+                        // The query may refresh and rotate the tokens, so it is sent only when the
+                        // context can be stored again
+                        deferredContext.toBytes(deferredDocument.id, tokenSealer)
                         val (ctx, outcome) = DeferredIssuer.queryForDeferredCredential(
                             ctx = deferredContext.issuanceContext,
                             httpClient = httpClientFactory(),
@@ -289,6 +315,7 @@ internal class DefaultOpenId4VciManager(
                         ProcessDeferredOutcome(
                             documentManager = documentManager,
                             callback = callback,
+                            tokenSealer = tokenSealer,
                             deferredContext = ctx?.let {
                                 DeferredContext(
                                     issuanceContext = it,
@@ -303,7 +330,7 @@ internal class DefaultOpenId4VciManager(
                             } ?: deferredContext,
                             logger = logger,
                             issuerTrustConfig = issuerTrustConfig,
-                            issuanceMetadataStorage = issuanceMetadataStorage
+                            issuanceMetadataStore = issuanceMetadataStore
                         ).process(deferredDocument, deferredContext.keyAliases, outcome)
                     }
                 }
@@ -393,7 +420,7 @@ internal class DefaultOpenId4VciManager(
         )
 
     override suspend fun resolveIssuerRegistration(documentId: DocumentId): Result<RegistrationCertificateResult> {
-        val issuanceMetadata = loadIssuanceMetadata(documentId)
+        val issuanceMetadata = issuanceMetadataStore.getWithoutTokens(documentId)
             ?: return Result.failure(IllegalStateException("No issuance metadata stored for document $documentId"))
         return resolveIssuerRegistration(
             issuerUrl = issuanceMetadata.credentialIssuerId,
@@ -415,8 +442,10 @@ internal class DefaultOpenId4VciManager(
     ) {
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
-                //  Load issuance metadata from storage
-                val issuanceMetadata = loadIssuanceMetadata(documentId)
+                issuanceMetadataStore.encryptLegacyRecords()
+
+                //  Load issuance metadata from storage; the tokens are read below, under tokenRefreshLock
+                val issuanceMetadata = issuanceMetadataStore.getWithoutTokens(documentId)
                     ?: throw IllegalStateException("No issuance metadata found for document $documentId")
 
                 logger?.d(TAG, "Loaded issuanceMetadata: credentialIssuerId=${issuanceMetadata.credentialIssuerId}")
@@ -452,39 +481,54 @@ internal class DefaultOpenId4VciManager(
                 //
                 //  The tokens are read, refreshed and stored under tokenRefreshLock, and stored
                 //  before anything else can fail: documents issued together share the refresh
-                //  token, and a rotated one must replace the old one in all of them.
+                //  token, and a rotated one must replace the old one in all of them. They are read
+                //  under the lock because another re-issuance may have rotated them.
+                //
+                //  Stored tokens that can never be decrypted are handled as an expired refresh token;
+                //  any other failure to read them is thrown.
                 val refreshResult = tokenRefreshLock.withLock {
-                    // Read the tokens again, now under the lock: another re-issuance of a document
-                    // of the same authorization may have rotated them since issuanceMetadata was read.
-                    val metadataWithLatestTokens = loadIssuanceMetadata(documentId)
-                        ?: throw IllegalStateException("No issuance metadata found for document $documentId")
                     runCatching {
-                        with(issuer) {
+                        val metadataWithLatestTokens = issuanceMetadataStore.get(documentId)
+                            ?: throw IllegalStateException("No issuance metadata found for document $documentId")
+                        // The issuer was created from the record read before the lock, so the record read
+                        // under the lock must name the same issuer, credential configuration and DPoP key
+                        check(
+                            metadataWithLatestTokens.credentialIssuerId == issuanceMetadata.credentialIssuerId &&
+                                metadataWithLatestTokens.credentialConfigurationIdentifier ==
+                                issuanceMetadata.credentialConfigurationIdentifier &&
+                                metadataWithLatestTokens.dPoPKeyAlias == issuanceMetadata.dPoPKeyAlias
+                        ) {
+                            "The issuance metadata of document $documentId changed during its re-issuance"
+                        }
+                        issuanceMetadataStore.checkTokensCanBeStored(documentId, metadataWithLatestTokens)
+                        val refreshedRequest = with(issuer) {
                             ReissuanceIssuer().reconstructAuthorizedRequest(metadataWithLatestTokens).refresh().getOrThrow()
                         }
-                    }.onSuccess { refreshedRequest ->
                         metadataWithLatestTokens.refreshToken?.let { oldRefreshToken ->
                             runCatching {
-                                issuanceMetadataStorage.storeRefreshedTokens(oldRefreshToken, refreshedRequest) { failedId, error ->
+                                issuanceMetadataStore.storeRefreshedTokens(oldRefreshToken, refreshedRequest) { failedId, error ->
                                     logger?.e(TAG, "Failed to store refreshed tokens for document $failedId", error)
                                 }
                             }
                                 .onSuccess { logger?.d(TAG, "Stored refreshed tokens for documents $it") }
                                 .onFailure { logger?.e(TAG, "Failed to store refreshed tokens", it) }
                         }
+                        refreshedRequest
                     }
                 }
                 val updatedAuthorizedRequest = refreshResult.getOrElse { e ->
                     val isInvalidGrant = e is CredentialIssuanceError.AccessTokenRequestFailed
                             && e.error == "invalid_grant"
-                    if (!isInvalidGrant) throw e
+                    val tokensUnreadable = e is SealedDataUnreadableException
+                    if (!isInvalidGrant && !tokensUnreadable) throw e
+                    val reason = if (tokensUnreadable) "stored tokens cannot be read" else "refresh token expired"
                     if (!allowAuthorizationFallback) {
                         throw ReissuanceAuthorizationException(
-                            "Re-issuance of document $documentId requires user authorization (refresh token expired)",
+                            "Re-issuance of document $documentId requires user authorization ($reason)",
                             cause = e
                         )
                     }
-                    logger?.d(TAG, "Refresh token expired for $documentId, falling back to full authorization")
+                    logger?.d(TAG, "Re-issuance of $documentId falls back to full authorization ($reason)")
                     issuerAuthorization.authorize(issuer, null)
                 }
 
@@ -546,7 +590,8 @@ internal class DefaultOpenId4VciManager(
                         issuer = issuer,
                         documentToConfigurationMap = requestMap,
                         dpopKeyAlias = issuerCreator.dpopKeyAlias,
-                        issuanceMetadataStorage = issuanceMetadataStorage,
+                        issuanceMetadataStore = issuanceMetadataStore,
+                        tokenSealer = tokenSealer,
                         clientAuthentication = issuerCreator.clientAuthentication,
                         replacesDocumentId = documentId,
                         issuerTrustConfig = issuerTrustConfig,
@@ -606,15 +651,20 @@ internal class DefaultOpenId4VciManager(
     }
 
     /**
-     * Loads issuance metadata from storage.
-     *
-     * @param documentId The document ID
-     * @return The issuance metadata, or null if not found
+     * Stores [deferredContext], encrypted, as the context of [deferredDocument], whose context was
+     * stored in plain text. Nothing is stored when the stored context has changed since
+     * [deferredDocument] was read.
      */
-    private suspend fun loadIssuanceMetadata(documentId: DocumentId): IssuanceMetadata? {
-        val table = issuanceMetadataStorage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-        val bytes = table.get(documentId) ?: return null
-        return IssuanceMetadata.fromByteArray(bytes.toByteArray())
+    private suspend fun storeEncrypted(deferredDocument: DeferredDocument, deferredContext: DeferredContext) {
+        deferredContextWriteLock.withLock {
+            val stored = documentManager.getDocumentById(deferredDocument.id) as? DeferredDocument
+            if (stored?.relatedData?.contentEquals(deferredDocument.relatedData) != true) return
+            documentManager.storeDeferredDocument(
+                deferredDocument,
+                deferredContext.toBytes(deferredDocument.id, tokenSealer)
+            ).getOrThrow()
+        }
+        logger?.d(TAG, "Stored the deferred context of document ${deferredDocument.id} encrypted")
     }
 
     /**
@@ -661,7 +711,8 @@ internal class DefaultOpenId4VciManager(
                 issuer = issuer,
                 documentToConfigurationMap = requestMap,
                 dpopKeyAlias = issuerCreator.dpopKeyAlias,
-                issuanceMetadataStorage = issuanceMetadataStorage,
+                issuanceMetadataStore = issuanceMetadataStore,
+                tokenSealer = tokenSealer,
                 clientAuthentication = issuerCreator.clientAuthentication,
                 interactingParty = offer.issuerRegistration.toStoredIssuerRegistration(),
                 isUserTriggered = userTriggered,

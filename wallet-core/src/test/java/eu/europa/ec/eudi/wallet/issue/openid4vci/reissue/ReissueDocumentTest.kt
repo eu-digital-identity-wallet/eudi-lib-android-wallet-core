@@ -17,6 +17,7 @@
 package eu.europa.ec.eudi.wallet.issue.openid4vci.reissue
 
 import com.nimbusds.oauth2.sdk.`as`.ReadOnlyAuthorizationServerMetadata
+import com.nimbusds.oauth2.sdk.id.Issuer as AuthorizationServerId
 import eu.europa.ec.eudi.openid4vci.AccessToken
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
@@ -42,6 +43,10 @@ import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.credential.ProofOfPossessionSigner
 import eu.europa.ec.eudi.wallet.document.credential.ProofOfPossessionSigners
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.AeadCipher
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SealedDataUnreadableException
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DeferredContext
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
@@ -52,6 +57,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
 import eu.europa.ec.eudi.wallet.issue.openid4vci.toBytes
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -64,21 +70,24 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.storage.Storage
+import org.multipaz.storage.StorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.io.IOException
 import java.net.URI
+import java.security.ProviderException
 import java.time.Instant
 import java.util.Collections
 import java.util.concurrent.Executor
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
-import com.nimbusds.oauth2.sdk.id.Issuer as AuthorizationServerId
 
 /**
  * Covers [eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager.reissueDocument] past the token refresh: requesting the credential,
@@ -91,6 +100,8 @@ import com.nimbusds.oauth2.sdk.id.Issuer as AuthorizationServerId
 class ReissueDocumentTest {
 
     private val storage = EphemeralStorage()
+    private val tokenCipher = SoftwareAeadCipher()
+    private val metadataStore = IssuanceMetadataStore(storage, DataSealer(tokenCipher))
 
     private val newDocument = mockk<IssuedDocument>(relaxed = true) {
         every { id } returns NEW_DOCUMENT
@@ -177,7 +188,7 @@ class ReissueDocumentTest {
         credentialEndpoint = { Result.success(SubmissionOutcome.Deferred(TransactionId("tx-1"), 5.seconds)) }
         var storedContext: DeferredContext? = null
         mockkStatic(DeferredContext::toBytes)
-        every { any<DeferredContext>().toBytes() } answers {
+        every { any<DeferredContext>().toBytes(any(), any()) } answers {
             storedContext = firstArg()
             byteArrayOf(1)
         }
@@ -207,7 +218,7 @@ class ReissueDocumentTest {
         storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
         credentialEndpoint = { Result.success(SubmissionOutcome.Deferred(TransactionId("tx-1"), 5.seconds)) }
         mockkStatic(DeferredContext::toBytes)
-        every { any<DeferredContext>().toBytes() } returns byteArrayOf(1)
+        every { any<DeferredContext>().toBytes(any(), any()) } returns byteArrayOf(1)
         // The deferred document keeps the identifier of the unsigned document
         every { documentManager.getDocumentById(UNSIGNED_DOCUMENT) } returns deferredDocument
 
@@ -311,6 +322,114 @@ class ReissueDocumentTest {
         }
 
     @Test
+    fun `stored tokens that cannot be read fall back to a new authorization when the user started the re-issuance`() =
+        runBlocking {
+            // Encrypted with another key
+            storeMetadata(PID_SD_JWT, refreshToken = "rt-0", store = IssuanceMetadataStore(storage, DataSealer(SoftwareAeadCipher())))
+
+            val reissuance = reissue(PID_SD_JWT, allowAuthorizationFallback = true)
+
+            assertIs<IssueEvent.Finished>(reissuance.end)
+            coVerify(exactly = 0) { with(issuer) { any<AuthorizedRequest>().refresh() } }
+            coVerify(exactly = 1) { issuerAuthorization.authorize(issuer, null) }
+            assertEquals(listOf("at-fresh"), credentialRequestTokens)
+        }
+
+    @Test
+    fun `stored tokens that cannot be read fail a background re-issuance and keep the document`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0", store = IssuanceMetadataStore(storage, DataSealer(SoftwareAeadCipher())))
+
+        val reissuance = reissue(PID_SD_JWT, allowAuthorizationFallback = false)
+
+        val error = assertIs<ReissuanceAuthorizationException>(assertIs<IssueEvent.Failure>(reissuance.end).cause)
+        assertIs<SealedDataUnreadableException>(error.cause)
+        coVerify(exactly = 0) { with(issuer) { any<AuthorizedRequest>().refresh() } }
+        coVerify(exactly = 0) { issuerAuthorization.authorize(any(), any()) }
+        verify(exactly = 0) { documentManager.deleteDocumentById(PID_SD_JWT) }
+    }
+
+    @Test
+    fun `a re-issuance encrypts the tokens stored in plain text before any request`() = runBlocking {
+        storePlainMetadata(PID_SD_JWT)
+        storePlainMetadata(PID_MDOC)
+        val manager = manager()
+        every { manager.issuerCreator } returns mockk {
+            coEvery { createIssuer(any<String>(), any<List<CredentialConfigurationIdentifier>>(), any()) } throws
+                IllegalStateException("The issuer cannot be reached")
+        }
+        val end = CompletableDeferred<IssueEvent>()
+
+        manager.reissueDocument(PID_SD_JWT, false, Executor { it.run() }) {
+            if (it is IssueEvent.Failure) end.complete(it)
+        }
+
+        assertIs<IssueEvent.Failure>(withTimeout(10_000) { end.await() })
+        assertNoPlainTokens(PID_SD_JWT)
+        assertNoPlainTokens(PID_MDOC)
+    }
+
+    @Test
+    fun `an issuance encrypts the tokens stored in plain text before any request`() = runBlocking {
+        storePlainMetadata(PID_MDOC)
+        val manager = manager()
+        every { manager.issuerCreator } returns mockk {
+            coEvery { createIssuer(any<String>(), any<List<CredentialConfigurationIdentifier>>(), any()) } throws
+                IllegalStateException("The issuer cannot be reached")
+        }
+        val end = CompletableDeferred<IssueEvent>()
+
+        manager.issueDocumentByConfigurationIdentifiers(ISSUER, listOf(CONFIGURATION_ID), null, Executor { it.run() }) {
+            if (it is IssueEvent.Failure) end.complete(it)
+        }
+
+        assertIs<IssueEvent.Failure>(withTimeout(10_000) { end.await() })
+        assertNoPlainTokens(PID_MDOC)
+    }
+
+    @Test
+    fun `a re-issuance stops when the stored record changed after it was read`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
+        val record = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(PID_SD_JWT)!!
+
+        listOf<(IssuanceMetadata) -> IssuanceMetadata>(
+            { it.copy(credentialIssuerId = "https://other.example.com") },
+            { it.copy(credentialConfigurationIdentifier = "other-configuration") },
+            { it.copy(dPoPKeyAlias = "other-dpop-key") },
+        ).forEach { change ->
+            // The read before the lock returns a record with another issuer, configuration or DPoP key, and
+            // the read under the lock returns the stored record
+            val otherRecord = ByteString(change(metadata(PID_SD_JWT, "rt-other")).toByteArray())
+            val table = mockk<StorageTable> {
+                coEvery { enumerateWithData(any(), any(), any()) } returns emptyList()
+                coEvery { get(PID_SD_JWT, any()) } returnsMany listOf(otherRecord, record)
+            }
+
+            val reissuance = reissue(PID_SD_JWT, issuanceMetadataStorage = mockk { coEvery { getTable(any()) } returns table })
+
+            assertIs<IllegalStateException>(assertIs<IssueEvent.Failure>(reissuance.end).cause)
+        }
+        coVerify(exactly = 0) { with(issuer) { any<AuthorizedRequest>().refresh() } }
+    }
+
+    @Test
+    fun `a re-issuance stops before the refresh when the refreshed tokens could not be stored`() = runBlocking {
+        // Stored in plain text; the cipher only fails to encrypt
+        storePlainMetadata(PID_SD_JWT)
+        val encryptionFails = object : AeadCipher {
+            override fun encrypt(plaintext: ByteArray, associatedData: ByteArray) =
+                throw ProviderException("Keystore operation failed")
+            override fun decrypt(ivAndCiphertext: ByteArray, associatedData: ByteArray) =
+                tokenCipher.decrypt(ivAndCiphertext, associatedData)
+        }
+
+        val reissuance = reissue(PID_SD_JWT, tokenCipher = encryptionFails)
+
+        assertIs<ProviderException>(assertIs<IssueEvent.Failure>(reissuance.end).cause)
+        coVerify(exactly = 0) { with(issuer) { any<AuthorizedRequest>().refresh() } }
+        verify(exactly = 0) { documentManager.deleteDocumentById(PID_SD_JWT) }
+    }
+
+    @Test
     fun `re-issuing a document without stored metadata fails`() = runBlocking {
         val reissuance = reissue("unknown-document")
 
@@ -325,35 +444,46 @@ class ReissueDocumentTest {
         val newDocumentMetadataAtFinish: IssuanceMetadata?,
     )
 
+    private fun manager(
+        issuanceMetadataStorage: Storage = storage,
+        tokenCipher: AeadCipher = this.tokenCipher,
+    ): DefaultOpenId4VciManager = spyk(
+        DefaultOpenId4VciManager(
+            context = mockk(relaxed = true),
+            documentManager = documentManager,
+            walletAttestationKeyManager = mockk(),
+            config = OpenId4VciManager.Config(
+                clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.None("client"),
+                authFlowRedirectionURI = "app://redirect",
+                dpopConfig = DPopConfig.Disabled,
+                issuanceMetadataStorage = issuanceMetadataStorage,
+            ),
+            tokenCipher = tokenCipher,
+        )
+    ) {
+        every { this@spyk.issuerCreator } returns mockk {
+            coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
+                issuer,
+                null
+            )
+            every { clientAuthentication } returns ClientAuthentication.None("client")
+            every { dpopKeyAlias } returns null
+            every { clientAttestationPopKeyId } returns null
+        }
+        every { this@spyk.issuerAuthorization } returns this@ReissueDocumentTest.issuerAuthorization
+    }
+
     /**
      * Re-issues the document, answering the request for create settings, and waits for the event
      * that ends it.
      */
-    private suspend fun reissue(documentId: String, allowAuthorizationFallback: Boolean = false): Reissuance {
-        val manager = spyk(
-            DefaultOpenId4VciManager(
-                context = mockk(relaxed = true),
-                documentManager = documentManager,
-                walletAttestationKeyManager = mockk(),
-                config = OpenId4VciManager.Config(
-                    clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.None("client"),
-                    authFlowRedirectionURI = "app://redirect",
-                    dpopConfig = DPopConfig.Disabled,
-                    issuanceMetadataStorage = storage,
-                ),
-            )
-        ) {
-            every { this@spyk.issuerCreator } returns mockk {
-                coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
-                    issuer,
-                    null
-                )
-                every { clientAuthentication } returns ClientAuthentication.None("client")
-                every { dpopKeyAlias } returns null
-                every { clientAttestationPopKeyId } returns null
-            }
-            every { this@spyk.issuerAuthorization } returns this@ReissueDocumentTest.issuerAuthorization
-        }
+    private suspend fun reissue(
+        documentId: String,
+        allowAuthorizationFallback: Boolean = false,
+        issuanceMetadataStorage: Storage = storage,
+        tokenCipher: AeadCipher = this.tokenCipher,
+    ): Reissuance {
+        val manager = manager(issuanceMetadataStorage, tokenCipher)
 
         val events = Collections.synchronizedList(mutableListOf<IssueEvent>())
         var newDocumentMetadataAtFinish: IssuanceMetadata? = null
@@ -419,8 +549,27 @@ class ReissueDocumentTest {
         timestamp = Instant.ofEpochSecond(1800000000L),
     )
 
-    private suspend fun storeMetadata(documentId: String, refreshToken: String) {
-        val metadata = IssuanceMetadata(
+    private suspend fun storeMetadata(
+        documentId: String,
+        refreshToken: String,
+        store: IssuanceMetadataStore = metadataStore,
+    ) {
+        store.insert(documentId, metadata(documentId, refreshToken))
+    }
+
+    /** Stores the metadata of [documentId] in plain text, as an earlier version did. */
+    private suspend fun storePlainMetadata(documentId: String) {
+        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
+            .insert(key = documentId, data = ByteString(metadata(documentId, PLAIN_REFRESH_TOKEN).toByteArray()))
+    }
+
+    private suspend fun assertNoPlainTokens(documentId: String) {
+        val stored = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!
+            .toByteArray().toString(Charsets.UTF_8)
+        assertFalse("at-0" in stored || PLAIN_REFRESH_TOKEN in stored, "The tokens of $documentId are in plain text")
+    }
+
+    private fun metadata(documentId: String, refreshToken: String) = IssuanceMetadata(
             credentialIssuerId = ISSUER,
             credentialConfigurationIdentifier = CONFIGURATION_ID,
             credentialEndpoint = "$ISSUER/credential",
@@ -434,15 +583,11 @@ class ReissueDocumentTest {
             tokenTimestamp = 1700000000L,
             grantType = "authorization_code",
         )
-        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-            .insert(key = documentId, data = ByteString(metadata.toByteArray()))
-    }
 
-    private suspend fun loadMetadata(documentId: String): IssuanceMetadata? =
-        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)
-            ?.let { IssuanceMetadata.fromByteArray(it.toByteArray()) }
+    private suspend fun loadMetadata(documentId: String): IssuanceMetadata? = metadataStore.get(documentId)
 
     private companion object {
+        const val PLAIN_REFRESH_TOKEN = "rt-plain"
         const val ISSUER = "https://issuer.example.com"
         const val CONFIGURATION_ID = "eu.europa.ec.eudi.pid_vc_sd_jwt"
         const val VCT = "urn:eudi:pid:1"

@@ -32,6 +32,8 @@ import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DefaultOpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreation
@@ -40,6 +42,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.ReissuanceAuthorizationException
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -73,6 +76,8 @@ import com.nimbusds.oauth2.sdk.id.Issuer as AuthorizationServerId
 class ReissueDocumentTokenRotationTest {
 
     private val storage = EphemeralStorage()
+    private val tokenCipher = SoftwareAeadCipher()
+    private val metadataStore = IssuanceMetadataStore(storage, DataSealer(tokenCipher))
 
     /** Refresh tokens sent to the token endpoint, in order. */
     private val sentRefreshTokens = Collections.synchronizedList(mutableListOf<String>())
@@ -199,6 +204,7 @@ class ReissueDocumentTokenRotationTest {
                     dpopConfig = DPopConfig.Disabled,
                     issuanceMetadataStorage = storage,
                 ),
+                tokenCipher = tokenCipher,
             )
         ) {
             every { this@spyk.issuerCreator } returns issuerCreator
@@ -233,13 +239,10 @@ class ReissueDocumentTokenRotationTest {
             tokenTimestamp = 1700000000L,
             grantType = "authorization_code",
         )
-        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC)
-            .insert(key = documentId, data = ByteString(metadata.toByteArray()))
+        metadataStore.insert(documentId, metadata)
     }
 
-    private suspend fun load(documentId: String): IssuanceMetadata = IssuanceMetadata.fromByteArray(
-        storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(documentId)!!.toByteArray()
-    )
+    private suspend fun load(documentId: String): IssuanceMetadata = metadataStore.get(documentId)!!
 
     /** An offer of one SD-JWT VC configuration of type [VCT], the type of the stored documents. */
     private fun credentialOffer(): CredentialOffer {

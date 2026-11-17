@@ -29,11 +29,14 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.DeferredContextFactory
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.ProcessResponse
+import eu.europa.ec.eudi.wallet.issue.openid4vci.tokens.IssuanceMetadataStore
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -44,7 +47,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.multipaz.storage.Storage
 import org.robolectric.RobolectricTestRunner
 import java.security.cert.TrustAnchor
 
@@ -110,7 +112,8 @@ class ProcessResponseTrustTest {
         issuer = mockk<Issuer>(relaxed = true),
         documentToConfigurationMap = emptyMap(),
         dpopKeyAlias = null,
-        issuanceMetadataStorage = mockk<Storage>(relaxed = true),
+        issuanceMetadataStore = mockk<IssuanceMetadataStore>(relaxed = true),
+        tokenSealer = DataSealer(SoftwareAeadCipher()),
         clientAuthentication = mockk<ClientAuthentication>(relaxed = true),
         issuerTrustConfig = config,
     )

@@ -21,6 +21,8 @@ import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.DocumentManager
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.DataSealer
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -65,6 +67,7 @@ class ProcessDeferredOutcomePendingTest {
         documentManager = documentManager,
         callback = callback,
         deferredContext = deferredContext,
+        tokenSealer = DataSealer(SoftwareAeadCipher()),
     )
 
     @Test
@@ -86,7 +89,7 @@ class ProcessDeferredOutcomePendingTest {
     fun pendingIssuanceWithStoredContextCarriesTheIssuersInterval() = runTest {
         val deferredContext = mockk<DeferredContext>()
         mockkStatic(DeferredContext::toBytes)
-        every { deferredContext.toBytes() } returns byteArrayOf(1)
+        every { deferredContext.toBytes(any(), any()) } returns byteArrayOf(1)
         every {
             documentManager.storeDeferredDocument(any(), any())
         } returns Outcome.success(storedDeferredDocument)

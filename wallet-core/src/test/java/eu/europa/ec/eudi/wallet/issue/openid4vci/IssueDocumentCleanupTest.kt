@@ -36,6 +36,7 @@ import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.credential.ProofOfPossessionSigner
 import eu.europa.ec.eudi.wallet.document.credential.ProofOfPossessionSigners
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.internal.crypto.SoftwareAeadCipher
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import io.mockk.coEvery
 import io.mockk.every
@@ -120,6 +121,7 @@ class IssueDocumentCleanupTest {
                     dpopConfig = DPopConfig.Disabled,
                     issuanceMetadataStorage = EphemeralStorage(),
                 ),
+                tokenCipher = SoftwareAeadCipher(),
             )
         ) {
             every { this@spyk.issuerCreator } returns mockk {

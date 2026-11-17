@@ -108,29 +108,20 @@ data class IssuanceMetadata(
         )
 
         /**
-         * Deserializes an [IssuanceMetadata] from a [ByteArray].
+         * Reads an [IssuanceMetadata] in the form of [toByteArray].
          *
-         * This method reconstructs an [IssuanceMetadata] from its serialized JSON form.
-         * The ByteArray should have been created using [IssuanceMetadata.toByteArray].
-         *
-         * @param bytes The serialized ByteArray
-         * @return The deserialized [IssuanceMetadata]
-         * @throws Exception if the bytes are invalid or corrupted
+         * @throws Exception if the bytes are not in that form
          */
-        fun fromByteArray(bytes: ByteArray): IssuanceMetadata {
+        internal fun fromByteArray(bytes: ByteArray): IssuanceMetadata {
             return Json.decodeFromString<IssuanceMetadata>(bytes.toString(Charsets.UTF_8))
         }
     }
 
     /**
-     * Serializes this [IssuanceMetadata] to a [ByteArray] for storage.
-     *
-     * This method converts the issuance metadata into a JSON-encoded ByteArray
-     * that can be stored in a multipaz Storage table. Use [fromByteArray] to deserialize.
-     *
-     * @return The serialized ByteArray
+     * Serializes this [IssuanceMetadata] as plain JSON, the form in which earlier versions stored
+     * the records.
      */
-    fun toByteArray(): ByteArray {
+    internal fun toByteArray(): ByteArray {
         return Json.encodeToString(this).toByteArray(Charsets.UTF_8)
     }
 }
