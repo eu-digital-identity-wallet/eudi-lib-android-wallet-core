@@ -320,6 +320,8 @@ val config = EudiWalletConfig()
         // encrypted response modes (`direct_post.jwt` for OpenID4VP, `dc_api.jwt` for DC-API). 
         // Override via withEncryptionPolicy(...) if a different profile is needed.
         withEncryptionPolicy(EncryptionPolicy.HAIP)
+        // Response encryption — defaults to ECDH-ES with A256GCM, then A128GCM (in order of preference).
+        // Override via withEncryptionAlgorithms(...) / withEncryptionMethods(...) if a verifier needs other values.
         
     }
     // configure document status resolver with 5 minutes clock skew tolerance

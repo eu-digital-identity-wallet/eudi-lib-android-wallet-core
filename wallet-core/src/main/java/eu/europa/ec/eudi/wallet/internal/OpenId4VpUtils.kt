@@ -528,8 +528,6 @@ internal val EncryptionMethod.nimbus: com.nimbusds.jose.EncryptionMethod
         EncryptionMethod.A128GCM -> com.nimbusds.jose.EncryptionMethod.A128GCM
         EncryptionMethod.A192GCM -> com.nimbusds.jose.EncryptionMethod.A192GCM
         EncryptionMethod.A256GCM -> com.nimbusds.jose.EncryptionMethod.A256GCM
-        EncryptionMethod.A128CBC_HS256_DEPRECATED -> com.nimbusds.jose.EncryptionMethod.A128CBC_HS256_DEPRECATED
-        EncryptionMethod.A256CBC_HS512_DEPRECATED -> com.nimbusds.jose.EncryptionMethod.A256CBC_HS512_DEPRECATED
         EncryptionMethod.XC20P -> com.nimbusds.jose.EncryptionMethod.XC20P
     }
 

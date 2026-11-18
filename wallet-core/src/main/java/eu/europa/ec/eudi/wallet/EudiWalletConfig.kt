@@ -101,8 +101,8 @@ import kotlin.time.Duration.Companion.minutes
  *             EncryptionAlgorithm.ECDH_ES
  *         )
  *         withEncryptionMethods(
- *             EncryptionMethod.A128CBC_HS256,
- *             EncryptionMethod.A256GCM
+ *             EncryptionMethod.A256GCM,
+ *             EncryptionMethod.A128GCM
  *         )
  *         withClientIdSchemes(
  *             ClientIdScheme.X509SanDns
