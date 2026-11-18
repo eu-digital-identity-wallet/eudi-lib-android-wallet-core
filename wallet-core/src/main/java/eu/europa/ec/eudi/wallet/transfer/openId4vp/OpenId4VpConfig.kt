@@ -57,15 +57,15 @@ import org.multipaz.documenttype.TransactionType
  *             "mdoc-openid4vp"
  *         )
  *     )
- *    .withEncryptionAlgorithms(EncryptionAlgorithm.SUPPORTED_ENCRYPTION_ALGORITHMS) //optional; if not set, all supported algorithms will be used
- *    .withEncryptionMethods(EncryptionMethod.SUPPORTED_ENCRYPTION_METHODS) //optional; if not set, all supported methods will be used
+ *    .withEncryptionAlgorithms(EncryptionAlgorithm.ECDH_ES) //optional; this is the default
+ *    .withEncryptionMethods(EncryptionMethod.A256GCM, EncryptionMethod.A128GCM) //optional; this is the default
  *    .withFormats(Format.MsoMdoc.ES256, Format.SdJwtVc.ES256)
  *    .build()
  * ```
  *
  * @property clientIdSchemes List of supported client identifier schemes that define how verifiers authenticate themselves
- * @property encryptionAlgorithms List of supported encryption algorithms for securing communication channels
- * @property encryptionMethods List of supported encryption methods for content encryption
+ * @property encryptionAlgorithms List of supported encryption algorithms for securing communication channels, in order of preference
+ * @property encryptionMethods List of supported encryption methods for content encryption, in order of preference
  * @property schemes URI schemes supported for OpenID4VP requests (default: "mdoc-openid4vp")
  * @property formats Supported credential formats (mDL/mDoc, SD-JWT VC, etc.)
  * @property encryptionPolicy Policy enforcing `response_mode` constraints on incoming
@@ -172,8 +172,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      * allowing only one instance of certain client ID schemes and ensuring required fields are populated.
      *
      * ## Default Values:
-     * - **Encryption Algorithms**: All supported algorithms from [EncryptionAlgorithm.SUPPORTED_ENCRYPTION_ALGORITHMS]
-     * - **Encryption Methods**: All supported methods from [EncryptionMethod.SUPPORTED_ENCRYPTION_METHODS]
+     * - **Encryption Algorithms**: [EncryptionAlgorithm.ECDH_ES]
+     * - **Encryption Methods**: [EncryptionMethod.A256GCM], [EncryptionMethod.A128GCM]
      * - **Schemes**: ["mdoc-openid4vp"]
      *
      * ## Validation Rules:
@@ -186,8 +186,8 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
      * - SD-JWT VC formats must have non-empty algorithm lists
      *
      * @property clientIdSchemes List of supported client identifier schemes (must be initialized)
-     * @property encryptionAlgorithms List of supported encryption algorithms (defaults to all supported)
-     * @property encryptionMethods List of supported encryption methods (defaults to all supported)
+     * @property encryptionAlgorithms List of supported encryption algorithms, in order of preference
+     * @property encryptionMethods List of supported encryption methods, in order of preference
      * @property schemes List of URI schemes for OpenID4VP (defaults to "mdoc-openid4vp")
      * @property formats List of supported credential formats (must be initialized)
      */
@@ -211,12 +211,11 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
         fun withClientIdSchemes(vararg clientIdSchemes: ClientIdScheme) =
             apply { this.clientIdSchemes = clientIdSchemes.toList() }
 
-        var encryptionAlgorithms: List<EncryptionAlgorithm> =
-            EncryptionAlgorithm.SUPPORTED_ENCRYPTION_ALGORITHMS
+        var encryptionAlgorithms: List<EncryptionAlgorithm> = listOf(EncryptionAlgorithm.ECDH_ES)
             private set
 
         /**
-         * Sets the list of supported encryption algorithms.
+         * Sets the list of supported encryption algorithms, in order of preference.
          *
          * @param encryptionAlgorithms list of [EncryptionAlgorithm]
          */
@@ -224,19 +223,18 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             apply { this.encryptionAlgorithms = encryptionAlgorithms }
 
         /**
-         * Sets the list of supported encryption algorithms.
+         * Sets the list of supported encryption algorithms, in order of preference.
          *
          * @param encryptionAlgorithms variable argument of [EncryptionAlgorithm]
          */
         fun withEncryptionAlgorithms(vararg encryptionAlgorithms: EncryptionAlgorithm) =
             withEncryptionAlgorithms(encryptionAlgorithms.toList())
 
-        var encryptionMethods: List<EncryptionMethod> =
-            EncryptionMethod.SUPPORTED_ENCRYPTION_METHODS
+        var encryptionMethods: List<EncryptionMethod> = listOf(EncryptionMethod.A256GCM, EncryptionMethod.A128GCM)
             private set
 
         /**
-         * Sets the list of supported encryption methods.
+         * Sets the list of supported encryption methods, in order of preference.
          *
          * @param encryptionMethods list of [EncryptionMethod]
          */
@@ -244,7 +242,7 @@ class OpenId4VpConfig private constructor(private val builder: Builder) {
             apply { this.encryptionMethods = encryptionMethods }
 
         /**
-         * Sets the list of supported encryption methods.
+         * Sets the list of supported encryption methods, in order of preference.
          *
          * @param encryptionMethods variable argument of [EncryptionMethod]
          */
@@ -627,8 +625,7 @@ enum class EncryptionAlgorithm {
         /**
          * List of all supported encryption algorithms available for OpenID4VP configuration.
          *
-         * This property provides convenient access to all enum entries, useful for
-         * default configurations or when all algorithms should be supported.
+         * This property provides convenient access to all enum entries.
          */
         val SUPPORTED_ENCRYPTION_ALGORITHMS = entries
     }
@@ -645,12 +642,10 @@ enum class EncryptionAlgorithm {
  * ## Method Categories:
  * - **AES-CBC + HMAC**: Combined cipher and MAC modes (A128CBC_HS256, A192CBC_HS384, A256CBC_HS512)
  * - **AES-GCM**: Authenticated encryption modes (A128GCM, A192GCM, A256GCM)
- * - **Deprecated**: Legacy methods for backward compatibility
  * - **XC20P**: ChaCha20-Poly1305 authenticated encryption
  *
  * ## Security Recommendations:
  * - Prefer GCM modes for new implementations due to better performance and security
- * - Avoid deprecated methods unless required for backward compatibility
  * - XC20P provides good security with different performance characteristics than AES
  *
  * @see OpenId4VpConfig.encryptionMethods
@@ -675,18 +670,6 @@ enum class EncryptionMethod {
     /** AES-256 in Galois/Counter Mode (authenticated encryption) */
     A256GCM,
 
-    /**
-     * AES-128 in CBC mode with HMAC-SHA256 authentication (deprecated).
-     * @deprecated Use A128CBC_HS256 instead
-     */
-    A128CBC_HS256_DEPRECATED,
-
-    /**
-     * AES-256 in CBC mode with HMAC-SHA512 authentication (deprecated).
-     * @deprecated Use A256CBC_HS512 instead
-     */
-    A256CBC_HS512_DEPRECATED,
-
     /** ChaCha20-Poly1305 authenticated encryption */
     XC20P;
 
@@ -694,9 +677,7 @@ enum class EncryptionMethod {
         /**
          * List of all supported encryption methods available for OpenID4VP configuration.
          *
-         * This property provides convenient access to all enum entries, including
-         * deprecated methods. When configuring for production use, consider filtering
-         * out deprecated methods unless backward compatibility is required.
+         * This property provides convenient access to all enum entries.
          */
         val SUPPORTED_ENCRYPTION_METHODS = entries
     }

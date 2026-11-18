@@ -16,7 +16,9 @@
 
 package eu.europa.ec.eudi.wallet.transfer.openId4vp
 
+import com.nimbusds.jose.JWEAlgorithm
 import eu.europa.ec.eudi.openid4vp.HashAlgorithm
+import eu.europa.ec.eudi.openid4vp.ResponseEncryptionConfiguration
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.QesApprovalTransactionType
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -289,6 +291,18 @@ class OpenId4VpConfigTest {
             )
             assertEquals(upstream, config.errorDispatchPolicy)
         }
+    }
+
+    @Test
+    fun `makeOpenId4VPConfig passes the default encryption algorithms and methods in order of preference`() {
+        val config = makeOpenId4VPConfig(config = defaultBuilder().build(), trust = mockk<X509CertificateTrust>())
+
+        val encryption = assertIs<ResponseEncryptionConfiguration.Supported>(config.responseEncryptionConfiguration)
+        assertEquals(listOf(JWEAlgorithm.ECDH_ES), encryption.supportedAlgorithms)
+        assertEquals(
+            listOf(com.nimbusds.jose.EncryptionMethod.A256GCM, com.nimbusds.jose.EncryptionMethod.A128GCM),
+            encryption.supportedMethods,
+        )
     }
 
     private fun defaultBuilder(): OpenId4VpConfig.Builder = OpenId4VpConfig.Builder()
