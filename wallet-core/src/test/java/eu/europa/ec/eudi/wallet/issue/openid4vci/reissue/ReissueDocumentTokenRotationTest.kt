@@ -209,10 +209,7 @@ class ReissueDocumentTokenRotationTest {
     private fun manager(issuer: Issuer, tokenCipher: AeadCipher = this.tokenCipher): DefaultOpenId4VciManager {
         every { issuer.credentialOffer } returns credentialOffer()
         val issuerCreator = mockk<IssuerCreator>(relaxed = true) {
-            coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
-                issuer,
-                null
-            )
+            coEvery { createIssuer(any<String>(), any(), any(), any()) } returns IssuerCreation(issuer, null, null)
         }
         return spyk(
             DefaultOpenId4VciManager(

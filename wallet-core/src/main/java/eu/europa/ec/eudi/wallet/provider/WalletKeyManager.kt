@@ -48,9 +48,9 @@ interface WalletKeyManager {
     ): Result<WalletAttestationKey>
 
     /**
-     * Retrieves the existing Wallet Attestation Key for the specified Authorization Server URL.
-     * If no key exists for the given Authorization Server, it returns null.
-     * @param keyAlias The URL of the Authorization Server.
+     * Retrieves the existing Wallet Attestation Key with the given alias, as found in the
+     * [WalletAttestationKey.keyInfo] of a key returned by [getOrCreateWalletAttestationKey].
+     * @param keyAlias The alias of the key.
      * @return The existing [WalletAttestationKey] or null if not found.
      */
     suspend fun getWalletAttestationKey(

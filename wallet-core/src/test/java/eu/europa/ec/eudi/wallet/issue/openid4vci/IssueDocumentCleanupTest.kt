@@ -125,10 +125,9 @@ class IssueDocumentCleanupTest {
             )
         ) {
             every { this@spyk.issuerCreator } returns mockk {
-                coEvery { createIssuer(any<Offer>()) } returns IssuerCreation(issuer, null)
+                coEvery { createIssuer(any<Offer>()) } returns IssuerCreation(issuer, null, null)
                 every { clientAuthentication } returns ClientAuthentication.None("client")
                 every { dpopKeyAlias } returns null
-                every { clientAttestationPopKeyId } returns null
             }
             every { this@spyk.issuerAuthorization } returns mockk {
                 coEvery { authorize(any(), any()) } returns authorizedRequest()

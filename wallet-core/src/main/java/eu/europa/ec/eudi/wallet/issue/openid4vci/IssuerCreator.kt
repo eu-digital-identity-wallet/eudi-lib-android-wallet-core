@@ -51,6 +51,7 @@ import eu.europa.ec.eudi.wallet.internal.i
 import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.provider.WalletInstanceAttestationProvider
 import eu.europa.ec.eudi.wallet.provider.WalletKeyManager
+import eu.europa.ec.eudi.wallet.provider.earlierClientAttestationKeyAlias
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationResolver
 import eu.europa.ec.eudi.wallet.registration.issuer.issuerRegistrationCertificatePolicy
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
@@ -70,10 +71,21 @@ import eu.europa.ec.eudi.openid4vci.ProvisionDPoPSigner as VciProvisionDPoPSigne
  * @property issuer the created issuer
  * @property issuerRegistration the registration outcome to present, or null when the certificate was
  * not evaluated and the caller is to evaluate it
+ * @property clientAttestationPopKeyId the alias of the client attestation key of this issuance, or null
+ * without attestation-based client authentication
  */
 internal data class IssuerCreation(
     val issuer: Issuer,
     val issuerRegistration: RegistrationCertificateResult?,
+    val clientAttestationPopKeyId: String?,
+)
+
+/**
+ * The alias of the client attestation key stored with a document, and the Authorization Server it was used with.
+ */
+internal data class StoredClientAttestationKey(
+    val alias: String,
+    val authorizationServerId: String
 )
 
 /**
@@ -90,9 +102,6 @@ internal class IssuerCreator(
     private val issuerRegistrationEnabled: Boolean = false,
     private val issuerRegistration: IssuerRegistrationResolver? = null,
 ) {
-
-    internal var clientAttestationPopKeyId: String? = null
-        private set
 
     internal var dpopKeyAlias: String? = null
         private set
@@ -114,16 +123,19 @@ internal class IssuerCreator(
      * @param issuerUrl The issuer URL.
      * @param credentialConfigurationIdentifiers The list of [CredentialConfigurationIdentifier]s.
      * @param existingDpopKeyAlias Optional alias of an existing DPoP key to reuse (for re-issuance).
+     * @param existingClientAttestationKey Optional client attestation key stored with the document (for re-issuance).
      * @return The [Issuer] and the registration outcome.
      */
     suspend fun createIssuer(
         issuerUrl: String,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
+        existingClientAttestationKey: StoredClientAttestationKey? = null,
     ): IssuerCreation = doCreateIssuer(
         CredentialIssuerId(issuerUrl).getOrThrow(),
         credentialConfigurationIdentifiers,
         existingDpopKeyAlias,
+        existingClientAttestationKey,
     )
 
     /**
@@ -158,17 +170,19 @@ internal class IssuerCreator(
         resolvedRegistration: RegistrationCertificateResult? = null,
     ): IssuerCreation {
         var evaluatedRegistration: RegistrationCertificateResult? = null
+        var clientAttestationPopKeyId: String? = null
         val issuer = Issuer.make(
             config = config.toOpenId4VCIConfig(
                 credentialOffer.authorizationServerMetadata,
                 credentialIssuerMetadata = credentialOffer.credentialIssuerMetadata,
                 resolvedRegistration = resolvedRegistration,
                 onRegistrationEvaluated = { evaluatedRegistration = it },
+                onClientAttestationKey = { clientAttestationPopKeyId = it },
             ),
             credentialOffer = credentialOffer,
             httpClient = ktorHttpClientFactory()
         ).getOrThrow().first
-        return IssuerCreation(issuer, resolvedRegistration ?: evaluatedRegistration)
+        return IssuerCreation(issuer, resolvedRegistration ?: evaluatedRegistration, clientAttestationPopKeyId)
     }
 
     /**
@@ -186,12 +200,14 @@ internal class IssuerCreator(
      * @param credentialIssuerId the credential issuer
      * @param credentialConfigurationIdentifiers the credential configurations to request
      * @param existingDpopKeyAlias alias of an existing DPoP key to reuse (for re-issuance)
+     * @param existingClientAttestationKey client attestation key to reuse (for re-issuance)
      * @return the [Issuer] and the registration outcome evaluated by [Issuer.make]
      */
     private suspend fun doCreateIssuer(
         credentialIssuerId: CredentialIssuerId,
         credentialConfigurationIdentifiers: List<CredentialConfigurationIdentifier>,
         existingDpopKeyAlias: String? = null,
+        existingClientAttestationKey: StoredClientAttestationKey? = null,
     ): IssuerCreation {
         val httpClient = ktorHttpClientFactory()
         return try {
@@ -207,14 +223,17 @@ internal class IssuerCreator(
                 credentialIssuerId = credentialIssuerId,
                 credentialConfigurationIdentifiers = credentialConfigurationIdentifiers,
             ).getOrElse { throw it.metadataResolutionReasonOrSelf() }
-            val auth = credentialOffer.authorizationServerMetadata.toClientAuthentication().getOrThrow()
+            var clientAttestationPopKeyId: String? = null
+            val auth = credentialOffer.authorizationServerMetadata
+                .toClientAuthentication(existingClientAttestationKey) { clientAttestationPopKeyId = it }
+                .getOrThrow()
             clientAuthentication = auth
             val issuer = Issuer.make(
                 config = resolutionConfig.copy(clientAuthentication = auth),
                 credentialOffer = credentialOffer,
                 httpClient = httpClient,
             ).getOrThrow().first
-            IssuerCreation(issuer, evaluatedRegistration)
+            IssuerCreation(issuer, evaluatedRegistration, clientAttestationPopKeyId)
         } catch (e: Throwable) {
             httpClient.close()
             logger?.e(TAG, "Failed to create wallet-initiated issuer", e)
@@ -222,7 +241,17 @@ internal class IssuerCreator(
         }
     }
 
-    private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(): Result<ClientAuthentication> =
+    /**
+     * The client authentication with this Authorization Server. With attestation-based client
+     * authentication, [existingClientAttestationKey] is used when it was used with this Authorization
+     * Server, is the key that earlier versions created for it, still exists and has an algorithm the
+     * server accepts; otherwise the key of the server is used or created. No key is created or replaced
+     * under the alias of earlier versions. [onClientAttestationKey] receives the alias of the key used.
+     */
+    private suspend fun CIAuthorizationServerMetadata.toClientAuthentication(
+        existingClientAttestationKey: StoredClientAttestationKey? = null,
+        onClientAttestationKey: (String) -> Unit = {},
+    ): Result<ClientAuthentication> =
         runCatching {
             val issuerUrl = this.issuer.value
             when (val type = config.clientAuthenticationType) {
@@ -239,10 +268,19 @@ internal class IssuerCreator(
                     val supportedAlgorithms = clientAttestationPOPJWSAlgs.map { a ->
                         Algorithm.fromJoseAlgorithmIdentifier(a.name)
                     }
-                    walletAttestationKeyManager
-                        .getOrCreateWalletAttestationKey(issuerUrl, supportedAlgorithms)
+                    val storedKey = existingClientAttestationKey
+                        ?.takeIf {
+                            it.authorizationServerId == issuerUrl && it.alias == earlierClientAttestationKeyAlias(issuerUrl)
+                        }
+                        ?.let { walletAttestationKeyManager.getWalletAttestationKey(it.alias) }
+                        ?.takeIf { it.keyInfo.algorithm in supportedAlgorithms }
+                    (storedKey?.let { Result.success(it) }
+                        ?: walletAttestationKeyManager.getOrCreateWalletAttestationKey(issuerUrl, supportedAlgorithms))
                         .map {
-                            clientAttestationPopKeyId = it.keyInfo.alias
+                            if (existingClientAttestationKey != null && it.keyInfo.alias != existingClientAttestationKey.alias) {
+                                logger?.i(TAG, "The client attestation key stored with the document is not used with $issuerUrl")
+                            }
+                            onClientAttestationKey(it.keyInfo.alias)
                             with(it) {
                                 walletAttestationsProvider.toClientAuthentication(type.clientId).getOrThrow()
                             }
@@ -266,6 +304,7 @@ internal class IssuerCreator(
         credentialIssuerMetadata: CredentialIssuerMetadata? = null,
         resolvedRegistration: RegistrationCertificateResult? = null,
         onRegistrationEvaluated: (RegistrationCertificateResult) -> Unit = {},
+        onClientAttestationKey: (String) -> Unit = {},
     ): OpenId4VCIConfig {
         val auth = when (authorizationServerMetadata) {
             null -> ClientAuthentication.None(
@@ -274,7 +313,9 @@ internal class IssuerCreator(
                     is OpenId4VciManager.ClientAuthenticationType.AttestationBased -> type.clientId
                 }
             )
-            else -> authorizationServerMetadata.toClientAuthentication().getOrThrow().also {
+            else -> authorizationServerMetadata.toClientAuthentication(
+                onClientAttestationKey = onClientAttestationKey,
+            ).getOrThrow().also {
                 clientAuthentication = it
             }
         }

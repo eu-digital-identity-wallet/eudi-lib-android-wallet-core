@@ -178,12 +178,12 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 issuanceMetadataStore.encryptLegacyRecords()
-                val (issuer, issuerRegistration) = issuerCreator.createIssuer(
+                val (issuer, issuerRegistration, clientAttestationPopKeyId) = issuerCreator.createIssuer(
                     issuerUrl,
                     credentialConfigurationIds.map{ id -> CredentialConfigurationIdentifier(id) }
                 )
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
-                doIssue(issuer, offer, txCode, listener, userTriggered = true)
+                doIssue(issuer, offer, txCode, listener, userTriggered = true, clientAttestationPopKeyId)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByConfigurationIdentifier failed", e)
@@ -201,9 +201,9 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 issuanceMetadataStore.encryptLegacyRecords()
-                val (issuer, issuerRegistration) = issuerCreator.createIssuer(issuerUrl, format)
+                val (issuer, issuerRegistration, clientAttestationPopKeyId) = issuerCreator.createIssuer(issuerUrl, format)
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
-                doIssue(issuer, offer, txCode, listener, userTriggered = true)
+                doIssue(issuer, offer, txCode, listener, userTriggered = true, clientAttestationPopKeyId)
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByDocType failed", e)
@@ -239,8 +239,15 @@ internal class DefaultOpenId4VciManager(
         launch(executor, onIssueEvent) { coroutineScope, listener ->
             try {
                 issuanceMetadataStore.encryptLegacyRecords()
-                val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
+                val (issuer, issuerRegistration, clientAttestationPopKeyId) = issuerCreator.createIssuer(offer)
+                doIssue(
+                    issuer,
+                    offer.copy(issuerRegistration = issuerRegistration),
+                    txCode,
+                    listener,
+                    userTriggered = false,
+                    clientAttestationPopKeyId,
+                )
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOffer failed", e)
@@ -259,8 +266,15 @@ internal class DefaultOpenId4VciManager(
             try {
                 issuanceMetadataStore.encryptLegacyRecords()
                 val offer = offerResolver.resolve(offerUri).getOrThrow()
-                val (issuer, issuerRegistration) = issuerCreator.createIssuer(offer)
-                doIssue(issuer, offer.copy(issuerRegistration = issuerRegistration), txCode, listener, userTriggered = false)
+                val (issuer, issuerRegistration, clientAttestationPopKeyId) = issuerCreator.createIssuer(offer)
+                doIssue(
+                    issuer,
+                    offer.copy(issuerRegistration = issuerRegistration),
+                    txCode,
+                    listener,
+                    userTriggered = false,
+                    clientAttestationPopKeyId,
+                )
             } catch (e: Throwable) {
                 listener(failure(e))
                 coroutineScope.cancel("issueDocumentByOfferUri failed", e)
@@ -456,11 +470,15 @@ internal class DefaultOpenId4VciManager(
 
                 //  Create Issuer using IssuerCreator (resolves issuer metadata)
                 //  Pass existing DPoP key alias so the same key is reused
-                //  (access token is bound to original key's thumbprint)
-                val (issuer, issuerRegistration) = issuerCreator.createIssuer(
+                //  (access token is bound to original key's thumbprint), and the client attestation key,
+                //  which the refresh token is bound to
+                val (issuer, issuerRegistration, clientAttestationPopKeyId) = issuerCreator.createIssuer(
                     issuanceMetadata.credentialIssuerId,
                     listOf(CredentialConfigurationIdentifier(issuanceMetadata.credentialConfigurationIdentifier)),
-                    existingDpopKeyAlias = issuanceMetadata.dPoPKeyAlias
+                    existingDpopKeyAlias = issuanceMetadata.dPoPKeyAlias,
+                    existingClientAttestationKey = issuanceMetadata.clientAttestationPopKeyId?.let { alias ->
+                        issuanceMetadata.authorizationServerId?.let { StoredClientAttestationKey(alias, it) }
+                    },
                 )
 
                 val offer = Offer(issuer.credentialOffer, issuerRegistration)
@@ -492,12 +510,16 @@ internal class DefaultOpenId4VciManager(
                         val metadataWithLatestTokens = issuanceMetadataStore.get(documentId)
                             ?: throw IllegalStateException("No issuance metadata found for document $documentId")
                         // The issuer was created from the record read before the lock, so the record read
-                        // under the lock must name the same issuer, credential configuration and DPoP key
+                        // under the lock must name the same issuer, credential configuration, DPoP key,
+                        // client attestation key and authorization server
                         check(
                             metadataWithLatestTokens.credentialIssuerId == issuanceMetadata.credentialIssuerId &&
                                 metadataWithLatestTokens.credentialConfigurationIdentifier ==
                                 issuanceMetadata.credentialConfigurationIdentifier &&
-                                metadataWithLatestTokens.dPoPKeyAlias == issuanceMetadata.dPoPKeyAlias
+                                metadataWithLatestTokens.dPoPKeyAlias == issuanceMetadata.dPoPKeyAlias &&
+                                metadataWithLatestTokens.clientAttestationPopKeyId ==
+                                issuanceMetadata.clientAttestationPopKeyId &&
+                                metadataWithLatestTokens.authorizationServerId == issuanceMetadata.authorizationServerId
                         ) {
                             "The issuance metadata of document $documentId changed during its re-issuance"
                         }
@@ -586,7 +608,7 @@ internal class DefaultOpenId4VciManager(
                     ProcessResponse(
                         documentManager = documentManager,
                         deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
-                        clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
+                        clientAttestationPopKeyId = clientAttestationPopKeyId,
                         listener = listener,
                         issuedDocumentIds = issuedDocumentIds,
                         deferredDocumentIds = deferredDocumentIds,
@@ -693,6 +715,7 @@ internal class DefaultOpenId4VciManager(
         txCode: String?,
         listener: OpenId4VciManager.OnResult<IssueEvent>,
         userTriggered: Boolean,
+        clientAttestationPopKeyId: String?,
     ) {
         var authorizedRequest = issuerAuthorization.authorize(issuer, txCode)
         val issuancePayloads = resolveIssuanceRequestPayloads(offer, authorizedRequest.credentialIdentifiers)
@@ -715,7 +738,7 @@ internal class DefaultOpenId4VciManager(
             ProcessResponse(
                 documentManager = documentManager,
                 deferredContextFactory = DeferredContextFactory(issuer, authorizedRequest, issuerCreator.dpopKeyAlias),
-                clientAttestationPopKeyId = issuerCreator.clientAttestationPopKeyId,
+                clientAttestationPopKeyId = clientAttestationPopKeyId,
                 listener = listener,
                 issuedDocumentIds = issuedDocumentIds,
                 deferredDocumentIds = deferredDocumentIds,

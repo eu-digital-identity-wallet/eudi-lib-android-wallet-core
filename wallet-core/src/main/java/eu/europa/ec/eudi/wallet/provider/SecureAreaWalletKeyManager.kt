@@ -99,13 +99,18 @@ open class SecureAreaWalletKeyManager(
     }
 
     /**
-     * Generates a privacy-preserving alias for the key based on the target URL.
-     * This ensures that different Authorization Servers get different keys.
+     * Generates the alias of the key of the Authorization Server [issuerUrl] from the whole SHA-256
+     * digest of the URL, so that each Authorization Server has its own key.
      */
-    private fun generateKeyAlias(issuerUrl: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hashBytes = digest.digest(issuerUrl.toByteArray())
-        val hashHex = hashBytes.joinToString("") { "%02x".format(it) }.take(16)
-        return "client-attestation-$hashHex"
-    }
+    private fun generateKeyAlias(issuerUrl: String): String = "client-attestation-${sha256Hex(issuerUrl)}"
 }
+
+/**
+ * The alias that earlier versions of [SecureAreaWalletKeyManager] gave to the key of the Authorization
+ * Server [issuerUrl]: the first 16 hexadecimal digits of the SHA-256 digest of the URL.
+ */
+internal fun earlierClientAttestationKeyAlias(issuerUrl: String): String =
+    "client-attestation-${sha256Hex(issuerUrl).take(16)}"
+
+private fun sha256Hex(value: String): String =
+    MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }

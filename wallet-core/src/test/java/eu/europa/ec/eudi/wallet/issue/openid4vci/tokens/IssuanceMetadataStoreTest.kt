@@ -181,6 +181,8 @@ class IssuanceMetadataStoreTest {
                 credentialIssuerId = metadata.credentialIssuerId,
                 credentialConfigurationIdentifier = metadata.credentialConfigurationIdentifier,
                 dPoPKeyAlias = metadata.dPoPKeyAlias,
+                clientAttestationPopKeyId = metadata.clientAttestationPopKeyId,
+                authorizationServerId = metadata.authorizationServerId,
                 issuerName = metadata.issuerName,
             ),
             storeWithAnotherKey.getWithoutTokens("doc")
