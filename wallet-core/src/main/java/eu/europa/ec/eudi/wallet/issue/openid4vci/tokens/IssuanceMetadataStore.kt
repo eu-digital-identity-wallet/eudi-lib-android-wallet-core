@@ -262,6 +262,8 @@ internal data class IssuanceMetadataWithoutTokens(
     val credentialIssuerId: String,
     val credentialConfigurationIdentifier: String,
     val dPoPKeyAlias: String? = null,
+    val clientAttestationPopKeyId: String? = null,
+    val authorizationServerId: String? = null,
     val issuerIdentifier: QualifiedIdentifier? = null,
     val issuerName: String? = null,
 )

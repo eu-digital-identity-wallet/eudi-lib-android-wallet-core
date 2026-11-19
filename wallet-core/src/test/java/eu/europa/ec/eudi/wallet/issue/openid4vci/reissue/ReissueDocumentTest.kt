@@ -52,6 +52,8 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.DeferredContext
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerAuthorization
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreation
+import eu.europa.ec.eudi.wallet.issue.openid4vci.IssuerCreator
+import eu.europa.ec.eudi.wallet.issue.openid4vci.StoredClientAttestationKey
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.issue.openid4vci.reissue.IssuanceMetadata
@@ -157,6 +159,9 @@ class ReissueDocumentTest {
     fun tearDown() {
         unmockkStatic(DeferredContext::toBytes)
     }
+
+    /** The client attestation keys passed to [IssuerCreator.createIssuer], one per re-issuance. */
+    private val existingClientAttestationKeys = mutableListOf<StoredClientAttestationKey?>()
 
     @Test
     fun `a successful re-issuance replaces the old document and stores the new one's metadata first`() =
@@ -298,6 +303,7 @@ class ReissueDocumentTest {
             assertEquals(listOf("at-fresh"), credentialRequestTokens)
             coVerify(exactly = 1) { issuerAuthorization.authorize(issuer, null) }
             assertEquals("rt-fresh", reissuance.newDocumentMetadataAtFinish?.refreshToken)
+            assertEquals(CLIENT_ATTESTATION_KEY_OF_THE_ISSUANCE, reissuance.newDocumentMetadataAtFinish?.clientAttestationPopKeyId)
             assertEquals("rt-0", loadMetadata(PID_MDOC)?.refreshToken)
         }
 
@@ -354,7 +360,7 @@ class ReissueDocumentTest {
         storePlainMetadata(PID_MDOC)
         val manager = manager()
         every { manager.issuerCreator } returns mockk {
-            coEvery { createIssuer(any<String>(), any<List<CredentialConfigurationIdentifier>>(), any()) } throws
+            coEvery { createIssuer(any<String>(), any<List<CredentialConfigurationIdentifier>>(), any(), any()) } throws
                 IllegalStateException("The issuer cannot be reached")
         }
         val end = CompletableDeferred<IssueEvent>()
@@ -373,7 +379,7 @@ class ReissueDocumentTest {
         storePlainMetadata(PID_MDOC)
         val manager = manager()
         every { manager.issuerCreator } returns mockk {
-            coEvery { createIssuer(any<String>(), any<List<CredentialConfigurationIdentifier>>(), any()) } throws
+            coEvery { createIssuer(any<String>(), any<List<CredentialConfigurationIdentifier>>(), any(), any()) } throws
                 IllegalStateException("The issuer cannot be reached")
         }
         val end = CompletableDeferred<IssueEvent>()
@@ -387,6 +393,18 @@ class ReissueDocumentTest {
     }
 
     @Test
+    fun `a re-issuance passes the client attestation key stored with the document to the issuer creation`() = runBlocking {
+        storeMetadata(PID_SD_JWT, refreshToken = "rt-0", clientAttestationPopKeyId = "client-attestation-stored")
+
+        reissue(PID_SD_JWT)
+
+        assertEquals(
+            listOf<StoredClientAttestationKey?>(StoredClientAttestationKey("client-attestation-stored", "https://auth.example.com")),
+            existingClientAttestationKeys,
+        )
+    }
+
+    @Test
     fun `a re-issuance stops when the stored record changed after it was read`() = runBlocking {
         storeMetadata(PID_SD_JWT, refreshToken = "rt-0")
         val record = storage.getTable(IssuanceMetadata.STORAGE_TABLE_SPEC).get(PID_SD_JWT)!!
@@ -395,9 +413,11 @@ class ReissueDocumentTest {
             { it.copy(credentialIssuerId = "https://other.example.com") },
             { it.copy(credentialConfigurationIdentifier = "other-configuration") },
             { it.copy(dPoPKeyAlias = "other-dpop-key") },
+            { it.copy(clientAttestationPopKeyId = "other-client-attestation-key") },
+            { it.copy(authorizationServerId = "https://other-auth.example.com") },
         ).forEach { change ->
-            // The read before the lock returns a record with another issuer, configuration or DPoP key, and
-            // the read under the lock returns the stored record
+            // The read before the lock returns a record with another issuer, configuration, DPoP key, client
+            // attestation key or authorization server, and the read under the lock returns the stored record
             val otherRecord = ByteString(change(metadata(PID_SD_JWT, "rt-other")).toByteArray())
             val table = mockk<StorageTable> {
                 coEvery { enumerateWithData(any(), any(), any()) } returns emptyList()
@@ -462,13 +482,10 @@ class ReissueDocumentTest {
         )
     ) {
         every { this@spyk.issuerCreator } returns mockk {
-            coEvery { createIssuer(any<String>(), any(), any()) } returns IssuerCreation(
-                issuer,
-                null
-            )
+            coEvery { createIssuer(any<String>(), any(), any(), captureNullable(existingClientAttestationKeys)) } returns
+                IssuerCreation(issuer, null, CLIENT_ATTESTATION_KEY_OF_THE_ISSUANCE)
             every { clientAuthentication } returns ClientAuthentication.None("client")
             every { dpopKeyAlias } returns null
-            every { clientAttestationPopKeyId } returns null
         }
         every { this@spyk.issuerAuthorization } returns this@ReissueDocumentTest.issuerAuthorization
     }
@@ -553,8 +570,9 @@ class ReissueDocumentTest {
         documentId: String,
         refreshToken: String,
         store: IssuanceMetadataStore = metadataStore,
+        clientAttestationPopKeyId: String? = null,
     ) {
-        store.insert(documentId, metadata(documentId, refreshToken))
+        store.insert(documentId, metadata(documentId, refreshToken).copy(clientAttestationPopKeyId = clientAttestationPopKeyId))
     }
 
     /** Stores the metadata of [documentId] in plain text, as an earlier version did. */
@@ -588,6 +606,7 @@ class ReissueDocumentTest {
 
     private companion object {
         const val PLAIN_REFRESH_TOKEN = "rt-plain"
+        const val CLIENT_ATTESTATION_KEY_OF_THE_ISSUANCE = "client-attestation-of-the-issuance"
         const val ISSUER = "https://issuer.example.com"
         const val CONFIGURATION_ID = "eu.europa.ec.eudi.pid_vc_sd_jwt"
         const val VCT = "urn:eudi:pid:1"

@@ -40,6 +40,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.mockk.CapturingSlot
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -120,15 +121,77 @@ class IssuerCreatorTest {
             walletAttestationKeyManager = walletAttestationKeyManager(keyAliasInput, supportedAlgorithms),
         )
 
-        creator.createIssuer(CREDENTIAL_ISSUER, listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)))
+        val creation = creator.createIssuer(CREDENTIAL_ISSUER, listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)))
 
         assertEquals(AUTHORIZATION_SERVER, keyAliasInput.captured)
         assertEquals(listOf(Algorithm.fromJoseAlgorithmIdentifier("ES256")), supportedAlgorithms.captured)
         assertIs<ClientAuthentication.AttestationBased>(creator.clientAuthentication)
-        assertEquals(ATTESTATION_KEY_ALIAS, creator.clientAttestationPopKeyId)
+        assertEquals(ATTESTATION_KEY_ALIAS, creation.clientAttestationPopKeyId)
         assertEquals(1, requestCount(ISSUER_WELL_KNOWN_PATH), "issuer metadata requests: $requestedPaths")
         assertEquals(1, requestCount(AUTHORIZATION_SERVER_WELL_KNOWN_PATH), "authorization server requests: $requestedPaths")
         assertTrue(createdClients.single().isActive, "the issuer keeps using the http client")
+    }
+
+    @Test
+    fun `the alias of the client attestation key is returned for an offer`() = runTest {
+        val creator = issuerCreator(
+            clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased("client"),
+            walletAttestationKeyManager = walletAttestationKeyManager(),
+        )
+        val offer = Offer(
+            creator.createIssuer(CREDENTIAL_ISSUER, listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)))
+                .issuer.credentialOffer
+        )
+
+        val creation = creator.createIssuer(offer)
+
+        assertEquals(ATTESTATION_KEY_ALIAS, creation.clientAttestationPopKeyId)
+    }
+
+    @Test
+    fun `a stored client attestation key is used with the authorization server it was used with`() = runTest {
+        val keyManager = keyManagerWithStoredKey(Algorithm.ESP256)
+        val creator = issuerCreator(
+            clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased("client"),
+            walletAttestationKeyManager = keyManager,
+        )
+
+        val creation = creator.createIssuer(
+            CREDENTIAL_ISSUER,
+            listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)),
+            existingClientAttestationKey = StoredClientAttestationKey(STORED_KEY_ALIAS, AUTHORIZATION_SERVER),
+        )
+
+        assertEquals(STORED_KEY_ALIAS, creation.clientAttestationPopKeyId)
+        coVerify(exactly = 0) { keyManager.getOrCreateWalletAttestationKey(any(), any()) }
+    }
+
+    @Test
+    fun `the key of the authorization server is used when the stored client attestation key does not fit`() = runTest {
+        listOf(
+            // Used with another authorization server
+            keyManagerWithStoredKey(Algorithm.ESP256) to StoredClientAttestationKey(STORED_KEY_ALIAS, "https://other.example.com"),
+            // No longer exists
+            keyManagerWithStoredKey(null) to StoredClientAttestationKey(STORED_KEY_ALIAS, AUTHORIZATION_SERVER),
+            // Has an algorithm the authorization server does not accept
+            keyManagerWithStoredKey(Algorithm.ESP384) to StoredClientAttestationKey(STORED_KEY_ALIAS, AUTHORIZATION_SERVER),
+            // Is not the key that earlier versions created for the authorization server
+            keyManagerWithStoredKey(Algorithm.ESP256, OTHER_KEY_ALIAS) to
+                StoredClientAttestationKey(OTHER_KEY_ALIAS, AUTHORIZATION_SERVER),
+        ).forEach { (keyManager, storedKey) ->
+            val creator = issuerCreator(
+                clientAuthenticationType = OpenId4VciManager.ClientAuthenticationType.AttestationBased("client"),
+                walletAttestationKeyManager = keyManager,
+            )
+
+            val creation = creator.createIssuer(
+                CREDENTIAL_ISSUER,
+                listOf(CredentialConfigurationIdentifier(MDL_CONFIGURATION_ID)),
+                existingClientAttestationKey = storedKey,
+            )
+
+            assertEquals(ATTESTATION_KEY_ALIAS, creation.clientAttestationPopKeyId, storedKey.toString())
+        }
     }
 
     @Test
@@ -203,6 +266,28 @@ class IssuerCreatorTest {
         }
     }
 
+    /**
+     * A [WalletKeyManager] with a stored key [storedKeyAlias] of [storedKeyAlgorithm], or without it
+     * when null, and the key [ATTESTATION_KEY_ALIAS] of the authorization server.
+     */
+    private fun keyManagerWithStoredKey(
+        storedKeyAlgorithm: Algorithm?,
+        storedKeyAlias: String = STORED_KEY_ALIAS,
+    ): WalletKeyManager = mockk {
+        coEvery { getWalletAttestationKey(storedKeyAlias) } returns
+            storedKeyAlgorithm?.let { attestationKey(storedKeyAlias, it) }
+        coEvery { getOrCreateWalletAttestationKey(AUTHORIZATION_SERVER, any()) } returns
+            Result.success(attestationKey(ATTESTATION_KEY_ALIAS, Algorithm.ESP256))
+    }
+
+    private fun attestationKey(keyAlias: String, keyAlgorithm: Algorithm): WalletAttestationKey {
+        val keyInfo = mockk<KeyInfo> {
+            every { algorithm } returns keyAlgorithm
+            every { alias } returns keyAlias
+        }
+        return WalletAttestationKey(keyInfo) { it }
+    }
+
     /** Number of requests made to the given well-known metadata path. */
     private fun requestCount(wellKnownPath: String): Int =
         requestedPaths.count { it.startsWith(wellKnownPath) }
@@ -259,6 +344,9 @@ class IssuerCreatorTest {
         const val MDL_CONFIGURATION_ID = "org.iso.18013.5.1.mDL"
         const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         const val ATTESTATION_KEY_ALIAS = "client-attestation-test"
+        // The alias that earlier versions gave to the key of AUTHORIZATION_SERVER: 16 hexadecimal digits of its SHA-256
+        const val STORED_KEY_ALIAS = "client-attestation-0bd1f0af3110b498"
+        const val OTHER_KEY_ALIAS = "client-attestation-other"
 
         val ISSUER_METADATA = """
             {
