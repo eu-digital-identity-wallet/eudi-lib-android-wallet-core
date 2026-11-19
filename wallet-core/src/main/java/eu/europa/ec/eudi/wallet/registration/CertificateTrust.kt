@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.registration
 import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
 import eu.europa.ec.eudi.etsi1196x2.consultation.IsChainTrustedForEUDIW
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.eudi.iso18013.transfer.readerauth.CrlCache
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStore
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.ReaderTrustStoreImpl
 import eu.europa.ec.eudi.iso18013.transfer.readerauth.RevocationPolicy
@@ -26,6 +27,7 @@ import eu.europa.ec.eudi.wallet.internal.e
 import eu.europa.ec.eudi.wallet.logging.Logger
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
+import kotlin.time.Duration
 
 private const val TAG = "CertificateTrust"
 
@@ -68,10 +70,12 @@ internal fun IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>.asCertif
 internal fun registrationCertificateTrust(
     trustedCertificates: List<X509Certificate>?,
     revocationPolicy: RevocationPolicy,
+    revocationCheckTimeout: Duration = ReaderTrustStoreImpl.DEFAULT_REVOCATION_CHECK_TIMEOUT,
+    crlCache: CrlCache? = null,
     etsiSource: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>?,
     logger: Logger? = null,
 ): CertificateTrust? =
-    trustedCertificates?.asCertificateTrust(revocationPolicy)
+    trustedCertificates?.asCertificateTrust(revocationPolicy, revocationCheckTimeout, crlCache)
         ?: etsiSource?.asCertificateTrust(
             VerificationContext.WalletRelyingPartyRegistrationCertificate,
             logger = logger
@@ -85,10 +89,12 @@ internal fun registrationCertificateTrust(
 internal fun registrationStatusTrust(
     statusListTrustedCertificates: List<X509Certificate>?,
     revocationPolicy: RevocationPolicy,
+    revocationCheckTimeout: Duration = ReaderTrustStoreImpl.DEFAULT_REVOCATION_CHECK_TIMEOUT,
+    crlCache: CrlCache? = null,
     etsiSource: IsChainTrustedForEUDIW<List<X509Certificate>, TrustAnchor>?,
     logger: Logger? = null,
 ): CertificateTrust? =
-    statusListTrustedCertificates?.asCertificateTrust(revocationPolicy)
+    statusListTrustedCertificates?.asCertificateTrust(revocationPolicy, revocationCheckTimeout, crlCache)
         ?: etsiSource?.asCertificateTrust(
             VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
             logger = logger,
@@ -98,6 +104,15 @@ internal fun registrationStatusTrust(
  * Validates chains against these certificates as trust anchors, without the ISO/IEC 18013-5 reader
  * certificate profile checks.
  */
-private fun List<X509Certificate>.asCertificateTrust(revocationPolicy: RevocationPolicy): CertificateTrust =
-    ReaderTrustStoreImpl(this, profileValidation = { _, _ -> true }, revocationPolicy = revocationPolicy)
-        .asCertificateTrust()
+private fun List<X509Certificate>.asCertificateTrust(
+    revocationPolicy: RevocationPolicy,
+    revocationCheckTimeout: Duration = ReaderTrustStoreImpl.DEFAULT_REVOCATION_CHECK_TIMEOUT,
+    crlCache: CrlCache? = null,
+): CertificateTrust =
+    ReaderTrustStoreImpl(
+        this,
+        profileValidation = { _, _ -> true },
+        revocationPolicy = revocationPolicy,
+        revocationCheckTimeout = revocationCheckTimeout,
+        crlCache = crlCache,
+    ).asCertificateTrust()
