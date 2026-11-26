@@ -262,7 +262,8 @@ class DocumentManagerImpl(
                     }
                 }
 
-                val credentialCertifier = CredentialCertification(unsignedDocument.format)
+                val credentialCertifier =
+                    CredentialCertification(unsignedDocument.format, unsignedDocument.issuerMetadata)
 
                 for (credential in credentials) {
                     credentialCertifier.certifyCredential(

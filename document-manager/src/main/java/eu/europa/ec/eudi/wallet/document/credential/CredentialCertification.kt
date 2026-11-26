@@ -19,6 +19,7 @@ package eu.europa.ec.eudi.wallet.document.credential
 import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import org.multipaz.credential.SecureAreaBoundCredential
 
 fun interface CredentialCertification {
@@ -28,10 +29,14 @@ fun interface CredentialCertification {
     )
 
     companion object {
-        operator fun invoke(format: DocumentFormat): CredentialCertification {
+        operator fun invoke(
+            format: DocumentFormat,
+            issuerMetadata: IssuerMetadata? = null,
+        ): CredentialCertification {
+            val mandatoryClaims = issuerMetadata.mandatoryClaimPaths
             return when (format) {
-                is MsoMdocFormat -> MsoMdocCredentialCertifier()
-                is SdJwtVcFormat -> SdJwtVcCredentialCertifier()
+                is MsoMdocFormat -> MsoMdocCredentialCertifier(mandatoryClaims)
+                is SdJwtVcFormat -> SdJwtVcCredentialCertifier(mandatoryClaims)
             }
         }
     }
