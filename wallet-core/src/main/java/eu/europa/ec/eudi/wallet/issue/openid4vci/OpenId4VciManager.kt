@@ -20,6 +20,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.IntDef
 import com.nimbusds.jose.jwk.Curve
+import eu.europa.ec.eudi.openid4vci.AuthorizationResponseIssChecking
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.CredentialResponseEncryptionPolicy
@@ -265,10 +266,11 @@ interface OpenId4VciManager {
      *
      * **Note:** This method should only be called when using the default [BrowserAuthorizationHandler].
      * If you are using a custom [AuthorizationHandler] implementation, you are responsible for
-     * providing the authorization code and state directly to your handler. Custom handlers should
+     * providing the authorization code, state and `iss` directly to your handler. Custom handlers should
      * manage their own authorization flow completion without relying on this method.
      *
-     * @param uri the uri that contains the authorization code and state parameters
+     * @param uri the redirect uri, unmodified, with the authorization code, state and, when the
+     *        authorization server sends it, `iss` (RFC 9207) parameters
      * @throws [IllegalStateException] if no authorization request to resume or if a custom
      *         [AuthorizationHandler] is being used
      *
@@ -282,10 +284,11 @@ interface OpenId4VciManager {
      *
      * **Note:** This method should only be called when using the default [BrowserAuthorizationHandler].
      * If you are using a custom [AuthorizationHandler] implementation, you are responsible for
-     * providing the authorization code and state directly to your handler. Custom handlers should
+     * providing the authorization code, state and `iss` directly to your handler. Custom handlers should
      * manage their own authorization flow completion without relying on this method.
      *
-     * @param uri the uri string that contains the authorization code and state parameters
+     * @param uri the redirect uri string, unmodified, with the authorization code, state and, when
+     *        the authorization server sends it, `iss` (RFC 9207) parameters
      * @throws [IllegalStateException] if no authorization request to resume or if a custom
      *         [AuthorizationHandler] is being used
      *
@@ -654,6 +657,18 @@ interface OpenId4VciManager {
      *
      *           @see EncryptionSupportConfig
      *           @see CredentialResponseEncryptionPolicy
+     * @property supportedCredentialReusePolicies the credential reuse policies supported by this wallet
+     * @property issuanceProofProfile how the wallet negotiates proof types with issuers
+     * @property authResponseIssChecking how the `iss` parameter of the authorization response
+     *           ([RFC 9207](https://www.rfc-editor.org/rfc/rfc9207)) is checked, to prevent mix-up attacks.
+     *
+     *           - [AuthorizationResponseIssChecking.IfSupported] checks it when the authorization
+     *             server advertises `authorization_response_iss_parameter_supported`
+     *           - [AuthorizationResponseIssChecking.Required] also refuses an authorization server
+     *             that does not advertise it
+     *           - [AuthorizationResponseIssChecking.Never] does not check it
+     *
+     *           **Default:** [AuthorizationResponseIssChecking.IfSupported]
      */
     data class Config @JvmOverloads constructor(
         val clientAuthenticationType: ClientAuthenticationType,
@@ -669,6 +684,7 @@ interface OpenId4VciManager {
         ),
         val supportedCredentialReusePolicies: CredentialReusePolicies? = null,
         val issuanceProofProfile: IssuanceProofProfile = IssuanceProofProfile.Etsi,
+        val authResponseIssChecking: AuthorizationResponseIssChecking = AuthorizationResponseIssChecking.IfSupported,
     ) {
         /**
          * PAR usage for the OpenId4Vci issuer
@@ -766,6 +782,7 @@ interface OpenId4VciManager {
          *
          *           @see DPopConfig for detailed configuration options
          * @property parUsage if PAR should be used
+         * @property authResponseIssChecking how the `iss` parameter of the authorization response is checked
          */
         class Builder {
             var clientAuthenticationType: ClientAuthenticationType? = null
@@ -790,6 +807,8 @@ interface OpenId4VciManager {
             var proofTypes: SupportedProofTypes? = null
 
             var issuanceProofProfile: IssuanceProofProfile? = null
+
+            var authResponseIssChecking: AuthorizationResponseIssChecking = AuthorizationResponseIssChecking.IfSupported
 
             /**
              * Set the client authentication type
@@ -997,6 +1016,24 @@ interface OpenId4VciManager {
             }
 
             /**
+             * Sets how the `iss` parameter of the authorization response
+             * ([RFC 9207](https://www.rfc-editor.org/rfc/rfc9207)) is checked against the
+             * authorization server's issuer identifier, to prevent mix-up attacks.
+             *
+             * **Default:** [AuthorizationResponseIssChecking.IfSupported], which checks it whenever
+             * the authorization server advertises `authorization_response_iss_parameter_supported`.
+             * HAIP wallets can use [AuthorizationResponseIssChecking.Required] to also refuse
+             * authorization servers that do not support it.
+             *
+             * @param authResponseIssChecking the checking policy
+             * @return This builder instance for method chaining
+             * @see AuthorizationResponseIssChecking
+             */
+            fun withAuthResponseIssChecking(authResponseIssChecking: AuthorizationResponseIssChecking) = apply {
+                this.authResponseIssChecking = authResponseIssChecking
+            }
+
+            /**
              * Build the [Config]
              * @return the [Config]
              */
@@ -1021,6 +1058,7 @@ interface OpenId4VciManager {
                     responseEncryptionConfig = responseEncryptionConfig,
                     supportedCredentialReusePolicies = supportedCredentialReusePolicies,
                     issuanceProofProfile = resolvedProfile,
+                    authResponseIssChecking = authResponseIssChecking,
                 )
             }
         }

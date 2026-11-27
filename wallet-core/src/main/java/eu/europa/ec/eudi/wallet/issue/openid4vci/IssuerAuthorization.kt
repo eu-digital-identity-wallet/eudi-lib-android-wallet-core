@@ -52,7 +52,8 @@ internal class IssuerAuthorization(
                     val authResponse = authorizationHandler.authorize(authorizationUrl).getOrThrow()
                     prepareAuthorizationCodeRequest.authorizeWithAuthorizationCode(
                         AuthorizationCode(authResponse.authorizationCode),
-                        authResponse.serverState
+                        authResponse.serverState,
+                        issuer = authResponse.issuer,
                     )
                 }
             }.getOrThrow()

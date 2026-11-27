@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 
 import android.content.Context
 import android.net.Uri
+import eu.europa.ec.eudi.openid4vci.AuthorizationResponseIssChecking
 import eu.europa.ec.eudi.openid4vci.AuthorizedRequest
 import eu.europa.ec.eudi.openid4vci.HttpsUrl
 import eu.europa.ec.eudi.openid4vci.Issuer
@@ -192,6 +193,27 @@ class AuthorizationHandlerTest {
 
         assertNotNull(config)
         assertEquals(null, config.authorizationHandler)
+    }
+
+    @Test
+    fun `Config builder checks the authorization response issuer if supported by default`() {
+        val config = OpenId4VciManager.Config {
+            withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
+            withAuthFlowRedirectionURI("eudi-wallet://callback")
+        }
+
+        assertEquals(AuthorizationResponseIssChecking.IfSupported, config.authResponseIssChecking)
+    }
+
+    @Test
+    fun `Config builder with authorization response issuer checking`() {
+        val config = OpenId4VciManager.Config {
+            withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.None("client-id"))
+            withAuthFlowRedirectionURI("eudi-wallet://callback")
+            withAuthResponseIssChecking(AuthorizationResponseIssChecking.Required)
+        }
+
+        assertEquals(AuthorizationResponseIssChecking.Required, config.authResponseIssChecking)
     }
 
     /**

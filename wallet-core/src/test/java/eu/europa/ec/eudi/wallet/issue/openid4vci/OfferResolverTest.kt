@@ -16,13 +16,16 @@
 
 package eu.europa.ec.eudi.wallet.issue.openid4vci
 
+import eu.europa.ec.eudi.openid4vci.AuthorizationResponseIssChecking
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
+import eu.europa.ec.eudi.openid4vci.OpenId4VCIConfig
 import io.ktor.client.HttpClient
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import java.net.URLEncoder
 import kotlin.test.BeforeTest
@@ -61,6 +64,25 @@ class OfferResolverTest {
         offerResolver = OfferResolver(config, ktorHttpClientFactory)
     }
 
+
+    @Test
+    fun `resolve method passes the configured authorization response issuer checking to the library`() {
+        runTest {
+            every { config.authResponseIssChecking } returns AuthorizationResponseIssChecking.Required
+            val libraryConfig = slot<OpenId4VCIConfig>()
+            coEvery {
+                CredentialOffer.resolve(
+                    httpClient = any(),
+                    config = capture(libraryConfig),
+                    uri = offerUri,
+                )
+            } returns Result.success(credentialOffer)
+
+            offerResolver.resolve(offerUri, false)
+
+            assertEquals(AuthorizationResponseIssChecking.Required, libraryConfig.captured.authResponseIssChecking)
+        }
+    }
 
     @Test
     fun `resolve method when useCache is true should return offer if contained in cache`() {
