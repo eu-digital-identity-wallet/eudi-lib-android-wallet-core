@@ -18,6 +18,7 @@ package eu.europa.ec.eudi.wallet.issue.openid4vci
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.oauth2.sdk.`as`.AuthorizationServerMetadata
 import com.nimbusds.oauth2.sdk.id.Issuer
+import eu.europa.ec.eudi.openid4vci.AuthorizationResponseIssChecking
 import eu.europa.ec.eudi.openid4vci.CertificateChainTrust
 import eu.europa.ec.eudi.openid4vci.ClientAuthentication
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
@@ -89,6 +90,25 @@ class IssuerCreatorTest {
         }
 
         assertSame(policy, libraryConfig.issuerMetadataPolicy)
+    }
+
+    @Test
+    fun `the configured authorization response issuer checking is passed to the library`() = runTest {
+        val requiredConfig = config.copy(authResponseIssChecking = AuthorizationResponseIssChecking.Required)
+        val creator = IssuerCreator(
+            context = mockk(relaxed = true),
+            config = requiredConfig,
+            ktorHttpClientFactory = { mockk() },
+            walletInstanceAttestationProvider = null,
+            walletAttestationKeyManager = mockk(),
+            logger = null,
+        )
+
+        val libraryConfig = with(creator) {
+            requiredConfig.toOpenId4VCIConfig(AuthorizationServerMetadata(Issuer("https://issuer.example")))
+        }
+
+        assertEquals(AuthorizationResponseIssChecking.Required, libraryConfig.authResponseIssChecking)
     }
 
     @Test

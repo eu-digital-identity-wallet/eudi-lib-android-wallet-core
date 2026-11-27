@@ -71,6 +71,7 @@ internal class OfferResolver(
             encryptionSupportConfig = config.responseEncryptionConfig,
             issuerMetadataPolicy = issuerMetadataPolicy,
             dPoPUsage = dPoPUsage,
+            authResponseIssChecking = config.authResponseIssChecking,
         )
     }
 

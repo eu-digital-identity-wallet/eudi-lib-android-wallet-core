@@ -368,6 +368,7 @@ internal class IssuerCreator(
             proofs = issuanceProofProfile.toProofsConfig(),
             issuerMetadataPolicy = issuerMetadataPolicy,
             registrationCertificatePolicy = registrationCertificatePolicy,
+            authResponseIssChecking = authResponseIssChecking,
         )
     }
 }

@@ -37,6 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -287,5 +288,51 @@ class BrowserAuthorizationHandlerTest {
         assertNotNull(result2)
         assertTrue(result2.isSuccess)
     }
-}
 
+    @Test
+    fun `resumeWithUri passes the iss parameter on`() = runTest {
+        val callbackUri = mockk<Uri> {
+            every { getQueryParameter("code") } returns "auth_code_123"
+            every { getQueryParameter("state") } returns "xyz"
+            every { getQueryParameter("iss") } returns "https://as.example.com"
+        }
+
+        var result: Result<AuthorizationResponse>? = null
+
+        val job = launch {
+            result = handler.authorize("https://issuer.example.com/authorize")
+        }
+
+        testScheduler.runCurrent()
+
+        handler.resumeWithUri(callbackUri)
+        job.join()
+
+        assertNotNull(result)
+        assertEquals("https://as.example.com", result.getOrNull()!!.issuer)
+    }
+
+    @Test
+    fun `resumeWithUri leaves the issuer null when the iss parameter is missing`() = runTest {
+        val callbackUri = mockk<Uri> {
+            every { getQueryParameter("code") } returns "auth_code_123"
+            every { getQueryParameter("state") } returns "xyz"
+            every { getQueryParameter("iss") } returns null
+        }
+
+        var result: Result<AuthorizationResponse>? = null
+
+        val job = launch {
+            result = handler.authorize("https://issuer.example.com/authorize")
+        }
+
+        testScheduler.runCurrent()
+
+        handler.resumeWithUri(callbackUri)
+        job.join()
+
+        assertNotNull(result)
+        assertTrue(result.isSuccess)
+        assertNull(result.getOrNull()!!.issuer)
+    }
+}

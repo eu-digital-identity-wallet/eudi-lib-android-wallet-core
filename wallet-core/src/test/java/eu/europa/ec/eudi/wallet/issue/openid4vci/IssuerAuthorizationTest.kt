@@ -123,6 +123,38 @@ class IssuerAuthorizationTest {
     }
 
     @Test
+    fun `authorize method passes the authorization response issuer on`() {
+        every { issuer.credentialOffer } returns mockk(relaxed = true) {
+            every { grants } returns mockk(relaxed = true) {
+                every { preAuthorizedCode() } returns null
+            }
+        }
+        coEvery {
+            with(issuer) {
+                preparedAuthorizationRequest.authorizeWithAuthorizationCode(any(), any(), any(), any())
+            }
+        } returns Result.success(authorizedRequest)
+        val mockHandler = mockk<AuthorizationHandler>(relaxed = true)
+        coEvery { mockHandler.authorize(any()) } returns Result.success(
+            AuthorizationResponse("test_code", "test_state", "https://as.example.com")
+        )
+        val issuerAuthorization = IssuerAuthorization(mockHandler, logger)
+        runTest {
+            issuerAuthorization.authorize(issuer, null)
+        }
+        coVerify(exactly = 1) {
+            with(issuer) {
+                preparedAuthorizationRequest.authorizeWithAuthorizationCode(
+                    any(),
+                    "test_state",
+                    any(),
+                    "https://as.example.com",
+                )
+            }
+        }
+    }
+
+    @Test
     fun `authorize method when preAuthorizedCode in offer and passing txCode does not call authorization handler but calls authorizeWithPreAuthorizationCode`() {
         every { issuer.credentialOffer } returns mockk(relaxed = true) {
             every { grants } returns mockk(relaxed = true) {

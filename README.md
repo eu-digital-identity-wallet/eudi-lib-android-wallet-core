@@ -291,6 +291,11 @@ val config = EudiWalletConfig()
         // Configure credential response encryption
         // By default, encryption is REQUIRED with EC P-256 and RSA 2048
         // withResponseEncryptionConfig(EncryptionSupportConfig(...))
+
+        // Configure the check of the `iss` parameter in the authorization response (RFC 9207)
+        // By default, it is checked when the authorization server advertises support for it
+        // withAuthResponseIssChecking(AuthorizationResponseIssChecking.IfSupported) // This is the default
+        // withAuthResponseIssChecking(AuthorizationResponseIssChecking.Required) // Also refuse servers without support
     }
     // configuration for proximity presentation
     // the values below are the default values
@@ -1801,13 +1806,14 @@ class CustomAuthorizationHandler : AuthorizationHandler {
         
         // 2. Monitor for the redirect callback containing the authorization response
         
-        // 3. Extract the authorization code and state from the callback URI
+        // 3. Extract the authorization code, state and issuer (`iss`, RFC 9207) from the callback URI
         val authorizationCode = extractAuthorizationCode()
         val serverState = extractServerState()
+        val issuer = extractIssuer()
         
         // 4. Return the result
         return if (authorizationCode != null && serverState != null) {
-            Result.success(AuthorizationResponse(authorizationCode, serverState))
+            Result.success(AuthorizationResponse(authorizationCode, serverState, issuer))
         } else {
             Result.failure(IllegalStateException("Authorization failed or was cancelled"))
         }
@@ -1821,6 +1827,11 @@ class CustomAuthorizationHandler : AuthorizationHandler {
     private suspend fun extractServerState(): String? {
         // Implementation depends on your authorization mechanism
         TODO("Extract state parameter from your authorization flow")
+    }
+    
+    private suspend fun extractIssuer(): String? {
+        // Implementation depends on your authorization mechanism
+        TODO("Extract the iss parameter from your authorization flow, if present")
     }
 }
 ```
@@ -1857,8 +1868,11 @@ val openId4VciManager = wallet.createOpenId4VciManager(customConfig)
 - When using a custom `AuthorizationHandler`, you are responsible for:
   - Presenting the authorization URL to the user
   - Monitoring for the redirect URI callback
-  - Extracting the authorization code and state parameters from the callback
-  - Returning the `AuthorizationResponse` with the extracted values
+  - Extracting the authorization code, state and `iss` parameters from the callback
+  - Returning the `AuthorizationResponse` with the extracted values. Pass `iss` on as `issuer`:
+    by default, issuance fails when the authorization server advertises
+    `authorization_response_iss_parameter_supported` and the response has no matching `iss`
+    ([RFC 9207](https://www.rfc-editor.org/rfc/rfc9207))
 - Do **not** call `resumeWithAuthorization` when using a custom handler - your handler manages the complete flow
 - The `authorize` method is a suspending function that should only return when authorization is complete or has failed
 - Custom handlers enable use cases like in-app WebViews, Chrome Custom Tabs, or other custom authorization UIs

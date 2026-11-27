@@ -36,7 +36,7 @@ import kotlin.coroutines.resume
  * This handler:
  * 1. Opens the authorization URL in the system browser
  * 2. Waits for the app to receive the authorization callback via deep link
- * 3. Extracts the authorization code and state from the callback URI
+ * 3. Extracts the authorization code, state and issuer identifier from the callback URI
  *
  * @property context Android context used to start the browser activity
  * @property logger Optional logger for debugging
@@ -64,15 +64,16 @@ class BrowserAuthorizationHandler(
      * Resumes the authorization from the given [Uri].
      * This should be called when the app receives the authorization callback via deep link.
      *
-     * This method extracts the authorization code and state from the callback URI and
-     * completes the suspended authorization coroutine with the result.
+     * This method extracts the authorization code, the state and, when present, the issuer
+     * identifier ('iss', RFC 9207) from the callback URI and completes the suspended
+     * authorization coroutine with the result.
      *
      * The suspended [authorize] coroutine will receive:
      * - A successful [Result] containing [AuthorizationResponse] if both 'code' and 'state' parameters are present
      * - A failed [Result] with [IllegalArgumentException] if the authorization code parameter ('code') is missing from the URI
      * - A failed [Result] with [IllegalArgumentException] if the server state parameter ('state') is missing from the URI
      *
-     * @param uri The callback URI containing the authorization code and state parameters
+     * @param uri The callback URI containing the authorization code, state and optional issuer parameters
      * @throws IllegalStateException if no authorization is in progress
      *
      * @see authorize
@@ -90,7 +91,7 @@ class BrowserAuthorizationHandler(
             requireNotNull(authorizationCode) { "No authorization code found" }
             requireNotNull(serverState) { "No server state found" }
 
-            AuthorizationResponse(authorizationCode, serverState)
+            AuthorizationResponse(authorizationCode, serverState, uri.getQueryParameter("iss"))
         }
         cont.resume(response.onFailure {
             logger?.e(TAG, "resumeWithUri: ${it.message}", it)
